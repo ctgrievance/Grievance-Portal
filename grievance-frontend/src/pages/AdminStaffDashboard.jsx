@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
-// ✅ IMPORT CHAT COMPONENT
+// IMPORT CHAT COMPONENT
 import ChatPopup from "../components/ChatPopup";
+import ExportPreviewModal from "../components/ExportPreviewModal";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, BellIcon, PaperclipIcon, EyeIcon, ClockIcon, XIcon, TrashIcon } from "../components/Icons";
+import { ShieldIcon, BellIcon, PaperclipIcon, EyeIcon, ClockIcon, XIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -83,10 +84,13 @@ function AdminStaffDashboard() {
   const [filterDepartment, setFilterDepartment] = useState("All");
   const [filterMonth, setFilterMonth] = useState("");
 
-  // ✅ EXTENSION REQUEST STATES
+  // EXTENSION REQUEST STATES
   const [extensionPopup, setExtensionPopup] = useState(null); // { grievance }
   const [extDate, setExtDate] = useState("");
   const [extReason, setExtReason] = useState("");
+
+  // EXPORT MODAL STATE
+  const [showExportModal, setShowExportModal] = useState(false);
 
 
   // 1. Authorization Check
@@ -483,9 +487,24 @@ function AdminStaffDashboard() {
     });
   };
 
-  // ✅ Get Unique Departments for Dropdown
+  // Get Unique Departments for Dropdown
   const currentList = activeTab === "assigned" ? grievances : myGrievances;
   const uniqueDepartments = [...new Set(currentList.map(g => g.category || g.school).filter(Boolean))];
+
+  const handleOpenExportModal = () => setShowExportModal(true);
+  const handleExportSelected = (selectedData, selectedColumns) => {
+    const token = localStorage.getItem("grievance_token");
+    fetch(`http://localhost:5000/api/grievances/export-selected`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ grievanceIds: selectedData.map((g) => g._id), columns: selectedColumns }),
+    }).then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob); const a = document.createElement("a");
+        a.href = url; a.download = `staff_grievances_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setMsg("Export successful!"); setStatusType("success"); setTimeout(() => setMsg(""), 3000);
+      }).catch(() => alert("Excel export failed"));
+  };
 
   return (
     <div className="dashboard-container">
@@ -587,6 +606,7 @@ function AdminStaffDashboard() {
                 >
                   Reset
                 </button>
+                <button onClick={handleOpenExportModal} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", color: "white", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 6px rgba(22, 163, 74, 0.2)" }} onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}><DownloadIcon width="16" height="16" /> Export</button>
               </div>
 
               {loading ? (
@@ -1087,6 +1107,9 @@ function AdminStaffDashboard() {
           </div>
         </div>
       )}
+
+      {/* Export Modal */}
+      <ExportPreviewModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} grievances={getFilteredData(grievances, "assigned")} staffMap={{}} onExport={handleExportSelected} />
 
     </div>
   );

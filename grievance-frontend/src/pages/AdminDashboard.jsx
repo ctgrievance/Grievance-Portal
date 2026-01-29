@@ -4,8 +4,9 @@ import "../styles/Dashboard.css";
 
 import AdminUploadRecords from "../components/AdminUploadRecords";
 import StaffRoleManager from "../components/StaffRoleManager";
+import ExportPreviewModal from "../components/ExportPreviewModal";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, PaperclipIcon, TrashIcon } from "../components/Icons";
+import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -49,6 +50,9 @@ function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDepartment, setFilterDepartment] = useState("All");
   const [filterMonth, setFilterMonth] = useState("");
+
+  // ✅ EXPORT MODAL STATE
+  const [showExportModal, setShowExportModal] = useState(false);
 
 
 
@@ -139,39 +143,56 @@ function AdminDashboard() {
 
     return matchStudentId && matchStaffId && matchStatus && matchDept && matchMonth;
   });
-  // ✅ EXPORT TO EXCEL (BACKEND)
-const handleExportExcel = () => {
-  const token = localStorage.getItem("grievance_token");
+  // ✅ OPEN EXPORT PREVIEW MODAL
+  const handleOpenExportModal = () => {
+    setShowExportModal(true);
+  };
 
-  const params = new URLSearchParams({
-    searchStudentId,
-    searchStaffId,
-    filterStatus,
-    filterDepartment,
-    filterMonth,
-  });
+  // ✅ EXPORT SELECTED DATA TO EXCEL
+  const handleExportSelected = (selectedData, selectedColumns) => {
+    const token = localStorage.getItem("grievance_token");
 
-  fetch(`http://localhost:5000/api/grievances/export?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-    .then((res) => {
-      if (!res.ok) throw new Error("Export failed");
-      return res.blob();
+    // Send selected IDs and columns to backend
+    fetch(`http://localhost:5000/api/grievances/export-selected`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        grievanceIds: selectedData.map((g) => g._id),
+        columns: selectedColumns,
+      }),
     })
-    .then((blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "filtered_grievances.xlsx";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    })
-    .catch(() => alert("❌ Excel export failed"));
-};
+      .then((res) => {
+        if (!res.ok) throw new Error("Export failed");
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `grievances_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setMsg("✅ Export successful!");
+        setStatusType("success");
+        setTimeout(() => setMsg(""), 3000);
+      })
+      .catch(() => {
+        alert("❌ Excel export failed");
+      });
+  };
 
+  // ✅ Reset all filters
+  const resetFilters = () => {
+    setSearchStudentId("");
+    setSearchStaffId("");
+    setFilterStatus("All");
+    setFilterDepartment("All");
+    setFilterMonth("");
+  };
 
   // ✅ Unique Departments for Dropdown
   const uniqueDepartments = [...new Set(grievances.map(g => g.category || g.school).filter(Boolean))];
@@ -236,13 +257,13 @@ const handleExportExcel = () => {
 
             {/* ✅ FILTER BAR */
             }
-            
+
             <div style={{
               display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
               padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
-              
-              
+
+
               <input
                 type="text" placeholder="Search Student ID..."
                 value={searchStudentId} onChange={(e) => setSearchStudentId(e.target.value)}
@@ -276,30 +297,33 @@ const handleExportExcel = () => {
                 style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
               />
               <button
-                onClick={() => {
-                  setSearchStudentId(""); setSearchStaffId(""); setFilterStatus("All");
-                  setFilterDepartment("All"); setFilterMonth("");
-                }}
-                
+                onClick={resetFilters}
                 style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}
               >
                 Reset
               </button>
+              <button
+                onClick={handleOpenExportModal}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "6px",
+                  border: "none",
+                  background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 6px rgba(22, 163, 74, 0.2)",
+                  transition: "all 0.2s"
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+                onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
+              >
+                <DownloadIcon width="16" height="16" /> Export to Excel
+              </button>
             </div>
-            <button
-  onClick={handleExportExcel}
-  style={{
-    padding: "10px 20px",
-    borderRadius: "6px",
-    border: "none",
-    background: "#16a34a",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "600"
-  }}
->
-  Export to Excel
-</button>
 
 
             {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
@@ -337,33 +361,33 @@ const handleExportExcel = () => {
                           </div>
                         </td>
 
-                  <td>
-  <span
-    className={`status-badge status-${(g.status || "")
-      .toLowerCase()
-      .replace(" ", "")}`}
-  >
-    {g.status}
-  </span>
+                        <td>
+                          <span
+                            className={`status-badge status-${(g.status || "")
+                              .toLowerCase()
+                              .replace(" ", "")}`}
+                          >
+                            {g.status}
+                          </span>
 
-  {/* ⭐ Rating under Resolved */}
-  {g.status?.toLowerCase() === "resolved" && (
-    <div style={{ marginTop: "4px", fontSize: "0.9rem" }}>
-      {g.rating?.stars ? (
-        <span style={{ color: "#facc15" }}>
-          {"★".repeat(g.rating.stars)}
-          <span style={{ color: "#cbd5e1" }}>
-            {"★".repeat(5 - g.rating.stars)}
-          </span>
-        </span>
-      ) : (
-        <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
-          No rating yet
-        </span>
-      )}
-    </div>
-  )}
-</td>
+                          {/* ⭐ Rating under Resolved */}
+                          {g.status?.toLowerCase() === "resolved" && (
+                            <div style={{ marginTop: "4px", fontSize: "0.9rem" }}>
+                              {g.rating?.stars ? (
+                                <span style={{ color: "#facc15" }}>
+                                  {"★".repeat(g.rating.stars)}
+                                  <span style={{ color: "#cbd5e1" }}>
+                                    {"★".repeat(5 - g.rating.stars)}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
+                                  No rating yet
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
 
 
                         {/* ✅ ASSIGNED STAFF COLUMN */}
@@ -406,7 +430,7 @@ const handleExportExcel = () => {
                 boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: '85vh'
               }}
             >
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.25rem' }}>Grievance Details</h3>
                 <button onClick={() => setSelectedGrievance(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
@@ -438,51 +462,51 @@ const handleExportExcel = () => {
                 )}
               </div>
               {/* ⭐ STUDENT RATING (READ ONLY) */}
-{selectedGrievance.status === "Resolved" &&
- selectedGrievance.isRated &&
- selectedGrievance.rating && (
+              {selectedGrievance.status === "Resolved" &&
+                selectedGrievance.isRated &&
+                selectedGrievance.rating && (
 
-  <div
-    style={{
-      marginTop: "20px",
-      padding: "15px",
-      background: "#f8fafc",
-      borderRadius: "10px",
-      border: "1px solid #e2e8f0"
-    }}
-  >
-    <h4 style={{ marginBottom: "8px", color: "#1e293b" }}>
-      ⭐ Student Feedback
-    </h4>
+                  <div
+                    style={{
+                      marginTop: "20px",
+                      padding: "15px",
+                      background: "#f8fafc",
+                      borderRadius: "10px",
+                      border: "1px solid #e2e8f0"
+                    }}
+                  >
+                    <h4 style={{ marginBottom: "8px", color: "#1e293b" }}>
+                      ⭐ Student Feedback
+                    </h4>
 
-    <ReadOnlyStars stars={selectedGrievance.rating.stars} />
+                    <ReadOnlyStars stars={selectedGrievance.rating.stars} />
 
-    {selectedGrievance.rating.feedback && (
-      <p
-        style={{
-          marginTop: "8px",
-          fontStyle: "italic",
-          color: "#475569"
-        }}
-      >
-        “{selectedGrievance.rating.feedback}”
-      </p>
-    )}
+                    {selectedGrievance.rating.feedback && (
+                      <p
+                        style={{
+                          marginTop: "8px",
+                          fontStyle: "italic",
+                          color: "#475569"
+                        }}
+                      >
+                        “{selectedGrievance.rating.feedback}”
+                      </p>
+                    )}
 
-    <p
-      style={{
-        marginTop: "6px",
-        fontSize: "0.75rem",
-        color: "#94a3b8"
-      }}
-    >
-      Rated on{" "}
-      {new Date(
-        selectedGrievance.rating.ratedAt
-      ).toLocaleDateString()}
-    </p>
-  </div>
-)}
+                    <p
+                      style={{
+                        marginTop: "6px",
+                        fontSize: "0.75rem",
+                        color: "#94a3b8"
+                      }}
+                    >
+                      Rated on{" "}
+                      {new Date(
+                        selectedGrievance.rating.ratedAt
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
 
 
               <div style={{ textAlign: 'right', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
@@ -513,7 +537,7 @@ const handleExportExcel = () => {
             </div>
           </div>
         )}
-           
+
         {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
         <style>{`
           .dashboard-container { animation: fadeIn 0.4s ease-out; }
@@ -545,6 +569,15 @@ const handleExportExcel = () => {
           tr:hover { background-color: #f8fafc !important; }
         `}</style>
       </main>
+
+      {/* EXPORT PREVIEW MODAL */}
+      <ExportPreviewModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        grievances={filteredGrievances}
+        staffMap={staffMap}
+        onExport={handleExportSelected}
+      />
     </div>
   );
 }

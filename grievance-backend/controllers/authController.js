@@ -203,3 +203,80 @@ export const verifyLogin = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// =================================================
+// 5️⃣ FORGOT PASSWORD (ID + Email -> Email OTP)
+// =================================================
+export const forgotPassword = async (req, res) => {
+  try {
+    const { id, email } = req.body;
+
+    // Verify User by ID and Email
+    const user = await User.findOne({ id, email });
+    if (!user) {
+      return res.status(404).json({ message: "No user found with this ID and Email combination." });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash OTP before storing
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    user.resetOtp = hashedOtp;
+    user.resetOtpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    console.log(`[DEBUG] Reset OTP for ${email}: ${otp}`);
+
+    // Send Email
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "CT University - Password Reset Request",
+      text: `Your Password Reset OTP is: ${otp}\n\nValid for 10 minutes.\n\nIf you did not request this, please ignore this email.`,
+    });
+
+    res.json({ message: `Password reset OTP sent to ${email}` });
+
+  } catch (err) {
+    console.error("Forgot Password Error:", err);
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+};
+
+// =================================================
+// 6️⃣ RESET PASSWORD (Verify OTP -> New Password)
+// =================================================
+export const resetPassword = async (req, res) => {
+  try {
+    const { id, otp, newPassword } = req.body;
+
+    const user = await User.findOne({
+      id,
+      resetOtpExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "OTP expired or invalid user." });
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, user.resetOtp);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Update password
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetOtp = undefined;
+    user.resetOtpExpires = undefined;
+
+    await user.save();
+
+    res.json({ message: "✅ Password reset successfully. You can now login." });
+
+  } catch (err) {
+    console.error("Reset Password Error:", err);
+    res.status(500).json({ message: "Password reset failed" });
+  }
+};

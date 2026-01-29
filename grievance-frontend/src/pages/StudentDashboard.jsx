@@ -31,7 +31,7 @@ function StudentDashboard() {
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState(""); // success | error
   const [loading, setLoading] = useState(true);
-  
+
 
   const handleDeleteGrievance = async (id) => {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
@@ -80,17 +80,17 @@ function StudentDashboard() {
   const [filterMonth, setFilterMonth] = useState("");
 
   const [activeTab, setActiveTab] = useState("activity"); // 'activity' | 'verifications'
-// ⭐ Rating State
-const [ratingStars, setRatingStars] = useState(0);
-const [ratingFeedback, setRatingFeedback] = useState("");
-const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  // ⭐ Rating State
+  const [ratingStars, setRatingStars] = useState(0);
+  const [ratingFeedback, setRatingFeedback] = useState("");
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
-useEffect(() => {
-  if (selectedGrievance) {
-    setRatingStars(0);
-    setRatingFeedback("");
-  }
-}, [selectedGrievance]);
+  useEffect(() => {
+    if (selectedGrievance) {
+      setRatingStars(0);
+      setRatingFeedback("");
+    }
+  }, [selectedGrievance]);
 
   useEffect(() => {
     if (!role || role !== "student") navigate("/");
@@ -268,87 +268,87 @@ useEffect(() => {
     barLabel: { width: '100px', fontWeight: '500', color: '#64748b', fontSize: '0.9rem' }
   };
   const StarRating = ({ value, onChange }) => (
-  <div style={{ fontSize: "1.8rem", marginBottom: "10px" }}>
-    {[1, 2, 3, 4, 5].map((star) => (
-      <span
-        key={star}
-        onClick={() => onChange(star)}
-        style={{
-          cursor: "pointer",
-          color: star <= value ? "#facc15" : "#cbd5e1",
-          transition: "0.2s"
-        }}
-      >
-        ★
-      </span>
-    ))}
-  </div>
-);
-const submitRating = async () => {
-  if (ratingStars === 0) return alert("Please select a rating");
+    <div style={{ fontSize: "1.8rem", marginBottom: "10px" }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span
+          key={star}
+          onClick={() => onChange(star)}
+          style={{
+            cursor: "pointer",
+            color: star <= value ? "#facc15" : "#cbd5e1",
+            transition: "0.2s"
+          }}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+  const submitRating = async () => {
+    if (ratingStars === 0) return alert("Please select a rating");
 
-  try {
-    setRatingSubmitting(true);
-    const token = localStorage.getItem("grievance_token");
+    try {
+      setRatingSubmitting(true);
+      const token = localStorage.getItem("grievance_token");
 
-    const res = await fetch(
-      `http://localhost:5000/api/grievances/rate/${selectedGrievance._id}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          stars: ratingStars,
-          feedback: ratingFeedback
-        }),
-      }
-    );
-
-    const data = await res.json();
-
-    if (res.ok) {
-      alert("⭐ Thank you for your feedback!");
-      setHistory(prev =>
-        prev.map(g =>
-          g._id === selectedGrievance._id
-            ? { ...g, isRated: true, rating: { stars: ratingStars } }
-            : g
-        )
+      const res = await fetch(
+        `http://localhost:5000/api/grievances/rate/${selectedGrievance._id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            stars: ratingStars,
+            feedback: ratingFeedback
+          }),
+        }
       );
-      setSelectedGrievance(null);
-    } else {
-      alert(data.message || "Rating failed");
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("⭐ Thank you for your feedback!");
+        setHistory(prev =>
+          prev.map(g =>
+            g._id === selectedGrievance._id
+              ? { ...g, isRated: true, rating: { stars: ratingStars } }
+              : g
+          )
+        );
+        setSelectedGrievance(null);
+      } else {
+        alert(data.message || "Rating failed");
+      }
+    } catch (err) {
+      alert("Error submitting rating");
+    } finally {
+      setRatingSubmitting(false);
     }
-  } catch (err) {
-    alert("Error submitting rating");
-  } finally {
-    setRatingSubmitting(false);
-  }
-};
-const fetchGrievanceHistory = async () => {
-  try {
-    const res = await fetch(
-      `http://localhost:5000/api/grievances/user/${userId}`
-    );
-    const data = await res.json();
+  };
+  const fetchGrievanceHistory = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/grievances/user/${userId}`
+      );
+      const data = await res.json();
 
-    if (res.ok) {
-      setHistory(data);
+      if (res.ok) {
+        setHistory(data);
 
-      // 🔥 IMPORTANT: recompute stats
-      const total = data.length;
-      const resolved = data.filter(g => g.status === "Resolved").length;
-      const rejected = data.filter(g => g.status === "Rejected").length;
-      const pending = total - resolved - rejected;
+        // 🔥 IMPORTANT: recompute stats
+        const total = data.length;
+        const resolved = data.filter(g => g.status === "Resolved").length;
+        const rejected = data.filter(g => g.status === "Rejected").length;
+        const pending = total - resolved - rejected;
 
-      setStats({ total, resolved, rejected, pending });
+        setStats({ total, resolved, rejected, pending });
+      }
+    } catch (err) {
+      console.error("Failed to refresh grievance history", err);
     }
-  } catch (err) {
-    console.error("Failed to refresh grievance history", err);
-  }
-};
+  };
 
 
 
@@ -495,7 +495,7 @@ const fetchGrievanceHistory = async () => {
             <h2>Recent Activity</h2>
 
             {/* ✅ FILTER BAR */}
-            <div style={{
+            <div className="mobile-filter-bar" style={{
               display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
               padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
@@ -662,7 +662,7 @@ const fetchGrievanceHistory = async () => {
 
                 {/* ✅ ATTACHMENT BUTTON */}
                 {selectedGrievance.attachment && (
-                  
+
                   <div style={{ marginTop: '15px' }}>
                     <strong>Attachment: </strong>
                     <a
@@ -675,59 +675,59 @@ const fetchGrievanceHistory = async () => {
                   </div>
                 )}
                 {/* ⭐ RATING SECTION */}
-{selectedGrievance.status === "Resolved" && (
-  <div style={{
-    marginTop: "20px",
-    paddingTop: "15px",
-    borderTop: "1px solid #e2e8f0"
-  }}>
-    <h4 style={{ marginBottom: "8px", color: "#1e293b" }}>
-      Rate this Resolution
-    </h4>
+                {selectedGrievance.status === "Resolved" && (
+                  <div style={{
+                    marginTop: "20px",
+                    paddingTop: "15px",
+                    borderTop: "1px solid #e2e8f0"
+                  }}>
+                    <h4 style={{ marginBottom: "8px", color: "#1e293b" }}>
+                      Rate this Resolution
+                    </h4>
 
-    {selectedGrievance.isRated ? (
-      <div style={{ color: "#facc15", fontSize: "1.4rem" }}>
-        {"★".repeat(selectedGrievance.rating?.stars || 0)}
-        <span style={{ color: "#64748b", fontSize: "0.9rem", marginLeft: "8px" }}>
-          (Already rated)
-        </span>
-      </div>
-    ) : (
-      <>
-        <StarRating value={ratingStars} onChange={setRatingStars} />
+                    {selectedGrievance.isRated ? (
+                      <div style={{ color: "#facc15", fontSize: "1.4rem" }}>
+                        {"★".repeat(selectedGrievance.rating?.stars || 0)}
+                        <span style={{ color: "#64748b", fontSize: "0.9rem", marginLeft: "8px" }}>
+                          (Already rated)
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <StarRating value={ratingStars} onChange={setRatingStars} />
 
-        <textarea
-          placeholder="Optional feedback..."
-          value={ratingFeedback}
-          onChange={(e) => setRatingFeedback(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            borderRadius: "8px",
-            border: "1px solid #cbd5e1",
-            marginBottom: "10px"
-          }}
-        />
+                        <textarea
+                          placeholder="Optional feedback..."
+                          value={ratingFeedback}
+                          onChange={(e) => setRatingFeedback(e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "10px",
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            marginBottom: "10px"
+                          }}
+                        />
 
-        <button
-          onClick={submitRating}
-          disabled={ratingSubmitting}
-          style={{
-            padding: "10px 20px",
-            background: "#facc15",
-            color: "#78350f",
-            border: "none",
-            borderRadius: "8px",
-            fontWeight: "600",
-            cursor: "pointer"
-          }}
-        >
-          {ratingSubmitting ? "Submitting..." : "Submit Rating"}
-        </button>
-      </>
-    )}
-  </div>
-)}
+                        <button
+                          onClick={submitRating}
+                          disabled={ratingSubmitting}
+                          style={{
+                            padding: "10px 20px",
+                            background: "#facc15",
+                            color: "#78350f",
+                            border: "none",
+                            borderRadius: "8px",
+                            fontWeight: "600",
+                            cursor: "pointer"
+                          }}
+                        >
+                          {ratingSubmitting ? "Submitting..." : "Submit Rating"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
 
               </div>
 
@@ -772,68 +772,68 @@ const fetchGrievanceHistory = async () => {
       />
 
       {/* 🔥 VERIFICATION POPUP (Glassmorphism) */}
-    {isVerificationPopupOpen && selectedGrievance && (
-  <VerificationModal
-    grievance={selectedGrievance}
-    onClose={() => {
-      setIsVerificationPopupOpen(false);
-      setSelectedGrievance(null);
-    }}
-   onVerify={async (id, action, feedback) => {
-  try {
-    const token = localStorage.getItem("grievance_token");
+      {isVerificationPopupOpen && selectedGrievance && (
+        <VerificationModal
+          grievance={selectedGrievance}
+          onClose={() => {
+            setIsVerificationPopupOpen(false);
+            setSelectedGrievance(null);
+          }}
+          onVerify={async (id, action, feedback) => {
+            try {
+              const token = localStorage.getItem("grievance_token");
 
-    const res = await fetch(
-      `http://localhost:5000/api/grievances/verify-resolution/${id}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ action, feedback }),
-      }
-    );
+              const res = await fetch(
+                `http://localhost:5000/api/grievances/verify-resolution/${id}`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({ action, feedback }),
+                }
+              );
 
-    const data = await res.json();
+              const data = await res.json();
 
-    if (!res.ok) {
-      alert(data.message || "Verification failed");
-     // ✅ FORCE STATE UPDATE USING BACKEND RESPONSE
-setHistory(prev =>
-  prev.map(g =>
-    g._id === data.grievance._id ? data.grievance : g
-  )
-);
+              if (!res.ok) {
+                alert(data.message || "Verification failed");
+                // ✅ FORCE STATE UPDATE USING BACKEND RESPONSE
+                setHistory(prev =>
+                  prev.map(g =>
+                    g._id === data.grievance._id ? data.grievance : g
+                  )
+                );
 
-// ✅ Close modal
-setIsVerificationPopupOpen(false);
-setSelectedGrievance(null);
+                // ✅ Close modal
+                setIsVerificationPopupOpen(false);
+                setSelectedGrievance(null);
 
-      return;
-    }
+                return;
+              }
 
-    // 🔥 THIS IS THE KEY LINE
-   // ✅ Update history instantly from backend response
-setHistory(prev =>
-  prev.map(g =>
-    g._id === data.grievance._id ? data.grievance : g
-  )
-);
+              // 🔥 THIS IS THE KEY LINE
+              // ✅ Update history instantly from backend response
+              setHistory(prev =>
+                prev.map(g =>
+                  g._id === data.grievance._id ? data.grievance : g
+                )
+              );
 
-// ✅ ALSO update selected grievance
-setSelectedGrievance(data.grievance);
+              // ✅ ALSO update selected grievance
+              setSelectedGrievance(data.grievance);
 
-setIsVerificationPopupOpen(false);
+              setIsVerificationPopupOpen(false);
 
-    alert("Grievance Closed! Thank you.");
-  } catch (err) {
-    console.error(err);
-    alert("Server error while verifying grievance");
-  }
-}}
-  />
-    )}
+              alert("Grievance Closed! Thank you.");
+            } catch (err) {
+              console.error(err);
+              alert("Server error while verifying grievance");
+            }
+          }}
+        />
+      )}
 
 
 
@@ -893,7 +893,7 @@ function VerificationModal({ grievance, onVerify, onClose }) {
         textAlign: 'center', position: 'relative', border: '1px solid rgba(255,255,255,0.8)',
         animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
-        
+
         {/* ❌ CLOSE BUTTON */}
         <button
           onClick={onClose}
@@ -923,119 +923,119 @@ function VerificationModal({ grievance, onVerify, onClose }) {
             <p style={{ margin: '5px 0 0', fontStyle: 'italic' }}>"{grievance.resolutionRemarks}"</p>
           </div>
         )}
-        
+
 
 
         {/* Action Buttons */}
-       {!showRejectInput ? (
-  <div style={{ textAlign: "center" }}>
+        {!showRejectInput ? (
+          <div style={{ textAlign: "center" }}>
 
-    {/* ⚠️ Warning after first rejection */}
-    {isLastAttempt && (
-      <p style={{
-        color: "#b91c1c",
-        fontSize: "0.85rem",
-        marginBottom: "12px"
-      }}>
-        ⚠️ You have already rejected once.  
-        As per university policy, further rejection is not allowed.
-      </p>
-    )}
+            {/* ⚠️ Warning after first rejection */}
+            {isLastAttempt && (
+              <p style={{
+                color: "#b91c1c",
+                fontSize: "0.85rem",
+                marginBottom: "12px"
+              }}>
+                ⚠️ You have already rejected once.
+                As per university policy, further rejection is not allowed.
+              </p>
+            )}
 
-    <div style={{ display: "flex", gap: "15px", justifyContent: "center" }}>
-      
-      {/* ❌ Reject button ONLY on first attempt */}
-      {!isLastAttempt && (
-        <button
-          onClick={() => setShowRejectInput(true)}
-          style={{
-            padding: "12px 24px",
-            borderRadius: "12px",
-            border: "none",
-            background: "#fee2e2",
-            color: "#ef4444",
-            fontWeight: "600",
-            cursor: "pointer"
-          }}
-        >
-          No, I'm not
-        </button>
-      )}
+            <div style={{ display: "flex", gap: "15px", justifyContent: "center" }}>
 
-      {/* ✅ Accept always allowed */}
-      <button
-      type="button"
-        onClick={() => onVerify(grievance._id, "accept", "")}
-         disabled={grievance.status !== "Verification"}
-        style={{
-          padding: "12px 24px",
-          borderRadius: "12px",
-          border: "none",
-          background: "#10b981",
-          color: "white",
-          fontWeight: "600",
-          cursor: "pointer"
-        }}
-        
-      >
-        Yes, Close It
-      </button>
+              {/* ❌ Reject button ONLY on first attempt */}
+              {!isLastAttempt && (
+                <button
+                  onClick={() => setShowRejectInput(true)}
+                  style={{
+                    padding: "12px 24px",
+                    borderRadius: "12px",
+                    border: "none",
+                    background: "#fee2e2",
+                    color: "#ef4444",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
+                >
+                  No, I'm not
+                </button>
+              )}
 
-    </div>
-  </div>
-) : (
-  /* REJECTION FEEDBACK TEXTAREA */
-  <div style={{ animation: "fadeIn 0.3s" }}>
-    <textarea
-      placeholder="Please tell us why you are not satisfied..."
-      value={feedback}
-      onChange={(e) => setFeedback(e.target.value)}
-      style={{
-        width: "100%",
-        padding: "12px",
-        borderRadius: "12px",
-        border: "1px solid #cbd5e1",
-        marginBottom: "15px",
-        minHeight: "80px"
-      }}
-      autoFocus
-    />
+              {/* ✅ Accept always allowed */}
+              <button
+                type="button"
+                onClick={() => onVerify(grievance._id, "accept", "")}
+                disabled={grievance.status !== "Verification"}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background: "#10b981",
+                  color: "white",
+                  fontWeight: "600",
+                  cursor: "pointer"
+                }}
 
-    <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-      <button
-        onClick={() => setShowRejectInput(false)}
-        style={{
-          padding: "10px 20px",
-          borderRadius: "8px",
-          border: "1px solid #e2e8f0",
-          background: "white",
-          color: "#64748b",
-          fontWeight: "600",
-          cursor: "pointer"
-        }}
-      >
-        Cancel
-      </button>
+              >
+                Yes, Close It
+              </button>
 
-      <button
-        onClick={() => onVerify(grievance._id, "reject", feedback)}
-        disabled={!feedback.trim()}
-        style={{
-          padding: "10px 20px",
-          borderRadius: "8px",
-          border: "none",
-          background: "#ef4444",
-          color: "white",
-          fontWeight: "600",
-          cursor: "pointer",
-          opacity: feedback.trim() ? 1 : 0.6
-        }}
-      >
-        Reopen Grievance
-      </button>
-    </div>
-  </div>
-)}
+            </div>
+          </div>
+        ) : (
+          /* REJECTION FEEDBACK TEXTAREA */
+          <div style={{ animation: "fadeIn 0.3s" }}>
+            <textarea
+              placeholder="Please tell us why you are not satisfied..."
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "12px",
+                border: "1px solid #cbd5e1",
+                marginBottom: "15px",
+                minHeight: "80px"
+              }}
+              autoFocus
+            />
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button
+                onClick={() => setShowRejectInput(false)}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  border: "1px solid #e2e8f0",
+                  background: "white",
+                  color: "#64748b",
+                  fontWeight: "600",
+                  cursor: "pointer"
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => onVerify(grievance._id, "reject", feedback)}
+                disabled={!feedback.trim()}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#ef4444",
+                  color: "white",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  opacity: feedback.trim() ? 1 : 0.6
+                }}
+              >
+                Reopen Grievance
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

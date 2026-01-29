@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
 import AssignStaffPopup from "../components/AssignStaffPopup";
+import ExportPreviewModal from "../components/ExportPreviewModal";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, PaperclipIcon, TrashIcon } from "../components/Icons";
+import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -41,6 +42,7 @@ function CRCAdminDashboard() {
   const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
   const [assignGrievanceId, setAssignGrievanceId] = useState(null);
   const [selectedGrievance, setSelectedGrievance] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     // ✅ Security Check: Agar banda CRC ka admin nahi hai, toh bhaga do
@@ -178,6 +180,22 @@ function CRCAdminDashboard() {
     return matchId && matchStaff && matchStatus && matchMonth;
   });
 
+  const resetFilters = () => { setSearchId(""); setSearchStaffId(""); setStatusFilter("All"); setFilterMonth(""); };
+  const handleOpenExportModal = () => setShowExportModal(true);
+  const handleExportSelected = (selectedData, selectedColumns) => {
+    const token = localStorage.getItem("grievance_token");
+    fetch(`http://localhost:5000/api/grievances/export-selected`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ grievanceIds: selectedData.map((g) => g._id), columns: selectedColumns }),
+    }).then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob); const a = document.createElement("a");
+        a.href = url; a.download = `crc_grievances_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setMsg("Export successful!"); setStatusType("success"); setTimeout(() => setMsg(""), 3000);
+      }).catch(() => alert("Excel export failed"));
+  };
+
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -235,6 +253,8 @@ function CRCAdminDashboard() {
               value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
               style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
             />
+            <button onClick={resetFilters} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}>Reset</button>
+            <button onClick={handleOpenExportModal} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", color: "white", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 6px rgba(22, 163, 74, 0.2)" }} onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}><DownloadIcon width="16" height="16" /> Export</button>
           </div>
 
           {loading ? (
@@ -413,6 +433,7 @@ function CRCAdminDashboard() {
         adminId={userId}
         onAssigned={handleAssignSuccess}
       />
+      <ExportPreviewModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} grievances={filteredGrievances} staffMap={staffMap} onExport={handleExportSelected} />
 
       {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
       <style>{`
