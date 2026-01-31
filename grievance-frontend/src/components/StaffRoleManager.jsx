@@ -293,7 +293,8 @@ function StaffRoleManager() {
                                     "School of Allied Health Sciences",
                                     "School of Social Sciences and Liberal Arts",
                                     "HR",
-                                    "CRC (Placement)"
+                                    "CRC (Placement)",
+                                    "Transport"
                                   ].map(d => (
                                     <option key={d} value={d}>{d}</option>
                                   ))}

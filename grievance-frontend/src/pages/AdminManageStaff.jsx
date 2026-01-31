@@ -21,10 +21,22 @@ const AdminManageStaff = () => {
   const [filterRole, setFilterRole] = useState("all"); // all | admins | team | general
 
   const allDepartments = [
-    "Accounts", "Examination", "Student Welfare", "Admission",
-    "School of Engineering", "School of Management", "School of Law",
-    "Pharmaceutical Sciences", "Hotel Management", "Design & Innovation",
-    "Allied Health Sciences", "Social Sciences", "HR", "CRC (Placement)"
+    "Accounts",
+    "Student Welfare",
+    "Student Section",
+    "Admission",
+    "Examination",
+    "School of Engineering and Technology",
+    "School of Management Studies",
+    "School of Law",
+    "School of Pharmaceutical Sciences",
+    "School of Hotel Management",
+    "School of Design and innovation",
+    "School of Allied Health Sciences",
+    "School of Social Sciences and Liberal Arts",
+    "HR",
+    "CRC (Placement)",
+    "Transport"
   ];
 
   const token = localStorage.getItem("grievance_token");

@@ -29,6 +29,8 @@ import ResetPassword from "./pages/ResetPassword";
 
 import HRAdminDashboard from "./pages/HRAdminDashboard";
 import CRCAdminDashboard from "./pages/CRCAdminDashboard";
+import TransportAdminDashboard from "./pages/TransportAdminDashboard";
+import StudentTransport from "./pages/StudentTransport";
 
 // Helper to decide where DEPT ADMINS (Priya) go
 const getDeptAdminRoute = (department) => {
@@ -39,6 +41,7 @@ const getDeptAdminRoute = (department) => {
   if (department === "Examination") return "/admin/examination";
   if (department === "HR") return "/admin/hr";
   if (department === "CRC (Placement)") return "/admin/crc";
+  if (department === "Transport") return "/admin/transport";
   return "/admin/school";
 };
 
@@ -116,6 +119,7 @@ function App() {
         <Route path="/student/department" element={<ProtectedRoute allowedRoles={["student"]}><Department /></ProtectedRoute>} />
         <Route path="/student/hr" element={<ProtectedRoute allowedRoles={["student"]}><StudentHR /></ProtectedRoute>} />
         <Route path="/student/crc" element={<ProtectedRoute allowedRoles={["student"]}><StudentCRC /></ProtectedRoute>} />
+        <Route path="/student/transport" element={<ProtectedRoute allowedRoles={["student"]}><StudentTransport /></ProtectedRoute>} />
 
         {/* --- STAFF ROUTES --- */}
 
@@ -141,10 +145,11 @@ function App() {
         <Route path="/admin/school" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><SchoolAdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/hr" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><HRAdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/crc" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><CRCAdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/transport" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><TransportAdminDashboard /></ProtectedRoute>} />
 
 
-<Route path="/forgot-password" element={<ForgotPassword />} />
-<Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Catch All */}
         <Route path="*" element={<Navigate to="/" replace />} />

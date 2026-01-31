@@ -396,6 +396,7 @@ function StudentDashboard() {
           <li><Link to="/student/department">Department</Link></li>
           <li><Link to="/student/hr">HR</Link></li>
           <li><Link to="/student/crc">CRC (Placement)</Link></li>
+          <li><Link to="/student/transport">Transport</Link></li>
         </ul>
       </nav>
 
