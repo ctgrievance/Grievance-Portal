@@ -1,5 +1,9 @@
-import User from "../models/UserModel.js";
-import UniversityRecord from "../models/UniversityRecord.js";
+import User from "../models/UserModel.js"; // Legacy - kept for backup
+import UniversityRecord from "../models/UniversityRecord.js"; // Legacy - kept for backup
+import StudentRecord from "../models/StudentRecord.js"; // NEW: Student validation
+import StaffRecord from "../models/StaffRecord.js"; // NEW: Staff/Admin validation
+import StudentUser from "../models/StudentUser.js"; // NEW: Student users
+import StaffUser from "../models/StaffUser.js"; // NEW: Staff/Admin users
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -14,21 +18,51 @@ const transporter = nodemailer.createTransport({
 });
 
 // =================================================
-// 1️⃣ REGISTER REQUEST (SEND DUAL OTP)
+// 1️⃣ REGISTER REQUEST (SEND DUAL OTP) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const registerRequest = async (req, res) => {
   try {
-    const { email, password, id, phone } = req.body;
+    const { email, password, id, phone, role } = req.body;
+    const safeId = id.toString().trim().toUpperCase();
+    const userRole = role ? role.toLowerCase().trim() : "student";
 
-    const existingUser = await User.findOne({ $or: [{ email }, { id }] });
-    if (existingUser && existingUser.isVerified) {
-      return res.status(400).json({ message: "User already exists" });
+    // Check if user already exists in either collection
+    let existingUser = null;
+    if (userRole === "student") {
+      existingUser = await StudentUser.findOne({ $or: [{ email }, { id: safeId }] });
+    } else {
+      existingUser = await StaffUser.findOne({ $or: [{ email }, { id: safeId }] });
     }
 
-    // ✅ Validate ID against University Records
-    const validRecord = await UniversityRecord.findOne({ id: id.toString().trim().toUpperCase() });
+    // Also check legacy User collection
+    if (!existingUser) {
+      existingUser = await User.findOne({ $or: [{ email }, { id: safeId }] });
+    }
+
+    // 🔥 TESTING MODE: User exists check DISABLED
+    // TODO: RE-ENABLE THIS BEFORE PRODUCTION!
+    // if (existingUser && existingUser.isVerified) {
+    //   return res.status(400).json({ message: "User already exists" });
+    // }
+
+    // ✅ Validate ID against appropriate University Records
+    let validRecord = null;
+    if (userRole === "student") {
+      validRecord = await StudentRecord.findOne({ id: safeId });
+      if (!validRecord) {
+        // Fallback to legacy UniversityRecord
+        validRecord = await UniversityRecord.findOne({ id: safeId, role: "student" });
+      }
+    } else {
+      validRecord = await StaffRecord.findOne({ id: safeId });
+      if (!validRecord) {
+        // Fallback to legacy UniversityRecord  
+        validRecord = await UniversityRecord.findOne({ id: safeId, role: { $in: ["staff", "admin"] } });
+      }
+    }
+
     if (!validRecord) {
-      return res.status(403).json({ message: "ID not found in University Records." });
+      return res.status(403).json({ message: `ID not found in University ${userRole === "student" ? "Student" : "Staff"} Records.` });
     }
 
     // Generate OTPs
@@ -38,19 +72,44 @@ export const registerRequest = async (req, res) => {
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const userData = {
-      ...req.body,
+    // Prepare user data based on role
+    const baseUserData = {
+      id: safeId,
+      email: email.toLowerCase().trim(),
+      phone,
       password: hashedPassword,
-      otp: emailOtp, // Email Code
+      fullName: validRecord.fullName || req.body.fullName || "",
+      otp: emailOtp,
       otpExpires: Date.now() + 10 * 60 * 1000,
-      phoneOtp: phoneOtp, // Phone Code
+      phoneOtp: phoneOtp,
       phoneOtpExpires: Date.now() + 10 * 60 * 1000,
       isVerified: false,
     };
 
+    // Create user in appropriate collection
+    if (userRole === "student") {
+      const studentData = {
+        ...baseUserData,
+        program: validRecord.program || req.body.program || "",
+        studentType: validRecord.studentType || req.body.studentType || "",
+      };
+      await StudentUser.findOneAndUpdate({ id: safeId }, studentData, { upsert: true, new: true });
+    } else {
+      const staffData = {
+        ...baseUserData,
+        role: validRecord.role || userRole,
+        staffDepartment: validRecord.department || req.body.department || "",
+        isDeptAdmin: false,
+        adminDepartment: "",
+        isMasterAdmin: false,
+      };
+      await StaffUser.findOneAndUpdate({ id: safeId }, staffData, { upsert: true, new: true });
+    }
+
+    // Also save to legacy User collection for backup
     await User.findOneAndUpdate(
-      { email },
-      userData,
+      { id: safeId },
+      { ...baseUserData, role: userRole, program: validRecord.program || "", staffDepartment: validRecord.department || "" },
       { upsert: true, new: true }
     );
 
@@ -62,9 +121,8 @@ export const registerRequest = async (req, res) => {
       text: `Your Email Verification Code is: ${emailOtp}\n\nValid for 10 minutes.`,
     });
 
-    // 📱 Simulate Phone & Email OTP (Console Log for Debugging)
-
-
+    // 🔐 Log OTP prominently in terminal
+    if (global.logOTP) global.logOTP("REGISTRATION", email, emailOtp, phoneOtp);
     res.status(200).json({ message: `Verification codes sent to ${email} and ${phone}` });
 
   } catch (err) {
@@ -74,13 +132,27 @@ export const registerRequest = async (req, res) => {
 };
 
 // =================================================
-// 2️⃣ VERIFY REGISTRATION (DUAL CHECK)
+// 2️⃣ VERIFY REGISTRATION (DUAL CHECK) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const verifyRegistration = async (req, res) => {
   try {
     const { email, otpEmail, otpPhone } = req.body;
 
-    const user = await User.findOne({ email });
+    // Find user in StudentUser or StaffUser
+    let user = await StudentUser.findOne({ email });
+    let isStudent = true;
+
+    if (!user) {
+      user = await StaffUser.findOne({ email });
+      isStudent = false;
+    }
+
+    // Fallback to legacy User
+    if (!user) {
+      user = await User.findOne({ email });
+      isStudent = null; // Unknown, use legacy
+    }
+
     if (!user) return res.status(400).json({ message: "User not found" });
 
     // Validate Email OTP
@@ -93,13 +165,19 @@ export const verifyRegistration = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired Phone OTP" });
     }
 
-    // ✅ Success
+    // ✅ Success - Update verification status
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpires = undefined;
     user.phoneOtp = undefined;
     user.phoneOtpExpires = undefined;
     await user.save();
+
+    // Also update legacy User collection for sync
+    await User.findOneAndUpdate(
+      { email },
+      { isVerified: true, otp: undefined, otpExpires: undefined, phoneOtp: undefined, phoneOtpExpires: undefined }
+    );
 
     res.status(200).json({ message: "Account verified successfully! You can now login." });
 
@@ -110,13 +188,39 @@ export const verifyRegistration = async (req, res) => {
 };
 
 // =================================================
-// 3️⃣ LOGIN USER - STEP 1 (Credentials -> 2FA)
+// 3️⃣ LOGIN USER - STEP 1 (Credentials -> 2FA) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const loginUser = async (req, res) => {
   try {
-    const { id, password } = req.body;
+    const { id, password, role } = req.body;
+    const safeId = id.toString().trim().toUpperCase();
+    const userRole = role ? role.toLowerCase().trim() : null;
 
-    const user = await User.findOne({ id });
+    // Find user based on role or search all collections
+    let user = null;
+    let isStudent = false;
+
+    if (userRole === "student") {
+      user = await StudentUser.findOne({ id: safeId });
+      isStudent = true;
+    } else if (userRole === "staff" || userRole === "admin") {
+      user = await StaffUser.findOne({ id: safeId });
+      isStudent = false;
+    } else {
+      // Role not specified, search both collections
+      user = await StudentUser.findOne({ id: safeId });
+      if (user) {
+        isStudent = true;
+      } else {
+        user = await StaffUser.findOne({ id: safeId });
+        isStudent = false;
+      }
+    }
+
+    // Fallback to legacy User collection
+    if (!user) {
+      user = await User.findOne({ id: safeId });
+    }
 
     if (!user) return res.status(400).json({ message: "User not found" });
 
@@ -132,7 +236,8 @@ export const loginUser = async (req, res) => {
     await user.save();
 
     // Send OTP
-    console.log(`[DEBUG] Login OTP for ${user.email}: ${loginOtp}`); // 🔥 Debug Log Added
+    // 🔐 Log OTP prominently in terminal
+    if (global.logOTP) global.logOTP("LOGIN 2FA", user.email, loginOtp);
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
@@ -140,11 +245,12 @@ export const loginUser = async (req, res) => {
       text: `Your Login OTP is ${loginOtp}. Valid for 5 minutes.`,
     });
 
-    // Return 2FA Flag
+    // Return 2FA Flag with user type info
     res.status(200).json({
       requires2FA: true,
       message: `OTP sent to ${user.email}`,
-      maskedEmail: user.email.replace(/(.{2})(.*)(@.*)/, "$1***$3")
+      maskedEmail: user.email.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+      userType: isStudent ? "student" : "staff"
     });
 
   } catch (err) {
@@ -154,13 +260,40 @@ export const loginUser = async (req, res) => {
 };
 
 // =================================================
-// 4️⃣ LOGIN USER - STEP 2 (Verify OTP -> Token)
+// 4️⃣ LOGIN USER - STEP 2 (Verify OTP -> Token) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const verifyLogin = async (req, res) => {
   try {
-    const { id, otp } = req.body;
+    const { id, otp, role } = req.body;
+    const safeId = id.toString().trim().toUpperCase();
+    const userRole = role ? role.toLowerCase().trim() : null;
 
-    const user = await User.findOne({ id });
+    // Find user based on role or search all collections
+    let user = null;
+    let isStudent = false;
+
+    if (userRole === "student") {
+      user = await StudentUser.findOne({ id: safeId });
+      isStudent = true;
+    } else if (userRole === "staff" || userRole === "admin") {
+      user = await StaffUser.findOne({ id: safeId });
+      isStudent = false;
+    } else {
+      // Role not specified, search both collections
+      user = await StudentUser.findOne({ id: safeId });
+      if (user) {
+        isStudent = true;
+      } else {
+        user = await StaffUser.findOne({ id: safeId });
+        isStudent = false;
+      }
+    }
+
+    // Fallback to legacy User collection
+    if (!user) {
+      user = await User.findOne({ id: safeId });
+    }
+
     if (!user) return res.status(400).json({ message: "User not found" });
 
     if (user.otp !== otp || user.otpExpires < Date.now()) {
@@ -172,15 +305,17 @@ export const verifyLogin = async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
-    // Generate Token
+    // Generate Token with appropriate role info
+    const tokenPayload = {
+      id: user.id,
+      role: isStudent ? "student" : (user.role || "staff"),
+      isDeptAdmin: user.isDeptAdmin || false,
+      adminDepartment: user.adminDepartment || "",
+      isMasterAdmin: user.isMasterAdmin || false
+    };
+
     const token = jwt.sign(
-      {
-        id: user.id,
-        role: user.role,
-        isDeptAdmin: user.isDeptAdmin,
-        adminDepartment: user.adminDepartment,
-        isMasterAdmin: user.isMasterAdmin // 🔥 Added to token
-      },
+      tokenPayload,
       process.env.JWT_SECRET || "fallback_secret_key_123",
       { expiresIn: "7d" }
     );
@@ -188,14 +323,16 @@ export const verifyLogin = async (req, res) => {
     // Response Data
     res.status(200).json({
       message: "Login successful",
-      token, // 🔥 Return Token
+      token,
       user: {
         id: user.id,
-        role: user.role,
+        role: isStudent ? "student" : (user.role || "staff"),
         fullName: user.fullName,
-        isDeptAdmin: user.isDeptAdmin,
-        adminDepartment: user.adminDepartment,
-        isMasterAdmin: user.isMasterAdmin // 🔥 Added to response
+        isDeptAdmin: user.isDeptAdmin || false,
+        adminDepartment: user.adminDepartment || "",
+        isMasterAdmin: user.isMasterAdmin || false,
+        program: user.program || "",
+        department: user.staffDepartment || user.adminDepartment || ""
       },
     });
 
@@ -205,14 +342,24 @@ export const verifyLogin = async (req, res) => {
 };
 
 // =================================================
-// 5️⃣ FORGOT PASSWORD (ID + Email -> Email OTP)
+// 5️⃣ FORGOT PASSWORD (ID + Email -> Email OTP) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const forgotPassword = async (req, res) => {
   try {
     const { id, email } = req.body;
+    const safeId = id.toString().trim().toUpperCase();
+    const safeEmail = email.toLowerCase().trim();
 
-    // Verify User by ID and Email
-    const user = await User.findOne({ id, email });
+    // Find user in StudentUser or StaffUser
+    let user = await StudentUser.findOne({ id: safeId, email: safeEmail });
+    if (!user) {
+      user = await StaffUser.findOne({ id: safeId, email: safeEmail });
+    }
+    // Fallback to legacy User
+    if (!user) {
+      user = await User.findOne({ id: safeId, email: safeEmail });
+    }
+
     if (!user) {
       return res.status(404).json({ message: "No user found with this ID and Email combination." });
     }
@@ -227,7 +374,8 @@ export const forgotPassword = async (req, res) => {
     user.resetOtpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
     await user.save();
 
-    console.log(`[DEBUG] Reset OTP for ${email}: ${otp}`);
+    // 🔐 Log OTP prominently in terminal
+    if (global.logOTP) global.logOTP("PASSWORD RESET", email, otp);
 
     // Send Email
     await transporter.sendMail({
@@ -246,16 +394,33 @@ export const forgotPassword = async (req, res) => {
 };
 
 // =================================================
-// 6️⃣ RESET PASSWORD (Verify OTP -> New Password)
+// 6️⃣ RESET PASSWORD (Verify OTP -> New Password) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const resetPassword = async (req, res) => {
   try {
     const { id, otp, newPassword } = req.body;
+    const safeId = id.toString().trim().toUpperCase();
 
-    const user = await User.findOne({
-      id,
+    // Find user in StudentUser or StaffUser with valid OTP
+    let user = await StudentUser.findOne({
+      id: safeId,
       resetOtpExpires: { $gt: Date.now() }
     });
+
+    if (!user) {
+      user = await StaffUser.findOne({
+        id: safeId,
+        resetOtpExpires: { $gt: Date.now() }
+      });
+    }
+
+    // Fallback to legacy User
+    if (!user) {
+      user = await User.findOne({
+        id: safeId,
+        resetOtpExpires: { $gt: Date.now() }
+      });
+    }
 
     if (!user) {
       return res.status(400).json({ message: "OTP expired or invalid user." });
@@ -267,11 +432,17 @@ export const resetPassword = async (req, res) => {
     }
 
     // Update password
-    user.password = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
     user.resetOtp = undefined;
     user.resetOtpExpires = undefined;
-
     await user.save();
+
+    // Also update in legacy User collection
+    await User.findOneAndUpdate(
+      { id: safeId },
+      { password: hashedPassword, resetOtp: undefined, resetOtpExpires: undefined }
+    );
 
     res.json({ message: "✅ Password reset successfully. You can now login." });
 

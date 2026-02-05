@@ -9,6 +9,7 @@ const AdminUploadRecords = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [exportingUsers, setExportingUsers] = useState(false);
+  const [skippedRecords, setSkippedRecords] = useState([]); // 🔥 Track skipped records
 
   const token = localStorage.getItem("grievance_token");
 
@@ -50,6 +51,7 @@ const AdminUploadRecords = () => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
       setMessage("");
+      setSkippedRecords([]); // 🔥 Clear previous skipped records
     }
   };
 
@@ -68,6 +70,7 @@ const AdminUploadRecords = () => {
     }
 
     setLoading(true);
+    setSkippedRecords([]); // 🔥 Clear previous skipped records
     const formData = new FormData();
     formData.append("file", file);
 
@@ -85,6 +88,11 @@ const AdminUploadRecords = () => {
         setFile(null);
         document.getElementById("fileInput").value = "";
         fetchUploadedFiles(); // Refresh file list
+
+        // 🔥 Store skipped records if any
+        if (data.skippedDetails && data.skippedDetails.length > 0) {
+          setSkippedRecords(data.skippedDetails);
+        }
       } else {
         setMessage(`❌ Error: ${data.message}`);
       }
@@ -162,9 +170,9 @@ const AdminUploadRecords = () => {
           <UploadIcon width="24" height="24" />
           Upload New Records
         </h3>
-        <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '0.9rem' }}>
-          Upload <strong>.xlsx, .xls, .csv</strong> file with columns: <em>ID, Name, Email, Role, Department, Program</em>
-        </p>
+
+        {/* Excel Format Instructions */}
+
 
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
@@ -214,6 +222,52 @@ const AdminUploadRecords = () => {
             }}
           >
             {message}
+          </div>
+        )}
+
+        {/* 🔥 Skipped Records Section */}
+        {skippedRecords.length > 0 && (
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            background: '#fef3c7',
+            border: '1px solid #f59e0b',
+            borderRadius: '8px'
+          }}>
+            <h4 style={{ color: '#92400e', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ⚠️ Skipped Records ({skippedRecords.length})
+            </h4>
+            <p style={{ color: '#78350f', fontSize: '0.85rem', marginBottom: '12px' }}>
+              Yeh records upload nahi hue kyunki ID/Role validation fail hui (Staff/Admin = Role "staff" ya "admin" hona chahiye, Student = 8 digits ID ya Role "student")
+            </p>
+            <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.85rem',
+                background: 'white',
+                borderRadius: '6px'
+              }}>
+                <thead>
+                  <tr style={{ background: '#f59e0b', color: 'white' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>S.No</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Email</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {skippedRecords.map((record, index) => (
+                    <tr key={index} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px' }}>{index + 1}</td>
+                      <td style={{ padding: '8px', fontWeight: '600', color: '#dc2626' }}>{record.id}</td>
+                      <td style={{ padding: '8px' }}>{record.email}</td>
+                      <td style={{ padding: '8px', color: '#78350f', fontSize: '0.8rem' }}>{record.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

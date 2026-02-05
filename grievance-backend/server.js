@@ -24,8 +24,12 @@ import connectDB from "./config/db.js";
 import grievanceRoutes from "./routes/grievanceRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import UniversityRecord from "./models/UniversityRecord.js"; // Validation Model
-import Grievance from "./models/GrievanceModel.js"; // ✅ Import Grievance Model
+import UniversityRecord from "./models/UniversityRecord.js"; // Legacy Backup
+import StudentRecord from "./models/StudentRecord.js"; // NEW: Student Records
+import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
+import StudentUser from "./models/StudentUser.js"; // NEW: Student Users
+import StaffUser from "./models/StaffUser.js"; // NEW: Staff/Admin Users
+import Grievance from "./models/GrievanceModel.js"; // Import Grievance Model
 import { hideGrievance } from "./controllers/grievanceController.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +114,19 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+// ==================== 🔐 OTP LOGGER ====================
+global.logOTP = (type, email, otp, phone = null) => {
+  console.log("\n" + "=".repeat(60));
+  console.log("🔐 OTP GENERATED");
+  console.log("=".repeat(60));
+  console.log(`📧 Type     : ${type}`);
+  console.log(`✉️  Email    : ${email}`);
+  console.log(`🔑 OTP      : ${otp}`);
+  if (phone) console.log(`📱 Phone OTP: ${phone}`);
+  console.log(`⏰ Time     : ${new Date().toLocaleString()}`);
+  console.log("=".repeat(60) + "\n");
+};
+
 // ✅ STORAGE ENGINE (Disk Storage for file management)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -171,10 +188,13 @@ const OTP = mongoose.models.OTP || mongoose.model("OTP", otpSchema);
 
 // ------------------ 5️⃣ ADMIN FEATURES (🔥 FIXED ROUTES & LOGIC) ------------------
 
-// A. Upload Excel Records
+// A. Upload Excel Records (Separated: Student vs Staff)
+// Excel Headers: ID, Name, Email, Role, Department, Program, StudentType
 app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+    console.log(`\n📂 Processing file: ${req.file.originalname}`);
 
     // Read from disk instead of buffer
     const workbook = xlsx.readFile(req.file.path);
@@ -182,28 +202,167 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
     const sheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(sheet);
 
-    let count = 0;
-    for (const row of data) {
-      if (row.ID && row.Email) {
-        const safeId = row.ID.toString().trim().toUpperCase();
+    console.log(`📊 Total rows in Excel: ${data.length}`);
 
-        await UniversityRecord.findOneAndUpdate(
-          { id: safeId },
-          {
+    let studentCount = 0;
+    let staffCount = 0;
+    let skippedRecords = [];
+
+    // 🔥 BATCH PROCESSING for large files
+    const BATCH_SIZE = 500;
+    const studentBatch = [];
+    const staffBatch = [];
+    const universityBatch = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+
+      // 🔥 Case-insensitive column mapping
+      const rowId = row.ID || row.id || row.Id;  // Main ID column
+      const rowCtuId = row["CTU ID"] || row["ctu id"] || row["CTU id"] || row["Ctu Id"] || null;  // CTU ID is separate
+      const rowEmail = row.Email || row.email || row.EMAIL;
+      const rowName = row.Name || row.name || row.NAME;
+      const rowPhone = row.Phone || row.phone || row.PHONE || row["Phone no."] || row["Phone no"] || row["PHONE NO."] || row["phone no."];
+      const rowRole = row.Role || row.role || row.ROLE;
+      const rowDepartment = row.Department || row.department || row.DEPARTMENT;
+      const rowProgram = row.Program || row.program || row.PROGRAM;
+      const rowStudentType = row.StudentType || row.studentType || row.studenttype;
+      const rowSchool = row.School || row.school || row.SCHOOL;
+      const rowBatch = row.batch || row.Batch || row.BATCH;
+
+      // 🔥 Only ID is required for verification - email, phone etc are optional
+      if (rowId) {
+        const safeId = rowId.toString().trim().toUpperCase();
+        const safeCtuId = rowCtuId ? rowCtuId.toString().trim() : null;
+        const safeEmail = rowEmail ? rowEmail.toString().toLowerCase().trim() : "";  // Email optional
+        const idLength = safeId.length;
+        const excelRole = rowRole ? rowRole.toLowerCase().trim() : "";
+        let detectedRole = null;
+
+        // 🔥 FIX: Staff/Admin detection - Role based, NO ID length restriction
+        if (excelRole === "staff" || excelRole === "admin") {
+          detectedRole = "staff";
+        }
+        // Check Student: ID length exactly 8 OR role is explicitly "student"
+        else if (idLength === 8 || excelRole === "student") {
+          detectedRole = "student";
+        }
+        // Invalid case: Missing role and not 8-digit student ID
+        else {
+          skippedRecords.push({
             id: safeId,
-            fullName: row.Name,
-            email: row.Email.toLowerCase(),
-            role: row.Role ? row.Role.toLowerCase() : "student",
-            department: row.Department || "",
-            program: row.Program || ""
-          },
-          { upsert: true, new: true }
-        );
-        count++;
+            email: safeEmail || "N/A",
+            reason: `Role="${excelRole || 'missing'}" and ID is not 8 digits (Student). For staff/admin, add Role column.`
+          });
+          continue;
+        }
+
+        // Prepare batch operations
+        if (detectedRole === "student") {
+          studentBatch.push({
+            updateOne: {
+              filter: { id: safeId },
+              update: {
+                $set: {
+                  id: safeId,
+                  ctuId: safeCtuId,
+                  fullName: rowName ? rowName.toString().trim() : "",
+                  email: safeEmail,
+                  phone: rowPhone ? rowPhone.toString().trim() : "",
+                  program: rowProgram ? rowProgram.toString().trim() : "",
+                  studentType: rowStudentType ? rowStudentType.toString().trim() : "",
+                  school: rowSchool ? rowSchool.toString().trim() : "",
+                  batch: rowBatch ? rowBatch.toString().trim() : ""
+                }
+              },
+              upsert: true
+            }
+          });
+          studentCount++;
+        } else if (detectedRole === "staff") {
+          const finalRole = (excelRole === "admin") ? "admin" : "staff";
+          staffBatch.push({
+            updateOne: {
+              filter: { id: safeId },
+              update: {
+                $set: {
+                  id: safeId,
+                  fullName: rowName ? rowName.toString().trim() : "",
+                  email: safeEmail,
+                  phone: rowPhone ? rowPhone.toString().trim() : "",
+                  role: finalRole,
+                  department: rowDepartment ? rowDepartment.toString().trim() : ""
+                }
+              },
+              upsert: true
+            }
+          });
+          staffCount++;
+        }
+
+        // Legacy backup
+        universityBatch.push({
+          updateOne: {
+            filter: { id: safeId },
+            update: {
+              $set: {
+                id: safeId,
+                fullName: rowName ? rowName.toString().trim() : "",
+                email: safeEmail,
+                role: detectedRole,
+                department: rowDepartment ? rowDepartment.toString().trim() : "",
+                program: rowProgram ? rowProgram.toString().trim() : ""
+              }
+            },
+            upsert: true
+          }
+        });
+
+        // 🔥 Process batch when size reached
+        if (studentBatch.length >= BATCH_SIZE) {
+          await StudentRecord.bulkWrite(studentBatch);
+          console.log(`✅ Processed ${studentBatch.length} students (batch)`);
+          studentBatch.length = 0;
+        }
+        if (staffBatch.length >= BATCH_SIZE) {
+          await StaffRecord.bulkWrite(staffBatch);
+          console.log(`✅ Processed ${staffBatch.length} staff (batch)`);
+          staffBatch.length = 0;
+        }
+        if (universityBatch.length >= BATCH_SIZE) {
+          await UniversityRecord.bulkWrite(universityBatch);
+          universityBatch.length = 0;
+        }
+      }
+
+      // Log progress every 1000 records
+      if ((i + 1) % 1000 === 0) {
+        console.log(`⏳ Progress: ${i + 1}/${data.length} rows processed...`);
       }
     }
 
-    res.json({ message: `✅ Successfully processed ${count} records.` });
+    // 🔥 Process remaining records in final batch
+    if (studentBatch.length > 0) {
+      await StudentRecord.bulkWrite(studentBatch);
+      console.log(`✅ Processed ${studentBatch.length} students (final batch)`);
+    }
+    if (staffBatch.length > 0) {
+      await StaffRecord.bulkWrite(staffBatch);
+      console.log(`✅ Processed ${staffBatch.length} staff (final batch)`);
+    }
+    if (universityBatch.length > 0) {
+      await UniversityRecord.bulkWrite(universityBatch);
+    }
+
+    console.log(`\n📊 UPLOAD COMPLETE: ${studentCount} Students, ${staffCount} Staff, ${skippedRecords.length} Skipped`);
+
+    res.json({
+      message: `✅ Processed: ${studentCount} Students, ${staffCount} Staff/Admin records.${skippedRecords.length > 0 ? ` ⚠️ ${skippedRecords.length} records skipped.` : ""}`,
+      students: studentCount,
+      staff: staffCount,
+      skipped: skippedRecords.length,
+      skippedDetails: skippedRecords.slice(0, 50) // Limit to first 50 for response size
+    });
   } catch (err) {
     console.error("Excel Upload Error:", err);
     res.status(500).json({ message: "Error processing Excel file" });
@@ -680,7 +839,7 @@ app.get("/api/file/:filename", async (req, res) => {
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", authRoutes);
-app.put("/api/grievances/hide/:id", verifyToken, hideGrievance); 
+app.put("/api/grievances/hide/:id", verifyToken, hideGrievance);
 app.use("/api/grievances", grievanceExportRoutes);// ✅ Soft Delete Route
 app.use("/api/grievances", grievanceRoutes);
 app.use("/api/chat", chatRoutes);
