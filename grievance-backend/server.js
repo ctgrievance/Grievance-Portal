@@ -24,6 +24,7 @@ import connectDB from "./config/db.js";
 import grievanceRoutes from "./routes/grievanceRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import staffRecordRoutes from "./routes/staffRecordRoutes.js"; // NEW: Staff Records Routes
 import UniversityRecord from "./models/UniversityRecord.js"; // Legacy Backup
 import StudentRecord from "./models/StudentRecord.js"; // NEW: Student Records
 import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
@@ -44,6 +45,9 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+// ------------------ REGISTER ROUTES ------------------
+app.use("/api/staff-records", staffRecordRoutes);
 
 // ------------------ 2️⃣ Database & GridFS Init ------------------
 connectDB();

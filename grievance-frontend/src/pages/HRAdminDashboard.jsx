@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
 import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
+import StaffRecordsTab from "../components/StaffRecordsTab";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 
@@ -31,6 +32,9 @@ function HRAdminDashboard() {
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
   const [staffMap, setStaffMap] = useState({}); // ✅ Store Staff Names
+
+  // ✅ TABS STATE
+  const [activeTab, setActiveTab] = useState("grievances"); // "grievances" | "staff_records"
 
   // ✅ FILTER STATES
   const [searchId, setSearchId] = useState("");
@@ -215,13 +219,35 @@ function HRAdminDashboard() {
       </header>
 
       <nav className="navbar">
-        <ul>
-          <li className="admin-nav-title"><span>HR Grievances</span></li>
-          <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
+        <ul style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+          <li className="admin-nav-title"><span>HR Department </span></li>
+          
+          <li 
+            className={activeTab === 'grievances' ? 'active' : ''} 
+            onClick={() => setActiveTab('grievances')} 
+            style={{ cursor: 'pointer', padding: '10px 15px', color: activeTab === 'grievances' ? '#2563eb' : '#64748b', fontWeight: activeTab === 'grievances' ? '600' : 'normal', borderBottom: activeTab === 'grievances' ? '2px solid #2563eb' : 'none' }}
+          >
+            Grievances
+          </li>
+          
+          <li 
+            className={activeTab === 'staff_records' ? 'active' : ''} 
+            onClick={() => setActiveTab('staff_records')} 
+            style={{ cursor: 'pointer', padding: '10px 15px', color: activeTab === 'staff_records' ? '#2563eb' : '#64748b', fontWeight: activeTab === 'staff_records' ? '600' : 'normal', borderBottom: activeTab === 'staff_records' ? '2px solid #2563eb' : 'none' }}
+          >
+            Staff Records
+          </li>
+
+          <li style={{ marginLeft: "auto" }}>
+            <Link to="/admin/manage-staff" style={{ padding: "8px 16px", background: "#f1f5f9", borderRadius: "6px", color: "#334155", textDecoration: "none" }}>
+              Manage Dept Staff
+            </Link>
+          </li>
         </ul>
       </nav>
 
       <main className="dashboard-body">
+        {activeTab === "grievances" ? (
         <div className="card">
           <h2>Incoming Grievances</h2>
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
@@ -345,6 +371,9 @@ function HRAdminDashboard() {
             </table>
           )}
         </div>
+        ) : (
+          <StaffRecordsTab />
+        )}
       </main>
 
       {/* ✅ PROFESSIONAL DETAILS MODAL */}
