@@ -17,6 +17,65 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// ================= SMS SETUP (Fast2SMS) =================
+const sendFast2Sms = async (phone, otp) => {
+  try {
+    if (!process.env.FAST2SMS_API_KEY) {
+      console.warn("FAST2SMS_API_KEY is missing in .env");
+      return;
+    }
+    
+    // Default to 'q' (Quick) if not set, but 'dlt' or 'otp' are highly recommended
+    const route = process.env.FAST2SMS_ROUTE || "q";
+    
+    let payload = {
+      flash: 0,
+      numbers: phone,
+    };
+
+    if (route === "dlt") {
+      // DLT Route requires sender_id, template ID as 'message', and variables as 'variables_values'
+      payload.route = "dlt";
+      payload.sender_id = process.env.FAST2SMS_SENDER_ID || "";
+      payload.message = process.env.FAST2SMS_TEMPLATE_ID || "";
+      payload.variables_values = otp; // Pass the OTP string directly
+    } else if (route === "otp") {
+      // OTP Route requires verified website, sends default OTP template
+      payload.route = "otp";
+      payload.variables_values = otp;
+    } else {
+      // Fallback 'q' (Quick SMS) route - Note: gets blocked by DND often (deducts money but fails)
+      payload.route = "q";
+      payload.message = `Your Verification Code is: ${otp}`;
+      payload.language = "english";
+    }
+
+    // Using fetch to call Fast2SMS API
+    const response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+      method: "POST", // Fast2SMS supports POST perfectly, which is cleaner
+      headers: {
+        "authorization": process.env.FAST2SMS_API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    
+    if (data.return === false || data.status_code === 996) {
+      console.error("\n❌❌❌ FAST2SMS ERROR ❌❌❌");
+      console.error("Reason:", data.message);
+      console.error("Details:", data);
+      console.error("❌❌❌❌❌❌❌❌❌❌❌❌❌❌\n");
+    } else {
+      console.log("✅ Fast2SMS Success:", data.message || data);
+    }
+    return data;
+  } catch (error) {
+    console.error("Fast2SMS Network Error:", error.message);
+  }
+};
+
 // =================================================
 // 1️⃣ REGISTER REQUEST (SEND DUAL OTP) - UPDATED FOR SEPARATED DATA
 // =================================================
@@ -121,8 +180,14 @@ export const registerRequest = async (req, res) => {
       text: `Your Email Verification Code is: ${emailOtp}\n\nValid for 10 minutes.`,
     });
 
+    // 📱 Send Phone OTP via Fast2SMS
+    if (phone) {
+      await sendFast2Sms(phone, phoneOtp);
+    }
+
     // 🔐 Log OTP prominently in terminal
     if (global.logOTP) global.logOTP("REGISTRATION", email, emailOtp, phoneOtp);
+    
     res.status(200).json({ message: `Verification codes sent to ${email} and ${phone}` });
 
   } catch (err) {

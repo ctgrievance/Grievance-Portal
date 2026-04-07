@@ -9,6 +9,22 @@ import ctLogo from "../assets/ct-logo.png";
 // ----- ICONS -----
 import { UserIcon, LockIcon, PhoneIcon, KeyIcon, EyeIcon, EyeOffIcon, StudentIcon, StaffIcon, AdminIcon } from "../components/Icons";
 
+const getDeptAdminRoute = (department) => {
+  if (!department) return "/admin/school";
+  const dept = department.trim().toLowerCase();
+  
+  if (dept === "accounts") return "/admin/account";
+  if (dept === "student welfare") return "/admin/studentwelfare";
+  if (dept === "student section") return "/admin/studentsection";
+  if (dept === "admission") return "/admin/admission";
+  if (dept === "examination") return "/admin/examination";
+  if (dept === "hr") return "/admin/hr";
+  if (dept === "crc (placement)" || dept === "crc" || dept === "placement") return "/admin/crc";
+  if (dept === "transport") return "/admin/transport";
+  
+  return "/admin/school";
+};
+
 function LoginPage() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [userId, setUserId] = useState("");
@@ -126,7 +142,7 @@ function LoginPage() {
         else if (role === "staff") {
           // If Promoted Staff (Boss) -> Admin Dashboard View
           if (isDeptAdmin) {
-            navigate("/admin/school");
+            navigate(getDeptAdminRoute(data.user.adminDepartment));
           }
           // If Staff Assigned by Admin -> AdminStaffDashboard
           else if (data.user.adminDepartment) {
@@ -143,7 +159,7 @@ function LoginPage() {
             navigate("/admin/dashboard");
           } else {
             // Department Admins go to School Dashboard (Common Layout)
-            navigate("/admin/school");
+            navigate(getDeptAdminRoute(data.user.adminDepartment));
           }
         }
       }, 1000);

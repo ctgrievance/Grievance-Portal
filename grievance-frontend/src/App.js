@@ -34,14 +34,18 @@ import StudentTransport from "./pages/StudentTransport";
 
 // Helper to decide where DEPT ADMINS (Priya) go
 const getDeptAdminRoute = (department) => {
-  if (department === "Accounts") return "/admin/account";
-  if (department === "Student Welfare") return "/admin/studentwelfare";
-  if (department === "Student Section") return "/admin/studentsection";
-  if (department === "Admission") return "/admin/admission";
-  if (department === "Examination") return "/admin/examination";
-  if (department === "HR") return "/admin/hr";
-  if (department === "CRC (Placement)") return "/admin/crc";
-  if (department === "Transport") return "/admin/transport";
+  if (!department) return "/admin/school";
+  const dept = department.trim().toLowerCase();
+  
+  if (dept === "accounts") return "/admin/account";
+  if (dept === "student welfare") return "/admin/studentwelfare";
+  if (dept === "student section") return "/admin/studentsection";
+  if (dept === "admission") return "/admin/admission";
+  if (dept === "examination") return "/admin/examination";
+  if (dept === "hr") return "/admin/hr";
+  if (dept === "crc (placement)" || dept === "crc" || dept === "placement") return "/admin/crc";
+  if (dept === "transport") return "/admin/transport";
+  
   return "/admin/school";
 };
 
