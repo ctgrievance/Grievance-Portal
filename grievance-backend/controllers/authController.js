@@ -294,28 +294,35 @@ export const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
-    // 🔐 Generate 2FA OTP (Email)
-    const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.otp = loginOtp;
-    user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 min
-    await user.save();
+    // Generate Token with appropriate role info
+    const tokenPayload = {
+      id: user.id,
+      role: isStudent ? "student" : (user.role || "staff"),
+      isDeptAdmin: user.isDeptAdmin || false,
+      adminDepartment: user.adminDepartment || "",
+      isMasterAdmin: user.isMasterAdmin || false
+    };
 
-    // Send OTP
-    // 🔐 Log OTP prominently in terminal
-    if (global.logOTP) global.logOTP("LOGIN 2FA", user.email, loginOtp);
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: "CT University - Login OTP",
-      text: `Your Login OTP is ${loginOtp}. Valid for 5 minutes.`,
-    });
+    const token = jwt.sign(
+      tokenPayload,
+      process.env.JWT_SECRET || "fallback_secret_key_123",
+      { expiresIn: "7d" }
+    );
 
-    // Return 2FA Flag with user type info
+    // Response Data
     res.status(200).json({
-      requires2FA: true,
-      message: `OTP sent to ${user.email}`,
-      maskedEmail: user.email.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
-      userType: isStudent ? "student" : "staff"
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        role: isStudent ? "student" : (user.role || "staff"),
+        fullName: user.fullName,
+        isDeptAdmin: user.isDeptAdmin || false,
+        adminDepartment: user.adminDepartment || "",
+        isMasterAdmin: user.isMasterAdmin || false,
+        program: user.program || "",
+        department: user.staffDepartment || user.adminDepartment || ""
+      },
     });
 
   } catch (err) {

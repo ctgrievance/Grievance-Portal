@@ -428,18 +428,19 @@ textarea:focus {
 /* Enhancing Existing Table */
 .table-container {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-lg);
   border: 1px solid #e2e8f0;
   background: white;
+  width: 100%;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .grievance-table {
   width: 100%;
   border-collapse: collapse;
-  white-space: normal;
-  /* Allow text wrapping */
-  table-layout: auto;
-  /* Let browser adjust column widths */
+  white-space: nowrap; /* Forces exact alignment and enables scrolling */
 }
 
 .grievance-table th {
@@ -470,18 +471,15 @@ textarea:focus {
 /* ============ MESSAGE CELL FIX ============ */
 .message-cell {
   max-width: 250px;
-  width: 250px;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .message-cell div,
 .message-cell span {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: inline;
+  vertical-align: middle;
 }
 
 
@@ -1643,89 +1641,20 @@ textarea:focus {
     flex: none !important;
   }
 
-  /* TABLES - Mobile Card View */
+  /* TABLES - Standard Mobile Scrolling */
   .table-container {
-    border: none;
-    background: transparent;
+    border: 1px solid #e2e8f0;
+    background: white;
   }
 
   .grievance-table {
-    display: block;
-  }
-
-  .grievance-table thead {
-    display: none;
-  }
-
-  .grievance-table tbody {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .grievance-table tr {
-    display: flex;
-    flex-direction: column;
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border: 1px solid #e2e8f0;
-    gap: 8px;
-  }
-
-  .grievance-table tr:hover {
-    background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  .grievance-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 6px 0;
-    border: none;
-    font-size: 0.9rem;
-  }
-
-  .grievance-table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: #64748b;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    min-width: 100px;
-    flex-shrink: 0;
-  }
-
-  .grievance-table td:last-child {
-    min-width: unset;
-    border-top: 1px solid #f1f5f9;
-    padding-top: 12px;
-    margin-top: 4px;
-  }
-
-  /* Message cell on mobile */
-  .message-cell {
-    max-width: 100% !important;
-    width: 100% !important;
+    display: table;
   }
 
   /* Action buttons on mobile */
-  .action-buttons {
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-start;
-    width: 100%;
-  }
-
   .action-btn {
-    padding: 10px 16px;
-    font-size: 0.9rem;
-    flex: 1;
-    min-width: 80px;
-    text-align: center;
-    justify-content: center;
+    padding: 8px 12px;
+    font-size: 0.8rem;
   }
 
   /* Status badges */
@@ -2013,22 +1942,5 @@ textarea:focus {
 
   .grievance-table {
     display: table !important;
-  }
-
-  .grievance-table thead {
-    display: table-header-group !important;
-  }
-
-  .grievance-table tbody {
-    display: table-row-group !important;
-  }
-
-  .grievance-table tr {
-    display: table-row !important;
-    page-break-inside: avoid;
-  }
-
-  .grievance-table td {
-    display: table-cell !important;
   }
 }

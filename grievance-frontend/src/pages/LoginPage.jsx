@@ -49,6 +49,49 @@ function LoginPage() {
     setStatusType("");
   };
 
+  const handleDirectLogin = (data) => {
+    localStorage.setItem("grievance_id", data.user.id.toUpperCase());
+    localStorage.setItem("grievance_role", data.user.role.toLowerCase());
+    localStorage.setItem("grievance_token", data.token);
+
+    if (data.user.isDeptAdmin) localStorage.setItem("is_dept_admin", "true");
+    else localStorage.removeItem("is_dept_admin");
+
+    if (data.user.adminDepartment) localStorage.setItem("admin_department", data.user.adminDepartment);
+    else localStorage.removeItem("admin_department");
+
+    if (data.user.isMasterAdmin) localStorage.setItem("is_master_admin", "true");
+    else localStorage.removeItem("is_master_admin");
+
+    setMessage("Login successful! Redirecting...");
+    setStatusType("success");
+
+    const role = data.user.role.toLowerCase();
+    const isDeptAdmin = data.user.isDeptAdmin;
+
+    setTimeout(() => {
+      if (role === "student") {
+        navigate("/student/dashboard");
+      }
+      else if (role === "staff") {
+        if (isDeptAdmin) {
+          navigate(getDeptAdminRoute(data.user.adminDepartment));
+        } else if (data.user.adminDepartment) {
+          navigate("/staff/admin");
+        } else {
+          navigate("/staff/general");
+        }
+      }
+      else if (role === "admin") {
+        if (data.user.isMasterAdmin) {
+          navigate("/admin/dashboard");
+        } else {
+          navigate(getDeptAdminRoute(data.user.adminDepartment));
+        }
+      }
+    }, 1000);
+  };
+
   // ✅ Step 1: Verify Password & Trigger 2FA
   const handleLoginStep1 = async (e) => {
     e.preventDefault();
@@ -76,9 +119,7 @@ function LoginPage() {
         setMessage(`Success! OTP sent to ${data.maskedEmail}`);
         setStatusType("success");
       } else {
-        // Fallback for very old users or if 2FA disabled (shouldn't happen with new logic)
-        setMessage("Login successful!");
-        // handleDirectLogin(data);
+        handleDirectLogin(data);
       }
     } catch (err) {
       setMessage(err.message);
@@ -106,63 +147,7 @@ function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Invalid OTP");
 
-      // Save Data
-      localStorage.setItem("grievance_id", data.user.id.toUpperCase());
-      localStorage.setItem("grievance_role", data.user.role.toLowerCase());
-
-      // ✅ Handle Token properly if backend sends it (currently verifyLogin doesn't return token in my code, I need to fix backend controller to return token? 
-      // WAIT: I updated authController verifyLogin but DID NOT add token generation logic. 
-      // I must fix backend controller token generation first or mock it. 
-      // Actually the previous loginUser returned a token. I missed copying that line to verifyLogin.
-      // I will assume for now I will fix backend.
-
-      localStorage.setItem("grievance_token", data.token); // ✅ Store Real Backend Token
-
-      // ✅ Save Admin Flags
-      if (data.user.isDeptAdmin) localStorage.setItem("is_dept_admin", "true");
-      else localStorage.removeItem("is_dept_admin");
-
-      if (data.user.adminDepartment) localStorage.setItem("admin_department", data.user.adminDepartment);
-      else localStorage.removeItem("admin_department");
-
-      if (data.user.isMasterAdmin) localStorage.setItem("is_master_admin", "true");
-      else localStorage.removeItem("is_master_admin");
-
-      setMessage("Login successful! Redirecting...");
-      setStatusType("success");
-
-      const role = data.user.role.toLowerCase();
-      const isDeptAdmin = data.user.isDeptAdmin;
-
-      // ✅ Redirect Logic
-      setTimeout(() => {
-        if (role === "student") {
-          navigate("/student/dashboard");
-        }
-        else if (role === "staff") {
-          // If Promoted Staff (Boss) -> Admin Dashboard View
-          if (isDeptAdmin) {
-            navigate(getDeptAdminRoute(data.user.adminDepartment));
-          }
-          // If Staff Assigned by Admin -> AdminStaffDashboard
-          else if (data.user.adminDepartment) {
-            navigate("/staff/admin");
-          }
-          // General Unassigned Staff -> StaffDashboard
-          else {
-            navigate("/staff/general");
-          }
-        }
-        else if (role === "admin") {
-          // Check for Master Admin
-          if (data.user.isMasterAdmin) {
-            navigate("/admin/dashboard");
-          } else {
-            // Department Admins go to School Dashboard (Common Layout)
-            navigate(getDeptAdminRoute(data.user.adminDepartment));
-          }
-        }
-      }, 1000);
+      handleDirectLogin(data);
 
     } catch (err) {
       setMessage(err.message);

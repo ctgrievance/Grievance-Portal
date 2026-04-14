@@ -258,7 +258,7 @@ function AdminDashboard() {
             {/* ✅ FILTER BAR */
             }
 
-            <div style={{
+            <div className="filter-bar" style={{
               display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
               padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
@@ -346,10 +346,10 @@ function AdminDashboard() {
                   <tbody>
                     {filteredGrievances.map((g) => (
                       <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                        <td style={{ fontWeight: 'bold', color: '#334155' }}>{g.userId}</td>
-                        <td>{g.category || g.school || "N/A"}</td>
+                        <td data-label="ID" style={{ fontWeight: 'bold', color: '#334155' }}>{g.userId}</td>
+                        <td data-label="Department / Category">{g.category || g.school || "N/A"}</td>
 
-                        <td className="message-cell" style={{ maxWidth: '200px' }}>
+                        <td data-label="Message" className="message-cell" style={{ maxWidth: '200px' }}>
                           <div
                             style={{ padding: "4px", borderRadius: "4px", transition: "background 0.2s" }}
                             onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
@@ -361,7 +361,7 @@ function AdminDashboard() {
                           </div>
                         </td>
 
-                        <td>
+                        <td data-label="Status">
                           <span
                             className={`status-badge status-${(g.status || "")
                               .toLowerCase()
@@ -391,7 +391,7 @@ function AdminDashboard() {
 
 
                         {/* ✅ ASSIGNED STAFF COLUMN */}
-                        <td>
+                        <td data-label="Assigned Staff">
                           {g.assignedTo ? (
                             <div>
                               <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
@@ -404,7 +404,7 @@ function AdminDashboard() {
                           )}
                         </td>
 
-                        <td>{formatDate(g.createdAt)}</td>
+                        <td data-label="Created">{formatDate(g.createdAt)}</td>
                       </tr>
                     ))}
                   </tbody>

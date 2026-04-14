@@ -190,9 +190,8 @@ function StaffRecordsTab() {
                 <td><input type="email" name="email" value={newRow.email} onChange={handleNewRowChange} placeholder="Email" style={tableInputStyle} /></td>
                 <td><input type="text" name="phone" value={newRow.phone} onChange={handleNewRowChange} placeholder="Phone" style={tableInputStyle} /></td>
                 <td>
-                  <select name="role" value={newRow.role} onChange={handleNewRowChange} style={tableInputStyle}>
+                  <select name="role" value={newRow.role} onChange={handleNewRowChange} style={{...tableInputStyle, background: "#f1f5f9", cursor: "not-allowed"}} disabled>
                     <option value="staff">Staff</option>
-                    <option value="admin">Admin</option>
                   </select>
                 </td>
                 <td><input type="text" name="department" value={newRow.department} onChange={handleNewRowChange} placeholder="Dept" style={tableInputStyle} /></td>
@@ -218,7 +217,7 @@ function StaffRecordsTab() {
                       <td><input type="email" name="email" value={editFormData.email} onChange={handleEditChange} style={tableInputStyle} /></td>
                       <td><input type="text" name="phone" value={editFormData.phone} onChange={handleEditChange} style={tableInputStyle} /></td>
                       <td>
-                        <select name="role" value={editFormData.role} onChange={handleEditChange} style={tableInputStyle}>
+                        <select name="role" value={editFormData.role} onChange={handleEditChange} style={{...tableInputStyle, background: "#f1f5f9", cursor: "not-allowed"}} disabled>
                           <option value="staff">Staff</option>
                           <option value="admin">Admin</option>
                         </select>

@@ -825,7 +825,7 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
 
 app.get("/api/file/:filename", async (req, res) => {
   try {
-    // 🔥 FIX: Use gridfsBucket (Native) instead of gfs (gridfs-stream) for reliability
+    //  FIX: Use gridfsBucket (Native) instead of gfs (gridfs-stream) for reliability
     const files = await gridfsBucket.find({ filename: req.params.filename }).toArray();
     if (!files || files.length === 0) return res.status(404).json({ err: "No file found" });
 
