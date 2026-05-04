@@ -4,75 +4,32 @@ import StudentRecord from "../models/StudentRecord.js"; // NEW: Student validati
 import StaffRecord from "../models/StaffRecord.js"; // NEW: Staff/Admin validation
 import StudentUser from "../models/StudentUser.js"; // NEW: Student users
 import StaffUser from "../models/StaffUser.js"; // NEW: Staff/Admin users
-import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// ================= EMAIL SETUP =================
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Google App Password
-  },
-});
 
-// ================= SMS SETUP (Fast2SMS) =================
-const sendFast2Sms = async (phone, otp) => {
+// ================= SMS SETUP (Innuvis API) =================
+const sendSms = async (phone, otp) => {
   try {
-    if (!process.env.FAST2SMS_API_KEY) {
-      console.warn("FAST2SMS_API_KEY is missing in .env");
-      return;
-    }
-    
-    // Default to 'q' (Quick) if not set, but 'dlt' or 'otp' are highly recommended
-    const route = process.env.FAST2SMS_ROUTE || "q";
-    
-    let payload = {
-      flash: 0,
-      numbers: phone,
-    };
-
-    if (route === "dlt") {
-      // DLT Route requires sender_id, template ID as 'message', and variables as 'variables_values'
-      payload.route = "dlt";
-      payload.sender_id = process.env.FAST2SMS_SENDER_ID || "";
-      payload.message = process.env.FAST2SMS_TEMPLATE_ID || "";
-      payload.variables_values = otp; // Pass the OTP string directly
-    } else if (route === "otp") {
-      // OTP Route requires verified website, sends default OTP template
-      payload.route = "otp";
-      payload.variables_values = otp;
-    } else {
-      // Fallback 'q' (Quick SMS) route - Note: gets blocked by DND often (deducts money but fails)
-      payload.route = "q";
-      payload.message = `Your Verification Code is: ${otp}`;
-      payload.language = "english";
+    let formattedPhone = phone.toString().trim();
+    if (formattedPhone.length === 10) {
+      formattedPhone = "91" + formattedPhone;
     }
 
-    // Using fetch to call Fast2SMS API
-    const response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-      method: "POST", // Fast2SMS supports POST perfectly, which is cleaner
-      headers: {
-        "authorization": process.env.FAST2SMS_API_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+    const message = `Dear User, Your One-Time Password (OTP) for registering on the CT University Grievance Portal is: ${otp} - CTU Support Team`;
+    const encodedMessage = encodeURIComponent(message);
+
+    const url = `${process.env.SMS_API_URL}&number=${formattedPhone}&text=${encodedMessage}`;
+
+    const response = await fetch(url);
+    const data = await response.text();
     
-    const data = await response.json();
+    console.log("✅ SMS API Called for:", formattedPhone);
+    console.log("✅ SMS Response:", data);
     
-    if (data.return === false || data.status_code === 996) {
-      console.error("\n❌❌❌ FAST2SMS ERROR ❌❌❌");
-      console.error("Reason:", data.message);
-      console.error("Details:", data);
-      console.error("❌❌❌❌❌❌❌❌❌❌❌❌❌❌\n");
-    } else {
-      console.log("✅ Fast2SMS Success:", data.message || data);
-    }
     return data;
   } catch (error) {
-    console.error("Fast2SMS Network Error:", error.message);
+    console.error("SMS API Network Error:", error.message);
   }
 };
 
@@ -125,7 +82,6 @@ export const registerRequest = async (req, res) => {
     }
 
     // Generate OTPs
-    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Hash Password
@@ -138,8 +94,8 @@ export const registerRequest = async (req, res) => {
       phone,
       password: hashedPassword,
       fullName: validRecord.fullName || req.body.fullName || "",
-      otp: emailOtp,
-      otpExpires: Date.now() + 10 * 60 * 1000,
+      otp: undefined,
+      otpExpires: undefined,
       phoneOtp: phoneOtp,
       phoneOtpExpires: Date.now() + 10 * 60 * 1000,
       isVerified: false,
@@ -172,23 +128,15 @@ export const registerRequest = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // 📧 Send Email OTP
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "CT University - Registration Verification",
-      text: `Your Email Verification Code is: ${emailOtp}\n\nValid for 10 minutes.`,
-    });
-
-    // 📱 Send Phone OTP via Fast2SMS
+    // 📱 Send Phone OTP via Innuvis API
     if (phone) {
-      await sendFast2Sms(phone, phoneOtp);
+      await sendSms(phone, phoneOtp);
     }
 
     // 🔐 Log OTP prominently in terminal
-    if (global.logOTP) global.logOTP("REGISTRATION", email, emailOtp, phoneOtp);
+    if (global.logOTP) global.logOTP("REGISTRATION", email, phoneOtp);
     
-    res.status(200).json({ message: `Verification codes sent to ${email} and ${phone}` });
+    res.status(200).json({ message: `Verification code sent to ${phone}` });
 
   } catch (err) {
     console.error("Register Error:", err);
@@ -219,11 +167,6 @@ export const verifyRegistration = async (req, res) => {
     }
 
     if (!user) return res.status(400).json({ message: "User not found" });
-
-    // Validate Email OTP
-    if (user.otp !== otpEmail || user.otpExpires < Date.now()) {
-      return res.status(400).json({ message: "Invalid or expired Email OTP" });
-    }
 
     // Validate Phone OTP
     if (user.phoneOtp !== otpPhone || user.phoneOtpExpires < Date.now()) {
@@ -414,26 +357,26 @@ export const verifyLogin = async (req, res) => {
 };
 
 // =================================================
-// 5️⃣ FORGOT PASSWORD (ID + Email -> Email OTP) - UPDATED FOR SEPARATED DATA
+// 5️⃣ FORGOT PASSWORD (ID + Phone -> SMS OTP) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const forgotPassword = async (req, res) => {
   try {
-    const { id, email } = req.body;
+    const { id, phone } = req.body;
     const safeId = id.toString().trim().toUpperCase();
-    const safeEmail = email.toLowerCase().trim();
+    const safePhone = phone.toString().trim();
 
     // Find user in StudentUser or StaffUser
-    let user = await StudentUser.findOne({ id: safeId, email: safeEmail });
+    let user = await StudentUser.findOne({ id: safeId, phone: safePhone });
     if (!user) {
-      user = await StaffUser.findOne({ id: safeId, email: safeEmail });
+      user = await StaffUser.findOne({ id: safeId, phone: safePhone });
     }
     // Fallback to legacy User
     if (!user) {
-      user = await User.findOne({ id: safeId, email: safeEmail });
+      user = await User.findOne({ id: safeId, phone: safePhone });
     }
 
     if (!user) {
-      return res.status(404).json({ message: "No user found with this ID and Email combination." });
+      return res.status(404).json({ message: "No user found with this ID and Phone combination." });
     }
 
     // Generate 6-digit OTP
@@ -447,17 +390,12 @@ export const forgotPassword = async (req, res) => {
     await user.save();
 
     // 🔐 Log OTP prominently in terminal
-    if (global.logOTP) global.logOTP("PASSWORD RESET", email, otp);
+    if (global.logOTP) global.logOTP("PASSWORD RESET", safePhone, otp);
 
-    // Send Email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "CT University - Password Reset Request",
-      text: `Your Password Reset OTP is: ${otp}\n\nValid for 10 minutes.\n\nIf you did not request this, please ignore this email.`,
-    });
+    // Send SMS
+    await sendSms(safePhone, otp);
 
-    res.json({ message: `Password reset OTP sent to ${email}` });
+    res.json({ message: `Password reset OTP sent to ${safePhone}` });
 
   } catch (err) {
     console.error("Forgot Password Error:", err);

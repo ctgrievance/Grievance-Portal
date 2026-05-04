@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/LoginPage.css"; // Reuse input styles
-import { UserIcon, MailIcon } from "../components/Icons"; // Updated icons
+import { UserIcon, PhoneIcon } from "../components/Icons"; // Updated icons
 import ctLogo from "../assets/ct-logo.png";
 
 const ForgotPassword = () => {
   const [userId, setUserId] = useState("");
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [statusType, setStatusType] = useState("");
@@ -21,13 +21,13 @@ const ForgotPassword = () => {
     setStatusType("");
 
     try {
-      // Updated API payload: id + email
+      // Updated API payload: id + phone
       await axios.post(
         "http://localhost:5000/api/auth/forgot-password",
-        { id: userId, email }
+        { id: userId, phone }
       );
 
-      setMessage("OTP Sent to your verified Email!");
+      setMessage("OTP Sent to your verified Phone!");
       setStatusType("success");
 
       // Store ID as backup for reset step
@@ -41,7 +41,7 @@ const ForgotPassword = () => {
       }, 1500);
 
     } catch (err) {
-      setMessage(err.response?.data?.message || "User not found or ID/Email mismatch");
+      setMessage(err.response?.data?.message || "User not found or ID/Phone mismatch");
       setStatusType("error");
     } finally {
       setLoading(false);
@@ -69,7 +69,7 @@ const ForgotPassword = () => {
           <img src={ctLogo} alt="Logo" style={{ height: "60px", marginBottom: "20px" }} />
           <h2 style={{ fontSize: "1.75rem", color: "#1e293b", marginBottom: "10px", fontWeight: "700" }}>Forgot Password?</h2>
           <p style={{ color: "#64748b", fontSize: "0.95rem", lineHeight: "1.5" }}>
-            Enter your University ID and Registered Email to receive a reset OTP.
+            Enter your University ID and Registered Phone to receive a reset OTP.
           </p>
         </div>
 
@@ -98,16 +98,17 @@ const ForgotPassword = () => {
           </div>
 
           <div className="input-group" style={{ marginTop: "15px" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500", color: "#334155" }}>Registered Email</label>
-            <div className="input-wrapper email-field">
-              <span className="icon"><MailIcon /></span>
+            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500", color: "#334155" }}>Registered Phone</label>
+            <div className="input-wrapper phone-field">
+              <span className="icon"><PhoneIcon /></span>
               <input
-                type="email"
-                placeholder="your.email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="tel"
+                placeholder="e.g. 9876543210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 autoComplete="off"
                 required
+                pattern="[0-9]{10}"
                 style={{ width: "100%", padding: "12px 12px 12px 40px", borderRadius: "10px", border: "1px solid #cbd5e1", outline: "none", fontSize: "1rem" }}
               />
             </div>
@@ -155,7 +156,7 @@ const ForgotPassword = () => {
           border-color: #2563eb !important;
           box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
         }
-        .input-wrapper.id-field input, .input-wrapper.email-field input {
+        .input-wrapper.id-field input, .input-wrapper.phone-field input {
            padding-left: 40px !important;
         }
       `}</style>

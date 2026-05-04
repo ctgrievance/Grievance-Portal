@@ -20,13 +20,13 @@ function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // 🔐 Dual OTP State
-  const [otpEmail, setOtpEmail] = useState("");
+  // 🔐 OTP State
   const [otpPhone, setOtpPhone] = useState("");
 
   const [step, setStep] = useState(1);
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,7 +35,7 @@ function RegisterPage() {
     setFormData({ ...formData, [name]: processedValue });
   };
 
-  // STEP 1: Request Dual OTP
+  // STEP 1: Request OTP
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
 
@@ -48,6 +48,7 @@ function RegisterPage() {
 
     setMsg("Validating details & Sending Verification Codes...");
     setStatusType("info");
+    setLoading(true);
 
     try {
       // 🔥 Update Endpoint
@@ -60,19 +61,22 @@ function RegisterPage() {
       if (!res.ok) throw new Error(data.message);
 
       setStep(2);
-      setMsg("Verification Codes sent to Email & Phone!");
+      setMsg("Verification code sent to Phone!");
       setStatusType("success");
     } catch (err) {
       setMsg(err.message || "Failed to send OTPs.");
       setStatusType("error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // STEP 2: Verify Dual OTPs
+  // STEP 2: Verify OTP
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setMsg("Finalizing registration...");
     setStatusType("info");
+    setLoading(true);
 
     try {
       // 🔥 Update Endpoint & Payload
@@ -81,7 +85,6 @@ function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formData.email,
-          otpEmail: otpEmail,
           otpPhone: otpPhone,
           formData: formData
         }),
@@ -95,6 +98,8 @@ function RegisterPage() {
     } catch (err) {
       setMsg(err.message || "Invalid OTPs.");
       setStatusType("error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -102,8 +107,8 @@ function RegisterPage() {
     <div className="login-container">
       <div className="login-brand-section">
         <div className="brand-content">
-          <h1>{step === 1 ? "Join the Portal" : "Double Verification"}</h1>
-          <p>{step === 1 ? "Create your account to access university services." : "We've sent codes to your Email and Phone to ensure account security."}</p>
+          <h1>{step === 1 ? "Join the Portal" : "Phone Verification"}</h1>
+          <p>{step === 1 ? "Create your account to access university services." : "We've sent a code to your Phone to ensure account security."}</p>
           <div className="brand-footer">© 2025 University Administration</div>
         </div>
       </div>
@@ -112,7 +117,7 @@ function RegisterPage() {
         <div className="form-wrapper animated-form">
           <div className="form-header">
             <h2>{step === 1 ? "Register" : "Verify It's You"}</h2>
-            <p>{step === 1 ? "Enter details exactly as per University Records." : `Check ${formData.email} and ${formData.phone}`}</p>
+            <p>{step === 1 ? "Enter details exactly as per University Records." : `Check your phone: ${formData.phone}`}</p>
           </div>
 
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
@@ -202,7 +207,7 @@ function RegisterPage() {
                     required
                   />
                 </div>
-                <div className="field-hint info"><em>We will verify both Email and Phone number.</em></div>
+                <div className="field-hint info"><em>We will verify your Phone number.</em></div>
               </div>
 
               <div className="two-col-row">
@@ -262,27 +267,13 @@ function RegisterPage() {
                 </div>
               )}
 
-              <button className="btn-primary" type="submit">Verify & Register</button>
+              <button className="btn-primary" type="submit" disabled={loading}>
+                {loading ? "Sending..." : "Verify & Register"}
+              </button>
             </form>
           ) : (
-            /* DUAL OTP FORM */
+            /* OTP FORM */
             <form onSubmit={handleVerifyOtp} className="animated-form">
-
-              {/* Email OTP */}
-              <div className="input-group">
-                <label>Email Code (Sent to {formData.email})</label>
-                <div className="input-wrapper otp-field">
-                  <span className="icon"><MailIcon /></span>
-                  <input
-                    style={{ letterSpacing: '4px', textAlign: 'center', fontWeight: 'bold' }}
-                    placeholder="E-Mail Code"
-                    maxLength="6"
-                    value={otpEmail}
-                    onChange={(e) => setOtpEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
 
               {/* Phone OTP */}
               <div className="input-group">
@@ -300,7 +291,9 @@ function RegisterPage() {
                 </div>
               </div>
 
-              <button className="btn-primary" type="submit">Verify Both & Finish</button>
+              <button className="btn-primary" type="submit" disabled={loading}>
+                {loading ? "Verifying..." : "Verify & Finish"}
+              </button>
               <center>
                 <button type="button" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', textDecoration: 'underline', marginTop: '10px', fontSize: '14px' }}>
                   Back to edit details
