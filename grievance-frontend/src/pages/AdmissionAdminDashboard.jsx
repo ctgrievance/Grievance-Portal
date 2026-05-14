@@ -130,6 +130,28 @@ function AdmissionAdminDashboard() {
     navigate("/");
   };
 
+  // ✅ EXTENSION REQUEST HANDLER
+  const handleExtensionResolution = async (action) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/grievances/extension/resolve/${selectedGrievance._id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMsg(`Extension ${action}ed!`);
+        setStatusType("success");
+        setSelectedGrievance(null);
+        fetchGrievances();
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert("Action failed");
+    }
+  };
+
   const handleDeleteGrievance = async (id) => {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
     try {
@@ -389,6 +411,21 @@ function AdmissionAdminDashboard() {
                   )}
                 </div>
 
+                {/* ✅ EXTENSION REQUEST UI */}
+                {selectedGrievance.extensionRequest?.status === "Pending" && (
+                  <div style={{ marginTop: "15px", padding: "15px", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "8px" }}>
+                    <h4 style={{ margin: "0 0 10px 0", color: "#b45309", display: "flex", alignItems: "center", gap: "8px" }}>
+                      ⚠️ Deadline Extension Requested
+                    </h4>
+                    <p style={{ margin: "0 0 5px 0", fontSize: "0.9rem" }}><strong>Proposed Date:</strong> {formatDate(selectedGrievance.extensionRequest.requestedDate)}</p>
+                    <p style={{ margin: "0 0 15px 0", fontSize: "0.9rem" }}><strong>Reason:</strong> {selectedGrievance.extensionRequest.reason}</p>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button onClick={() => handleExtensionResolution("approve")} style={{ padding: "8px 16px", background: "#16a34a", color: "white", border: "none", borderRadius: "6px", fontSize: "0.9rem", fontWeight: "600", cursor: "pointer" }}>Approve Extension</button>
+                      <button onClick={() => handleExtensionResolution("reject")} style={{ padding: "8px 16px", background: "#ef4444", color: "white", border: "none", borderRadius: "6px", fontSize: "0.9rem", fontWeight: "600", cursor: "pointer" }}>Reject</button>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ textAlign: 'right', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
                   <button
                     onClick={() => setSelectedGrievance(null)}
@@ -435,7 +472,7 @@ function AdmissionAdminDashboard() {
         }
 
         /* Hover Effects */
-        .card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
+        .card:hover { box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
         
         button:hover, .action-btn:hover, .submit-btn:hover, .logout-btn-header:hover {
           transform: translateY(-2px);

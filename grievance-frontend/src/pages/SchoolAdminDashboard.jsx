@@ -574,7 +574,7 @@ function SchoolAdminDashboard() {
         }
 
         /* Hover Effects */
-        .card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
+        .card:hover { box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
         
         button:hover, .action-btn:hover, .submit-btn:hover, .logout-btn-header:hover {
           transform: translateY(-2px);

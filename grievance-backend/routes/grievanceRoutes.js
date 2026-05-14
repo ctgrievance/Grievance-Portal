@@ -69,7 +69,7 @@ router.post("/rate/:id", verifyToken, async (req, res) => {
     }
 
     // ✅ Only grievance owner
-    if (grievance.userId !== req.user.id) {
+    if (grievance.userId.toUpperCase() !== req.user.id.toUpperCase()) {
       return res.status(403).json({ message: "You cannot rate this grievance" });
     }
 

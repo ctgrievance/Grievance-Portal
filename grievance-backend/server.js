@@ -802,7 +802,7 @@ app.get("/api/auth/user/:id", async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 });
-// ------------------ 8️⃣ FILE UPLOAD (Manual Stream) ------------------
+// ------------------ 8️⃣ FILE UPLOAD (Disk → GridFS Stream) ------------------
 
 app.post("/api/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
@@ -812,19 +812,26 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
 
   const filename = `${Date.now()}-${req.file.originalname}`;
 
-  const readableStream = new Readable();
-  readableStream.push(req.file.buffer);
-  readableStream.push(null);
+  // ✅ FIX: Read from disk path (diskStorage saves to disk, NOT buffer)
+  const readableStream = fs.createReadStream(req.file.path);
 
   const uploadStream = gridfsBucket.openUploadStream(filename, { contentType: req.file.mimetype });
   readableStream.pipe(uploadStream);
 
   uploadStream.on("error", (err) => {
     console.error("❌ [UPLOAD] Stream Error:", err);
+    // Clean up temp file on error
+    fs.unlink(req.file.path, () => {});
     res.status(500).json({ message: "Error uploading file" });
   });
 
   uploadStream.on("finish", () => {
+    // ✅ Clean up temp file after successful GridFS upload
+    fs.unlink(req.file.path, (unlinkErr) => {
+      if (unlinkErr) console.warn("⚠️ Could not delete temp file:", unlinkErr.message);
+    });
+
+    console.log(`✅ [UPLOAD] File saved to GridFS: ${filename}`);
     res.json({
       filename: filename,
       fileId: uploadStream.id,
