@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 
 import AdminUploadRecords from "../components/AdminUploadRecords";
+import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRoleManager from "../components/StaffRoleManager";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import ctLogo from "../assets/ct-logo.png";
@@ -235,6 +236,13 @@ function AdminDashboard() {
             <span className="tab-link-button">Export Records</span>
           </li>
 
+          <li
+            className={activeTab === "student_records" ? "active" : ""}
+            onClick={() => setActiveTab("student_records")}
+          >
+            <span className="tab-link-button">Student Records</span>
+          </li>
+
           {canManageStaff && (
             <li
               className={activeTab === "staff" ? "active" : ""}
@@ -249,6 +257,7 @@ function AdminDashboard() {
       {/* BODY */}
       <main className="dashboard-body">
         {activeTab === "upload" && <AdminUploadRecords />}
+        {activeTab === "student_records" && <AdminStudentRecords />}
         {activeTab === "staff" && canManageStaff && <StaffRoleManager />}
 
         {activeTab === "triage" && (

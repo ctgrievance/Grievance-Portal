@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
 import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
+import AdminStudentRecords from "../components/AdminStudentRecords";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 
@@ -19,8 +20,9 @@ const formatDate = (dateString) => {
 
 function StudentSectionAdminDashboard() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("grievances");
 
-  const role = localStorage.getItem("grievance_role")?.toLowerCase();
+  // role removed (unused)
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
   const adminDept = localStorage.getItem("admin_department");
 
@@ -230,14 +232,29 @@ function StudentSectionAdminDashboard() {
 
       <nav className="navbar">
         <ul>
-          <li className="admin-nav-title"><span>Student Section Grievances</span></li>
+          <li className="admin-nav-title"><span>Student Section</span></li>
+          <li
+            className={activeTab === "grievances" ? "active" : ""}
+            onClick={() => setActiveTab("grievances")}
+            style={{ cursor: "pointer", padding: "10px 15px", color: activeTab === "grievances" ? "#2563eb" : "#64748b", fontWeight: activeTab === "grievances" ? "600" : "normal", borderBottom: activeTab === "grievances" ? "2px solid #2563eb" : "none" }}
+          >
+            Student Section Grievances
+          </li>
+          <li
+            className={activeTab === "student_records" ? "active" : ""}
+            onClick={() => setActiveTab("student_records")}
+            style={{ cursor: "pointer", padding: "10px 15px", color: activeTab === "student_records" ? "#2563eb" : "#64748b", fontWeight: activeTab === "student_records" ? "600" : "normal", borderBottom: activeTab === "student_records" ? "2px solid #2563eb" : "none" }}
+          >
+            📊 Student Records
+          </li>
           <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
           <li><Link to="/admin/smart-assignment">Smart Assignment</Link></li>
         </ul>
       </nav>
 
       <main className="dashboard-body">
-        <div className="card">
+        {activeTab === "student_records" && <AdminStudentRecords />}
+        {activeTab === "grievances" && <div className="card">
           <h2>Incoming Grievances</h2>
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
@@ -459,7 +476,7 @@ function StudentSectionAdminDashboard() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
       </main>
 
       <AssignStaffPopup
