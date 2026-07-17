@@ -17,14 +17,16 @@ function StudentSection() {
     email: "",
     phone: "",
     school: "",
-    issueType: "",
     message: "",
   });
 
   const [attachment, setAttachment] = useState(null);
   const [msg, setMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
+  const [issueTypes, setIssueTypes] = useState([]);
+  const [selectedIssueType, setSelectedIssueType] = useState("");
 
   useEffect(() => {
     if (!role || role !== "student") navigate("/");
@@ -44,7 +46,7 @@ function StudentSection() {
             school: data.department || "",
           }));
         }
-      } catch (err) {
+        } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
@@ -52,6 +54,24 @@ function StudentSection() {
     };
     if (userId) fetchUserDetails();
   }, [userId]);
+
+  // ✅ FETCH ISSUE TYPES FOR STUDENT SECTION
+  useEffect(() => {
+    const fetchIssueTypes = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/issue-types/department/Student%20Section");
+        if (!res.ok) {
+          console.error("Fetch issue types error");
+          return;
+        }
+        const data = await res.json();
+        setIssueTypes(data);
+      } catch (error) {
+        console.error("Error fetching issue types:", error);
+      }
+    };
+    fetchIssueTypes();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -66,6 +86,7 @@ function StudentSection() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setMsg("Submitting...");
     setStatusType("info");
 
@@ -94,8 +115,9 @@ function StudentSection() {
       studentProgram: formData.school,
       school: categoryTitle,
       category: categoryTitle,
-      message: `${formData.issueType} - ${formData.message}`,
-      attachment: attachmentUrl || ""
+      message: formData.message,
+      attachment: attachmentUrl || "",
+      issueTypeId: selectedIssueType || null
     };
 
     try {
@@ -109,13 +131,16 @@ function StudentSection() {
 
       setMsg("Grievance submitted successfully!");
       setStatusType("success");
-      setFormData((prev) => ({ ...prev, issueType: "", message: "" }));
+      setFormData((prev) => ({ ...prev, message: "" }));
+      setSelectedIssueType("");
       setAttachment(null);
       const fileInput = document.getElementById("fileInputSection");
       if (fileInput) fileInput.value = "";
     } catch (err) {
       setMsg(`${err.message}`);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -190,12 +215,18 @@ function StudentSection() {
 
               <div className="input-group">
                 <label>Select Issue</label>
-                <select name="issueType" value={formData.issueType} onChange={handleChange} required>
+                <select
+                  value={selectedIssueType}
+                  onChange={(e) => setSelectedIssueType(e.target.value)}
+                  required
+                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", cursor: "pointer" }}
+                >
                   <option value="">-- Choose an Issue --</option>
-                  <option value="Document Request">Document Request</option>
-                  <option value="Enrollment Query">Enrollment Query</option>
-                  <option value="Certificate Issue">Certificate Issue</option>
-                  <option value="Other">Other</option>
+                  {issueTypes.map((issue) => (
+                    <option key={issue._id} value={issue._id}>
+                      {issue.issueName}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -209,7 +240,9 @@ function StudentSection() {
                 <input id="fileInputSection" type="file" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" className="file-input" />
               </div>
 
-              <button type="submit" className="submit-btn">Submit Grievance</button>
+              <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit Grievance"}
+              </button>
             </form>
           )}
         </div>

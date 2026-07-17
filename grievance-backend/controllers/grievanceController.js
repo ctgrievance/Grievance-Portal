@@ -60,16 +60,16 @@ export const submitGrievance = async (req, res) => {
       assignmentMode: assignmentMode,
 
       // Assignment fields
-      assignedTo: assignedStaff ? assignedStaff.staffId : null,
-      assignedRole: assignedStaff ? "staff" : null,
-      assignedBy: assignedStaff ? "SYSTEM_AUTO" : null,
-      deadlineDate: assignedStaff ? calculateDeadline() : null,
+      assignedTo: (assignedStaff && assignedStaff.staffId) ? assignedStaff.staffId : null,
+      assignedRole: (assignedStaff && assignedStaff.staffId) ? "staff" : null,
+      assignedBy: (assignedStaff && assignedStaff.staffId) ? "SYSTEM_AUTO" : null,
+      deadlineDate: (assignedStaff && assignedStaff.staffId) ? calculateDeadline() : null,
 
-      status: assignedStaff ? "Assigned" : "Pending",
+      status: (assignedStaff && assignedStaff.staffId) ? "Assigned" : "Pending",
     });
 
     // 📧 Send email notification if auto-assigned
-    if (assignedStaff) {
+    if (assignedStaff && assignedStaff.staffId) {
       try {
         await sendAssignmentNotification(grievance, assignedStaff.staffName);
       } catch (emailError) {

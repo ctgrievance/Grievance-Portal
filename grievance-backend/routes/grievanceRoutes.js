@@ -8,6 +8,7 @@ import {
   submitGrievance,
   getAllGrievances,
   getCategoryGrievances,
+  getUserGrievances,
   assignToStaff,
   getAssignedGrievances,
   updateGrievanceStatus,
@@ -28,7 +29,7 @@ const router = express.Router();
 router.post("/submit", submitGrievance);
 
 // ✅ Student grievance history
-router.get("/user/:userId", getCategoryGrievances); // Reuse for user grievances
+router.get("/user/:userId", getUserGrievances); // Reuse for user grievances
 
 /* ================= MASTER ADMIN ================= */
 

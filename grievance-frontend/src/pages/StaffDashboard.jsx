@@ -53,6 +53,7 @@ function StaffDashboard() {
   const [attachment, setAttachment] = useState(null); // ✅ Added Attachment State
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
   // Data for tables
@@ -206,6 +207,7 @@ function StaffDashboard() {
 
     setMsg("Submitting your grievance...");
     setStatusType("info");
+    setIsSubmitting(true);
 
     // 1️⃣ Upload File to MongoDB (GridFS) First
     let attachmentUrl = "";
@@ -218,7 +220,7 @@ function StaffDashboard() {
         const uploadJson = await uploadRes.json();
         attachmentUrl = uploadJson.filename;
       } catch (err) {
-        setMsg(`❌ Upload Error: ${err.message}`); setStatusType("error"); return;
+        setMsg(`❌ Upload Error: ${err.message}`); setStatusType("error"); setIsSubmitting(false); return;
       }
     }
 
@@ -258,6 +260,8 @@ function StaffDashboard() {
     } catch (err) {
       setMsg(`Error: ${err.message}`);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -413,7 +417,11 @@ function StaffDashboard() {
                   />
                 </div>
 
-                <button type="submit" className="submit-btn">Submit Grievance</button>
+                <div className="form-actions">
+                  <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                    {isSubmitting ? "Submitting..." : "Submit Grievance"}
+                  </button>
+                </div>
               </form>
             </>
           )}

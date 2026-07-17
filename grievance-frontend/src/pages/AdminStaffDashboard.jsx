@@ -26,6 +26,18 @@ const formatDateDateOnly = (dateString) => {
   return new Date(dateString).toLocaleDateString("en-US", options);
 };
 
+// Deadline status helper: returns { label, color, isOverdue, badge }
+const getDeadlineStatus = (deadlineDateStr, status) => {
+  if (!deadlineDateStr) return { label: "-", color: "#64748b", isOverdue: false };
+  if (status === "Resolved" || status === "Rejected") return { label: formatDateDateOnly(deadlineDateStr), color: "#64748b", isOverdue: false };
+  const now = new Date();
+  const deadline = new Date(deadlineDateStr);
+  const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+  if (hoursLeft < 0) return { label: formatDateDateOnly(deadlineDateStr), color: "#dc2626", isOverdue: true, badge: "OVERDUE" };
+  if (hoursLeft < 24) return { label: formatDateDateOnly(deadlineDateStr), color: "#d97706", isOverdue: false, badge: "DUE SOON" };
+  return { label: formatDateDateOnly(deadlineDateStr), color: "#16a34a", isOverdue: false };
+};
+
 const schools = [
   "School of Engineering and Technology",
   "School of Management Studies",
@@ -743,12 +755,31 @@ function AdminStaffDashboard() {
                           </td>
                           <td>{formatDate(g.createdAt)}</td>
                           <td className="deadline-col">
-                            {(g.deadlineDate || g.deadline || g.deadline_date) ? formatDateDateOnly(g.deadlineDate || g.deadline || g.deadline_date) : "-"}
+                            {(() => {
+                              const ds = getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status);
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                                  <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500' }}>{ds.label}</span>
+                                  {ds.badge && <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td><span className={`status-badge status-${g.status.toLowerCase()}`}>{g.status}</span></td>
                           <td>
                             <div className="action-buttons">
                               <button className="action-btn resolve-btn" onClick={(e) => { e.stopPropagation(); updateStatus(g._id, "Resolved"); }} disabled={g.status === "Resolved" || g.status === "Rejected"} style={{ opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1, cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer" }}>Resolve</button>
+                              {g.extensionRequest?.status === "Pending" && (
+                                <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '600' }}>⏳ Pending</span>
+                              )}
+                              <button
+                                className="action-btn chat-btn"
+                                onClick={(e) => { e.stopPropagation(); setCurrentChatId(g._id); setShowChat(true); }}
+                                style={{ background: "#3b82f6", color: "white", position: "relative" }}
+                              >
+                                Chat
+                                {unreadMap[g._id] && <span className="notification-dot"></span>}
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1022,7 +1053,40 @@ function AdminStaffDashboard() {
                   <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Category:</strong> {selectedGrievance.category || selectedGrievance.school || "N/A"}</p>
                   <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Date:</strong> {formatDate(selectedGrievance.createdAt)}</p>
                   <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Status:</strong> <span className={`status-badge status-${selectedGrievance.status.toLowerCase()}`}>{selectedGrievance.status}</span></p>
-                  <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Deadline:</strong> {(selectedGrievance.deadlineDate || selectedGrievance.deadline || selectedGrievance.deadline_date) ? formatDateDateOnly(selectedGrievance.deadlineDate || selectedGrievance.deadline || selectedGrievance.deadline_date) : "-"}</p>
+                  {(() => {
+                    const ds = getDeadlineStatus(selectedGrievance.deadlineDate || selectedGrievance.deadline || selectedGrievance.deadline_date, selectedGrievance.status);
+                    return (
+                      <p style={{ marginBottom: '10px', color: '#475569' }}>
+                        <strong>Deadline:</strong>{' '}
+                        <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500' }}>{ds.label}</span>
+                        {ds.badge && <span style={{ fontSize: '0.7rem', marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                      </p>
+                    );
+                  })()}
+                  {/* Extension Request Button in Detail Popup */}
+                  {selectedGrievance.deadlineDate && selectedGrievance.status !== "Resolved" && selectedGrievance.status !== "Rejected" && (!selectedGrievance.extensionRequest || selectedGrievance.extensionRequest.status === "None" || selectedGrievance.extensionRequest.status === "Rejected") && (
+                    <button
+                      onClick={() => { setExtensionPopup(selectedGrievance); setExtDate(""); setExtReason(""); }}
+                      style={{ padding: '8px 16px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <ClockIcon width="14" height="14" /> Request Deadline Extension
+                    </button>
+                  )}
+                  {selectedGrievance.extensionRequest?.status === "Pending" && (
+                    <div style={{ padding: '10px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', marginBottom: '10px', fontSize: '0.9rem', color: '#b45309', fontWeight: '500' }}>
+                      ⏳ Extension request pending — Proposed: {formatDateDateOnly(selectedGrievance.extensionRequest.requestedDate)}
+                    </div>
+                  )}
+                  {selectedGrievance.extensionRequest?.status === "Approved" && (
+                    <div style={{ padding: '10px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px', marginBottom: '10px', fontSize: '0.9rem', color: '#16a34a', fontWeight: '500' }}>
+                      ✅ Extension approved — New deadline: {formatDateDateOnly(selectedGrievance.extensionRequest.requestedDate)}
+                    </div>
+                  )}
+                  {selectedGrievance.extensionRequest?.status === "Rejected" && (
+                    <div style={{ padding: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', marginBottom: '10px', fontSize: '0.9rem', color: '#dc2626', fontWeight: '500' }}>
+                      ❌ Extension request was rejected
+                    </div>
+                  )}
 
                   <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '6px', margin: '15px 0', border: '1px solid #e2e8f0' }}>
                     <strong style={{ display: 'block', marginBottom: '5px', color: '#1e293b' }}>Full Message:</strong>

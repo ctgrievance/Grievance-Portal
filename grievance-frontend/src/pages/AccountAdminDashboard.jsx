@@ -11,6 +11,26 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 };
 
+// Date-only formatter for deadlines (no time)
+const formatDateDateOnly = (dateString) => {
+  if (!dateString) return "-";
+  const options = { year: "numeric", month: "short", day: "numeric" };
+  return new Date(dateString).toLocaleDateString("en-US", options);
+};
+
+// Deadline status helper: returns { label, color, isOverdue, badge }
+const getDeadlineStatus = (deadlineDateStr, status) => {
+  if (!deadlineDateStr) return { label: "-", color: "#64748b", isOverdue: false };
+  if (status === "Resolved" || status === "Rejected") return { label: formatDateDateOnly(deadlineDateStr), color: "#64748b", isOverdue: false };
+  const now = new Date();
+  const deadline = new Date(deadlineDateStr);
+  const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+  if (hoursLeft < 0) return { label: formatDateDateOnly(deadlineDateStr), color: "#dc2626", isOverdue: true, badge: "OVERDUE" };
+  if (hoursLeft < 24) return { label: formatDateDateOnly(deadlineDateStr), color: "#d97706", isOverdue: false, badge: "DUE SOON" };
+  return { label: formatDateDateOnly(deadlineDateStr), color: "#16a34a", isOverdue: false };
+};
+
+
 function AccountAdminDashboard() {
   const navigate = useNavigate();
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
@@ -217,6 +237,20 @@ function AccountAdminDashboard() {
       })
       .catch(() => alert("Excel export failed"));
   };
+  const handleResolveExtension = async (grievanceId, action) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/grievances/extension/resolve/${grievanceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) throw new Error("Failed to resolve extension");
+      alert(`Extension ${action.toLowerCase()} successfully`);
+      window.location.reload();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   return (
     <div className="dashboard-container">
@@ -226,7 +260,7 @@ function AccountAdminDashboard() {
           <div className="header-content">
             <h1>Accounts Department</h1>
             <p>
-              Admin: <strong>{userId}</strong>
+              Admin: <strong>{localStorage.getItem('grievance_user_name') || userId}</strong>
               <span className="status-badge status-assigned" style={{ marginLeft: '10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <ShieldIcon width="14" height="14" /> Accounts
               </span>
@@ -320,7 +354,7 @@ function AccountAdminDashboard() {
           ) : (
             <div className="table-container">
               <table className="grievance-table">
-                <thead><tr><th>Student ID</th><th>Name</th><th>Message</th><th>Assigned To</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th>Student ID</th><th>Name</th><th>Message</th><th>Assigned To</th><th>Deadline</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody>
                   {filteredGrievances.map((g) => (
                     <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
@@ -350,6 +384,18 @@ function AccountAdminDashboard() {
                         ) : (
                           <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned Yet</span>
                         )}
+                      </td>
+
+                      <td>
+                        {(() => {
+                          const ds = getDeadlineStatus(g.deadlineDate, g.status);
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                              <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500', fontSize: '0.85rem' }}>{ds.label}</span>
+                              {ds.badge && <span style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td><span className={`status-badge status-${g.status.toLowerCase()}`}>{g.status}</span></td>
@@ -414,6 +460,16 @@ function AccountAdminDashboard() {
                   <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Student:</strong> {selectedGrievance.name} <span style={{ color: '#94a3b8' }}>({selectedGrievance.userId || selectedGrievance.regid || 'N/A'})</span></p>
                   <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Date:</strong> {formatDate(selectedGrievance.createdAt)}</p>
                   <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Status:</strong> <span className={`status-badge status-${selectedGrievance.status.toLowerCase()}`}>{selectedGrievance.status}</span></p>
+                  {(() => {
+                    const ds = getDeadlineStatus(selectedGrievance.deadlineDate, selectedGrievance.status);
+                    return (
+                      <p style={{ marginBottom: '10px', color: '#475569' }}>
+                        <strong>Deadline:</strong>{' '}
+                        <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500' }}>{ds.label}</span>
+                        {ds.badge && <span style={{ fontSize: '0.7rem', marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                      </p>
+                    );
+                  })()}
 
                   <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
                     <strong style={{ display: 'block', marginBottom: '8px', color: '#334155' }}>Full Message:</strong>
@@ -421,6 +477,30 @@ function AccountAdminDashboard() {
                       {selectedGrievance.message}
                     </p>
                   </div>
+
+                  
+                  {/* Extension Request UI for Admin */}
+                  {selectedGrievance.extensionRequest?.status === "Pending" && (
+                    <div style={{ padding: '15px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '8px', marginTop: '15px' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#b45309' }}>⏳ Extension Request</h4>
+                      <p style={{ margin: '0 0 5px 0', fontSize: '0.9rem', color: '#334155' }}><strong>Requested Deadline:</strong> {formatDateDateOnly(selectedGrievance.extensionRequest.requestedDate)}</p>
+                      <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#334155' }}><strong>Reason:</strong> {selectedGrievance.extensionRequest.reason}</p>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={() => handleResolveExtension(selectedGrievance._id, 'Approve')} style={{ padding: '6px 12px', background: '#16a34a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
+                        <button onClick={() => handleResolveExtension(selectedGrievance._id, 'Reject')} style={{ padding: '6px 12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Reject</button>
+                      </div>
+                    </div>
+                  )}
+                  {selectedGrievance.extensionRequest?.status === "Approved" && (
+                    <div style={{ padding: '10px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px', marginTop: '15px', fontSize: '0.9rem', color: '#16a34a', fontWeight: '500' }}>
+                      ✅ Extension approved — New deadline: {formatDateDateOnly(selectedGrievance.extensionRequest.requestedDate)}
+                    </div>
+                  )}
+                  {selectedGrievance.extensionRequest?.status === "Rejected" && (
+                    <div style={{ padding: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', marginTop: '15px', fontSize: '0.9rem', color: '#dc2626', fontWeight: '500' }}>
+                      ❌ Extension request was rejected
+                    </div>
+                  )}
 
                   {/* ✅ ATTACHMENT BUTTON */}
                   {selectedGrievance.attachment && (

@@ -1,4 +1,6 @@
 import StaffRecord from "../models/StaffRecord.js";
+import StaffUser from "../models/StaffUser.js";
+import User from "../models/UserModel.js";
 
 // Fetch with Pagination and Filters
 export const getAllRecords = async (req, res) => {
@@ -84,6 +86,18 @@ export const updateRecord = async (req, res) => {
       { $set: updateData },
       { new: true }
     );
+
+    if (updateData.role) {
+      const normalizedRole = updateData.role.toLowerCase().trim();
+      await StaffUser.findOneAndUpdate(
+        { id: id.toString().trim().toUpperCase() },
+        { $set: { role: normalizedRole } }
+      );
+      await User.findOneAndUpdate(
+        { id: id.toString().trim().toUpperCase() },
+        { $set: { role: normalizedRole } }
+      );
+    }
 
     if (!record) return res.status(404).json({ message: "Record not found" });
     res.json({ message: "Record updated successfully", record });

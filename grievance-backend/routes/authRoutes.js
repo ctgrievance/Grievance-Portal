@@ -75,7 +75,8 @@ router.get("/user/:id", async (req, res) => {
       phone: user.phone,
       role: user.role,
       // Frontend ko ab hamesha 'department' milega
-      department: deptToSend || "General"
+      department: deptToSend || "General",
+      adminDepartment: user.adminDepartment || ""
     });
 
   } catch (err) {

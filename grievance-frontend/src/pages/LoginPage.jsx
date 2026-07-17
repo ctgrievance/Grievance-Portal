@@ -36,6 +36,7 @@ function LoginPage() {
   const [maskedEmail, setMaskedEmail] = useState("");
   const [message, setMessage] = useState("");
   const [statusType, setStatusType] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -51,6 +52,7 @@ function LoginPage() {
 
   const handleDirectLogin = (data) => {
     localStorage.setItem("grievance_id", data.user.id.toUpperCase());
+    if (data.user.fullName) localStorage.setItem("grievance_user_name", data.user.fullName);
     localStorage.setItem("grievance_role", data.user.role.toLowerCase());
     localStorage.setItem("grievance_token", data.token);
 
@@ -115,6 +117,7 @@ function LoginPage() {
 
       if (data.requires2FA) {
         setOtpSent(true);
+      setLoading(false);
         setMaskedEmail(data.maskedEmail);
         setMessage(`Success! OTP sent to ${data.maskedEmail}`);
         setStatusType("success");
@@ -243,7 +246,7 @@ function LoginPage() {
                   </div>
                   
 
-                  <button className="btn-primary" type="submit">Secure Login</button>
+                  <button className="btn-primary" type="submit" disabled={loading}>{loading ? "Loading..." : "Secure Login"}</button>
                   <div style={{ textAlign: "right", marginBottom: "12px" }}>
   <Link to="/forgot-password" className="forgot-link">
     Forgot Password?
@@ -278,7 +281,7 @@ function LoginPage() {
 
                   
 
-                  <button className="btn-primary" type="submit">Verify & Login</button>
+                  <button className="btn-primary" type="submit" disabled={loading}>{loading ? "Loading..." : "Verify & Login"}</button>
                   <button
                     type="button"
                     onClick={() => { setOtpSent(false); setMessage(""); setOtp(""); }}

@@ -548,6 +548,13 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
           existingAdmin.adminDepartment = "";
           existingAdmin.role = "staff"; // ✅ Reset role to staff
           await existingAdmin.save();
+
+          // 🔥 Sync to StaffUser
+          await StaffUser.findOneAndUpdate(
+            { id: existingAdmin.id },
+            { adminDepartment: "", isDeptAdmin: false, role: "staff" }
+          );
+
           console.log(`🔄 Removed ${existingAdmin.fullName} from Admin role for ${department}`);
 
           // ✅ SEND DEMOTION EMAIL TO DISPLACED ADMIN
@@ -592,6 +599,16 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       }
 
       await targetMember.save();
+
+      // 🔥 Sync to StaffUser
+      await StaffUser.findOneAndUpdate(
+        { id: safeTargetId },
+        { 
+          adminDepartment: department,
+          isDeptAdmin: targetMember.isDeptAdmin,
+          role: targetMember.role
+        }
+      );
 
       // ✅ SEND PROMOTION EMAIL
       const promotionDate = new Date().toLocaleString("en-IN", {
@@ -640,6 +657,16 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       targetMember.adminDepartment = "";
       targetMember.role = "staff"; // 🔥 Change role back to staff
       await targetMember.save();
+
+      // 🔥 Sync to StaffUser
+      await StaffUser.findOneAndUpdate(
+        { id: safeTargetId },
+        { 
+          adminDepartment: "",
+          isDeptAdmin: false,
+          role: "staff"
+        }
+      );
 
       // 🔥 RESET ASSIGNED GRIEVANCES TO PENDING
       const updateResult = await Grievance.updateMany(
