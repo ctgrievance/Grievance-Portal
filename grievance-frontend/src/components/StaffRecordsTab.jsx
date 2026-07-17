@@ -217,7 +217,7 @@ function StaffRecordsTab() {
                       <td><input type="email" name="email" value={editFormData.email} onChange={handleEditChange} style={tableInputStyle} /></td>
                       <td><input type="text" name="phone" value={editFormData.phone} onChange={handleEditChange} style={tableInputStyle} /></td>
                       <td>
-                        <select name="role" value={editFormData.role} onChange={handleEditChange} style={{...tableInputStyle, background: "#f1f5f9", cursor: "not-allowed"}} disabled>
+                        <select name="role" value={editFormData.role} onChange={handleEditChange} style={tableInputStyle}>
                           <option value="staff">Staff</option>
                           <option value="admin">Admin</option>
                         </select>

@@ -20,6 +20,7 @@ function StudentWelfare() {
 
   const [attachment, setAttachment] = useState(null);
   const [msg, setMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +51,7 @@ function StudentWelfare() {
             program: data.department || data.program || "", // 🔥 IMPORTANT
           }));
         }
-      } catch (err) {
+        } catch (err) {
         console.error("User fetch error:", err);
       } finally {
         setLoading(false);
@@ -95,6 +96,7 @@ function StudentWelfare() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setMsg("Submitting grievance...");
     setStatusType("info");
 
@@ -151,6 +153,8 @@ function StudentWelfare() {
     } catch (err) {
       setMsg(`❌ ${err.message}`);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -310,8 +314,8 @@ function StudentWelfare() {
                 />
               </div>
 
-              <button type="submit" className="submit-btn">
-                Submit Grievance
+              <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit Grievance"}
               </button>
             </form>
           )}

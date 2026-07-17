@@ -22,6 +22,7 @@ function Accounts() {
 
   const [attachment, setAttachment] = useState(null);
   const [msg, setMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
   const [issueTypes, setIssueTypes] = useState([]);
@@ -48,7 +49,7 @@ function Accounts() {
             school: data.department || "",
           }));
         }
-      } catch (err) {
+        } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
@@ -92,6 +93,7 @@ function Accounts() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setMsg("Submitting...");
     setStatusType("info");
 
@@ -146,6 +148,8 @@ function Accounts() {
     } catch (err) {
       setMsg(`${err.message}`);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -293,8 +297,8 @@ function Accounts() {
                 />
               </div>
 
-              <button type="submit" className="submit-btn">
-                Submit Grievance
+              <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit Grievance"}
               </button>
             </form>
           )}

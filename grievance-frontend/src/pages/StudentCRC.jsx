@@ -20,8 +20,11 @@ function StudentCRC() {
 
   const [attachment, setAttachment] = useState(null);
   const [msg, setMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
+  const [issueTypes, setIssueTypes] = useState([]);
+  const [selectedIssueType, setSelectedIssueType] = useState("");
 
   // 🔒 Route protection
   useEffect(() => {
@@ -46,7 +49,7 @@ function StudentCRC() {
             program: data.department || data.program || "", // 🔥 IMPORTANT
           }));
         }
-      } catch (err) {
+        } catch (err) {
         console.error("User fetch error:", err);
       } finally {
         setLoading(false);
@@ -55,6 +58,24 @@ function StudentCRC() {
 
     if (userId) fetchUser();
   }, [userId]);
+
+  // ✅ FETCH ISSUE TYPES FOR CRC
+  useEffect(() => {
+    const fetchIssueTypes = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/issue-types/department/CRC%20(Placement)");
+        if (!res.ok) {
+          console.error("Fetch issue types error");
+          return;
+        }
+        const data = await res.json();
+        setIssueTypes(data);
+      } catch (error) {
+        console.error("Error fetching issue types:", error);
+      }
+    };
+    fetchIssueTypes();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, message: e.target.value });
@@ -71,6 +92,7 @@ function StudentCRC() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setMsg("Submitting grievance...");
     setStatusType("info");
 
@@ -100,7 +122,8 @@ function StudentCRC() {
       studentProgram: formData.program,
       category: "CRC (Placement)",
       message: formData.message,
-      attachment: attachmentUrl || "" // Send filename string
+      attachment: attachmentUrl || "",
+      issueTypeId: selectedIssueType || null
     };
 
     try {
@@ -119,6 +142,7 @@ function StudentCRC() {
       setMsg("✅ Grievance submitted successfully");
       setStatusType("success");
       setFormData((prev) => ({ ...prev, message: "" }));
+      setSelectedIssueType("");
       setAttachment(null);
 
       const fileInput = document.getElementById("fileInput");
@@ -126,6 +150,8 @@ function StudentCRC() {
     } catch (err) {
       setMsg(`❌ ${err.message}`);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -232,6 +258,23 @@ function StudentCRC() {
               </div>
 
               <div className="input-group">
+                <label>Select Issue</label>
+                <select
+                  value={selectedIssueType}
+                  onChange={(e) => setSelectedIssueType(e.target.value)}
+                  required
+                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", cursor: "pointer" }}
+                >
+                  <option value="">-- Choose an Issue --</option>
+                  {issueTypes.map((issue) => (
+                    <option key={issue._id} value={issue._id}>
+                      {issue.issueName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="input-group">
                 <label>Message</label>
                 <textarea
                   name="message"
@@ -254,8 +297,8 @@ function StudentCRC() {
                 />
               </div>
 
-              <button type="submit" className="submit-btn">
-                Submit Grievance
+              <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit Grievance"}
               </button>
             </form>
           )}

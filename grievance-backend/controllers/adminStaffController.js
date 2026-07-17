@@ -88,6 +88,30 @@ exports.manageRole = async (req, res) => {
 
       await staffRecord.save();
 
+      // 🔥 Sync the adminDepartment to StaffUser and User so they log into the correct dashboard
+      try {
+        console.log(`🔄 Syncing promote for ${targetStaffId} to Dept: ${staffRecord.adminDepartment}`);
+        const UserModule = await import("../models/UserModel.js");
+        const UserModelToUse = UserModule.default || UserModule;
+        const uRes = await UserModelToUse.findOneAndUpdate(
+          { id: targetStaffId },
+          { adminDepartment: staffRecord.adminDepartment, isDeptAdmin: staffRecord.isDeptAdmin },
+          { new: true }
+        );
+        console.log(`✅ UserModel update result:`, uRes ? uRes.adminDepartment : "Not found");
+
+        const StaffUserModule = await import("../models/StaffUser.js");
+        const StaffUserModelToUse = StaffUserModule.default || StaffUserModule;
+        const suRes = await StaffUserModelToUse.findOneAndUpdate(
+          { id: targetStaffId },
+          { adminDepartment: staffRecord.adminDepartment, isDeptAdmin: staffRecord.isDeptAdmin },
+          { new: true }
+        );
+        console.log(`✅ StaffUser update result:`, suRes ? suRes.adminDepartment : "Not found");
+      } catch (err) {
+        console.error("❌ Error syncing role to user models during promote", err);
+      }
+
       return res.json({
         message: `Success: ${staffRecord.fullName} assigned to ${department}.`,
       });
@@ -103,6 +127,25 @@ exports.manageRole = async (req, res) => {
         staffRecord.isDeptAdmin = false;
         staffRecord.adminDepartment = "";
         await staffRecord.save();
+      }
+
+      // 🔥 Sync the adminDepartment removal to StaffUser and User
+      try {
+        const UserModule = await import("../models/UserModel.js");
+        const UserModelToUse = UserModule.default || UserModule;
+        await UserModelToUse.findOneAndUpdate(
+          { id: targetStaffId },
+          { adminDepartment: "", isDeptAdmin: false }
+        );
+
+        const StaffUserModule = await import("../models/StaffUser.js");
+        const StaffUserModelToUse = StaffUserModule.default || StaffUserModule;
+        await StaffUserModelToUse.findOneAndUpdate(
+          { id: targetStaffId },
+          { adminDepartment: "", isDeptAdmin: false }
+        );
+      } catch (err) {
+        console.error("Error syncing role to user models during demote", err);
       }
 
       // 3️⃣ 🔥 FORCE RESET ALL ASSIGNED GRIEVANCES

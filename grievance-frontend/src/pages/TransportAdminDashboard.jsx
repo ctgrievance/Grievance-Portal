@@ -17,6 +17,26 @@ const formatDate = (dateString) => {
     });
 };
 
+// Date-only formatter for deadlines (no time)
+const formatDateDateOnly = (dateString) => {
+  if (!dateString) return "-";
+  const options = { year: "numeric", month: "short", day: "numeric" };
+  return new Date(dateString).toLocaleDateString("en-US", options);
+};
+
+// Deadline status helper: returns { label, color, isOverdue, badge }
+const getDeadlineStatus = (deadlineDateStr, status) => {
+  if (!deadlineDateStr) return { label: "-", color: "#64748b", isOverdue: false };
+  if (status === "Resolved" || status === "Rejected") return { label: formatDateDateOnly(deadlineDateStr), color: "#64748b", isOverdue: false };
+  const now = new Date();
+  const deadline = new Date(deadlineDateStr);
+  const hoursLeft = (deadline - now) / (1000 * 60 * 60);
+  if (hoursLeft < 0) return { label: formatDateDateOnly(deadlineDateStr), color: "#dc2626", isOverdue: true, badge: "OVERDUE" };
+  if (hoursLeft < 24) return { label: formatDateDateOnly(deadlineDateStr), color: "#d97706", isOverdue: false, badge: "DUE SOON" };
+  return { label: formatDateDateOnly(deadlineDateStr), color: "#16a34a", isOverdue: false };
+};
+
+
 function TransportAdminDashboard() {
     const navigate = useNavigate();
 
@@ -216,9 +236,23 @@ function TransportAdminDashboard() {
                 setMsg("Export successful!"); setStatusType("success"); setTimeout(() => setMsg(""), 3000);
             }).catch(() => alert("Excel export failed"));
     };
+  const handleResolveExtension = async (grievanceId, action) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/grievances/extension/resolve/${grievanceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) throw new Error("Failed to resolve extension");
+      alert(`Extension ${action.toLowerCase()} successfully`);
+      window.location.reload();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
-    return (
-        <div className="dashboard-container">
+  return (
+    <div className="dashboard-container">
             <header className="dashboard-header">
                 <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
                     <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
@@ -294,8 +328,7 @@ function TransportAdminDashboard() {
                                     <th>Name</th>
                                     <th>Message</th>
                                     <th>Assigned To</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
+                                    <th>Deadline</th><th>Status</th><th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -328,6 +361,17 @@ function TransportAdminDashboard() {
                                                 <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned Yet</span>
                                             )}
                                         </td>
+                      <td>
+                        {(() => {
+                          const ds = getDeadlineStatus(g.deadlineDate, g.status);
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                              <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500', fontSize: '0.85rem' }}>{ds.label}</span>
+                              {ds.badge && <span style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                            </div>
+                          );
+                        })()}
+                      </td>
 
                                         <td>
                                             <span className={`status-badge status-${g.status.toLowerCase()}`}>
@@ -397,8 +441,18 @@ function TransportAdminDashboard() {
                             <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Student:</strong> {selectedGrievance.name} <span style={{ color: '#94a3b8' }}>({selectedGrievance.userId || selectedGrievance.regid || 'N/A'})</span></p>
                             <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Date:</strong> {formatDate(selectedGrievance.createdAt)}</p>
                             <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Status:</strong> <span className={`status-badge status-${selectedGrievance.status.toLowerCase()}`}>{selectedGrievance.status}</span></p>
+                  {(() => {
+                    const ds = getDeadlineStatus(selectedGrievance.deadlineDate, selectedGrievance.status);
+                    return (
+                      <p style={{ marginBottom: '10px', color: '#475569' }}>
+                        <strong>Deadline:</strong>{' '}
+                        <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500' }}>{ds.label}</span>
+                        {ds.badge && <span style={{ fontSize: '0.7rem', marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                      </p>
+                    );
+                  })()}
 
-                            <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
+                  <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
                                 <strong style={{ display: 'block', marginBottom: '8px', color: '#334155' }}>Full Message:</strong>
                                 <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.6', color: '#1e293b', wordBreak: 'break-word' }}>
                                     {selectedGrievance.message}

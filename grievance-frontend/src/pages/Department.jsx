@@ -29,13 +29,16 @@ function Department() {
   const categoryTitle = "Academic Department";
 
   const [formData, setFormData] = useState({
-    name: "", regid: userId || "", email: "", phone: "", studentProgram: "", school: "", issueType: "", message: "",
+    name: "", regid: userId || "", email: "", phone: "", studentProgram: "", school: "", message: "",
   });
 
   const [attachment, setAttachment] = useState(null);
   const [msg, setMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
+  const [issueTypes, setIssueTypes] = useState([]);
+  const [selectedIssueType, setSelectedIssueType] = useState("");
 
   useEffect(() => {
     if (!role || role !== "student") navigate("/");
@@ -57,7 +60,7 @@ function Department() {
             // school is intentionally left blank for manual selection
           }));
         }
-      } catch (err) {
+        } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
@@ -65,6 +68,29 @@ function Department() {
     };
     if (userId) fetchUserDetails();
   }, [userId]);
+
+  // ✅ FETCH ISSUE TYPES DYNAMICALLY BASED ON SELECTED SCHOOL
+  useEffect(() => {
+    const fetchIssueTypes = async () => {
+      if (!formData.school) {
+        setIssueTypes([]);
+        return;
+      }
+      try {
+        const res = await fetch(`http://localhost:5000/api/issue-types/department/${encodeURIComponent(formData.school)}`);
+        if (!res.ok) {
+          console.error("Fetch issue types error");
+          setIssueTypes([]);
+          return;
+        }
+        const data = await res.json();
+        setIssueTypes(data);
+      } catch (error) {
+        console.error("Error fetching issue types:", error);
+      }
+    };
+    fetchIssueTypes();
+  }, [formData.school]); // Refetch when school changes
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -81,6 +107,7 @@ function Department() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setMsg("Submitting...");
     setStatusType("info");
 
@@ -107,10 +134,11 @@ function Department() {
       regid: formData.regid,
       email: formData.email,
       phone: formData.phone,
-      studentProgram: formData.school || "Engineering",
-      category: formData.school || "School of Engineering and Technology",
-      message: `${formData.issueType} - ${formData.message}`,
-      attachment: attachmentUrl || ""
+      studentProgram: formData.school,
+      category: formData.school,
+      message: formData.message,
+      attachment: attachmentUrl || "",
+      issueTypeId: selectedIssueType || null
     };
 
     try {
@@ -125,12 +153,15 @@ function Department() {
 
       setMsg("✅ Grievance submitted successfully!");
       setStatusType("success");
-      setFormData(prev => ({ ...prev, issueType: "", message: "" }));
+      setFormData(prev => ({ ...prev, message: "" }));
+      setSelectedIssueType("");
       setAttachment(null);
       document.getElementById("fileInput").value = "";
     } catch (err) {
       setMsg(`❌ ${err.message}`);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -214,14 +245,18 @@ function Department() {
 
               <div className="input-group">
                 <label>Select Issue</label>
-                <select name="issueType" value={formData.issueType} onChange={handleChange} required>
+                <select
+                  value={selectedIssueType}
+                  onChange={(e) => setSelectedIssueType(e.target.value)}
+                  required
+                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", cursor: "pointer" }}
+                >
                   <option value="">-- Choose an Issue --</option>
-                  <option value="Faculty Feedback">Faculty / Class Issue</option>
-                  <option value="Course Material">Course Material / Syllabus</option>
-                  <option value="Lab & Equipment">Lab & Equipment Issue</option>
-                  <option value="Attendance Query">Attendance Query</option>
-                  <option value="Timetable Conflict">Timetable Conflict</option>
-                  <option value="Other">Other</option>
+                  {issueTypes.map((issue) => (
+                    <option key={issue._id} value={issue._id}>
+                      {issue.issueName}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -241,7 +276,9 @@ function Department() {
                 />
               </div>
 
-              <button type="submit" className="submit-btn">Submit Grievance</button>
+              <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit Grievance"}
+              </button>
             </form>
           )}
         </div>

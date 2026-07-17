@@ -182,16 +182,9 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
         { $inc: { "assignedStaff.$.roundRobinIndex": 1 } }
       );
     } else if (mode === "pool_accept") {
-      // Assign to staff with lowest current load (if using StaffPool)
-      // For now, use round robin as fallback
-      assignedStaff = availableStaff.reduce((min, staff) => 
-        staff.roundRobinIndex < min.roundRobinIndex ? staff : min
-      );
-      
-      await RoutingRule.updateOne(
-        { _id: routingRule._id, "assignedStaff.staffId": assignedStaff.staffId },
-        { $inc: { "assignedStaff.$.roundRobinIndex": 1 } }
-      );
+      // In pool accept mode, we do NOT auto-assign to a specific staff.
+      // The grievance stays in a pool until a staff accepts it.
+      assignedStaff = { staffId: null, staffName: null };
     }
 
     console.log(`✅ Assigned to: ${assignedStaff.staffName} (${assignedStaff.staffId}) in ${mode} mode`);
