@@ -23,7 +23,7 @@ const ForgotPassword = () => {
     try {
       // Updated API payload: id + phone
       await axios.post(
-        "http://localhost:5000/api/auth/forgot-password",
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/forgot-password`,
         { id: userId, phone }
       );
 

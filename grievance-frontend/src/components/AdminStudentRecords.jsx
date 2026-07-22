@@ -28,7 +28,7 @@ const AdminStudentRecords = () => {
   const [newRow, setNewRow] = useState({ id: "", ctuId: "", fullName: "", email: "", phone: "", school: "", program: "", batch: "", studentType: "" });
 
   const LIMIT = 20;
-  const BASE  = "http://localhost:5000/api/student-records";
+  const BASE  = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/student-records`;
   const token = localStorage.getItem("grievance_token");
 
   const fetchRecords = useCallback(async () => {

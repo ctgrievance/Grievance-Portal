@@ -75,7 +75,7 @@ function StudentSectionAdminDashboard() {
     try {
       setLoading(true);
       const category = encodeURIComponent("Student Section");
-      const url = `http://localhost:5000/api/grievances/category/${category}`;
+      const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/category/${category}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
@@ -92,7 +92,7 @@ function StudentSectionAdminDashboard() {
   // ✅ Fetch Staff List to Map IDs to Names
   const fetchStaffNames = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin-staff/all");
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/all`);
       if (res.ok) {
         const data = await res.json();
         const map = {};
@@ -111,7 +111,7 @@ function StudentSectionAdminDashboard() {
 
     if (!window.confirm(confirmMsg)) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/update/${g._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/update/${g._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Resolved", resolvedBy: userId }),
@@ -129,7 +129,7 @@ function StudentSectionAdminDashboard() {
   const rejectGrievance = async (g) => {
     if (!window.confirm("Are you sure you want to REJECT this grievance?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/update/${g._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/update/${g._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Rejected", resolvedBy: userId }),
@@ -153,7 +153,7 @@ function StudentSectionAdminDashboard() {
   // ✅ EXTENSION REQUEST HANDLER
   const handleExtensionResolution = async (action) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/extension/resolve/${selectedGrievance._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/extension/resolve/${selectedGrievance._id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action })
@@ -181,7 +181,7 @@ function StudentSectionAdminDashboard() {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
     try {
       const token = localStorage.getItem("grievance_token");
-      const res = await fetch(`http://localhost:5000/api/grievances/hide/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -220,7 +220,7 @@ function StudentSectionAdminDashboard() {
   const handleOpenExportModal = () => setShowExportModal(true);
   const handleExportSelected = (selectedData, selectedColumns) => {
     const token = localStorage.getItem("grievance_token");
-    fetch(`http://localhost:5000/api/grievances/export-selected`, {
+    fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-selected`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ grievanceIds: selectedData.map((g) => g._id), columns: selectedColumns }),
     }).then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
@@ -233,7 +233,7 @@ function StudentSectionAdminDashboard() {
   };
   const handleResolveExtension = async (grievanceId, action) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/extension/resolve/${grievanceId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/extension/resolve/${grievanceId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action })
@@ -486,7 +486,7 @@ function StudentSectionAdminDashboard() {
                     <div style={{ marginTop: '15px' }}>
                       <strong>Attachment: </strong>
                       <a
-                        href={`http://localhost:5000/api/file/${selectedGrievance.attachment}`}
+                        href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${selectedGrievance.attachment}`}
                         target="_blank" rel="noopener noreferrer"
                         style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
                       >

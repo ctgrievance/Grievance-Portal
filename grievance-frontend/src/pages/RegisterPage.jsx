@@ -94,7 +94,7 @@ function RegisterPage() {
 
     try {
       // 🔥 Update Endpoint
-      const res = await fetch("http://localhost:5000/api/auth/register-request", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/register-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -122,7 +122,7 @@ function RegisterPage() {
 
     try {
       // 🔥 Update Endpoint & Payload
-      const res = await fetch("http://localhost:5000/api/auth/verify-registration", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/verify-registration`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

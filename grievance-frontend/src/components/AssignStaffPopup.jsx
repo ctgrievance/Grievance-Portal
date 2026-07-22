@@ -40,7 +40,7 @@ function AssignStaffPopup({
 
         // Fetch staff list
         const staffRes = await fetch(
-          `http://localhost:5000/api/admin/staff/${encodeURIComponent(department)}`,
+          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/staff/${encodeURIComponent(department)}`,
           { headers: { Authorization: `Bearer ${localStorage.getItem("grievance_token")}` } }
         );
         const staffData = await staffRes.json();
@@ -52,7 +52,7 @@ function AssignStaffPopup({
 
         // Fetch grievance detail to read createdAt and existing deadline
         if (grievanceId) {
-          const gRes = await fetch(`http://localhost:5000/api/grievances/detail/${grievanceId}`, {
+          const gRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/detail/${grievanceId}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("grievance_token")}` }
           });
           const gData = await gRes.json();
@@ -97,7 +97,7 @@ function AssignStaffPopup({
       setStatusType("info");
 
       const res = await fetch(
-        `http://localhost:5000/api/grievances/assign/${grievanceId}`,
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/assign/${grievanceId}`,
         {
           method: "PUT",
           headers: {

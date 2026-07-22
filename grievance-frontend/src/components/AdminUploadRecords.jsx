@@ -18,7 +18,7 @@ const AdminUploadRecords = () => {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      const res = await fetch("http://localhost:5000/api/admin/all-users", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/all-users`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -38,7 +38,7 @@ const AdminUploadRecords = () => {
   const handleExportUsers = async () => {
     setExportingUsers(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/export-users", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/export-users`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 

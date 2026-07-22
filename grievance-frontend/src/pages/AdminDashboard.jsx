@@ -58,7 +58,7 @@ function AdminDashboard() {
 
   const fetchAllGrievances = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/grievances/all");
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/all`);
       if (!res.ok) throw new Error("Failed to fetch grievances");
       const data = await res.json();
       setGrievances(data);
@@ -72,7 +72,7 @@ function AdminDashboard() {
   const fetchStaffNames = useCallback(async () => {
     try {
       const token = localStorage.getItem("grievance_token"); // Get Token
-      const res = await fetch("http://localhost:5000/api/admin-staff/all", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/all`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -106,7 +106,7 @@ function AdminDashboard() {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
     try {
       const token = localStorage.getItem("grievance_token");
-      const res = await fetch(`http://localhost:5000/api/grievances/hide/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -153,7 +153,7 @@ function AdminDashboard() {
     const token = localStorage.getItem("grievance_token");
 
     // Send selected IDs and columns to backend
-    fetch(`http://localhost:5000/api/grievances/export-selected`, {
+    fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-selected`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -452,7 +452,7 @@ function AdminDashboard() {
                   <div style={{ marginTop: '15px' }}>
                     <strong>Attachment: </strong>
                     <a
-                      href={`http://localhost:5000/api/file/${selectedGrievance.attachment}`}
+                      href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${selectedGrievance.attachment}`}
                       target="_blank" rel="noopener noreferrer"
                       style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
                     >

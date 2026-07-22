@@ -133,7 +133,7 @@ function AdminStaffDashboard() {
   useEffect(() => {
     const fetchStaffInfo = async () => {
       try {
-        const userRes = await fetch(`http://localhost:5000/api/auth/user/${staffId}`);
+        const userRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/user/${staffId}`);
         const userData = await userRes.json();
         if (userRes.ok) {
           setStaffName(userData.fullName || staffId);
@@ -191,7 +191,7 @@ function AdminStaffDashboard() {
 
       isFetchingRef.current = true;
       try {
-        const res = await fetch(`http://localhost:5000/api/grievances/assigned/${staffId}`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/assigned/${staffId}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to fetch data");
 
@@ -231,7 +231,7 @@ function AdminStaffDashboard() {
 
       await Promise.all(grievances.map(async (g) => {
         try {
-          const res = await fetch(`http://localhost:5000/api/chat/${g._id}`);
+          const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/chat/${g._id}`);
           if (res.ok) {
             const msgs = await res.json();
 
@@ -299,7 +299,7 @@ function AdminStaffDashboard() {
     setMsg("Updating status...");
     setStatusType("info");
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/update/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/update/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -326,7 +326,7 @@ function AdminStaffDashboard() {
   const handleExtensionRequest = async () => {
     if (!extDate || !extReason) return alert("Please fill all fields");
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/extension/request/${extensionPopup._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/extension/request/${extensionPopup._id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestedDate: extDate, reason: extReason })
@@ -385,7 +385,7 @@ function AdminStaffDashboard() {
       const fileData = new FormData();
       fileData.append("file", attachment);
       try {
-        const uploadRes = await fetch("http://localhost:5000/api/upload", { method: "POST", body: fileData });
+        const uploadRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/upload`, { method: "POST", body: fileData });
         if (!uploadRes.ok) throw new Error("File upload failed");
         const uploadJson = await uploadRes.json();
         attachmentUrl = uploadJson.filename;
@@ -395,7 +395,7 @@ function AdminStaffDashboard() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/grievances/submit", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -432,7 +432,7 @@ function AdminStaffDashboard() {
     if (!staffId) return;
     setLoadingMine(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/user/${staffId}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/user/${staffId}`);
       const data = await res.json();
       if (res.ok) setMyGrievances(data);
     } catch (err) {
@@ -456,7 +456,7 @@ function AdminStaffDashboard() {
     if (!myDepartment) return;
     setLoadingPool(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/pool-accept?staffId=${staffId}&department=${encodeURIComponent(myDepartment)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/pool-accept?staffId=${staffId}&department=${encodeURIComponent(myDepartment)}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch pool grievances error:", errorText);
@@ -476,7 +476,7 @@ function AdminStaffDashboard() {
     if (!window.confirm("Are you sure you want to accept this grievance?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/accept/${grievanceId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/accept/${grievanceId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ staffId, staffName })
@@ -508,7 +508,7 @@ function AdminStaffDashboard() {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
     try {
       const token = localStorage.getItem("grievance_token");
-      const res = await fetch(`http://localhost:5000/api/grievances/hide/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -564,7 +564,7 @@ function AdminStaffDashboard() {
   const handleOpenExportModal = () => setShowExportModal(true);
   const handleExportSelected = (selectedData, selectedColumns) => {
     const token = localStorage.getItem("grievance_token");
-    fetch(`http://localhost:5000/api/grievances/export-selected`, {
+    fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-selected`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ grievanceIds: selectedData.map((g) => g._id), columns: selectedColumns }),
     }).then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
@@ -1110,7 +1110,7 @@ function AdminStaffDashboard() {
                     <div style={{ marginTop: '15px' }}>
                       <strong>Attachment: </strong>
                       <a
-                        href={`http://localhost:5000/api/file/${selectedGrievance.attachment}`}
+                        href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${selectedGrievance.attachment}`}
                         target="_blank" rel="noopener noreferrer"
                         style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
                       >

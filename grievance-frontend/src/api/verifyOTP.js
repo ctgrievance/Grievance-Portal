@@ -2,7 +2,7 @@
 
 export async function verifyOTP(id, otp, password, role) {
   // ✅ Backend URL updated to match server.js
-  const res = await fetch("http://localhost:5000/api/auth/verify-otp-password", {
+  const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/verify-otp-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     // ✅ Backend expects password and role too

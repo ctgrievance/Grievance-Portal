@@ -26,7 +26,7 @@ function StaffRoleManager() {
 
   const fetchStaffList = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin-staff/all", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/all`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("grievance_token")}` }
       });
       if (res.ok) {
@@ -68,7 +68,7 @@ function StaffRoleManager() {
     setProcessingId(targetStaffId); // ⏳ START LOADING
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin-staff/role", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/role`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +99,7 @@ function StaffRoleManager() {
     if (!window.confirm(`⚠️ DANGER: Are you sure you want to transfer MASTER ADMIN rights to ${newMasterId}? You will lose your Master Admin access.`)) return;
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/transfer-ownership", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/transfer-ownership`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

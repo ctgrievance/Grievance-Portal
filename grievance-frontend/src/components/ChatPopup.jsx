@@ -27,7 +27,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
     const fetchMessages = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/chat/${grievanceId}`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/chat/${grievanceId}`);
         if (res.ok) {
           const data = await res.json();
           setMessages(data);
@@ -53,7 +53,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
     const fetchGrievanceDetails = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/grievances/detail/${grievanceId}`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/detail/${grievanceId}`);
         if (res.ok) {
           const data = await res.json();
           setGrievanceData(data);
@@ -119,7 +119,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         const formData = new FormData();
         formData.append("file", selectedFile);
 
-        const uploadRes = await fetch("http://localhost:5000/api/upload", {
+        const uploadRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/upload`, {
           method: "POST",
           body: formData,
         });
@@ -138,7 +138,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         fileData: uploadedFileData
       };
 
-      const res = await fetch("http://localhost:5000/api/chat/send", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/chat/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -283,14 +283,14 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                       <div style={{ marginBottom: msg.message ? '8px' : '0' }}>
                         {msg.fileData.contentType.startsWith("image/") ? (
                           <img
-                            src={`http://localhost:5000/api/file/${msg.fileData.filename}`}
+                            src={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`}
                             alt="attachment"
                             style={{ maxWidth: "100%", borderRadius: "12px", cursor: "pointer", display: 'block' }}
-                            onClick={() => window.open(`http://localhost:5000/api/file/${msg.fileData.filename}`, "_blank")}
+                            onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`, "_blank")}
                           />
                         ) : (
                           <a
-                            href={`http://localhost:5000/api/file/${msg.fileData.filename}`}
+                            href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{

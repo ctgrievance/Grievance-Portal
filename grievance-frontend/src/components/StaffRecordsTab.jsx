@@ -29,7 +29,7 @@ function StaffRecordsTab() {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const url = `http://localhost:5000/api/staff-records?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`;
+      const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`;
       const res = await fetch(url);
       const data = await res.json();
 
@@ -76,7 +76,7 @@ function StaffRecordsTab() {
 
   const handleSaveEdit = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/staff-records/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records/${id}`, {
          method: "PUT",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify(editFormData)
@@ -101,7 +101,7 @@ function StaffRecordsTab() {
     try {
       if (!newRow.id || !newRow.role) throw new Error("ID and Role are required");
 
-      const res = await fetch("http://localhost:5000/api/staff-records", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records`, {
          method: "POST",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify(newRow)
@@ -122,7 +122,7 @@ function StaffRecordsTab() {
   const handleDelete = async (id) => {
     if (!window.confirm(`Are you sure you want to delete staff ID ${id}?`)) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/staff-records/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records/${id}`, {
          method: "DELETE"
       });
       const data = await res.json();

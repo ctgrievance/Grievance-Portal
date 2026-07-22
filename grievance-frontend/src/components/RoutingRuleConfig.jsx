@@ -24,7 +24,7 @@ function RoutingRuleConfig({ department }) {
 
   const fetchRoutingRules = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/routing-rules/department/${encodeURIComponent(department)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch routing rules error:", errorText);
@@ -40,7 +40,7 @@ function RoutingRuleConfig({ department }) {
 
   const fetchIssues = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/issue-types/department/${encodeURIComponent(department)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch issues error:", errorText);
@@ -61,7 +61,7 @@ function RoutingRuleConfig({ department }) {
         console.error("No token found");
         return;
       }
-      const res = await fetch(`http://localhost:5000/api/admin/staff/${encodeURIComponent(department)}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/staff/${encodeURIComponent(department)}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (!res.ok) {
@@ -102,7 +102,7 @@ function RoutingRuleConfig({ department }) {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/routing-rules", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -140,7 +140,7 @@ function RoutingRuleConfig({ department }) {
     if (!window.confirm("Are you sure you want to delete this routing rule?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/routing-rules/${ruleId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/${ruleId}`, {
         method: "DELETE"
       });
 

@@ -84,7 +84,7 @@ function StaffDashboard() {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:5000/api/auth/user/${userId}`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/user/${userId}`);
         const data = await res.json();
         if (res.ok) {
           setStaffName(data.fullName || userId);
@@ -114,7 +114,7 @@ function StaffDashboard() {
     if (!userId) return;
     setLoadingMine(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/user/${userId}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/user/${userId}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to fetch my grievances");
       // preserve scroll
@@ -177,7 +177,7 @@ function StaffDashboard() {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
     try {
       const token = localStorage.getItem("grievance_token");
-      const res = await fetch(`http://localhost:5000/api/grievances/hide/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -215,7 +215,7 @@ function StaffDashboard() {
       const fileData = new FormData();
       fileData.append("file", attachment);
       try {
-        const uploadRes = await fetch("http://localhost:5000/api/upload", { method: "POST", body: fileData });
+        const uploadRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/upload`, { method: "POST", body: fileData });
         if (!uploadRes.ok) throw new Error("File upload failed");
         const uploadJson = await uploadRes.json();
         attachmentUrl = uploadJson.filename;
@@ -225,7 +225,7 @@ function StaffDashboard() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/grievances/submit", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -275,7 +275,7 @@ function StaffDashboard() {
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -577,7 +577,7 @@ function StaffDashboard() {
                 <div style={{ marginTop: '15px' }}>
                   <strong>Attachment: </strong>
                   <a
-                    href={`http://localhost:5000/api/file/${selectedGrievance.attachment}`}
+                    href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${selectedGrievance.attachment}`}
                     target="_blank" rel="noopener noreferrer"
                     style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
                   >

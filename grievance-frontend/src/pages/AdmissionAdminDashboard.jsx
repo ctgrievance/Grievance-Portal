@@ -76,7 +76,7 @@ function AdmissionAdminDashboard() {
   const fetchGrievances = async () => {
     try {
       const safeCategory = encodeURIComponent("Admission");
-      const url = `http://localhost:5000/api/grievances/department/Admission?category=${safeCategory}`;
+      const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/department/Admission?category=${safeCategory}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch data");
       const data = await res.json();
@@ -91,7 +91,7 @@ function AdmissionAdminDashboard() {
   const fetchStaffNames = async () => {
     try {
       const token = localStorage.getItem("grievance_token");
-      const res = await fetch("http://localhost:5000/api/admin-staff/all", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/all`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -109,7 +109,7 @@ function AdmissionAdminDashboard() {
     setMsg("Updating status...");
     setStatusType("info");
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/update/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/update/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus, resolvedBy: userId }),
@@ -153,7 +153,7 @@ function AdmissionAdminDashboard() {
   // ✅ EXTENSION REQUEST HANDLER
   const handleExtensionResolution = async (action) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/extension/resolve/${selectedGrievance._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/extension/resolve/${selectedGrievance._id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action })
@@ -176,7 +176,7 @@ function AdmissionAdminDashboard() {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
     try {
       const token = localStorage.getItem("grievance_token");
-      const res = await fetch(`http://localhost:5000/api/grievances/hide/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -215,7 +215,7 @@ function AdmissionAdminDashboard() {
   const handleOpenExportModal = () => setShowExportModal(true);
   const handleExportSelected = (selectedData, selectedColumns) => {
     const token = localStorage.getItem("grievance_token");
-    fetch(`http://localhost:5000/api/grievances/export-selected`, {
+    fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-selected`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ grievanceIds: selectedData.map((g) => g._id), columns: selectedColumns }),
     }).then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
@@ -228,7 +228,7 @@ function AdmissionAdminDashboard() {
   };
   const handleResolveExtension = async (grievanceId, action) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/grievances/extension/resolve/${grievanceId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/extension/resolve/${grievanceId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action })
@@ -490,7 +490,7 @@ function AdmissionAdminDashboard() {
                     <div style={{ marginTop: '15px' }}>
                       <strong>Attachment: </strong>
                       <a
-                        href={`http://localhost:5000/api/file/${selectedGrievance.attachment}`}
+                        href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${selectedGrievance.attachment}`}
                         target="_blank" rel="noopener noreferrer"
                         style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
                       >

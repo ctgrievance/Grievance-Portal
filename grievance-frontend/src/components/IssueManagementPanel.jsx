@@ -20,7 +20,7 @@ function IssueManagementPanel({ department }) {
 
   const fetchIssues = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/issue-types/department/${encodeURIComponent(department)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch error response:", errorText);
@@ -41,7 +41,7 @@ function IssueManagementPanel({ department }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5000/api/issue-types", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -75,7 +75,7 @@ function IssueManagementPanel({ department }) {
     if (!editingIssue) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/issue-types/${editingIssue._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/${editingIssue._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106,7 +106,7 @@ function IssueManagementPanel({ department }) {
     if (!window.confirm("Are you sure you want to delete this issue type?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/issue-types/${issueId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/${issueId}`, {
         method: "DELETE"
       });
 
@@ -128,7 +128,7 @@ function IssueManagementPanel({ department }) {
 
   const handleToggleActive = async (issue) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/issue-types/${issue._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/${issue._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -37,7 +37,7 @@ function StudentDashboard() {
     if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
     try {
       const token = localStorage.getItem("grievance_token");
-      const res = await fetch(`http://localhost:5000/api/grievances/hide/${id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -101,7 +101,7 @@ function StudentDashboard() {
     const fetchData = async () => {
       try {
         // 1. User Info Fetch
-        const userRes = await fetch(`http://localhost:5000/api/auth/user/${userId}`);
+        const userRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/user/${userId}`);
         const userData = await userRes.json();
 
         if (userRes.ok) {
@@ -111,7 +111,7 @@ function StudentDashboard() {
         }
 
         // 2. Grievance History
-        const histRes = await fetch(`http://localhost:5000/api/grievances/user/${userId}`);
+        const histRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/user/${userId}`);
         const histData = await histRes.json();
 
         if (histRes.ok) {
@@ -139,7 +139,7 @@ function StudentDashboard() {
   // ✅ Fetch Staff List to Map IDs to Names
   const fetchStaffNames = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin-staff/all");
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/all`);
       if (res.ok) {
         const data = await res.json();
         const map = {};
@@ -161,7 +161,7 @@ function StudentDashboard() {
 
       await Promise.all(history.map(async (g) => {
         try {
-          const res = await fetch(`http://localhost:5000/api/chat/${g._id}`);
+          const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/chat/${g._id}`);
           if (res.ok) {
             const msgs = await res.json();
 
@@ -292,7 +292,7 @@ function StudentDashboard() {
       const token = localStorage.getItem("grievance_token");
 
       const res = await fetch(
-        `http://localhost:5000/api/grievances/rate/${selectedGrievance._id}`,
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/rate/${selectedGrievance._id}`,
         {
           method: "POST",
           headers: {
@@ -330,7 +330,7 @@ function StudentDashboard() {
   const fetchGrievanceHistory = async () => {
     try {
       const res = await fetch(
-        `http://localhost:5000/api/grievances/user/${userId}`
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/user/${userId}`
       );
       const data = await res.json();
 
@@ -667,7 +667,7 @@ function StudentDashboard() {
                   <div style={{ marginTop: '15px' }}>
                     <strong>Attachment: </strong>
                     <a
-                      href={`http://localhost:5000/api/file/${selectedGrievance.attachment}`}
+                      href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${selectedGrievance.attachment}`}
                       target="_blank" rel="noopener noreferrer"
                       style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
                     >
@@ -785,7 +785,7 @@ function StudentDashboard() {
               const token = localStorage.getItem("grievance_token");
 
               const res = await fetch(
-                `http://localhost:5000/api/grievances/verify-resolution/${id}`,
+                `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/verify-resolution/${id}`,
                 {
                   method: "POST",
                   headers: {

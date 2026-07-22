@@ -47,7 +47,7 @@ function Department() {
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/auth/user/${userId}`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/user/${userId}`);
         const data = await res.json();
 
         if (res.ok) {
@@ -77,7 +77,7 @@ function Department() {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:5000/api/issue-types/department/${encodeURIComponent(formData.school)}`);
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(formData.school)}`);
         if (!res.ok) {
           console.error("Fetch issue types error");
           setIssueTypes([]);
@@ -117,7 +117,7 @@ function Department() {
       const fileData = new FormData();
       fileData.append("file", attachment);
       try {
-        const uploadRes = await fetch("http://localhost:5000/api/upload", { method: "POST", body: fileData });
+        const uploadRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/upload`, { method: "POST", body: fileData });
         if (!uploadRes.ok) throw new Error("File upload failed");
         const uploadJson = await uploadRes.json();
         attachmentUrl = uploadJson.filename;
@@ -142,7 +142,7 @@ function Department() {
     };
 
     try {
-      const res = await fetch("http://localhost:5000/api/grievances/submit", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
