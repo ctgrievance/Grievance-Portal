@@ -92,6 +92,12 @@ function StudentCRC() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedIssueType) {
+      setMsg("Please select an issue type.");
+      setStatusType("error");
+      return;
+    }
+
     setIsSubmitting(true);
     setMsg("Submitting grievance...");
     setStatusType("info");
@@ -309,3 +315,4 @@ function StudentCRC() {
 }
 
 export default StudentCRC;
+

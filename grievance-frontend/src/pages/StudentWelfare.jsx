@@ -96,6 +96,13 @@ function StudentWelfare() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!selectedIssueType) {
+      setMsg("Please select an issue type.");
+      setStatusType("error");
+      return;
+    }
+
     setIsSubmitting(true);
     setMsg("Submitting grievance...");
     setStatusType("info");
@@ -276,18 +283,14 @@ function StudentWelfare() {
                       fontSize: "1rem"
                     }}
                   >
-                    <option value="">Select an issue type (optional)</option>
+                    <option value="">Select an issue type</option>
                     {issueTypes.map((issue) => (
                       <option key={issue._id} value={issue._id}>
                         {issue.issueName}
                       </option>
                     ))}
                   </select>
-                  {selectedIssueType && (
-                    <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "5px" }}>
-                      🤖 This grievance will be auto-assigned based on routing rules
-                    </p>
-                  )}
+          
                 </div>
               )}
 

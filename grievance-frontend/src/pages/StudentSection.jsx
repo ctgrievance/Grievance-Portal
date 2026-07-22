@@ -86,6 +86,12 @@ function StudentSection() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedIssueType) {
+      setMsg("Please select an issue type.");
+      setStatusType("error");
+      return;
+    }
+
     setIsSubmitting(true);
     setMsg("Submitting...");
     setStatusType("info");
@@ -252,3 +258,4 @@ function StudentSection() {
 }
 
 export default StudentSection;
+
