@@ -65,6 +65,10 @@ router.post("/rate/:id", verifyToken, async (req, res) => {
       return res.status(400).json({ message: "Invalid rating" });
     }
 
+    if (stars < 3 && (!feedback || !feedback.trim())) {
+      return res.status(400).json({ message: "Feedback is mandatory for ratings below 3 stars" });
+    }
+
     const grievance = await Grievance.findById(grievanceId);
     if (!grievance) {
       return res.status(404).json({ message: "Grievance not found" });

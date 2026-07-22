@@ -285,7 +285,10 @@ function StudentDashboard() {
     </div>
   );
   const submitRating = async () => {
-    if (ratingStars === 0) return alert("Please select a rating");
+    if (ratingStars === 0) return alert("Please select a rating.");
+    if (ratingStars < 3 && !ratingFeedback.trim()) {
+      return alert("Please provide a reason for giving a low rating.");
+    }
 
     try {
       setRatingSubmitting(true);
@@ -698,7 +701,7 @@ function StudentDashboard() {
                         <StarRating value={ratingStars} onChange={setRatingStars} />
 
                         <textarea
-                          placeholder="Optional feedback..."
+                          placeholder={ratingStars > 0 && ratingStars < 3 ? "Reason for low rating (Mandatory)..." : "Optional feedback..."}
                           value={ratingFeedback}
                           onChange={(e) => setRatingFeedback(e.target.value)}
                           style={{
