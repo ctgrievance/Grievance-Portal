@@ -61,8 +61,8 @@ router.post("/rate/:id", verifyToken, async (req, res) => {
     const { stars, feedback } = req.body;
     const grievanceId = req.params.id;
 
-    if (stars < 1 || stars > 5) {
-      return res.status(400).json({ message: "Invalid rating" });
+    if (!stars || stars < 1 || stars > 5) {
+      return res.status(400).json({ message: "⭐ Mandatory star rating: Please select between 1 to 5 stars." });
     }
 
     if (stars < 3 && (!feedback || !feedback.trim())) {

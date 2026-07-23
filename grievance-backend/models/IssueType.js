@@ -9,7 +9,6 @@ const issueTypeSchema = new mongoose.Schema({
   issueName: {
     type: String,
     required: true,
-    unique: true, // Issue names must be unique globally
     index: true
   },
   description: {
@@ -20,6 +19,10 @@ const issueTypeSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isSystemReserved: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -29,6 +32,9 @@ const issueTypeSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+// Ensure (department, issueName) is unique per department
+issueTypeSchema.index({ department: 1, issueName: 1 }, { unique: true });
 
 // Update timestamp on save
 issueTypeSchema.pre('save', function(next) {

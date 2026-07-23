@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
 import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
+import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import StaffRecordsTab from "../components/StaffRecordsTab";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
@@ -291,7 +292,7 @@ function HRAdminDashboard() {
           </li>
 
           <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
-          <li><Link to="/admin/smart-assignment">Smart Assignment</Link></li>
+          <li><SmartAssignmentNavLink department="HR" /></li>
         </ul>
       </nav>
 

@@ -70,7 +70,7 @@ const grievanceSchema = new mongoose.Schema(
     ,
 
     // ================= CONTENT =================
-    message: { type: String, required: true },
+    message: { type: String, default: "" },
     attachment: { type: String, default: "" },
 
     // ================= ASSIGNMENT FLOW =================

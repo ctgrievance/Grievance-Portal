@@ -285,7 +285,7 @@ function StudentDashboard() {
     </div>
   );
   const submitRating = async () => {
-    if (ratingStars === 0) return alert("Please select a rating.");
+    if (ratingStars === 0) return alert("⭐ Mandatory Rating: Please select 1 to 5 stars before submitting!");
     if (ratingStars < 3 && !ratingFeedback.trim()) {
       return alert("Please provide a reason for giving a low rating.");
     }

@@ -52,7 +52,7 @@ export const submitGrievance = async (req, res) => {
 
       studentProgram,
       category,
-      message,
+      message: message || "",
 
       attachment: attachment || "", // ✅ Save the filename string
 
@@ -310,10 +310,9 @@ export const assignToStaff = async (req, res) => {
       assignedRole: "staff",
       assignedBy: adminId,
       status: "Assigned",
+      deadlineDate: deadlineDate || calculateDeadline(),
       updatedAt: Date.now(),
     };
-
-    if (deadlineDate) update.deadlineDate = deadlineDate;
 
     // Debug: log the update object that will be applied
     // console.log('Assign update object:', update);

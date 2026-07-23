@@ -263,17 +263,17 @@ function StaffRoleManager() {
                           <>
                             {staff.adminDepartment ? (
                               <button
-                                className="btn-modern btn-danger-glass"
-                                style={{ minWidth: "150px" }}
+                                className="btn-action-modern btn-action-modern-danger"
+                                style={{ minWidth: "160px" }}
                                 onClick={() => handleRoleChange(staff.id, "demote")}
                               >
-                                <XIcon width="16" height="16" /> {staff.isDeptAdmin ? "Remove Admin" : "Remove from Team"}
+                                <XIcon width="14" height="14" /> {staff.isDeptAdmin ? "Remove Admin" : "Remove from Team"}
                               </button>
                             ) : (
                               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                 <select
                                   id={`dept-${staff.id}`}
-                                  className="assign-select"
+                                  className="modern-select-dept"
                                   disabled={!isMasterAdmin}
                                   defaultValue={isMasterAdmin ? "" : myDept}
                                 >
@@ -301,26 +301,26 @@ function StaffRoleManager() {
                                 </select>
 
                                 <button
-                                  className="btn-modern btn-primary-glass"
-                                  style={{ minWidth: "150px" }}
+                                  className="btn-action-modern btn-action-modern-success"
+                                  style={{ minWidth: "140px" }}
                                   onClick={() => {
                                     const deptSelect = document.getElementById(`dept-${staff.id}`);
                                     handleRoleChange(staff.id, "promote", deptSelect.value);
                                   }}
                                 >
-                                  {isMasterAdmin ? "Make Admin" : "Add to Team"}
+                                  <ShieldIcon width="14" height="14" /> {isMasterAdmin ? "Make Admin" : "Add to Team"}
                                 </button>
                               </div>
                             )}
                             {/* 🔥 HIDDEN BY DEFAULT: Transfer Ownership Button */}
                             {isMasterAdmin && showAdvanced && (
                               <button
-                                className="btn-modern btn-purple-glass"
+                                className="btn-action-modern btn-action-modern-purple"
                                 style={{ marginLeft: "10px", minWidth: "140px" }}
                                 onClick={() => handleTransferOwnership(staff.id)}
                                 title="Transfer your Master Admin role to this user"
                               >
-                                <UserIcon width="16" height="16" /> Transfer Owner
+                                <UserIcon width="14" height="14" /> Transfer Owner
                               </button>
                             )}
                           </>

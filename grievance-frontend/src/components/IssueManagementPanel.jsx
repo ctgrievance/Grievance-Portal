@@ -3,6 +3,7 @@ import { PlusIcon, TrashIcon, EditIcon, CheckIcon } from "./Icons";
 
 function IssueManagementPanel({ department }) {
   const [issues, setIssues] = useState([]);
+  const [routingRules, setRoutingRules] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingIssue, setEditingIssue] = useState(null);
   const [formData, setFormData] = useState({
@@ -15,8 +16,21 @@ function IssueManagementPanel({ department }) {
   useEffect(() => {
     if (department) {
       fetchIssues();
+      fetchRoutingRules();
     }
   }, [department]);
+
+  const fetchRoutingRules = async () => {
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRoutingRules(data);
+      }
+    } catch (err) {
+      console.error("Error fetching routing rules in IssueManagementPanel:", err);
+    }
+  };
 
   const fetchIssues = async () => {
     try {
@@ -290,86 +304,128 @@ function IssueManagementPanel({ department }) {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "15px" }}>
-          {issues.map((issue) => (
-            <div
-              key={issue._id}
-              style={{
-                background: "white",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                opacity: issue.isActive ? 1 : 0.6
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "10px" }}>
-                <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.1rem" }}>
-                  {issue.issueName}
-                </h3>
-                <span
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "12px",
-                    fontSize: "0.75rem",
+          {issues.map((issue) => {
+            const hasRoute = routingRules.some(r => r.isActive && (r.issueTypeId?._id === issue._id || r.issueTypeId === issue._id));
+            const isProtected = issue.isSystemReserved || issue.issueName === "Others";
+
+            return (
+              <div
+                key={issue._id}
+                style={{
+                  background: "white",
+                  padding: "20px",
+                  borderRadius: "12px",
+                  border: isProtected ? "2px solid #c084fc" : "1px solid #e2e8f0",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  opacity: issue.isActive ? 1 : 0.6
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "10px", flexWrap: "wrap", gap: "5px" }}>
+                  <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.1rem" }}>
+                    {issue.issueName}
+                  </h3>
+                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    {isProtected && (
+                      <span style={{ padding: "3px 8px", borderRadius: "12px", fontSize: "0.7rem", fontWeight: "700", background: "#f3e8ff", color: "#7e22ce" }}>
+                        🔒 Permanent
+                      </span>
+                    )}
+                    <span
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: "12px",
+                        fontSize: "0.75rem",
+                        fontWeight: "600",
+                        background: issue.isActive ? "#f0fdf4" : "#f1f5f9",
+                        color: issue.isActive ? "#16a34a" : "#64748b"
+                      }}
+                    >
+                      {issue.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
+
+                <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "12px", minHeight: "36px" }}>
+                  {issue.description || "No description"}
+                </p>
+
+                {/* ⚠️ Warning Badge if no routing rule exists */}
+                {!hasRoute && (
+                  <div style={{
+                    background: "#fffbeb",
+                    color: "#b45309",
+                    border: "1px solid #fde68a",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    fontSize: "0.78rem",
                     fontWeight: "600",
-                    background: issue.isActive ? "#f0fdf4" : "#f1f5f9",
-                    color: issue.isActive ? "#16a34a" : "#64748b"
-                  }}
-                >
-                  {issue.isActive ? "Active" : "Inactive"}
-                </span>
+                    marginBottom: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}>
+                    <span>⚠️</span> No Routing Rule Set (Complaints will require Manual Assign)
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "8px" }}>
+                  {!isProtected && (
+                    <button
+                      onClick={() => handleToggleActive(issue)}
+                      style={{
+                        flex: 1,
+                        padding: "8px",
+                        background: issue.isActive ? "#f0fdf4" : "#f8fafc",
+                        color: issue.isActive ? "#16a34a" : "#64748b",
+                        border: `1px solid ${issue.isActive ? "#16a34a" : "#cbd5e1"}`,
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "0.85rem",
+                        fontWeight: "600"
+                      }}
+                    >
+                      {issue.isActive ? "Deactivate" : "Activate"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => startEdit(issue)}
+                    style={{
+                      flex: isProtected ? 1 : "initial",
+                      padding: "8px",
+                      background: "#eff6ff",
+                      color: "#2563eb",
+                      border: "1px solid #2563eb",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: "5px"
+                    }}
+                    title="Edit"
+                  >
+                    <EditIcon width="14" height="14" /> {isProtected && "Edit Description"}
+                  </button>
+                  {!isProtected && (
+                    <button
+                      onClick={() => handleDelete(issue._id)}
+                      style={{
+                        padding: "8px",
+                        background: "#fef2f2",
+                        color: "#dc2626",
+                        border: "1px solid #dc2626",
+                        borderRadius: "6px",
+                        cursor: "pointer"
+                      }}
+                      title="Delete"
+                    >
+                      <TrashIcon width="14" height="14" />
+                    </button>
+                  )}
+                </div>
               </div>
-              <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "15px", minHeight: "40px" }}>
-                {issue.description || "No description"}
-              </p>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  onClick={() => handleToggleActive(issue)}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    background: issue.isActive ? "#f0fdf4" : "#f8fafc",
-                    color: issue.isActive ? "#16a34a" : "#64748b",
-                    border: `1px solid ${issue.isActive ? "#16a34a" : "#cbd5e1"}`,
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    fontWeight: "600"
-                  }}
-                >
-                  {issue.isActive ? "Deactivate" : "Activate"}
-                </button>
-                <button
-                  onClick={() => startEdit(issue)}
-                  style={{
-                    padding: "8px",
-                    background: "#eff6ff",
-                    color: "#2563eb",
-                    border: "1px solid #2563eb",
-                    borderRadius: "6px",
-                    cursor: "pointer"
-                  }}
-                  title="Edit"
-                >
-                  <EditIcon width="14" height="14" />
-                </button>
-                <button
-                  onClick={() => handleDelete(issue._id)}
-                  style={{
-                    padding: "8px",
-                    background: "#fef2f2",
-                    color: "#dc2626",
-                    border: "1px solid #dc2626",
-                    borderRadius: "6px",
-                    cursor: "pointer"
-                  }}
-                  title="Delete"
-                >
-                  <TrashIcon width="14" height="14" />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

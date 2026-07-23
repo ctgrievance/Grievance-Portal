@@ -10,63 +10,72 @@ const departmentIssueTypes = {
     { issueName: "Scholarship Disbursement", description: "Delays or issues with scholarship payments" },
     { issueName: "Refund Request", description: "Request for fee refunds or overpayment corrections" },
     { issueName: "Fee Receipt Issue", description: "Missing or incorrect fee receipts" },
-    { issueName: "Hostel Fee Dispute", description: "Issues related to hostel fee charges" }
+    { issueName: "Hostel Fee Dispute", description: "Issues related to hostel fee charges" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "Admission": [
     { issueName: "Admission Form Issue", description: "Problems with filling or submitting admission forms" },
     { issueName: "Document Verification", description: "Issues with document verification process" },
     { issueName: "Seat Allotment", description: "Problems with seat allocation or branch change" },
     { issueName: "Admission Cancellation", description: "Requests for admission cancellation" },
-    { issueName: "Migration Certificate", description: "Issues with obtaining migration certificates" }
+    { issueName: "Migration Certificate", description: "Issues with obtaining migration certificates" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "Examination": [
     { issueName: "Exam Schedule Conflict", description: "Conflicts in examination timetable" },
     { issueName: "Hall Ticket Issue", description: "Problems with downloading or receiving hall tickets" },
     { issueName: "Result Revaluation", description: "Requests for paper revaluation" },
     { issueName: "Mark Sheet Issue", description: "Errors or missing marks in mark sheets" },
-    { issueName: "Exam Fee Payment", description: "Issues with examination fee payments" }
+    { issueName: "Exam Fee Payment", description: "Issues with examination fee payments" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "Student Welfare": [
     { issueName: "Hostel Accommodation", description: "Issues with hostel room allocation or facilities" },
     { issueName: "Mess Food Quality", description: "Complaints about mess food quality or service" },
     { issueName: "Medical Services", description: "Issues with campus medical facilities" },
     { issueName: "Sports Facilities", description: "Problems with sports equipment or facilities" },
-    { issueName: "Transportation", description: "Issues with campus transportation services" }
+    { issueName: "Transportation", description: "Issues with campus transportation services" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "Transport": [
     { issueName: "Bus Route Change", description: "Request for change in bus route" },
     { issueName: "Bus Pass Issue", description: "Problems with bus pass issuance or renewal" },
     { issueName: "Bus Timing Issue", description: "Complaints about bus arrival/departure timings" },
     { issueName: "Bus Facility", description: "Issues with bus condition or maintenance" },
-    { issueName: "Route Addition", description: "Request for new bus routes" }
+    { issueName: "Route Addition", description: "Request for new bus routes" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "HR": [
     { issueName: "Staff Grievance", description: "Issues related to staff welfare or concerns" },
     { issueName: "Leave Application", description: "Problems with leave approval process" },
     { issueName: "Salary Dispute", description: "Issues with salary payments or deductions" },
     { issueName: "Work Environment", description: "Concerns about workplace conditions" },
-    { issueName: "Training Request", description: "Requests for training or skill development" }
+    { issueName: "Training Request", description: "Requests for training or skill development" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "Student Section": [
     { issueName: "ID Card Issue", description: "Problems with student ID card issuance" },
     { issueName: "Certificate Request", description: "Requests for various certificates (bonafide, TC, etc.)" },
     { issueName: "Attendance Issue", description: "Disputes related to attendance records" },
     { issueName: "Library Services", description: "Issues with library facilities or book availability" },
-    { issueName: "Internet/WiFi", description: "Problems with campus internet connectivity" }
+    { issueName: "Internet/WiFi", description: "Problems with campus internet connectivity" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "CRC": [
     { issueName: "Research Approval", description: "Issues with research project approvals" },
     { issueName: "Thesis Submission", description: "Problems with thesis submission process" },
     { issueName: "Publication Support", description: "Requests for publication support" },
     { issueName: "Conference Funding", description: "Issues with conference travel funding" },
-    { issueName: "Lab Equipment", description: "Problems with research lab equipment" }
+    { issueName: "Lab Equipment", description: "Problems with research lab equipment" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ],
   "School": [
     { issueName: "Course Registration", description: "Issues with course registration process" },
     { issueName: "Class Schedule", description: "Problems with class timetable or scheduling" },
     { issueName: "Faculty Assignment", description: "Issues with assigned faculty or course instructors" },
     { issueName: "Credit Transfer", description: "Problems with credit transfer process" },
-    { issueName: "Elective Selection", description: "Issues with elective course selection" }
+    { issueName: "Elective Selection", description: "Issues with elective course selection" },
+    { issueName: "Others", description: "General or unlisted issue type requiring manual admin assignment", isSystemReserved: true }
   ]
 };
 
@@ -74,6 +83,16 @@ async function seedIssueTypes() {
   try {
     await connectDB();
     console.log("✅ Connected to database");
+
+    // Drop old single-field unique index if it exists, so (department, issueName) index works
+    try {
+      await IssueType.collection.dropIndex("issueName_1");
+      console.log("🔄 Dropped old index issueName_1");
+    } catch (e) {
+      // Index might not exist, which is fine
+    }
+    await IssueType.syncIndexes();
+    console.log("✅ Synced indexes");
 
     let totalCreated = 0;
 
@@ -97,7 +116,8 @@ async function seedIssueTypes() {
           department,
           issueName: issueType.issueName,
           description: issueType.description,
-          isActive: true
+          isActive: true,
+          isSystemReserved: issueType.isSystemReserved || false
         });
 
         await newIssueType.save();

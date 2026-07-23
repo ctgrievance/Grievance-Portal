@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css"; // Existing CSS for table structure
 import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
+import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import ctLogo from "../assets/ct-logo.png";
 import { SearchIcon, UserIcon, HomeIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 
@@ -311,7 +312,7 @@ function SchoolAdminDashboard() {
         <ul>
           <li className="admin-nav-title" style={{ marginLeft: '20px' }}><span>Department Issues</span></li>
           <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
-          <li><Link to="/admin/smart-assignment">Smart Assignment</Link></li>
+          <li><SmartAssignmentNavLink department={mySchoolName} /></li>
         </ul>
       </nav>
 

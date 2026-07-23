@@ -46,7 +46,13 @@ export const getAllIssueTypes = async (req, res) => {
 export const getIssueTypesByDepartment = async (req, res) => {
   try {
     const { department } = req.params;
-    const issueTypes = await IssueType.find({ department, isActive: true }).sort({ issueName: 1 });
+    let issueTypes = await IssueType.find({ department, isActive: true }).sort({ issueName: 1 });
+
+    // Place "Others" at the end of the list for clean UI
+    const others = issueTypes.filter(i => i.issueName === "Others" || i.isSystemReserved);
+    const nonOthers = issueTypes.filter(i => i.issueName !== "Others" && !i.isSystemReserved);
+    issueTypes = [...nonOthers, ...others];
+
     res.status(200).json(issueTypes);
   } catch (error) {
     console.error("Error fetching department issue types:", error);
@@ -81,15 +87,19 @@ export const updateIssueType = async (req, res) => {
 export const deleteIssueType = async (req, res) => {
   try {
     const { id } = req.params;
-    const issueType = await IssueType.findByIdAndUpdate(
-      id,
-      { isActive: false, updatedAt: Date.now() },
-      { new: true }
-    );
+    const existing = await IssueType.findById(id);
 
-    if (!issueType) {
+    if (!existing) {
       return res.status(404).json({ message: "Issue type not found" });
     }
+
+    if (existing.isSystemReserved || existing.issueName === "Others") {
+      return res.status(400).json({ message: "❌ Permanent system categories (such as 'Others') cannot be deleted." });
+    }
+
+    existing.isActive = false;
+    existing.updatedAt = Date.now();
+    await existing.save();
 
     res.status(200).json({ message: "Issue type deleted successfully" });
   } catch (error) {

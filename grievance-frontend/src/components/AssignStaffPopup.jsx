@@ -33,6 +33,11 @@ function AssignStaffPopup({
   useEffect(() => {
     if (!isOpen) return;
 
+    // Default deadline = 7 days from assignment date
+    const initDate = new Date();
+    initDate.setDate(initDate.getDate() + 7);
+    setDeadline(toLocalYYYYMMDD(initDate));
+
     const fetchStaffAndGrievance = async () => {
       try {
         setLoading(true);
@@ -62,10 +67,11 @@ function AssignStaffPopup({
               const d = new Date(gData.deadlineDate);
               // Format for date input yyyy-mm-dd using local time
               setDeadline(toLocalYYYYMMDD(d));
-            } else if (gData.createdAt) {
-              // Default deadline = createdAt by default using local time
-              const d = new Date(gData.createdAt);
-              setDeadline(toLocalYYYYMMDD(d));
+            } else {
+              // Default deadline = 7 days from assignment date
+              const defaultDate = new Date();
+              defaultDate.setDate(defaultDate.getDate() + 7);
+              setDeadline(toLocalYYYYMMDD(defaultDate));
             }
           }
         }

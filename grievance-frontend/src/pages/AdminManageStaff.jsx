@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, AdminIcon, LockIcon, UserIcon } from "../components/Icons";
+import { ShieldIcon, AdminIcon, LockIcon, UserIcon, XIcon } from "../components/Icons";
 
 const AdminManageStaff = () => {
   const navigate = useNavigate();
@@ -274,17 +274,17 @@ const AdminManageStaff = () => {
                               <>
                                 {staff.adminDepartment ? (
                                   <button
-                                    className="action-btn"
-                                    style={{ backgroundColor: "#ef4444", color: "white" }}
+                                    className="btn-action-modern btn-action-modern-danger"
+                                    style={{ minWidth: "160px" }}
                                     onClick={() => handleRoleChange(staff.id, "demote")}
                                   >
-                                    {staff.isDeptAdmin ? "Remove Admin" : "Remove from Team"}
+                                    <XIcon width="14" height="14" /> {staff.isDeptAdmin ? "Remove Admin" : "Remove from Team"}
                                   </button>
                                 ) : (
-                                  <div style={{ display: "flex", gap: "8px" }}>
+                                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                     <select
                                       id={`dept-${staff.id}`}
-                                      className="assign-select"
+                                      className="modern-select-dept"
                                       defaultValue={!isMaster ? myDepartment : ""}
                                       disabled={!isMaster}
                                     >
@@ -293,26 +293,26 @@ const AdminManageStaff = () => {
                                     </select>
 
                                     <button
-                                      className="action-btn"
-                                      style={{ backgroundColor: "#10b981", color: "white" }}
+                                      className="btn-action-modern btn-action-modern-success"
+                                      style={{ minWidth: "140px" }}
                                       onClick={() => {
                                         const val = document.getElementById(`dept-${staff.id}`).value;
                                         handleRoleChange(staff.id, "promote", val);
                                       }}
                                     >
-                                      {isMaster ? "Make Admin" : "Add to Team"}
+                                      <ShieldIcon width="14" height="14" /> {isMaster ? "Make Admin" : "Add to Team"}
                                     </button>
                                   </div>
                                 )}
                                 {/* 🔥 NEW: Transfer Ownership Button (Only for Master) */}
                                 {isMaster && (
                                   <button
-                                    className="action-btn"
-                                    style={{ backgroundColor: "#7c3aed", color: "white", marginLeft: "10px" }}
+                                    className="btn-action-modern btn-action-modern-purple"
+                                    style={{ marginLeft: "10px", minWidth: "140px" }}
                                     onClick={() => handleTransferOwnership(staff.id)}
                                     title="Transfer your Master Admin role to this user"
                                   >
-                                    <UserIcon width="14" height="14" style={{ marginRight: '5px' }} /> Transfer Owner
+                                    <UserIcon width="14" height="14" /> Transfer Owner
                                   </button>
                                 )}
                               </>
