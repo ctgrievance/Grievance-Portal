@@ -56,11 +56,10 @@ export const registerRequest = async (req, res) => {
       existingUser = await User.findOne({ $or: [{ email }, { id: safeId }] });
     }
 
-    // 🔥 TESTING MODE: User exists check DISABLED
-    // TODO: RE-ENABLE THIS BEFORE PRODUCTION!
-    // if (existingUser && existingUser.isVerified) {
-    //   return res.status(400).json({ message: "User already exists" });
-    // }
+    // User exists check ENABLED (Testing mode disabled)
+    if (existingUser && existingUser.isVerified) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
     // ✅ Validate ID against appropriate University Records
     let validRecord = null;

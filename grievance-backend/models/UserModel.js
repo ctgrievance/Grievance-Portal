@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
 
   // Personal Info
   fullName: { type: String },
-  email: { type: String, required: true, }, // "unique: true" add this if you dont want same email registrations
+  email: { type: String, required: true, unique: true }, // "unique: true" added back
   phone: { type: String },
 
   // Auth
