@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { TrashIcon } from "./Icons";
 
 function StaffRecordsTab() {
@@ -12,6 +12,14 @@ function StaffRecordsTab() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("");
+  const [clearing, setClearing]   = useState(false);
+  const [dragOver, setDragOver]   = useState(false);
+
+  // ── Upload progress state ────────────────────────────────────────────────
+  const [uploadState, setUploadState] = useState(null);
+  const pollRef    = useRef(null);
+  const startRef   = useRef(null);
+  const fileInputRef = useRef();
 
   // New Row State
   const [newRow, setNewRow] = useState({ id: "", fullName: "", email: "", phone: "", role: "staff", department: "" });
@@ -20,6 +28,9 @@ function StaffRecordsTab() {
   // Editable Row State
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+
+  const BASE = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records`;
+  const token = localStorage.getItem("grievance_token");
 
   useEffect(() => {
     fetchRecords();
@@ -57,6 +68,87 @@ function StaffRecordsTab() {
     setMsg(message);
     setMsgType(type);
     setTimeout(() => setMsg(""), 3000);
+  };
+
+  const stopPoll = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+
+  const startPolling = (jobId, totalRows) => {
+    startRef.current = Date.now();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res  = await fetch(`${BASE}/progress/${jobId}`);
+        const data = await res.json();
+        if (!res.ok) { stopPoll(); return; }
+
+        const elapsed = (Date.now() - startRef.current) / 1000;
+        const speed   = elapsed > 0 ? Math.round(data.inserted / elapsed) : 0;
+        const pct     = totalRows > 0 ? Math.round((data.processed / totalRows) * 100) : 0;
+        const remaining = speed > 0 ? Math.round((totalRows - data.processed) / speed) : null;
+
+        setUploadState({
+          status:    data.status,
+          jobId,
+          total:     totalRows,
+          processed: data.processed,
+          inserted:  data.inserted,
+          skipped:   data.skipped,
+          pct,
+          speed,
+          eta:       remaining,
+          errors:    data.errors || [],
+        });
+
+        if (data.status === "done" || data.status === "error") {
+          stopPoll();
+          fetchRecords();
+          if (data.status === "done") {
+            showMsg(`✅ Upload complete! ${data.inserted} inserted, ${data.skipped} skipped.`, "success");
+          } else {
+            showMsg(`❌ Upload failed: ${data.errorMessage || "Unknown error"}`, "error");
+          }
+        }
+      } catch (_) { /* ignore poll errors */ }
+    }, 500);
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["xlsx", "xls"].includes(ext)) { showMsg("❌ Only .xlsx or .xls files allowed", "error"); return; }
+
+    setUploadState({ status: "uploading", pct: 0, total: 0, processed: 0, inserted: 0, skipped: 0, speed: 0, eta: null });
+    stopPoll();
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res  = await fetch(`${BASE}/upload`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      setUploadState({ status: "processing", jobId: data.jobId, total: data.total, processed: 0, inserted: 0, skipped: 0, pct: 0, speed: 0, eta: null });
+      startPolling(data.jobId, data.total);
+    } catch (err) {
+      setUploadState(null);
+      showMsg(`❌ ${err.message}`, "error");
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFileUpload(e.dataTransfer.files[0]); };
+
+  const handleClearAll = async () => {
+    if (!window.confirm("⚠️ Delete ALL staff records permanently?")) return;
+    setClearing(true);
+    try {
+      const res  = await fetch(`${BASE}/clear-all`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) { showMsg(`✅ ${data.message}`, "success"); setUploadState(null); setPage(1); fetchRecords(); }
+      else throw new Error(data.message);
+    } catch (err) { showMsg(`❌ ${err.message}`, "error"); }
+    finally { setClearing(false); }
   };
 
   // --- inline editing ---
@@ -139,6 +231,7 @@ function StaffRecordsTab() {
   const tableInputStyle = {
     width: "100%", padding: "6px", border: "1px solid #cbd5e1", borderRadius: "4px"
   };
+  const isUploading = uploadState && (uploadState.status === "uploading" || uploadState.status === "processing");
 
   return (
     <div className="card" style={{ padding: "20px" }}>
@@ -154,18 +247,104 @@ function StaffRecordsTab() {
 
       {msg && <div className={`alert-box ${msgType}`}>{msg}</div>}
 
-      <div style={{ display: "flex", marginBottom: "20px", gap: "10px" }}>
-        <form onSubmit={handleSearch} style={{ display: "flex", flex: 1, gap: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: "20px", gap: "15px", justifyContent: "space-between", flexWrap: "wrap" }}>
+        <form onSubmit={handleSearch} style={{ display: "flex", flexDirection: "row", alignItems: "center", flex: 1, gap: "10px", maxWidth: "800px", margin: 0 }}>
           <input 
             type="text" 
             placeholder="Search by ID, Name, Email, Phone..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: 1 }}
+            style={{ padding: "10px 15px", borderRadius: "8px", border: "1px solid #cbd5e1", flex: 1, margin: 0 }}
           />
-          <button type="submit" style={{ padding: "10px 20px", background: "#64748b", color: "white", borderRadius: "6px", border: "none", cursor: "pointer" }}>Search</button>
-          <button type="button" onClick={() => { setSearch(""); setPage(1); fetchRecords(); }} style={{ padding: "10px 20px", background: "#e2e8f0", color: "#475569", borderRadius: "6px", border: "none", cursor: "pointer" }}>Clear</button>
+          <button type="submit" style={{ padding: "10px 20px", background: "#6366f1", color: "white", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "600", whiteSpace: "nowrap" }}>Search</button>
+          <button type="button" onClick={() => { setSearch(""); setPage(1); fetchRecords(); }} style={{ padding: "10px 20px", background: "#f1f5f9", color: "#475569", borderRadius: "8px", border: "1px solid #e2e8f0", cursor: "pointer", fontWeight: "600", whiteSpace: "nowrap" }}>Clear</button>
         </form>
+
+        {total > 0 && (
+          <button onClick={handleClearAll} disabled={clearing} style={{
+            padding: "10px 20px", background: "#fee2e2", color: "#ef4444",
+            borderRadius: "8px", border: "1px solid #fca5a5",
+            cursor: clearing ? "not-allowed" : "pointer", fontWeight: "bold",
+            whiteSpace: "nowrap"
+          }}>
+            {clearing ? "Clearing..." : "🗑️ Clear All Records"}
+          </button>
+        )}
+      </div>
+
+      {/* ── UPLOAD ZONE ── */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
+        style={{
+          border: `2px dashed ${dragOver ? "#2563eb" : isUploading ? "#60a5fa" : "#93c5fd"}`,
+          borderRadius: "14px", padding: "28px 24px", textAlign: "center",
+          background: dragOver ? "#eff6ff" : isUploading ? "#f0f7ff" : "#f8faff",
+          cursor: isUploading ? "default" : "pointer",
+          marginBottom: "20px", transition: "all 0.2s ease",
+        }}
+      >
+        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
+          onChange={(e) => handleFileUpload(e.target.files[0])} />
+
+        {!uploadState && (
+          <div>
+            <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>📊</div>
+            <p style={{ color: "#1e40af", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>Drag & Drop Excel File</p>
+            <p style={{ color: "#64748b", margin: "6px 0 12px", fontSize: "0.88rem" }}>or click to browse — .xlsx / .xls (Total: {total} records)</p>
+            <span style={{ padding: "8px 20px", background: "#2563eb", color: "white", borderRadius: "8px", fontWeight: 600, fontSize: "0.88rem" }}>
+              📁 Choose File
+            </span>
+          </div>
+        )}
+
+        {uploadState && uploadState.status === "uploading" && (
+          <p style={{ color: "#2563eb", fontWeight: 600, margin: 0 }}>⏳ Reading Excel file...</p>
+        )}
+
+        {uploadState && uploadState.status === "processing" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.88rem", fontWeight: 600 }}>
+              <span style={{ color: "#1e40af" }}>⚡ Uploading... {uploadState.pct}%</span>
+              <span style={{ color: "#475569" }}>{uploadState.inserted.toLocaleString()} / {uploadState.total.toLocaleString()} records</span>
+            </div>
+            <div style={{ background: "#dbeafe", borderRadius: "999px", height: "14px", overflow: "hidden", marginBottom: "10px" }}>
+              <div style={{
+                height: "100%", borderRadius: "999px",
+                background: "linear-gradient(90deg, #2563eb, #60a5fa)",
+                width: `${uploadState.pct}%`,
+                transition: "width 0.4s ease",
+                boxShadow: "0 0 8px rgba(37,99,235,0.4)"
+              }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: "24px", fontSize: "0.83rem", color: "#475569" }}>
+              <span>✅ Inserted: <strong>{uploadState.inserted.toLocaleString()}</strong></span>
+              <span>⏭ Skipped: <strong>{uploadState.skipped.toLocaleString()}</strong></span>
+              <span>⚡ Speed: <strong>{uploadState.speed.toLocaleString()} rec/s</strong></span>
+              {uploadState.eta !== null && <span>⏱ ETA: <strong>{uploadState.eta}s</strong></span>}
+            </div>
+          </div>
+        )}
+
+        {uploadState && uploadState.status === "done" && (
+          <div>
+            <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>✅</div>
+            <p style={{ color: "#16a34a", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>Upload Complete!</p>
+            <p style={{ color: "#64748b", margin: "6px 0 0", fontSize: "0.88rem" }}>
+              {uploadState.inserted.toLocaleString()} inserted · {uploadState.skipped.toLocaleString()} skipped
+            </p>
+            <button onClick={(e) => { e.stopPropagation(); setUploadState(null); }} style={{ marginTop: "10px", padding: "7px 18px", background: "#2563eb", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "0.88rem" }}>
+              Upload Another
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "8px", padding: "10px 16px", marginBottom: "16px", fontSize: "0.8rem", color: "#0369a1" }}>
+        <strong>📋 Expected Excel Columns:</strong>
+        <span style={{ marginLeft: "8px" }}>ID / Staff ID · Name · Email · Phone number · Role · Department</span>
       </div>
 
       <div className="table-container" style={{ overflowX: "auto" }}>
