@@ -156,11 +156,12 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
       }
 
       // ✅ Step 2: Send Message with File Data
+      const savedFullName = localStorage.getItem("grievance_user_name");
       const payload = {
         grievanceId,
         senderId: currentUserId,
         senderRole: currentUserRole,
-        sender: currentUserRole === "student" ? "Student" : "Staff",
+        sender: savedFullName || (currentUserRole === "student" ? "Student" : "Staff"),
         message: newMessage,
         fileData: uploadedFileData
       };

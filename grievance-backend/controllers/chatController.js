@@ -1,5 +1,6 @@
 import Message from "../models/MessageModel.js";
 import Grievance from "../models/GrievanceModel.js";
+import { sendChatMessageEmail } from "../utils/emailService.js";
 
 // Send Message (Supports Text & File)
 export const sendMessage = async (req, res) => {
@@ -29,15 +30,21 @@ export const sendMessage = async (req, res) => {
 
     const savedMessage = await newMessage.save();
 
-    // 🚀 Emit real-time message and notification
+    // Fetch grievance to notify student & assigned staff
+    let grievance = null;
+    try {
+      grievance = await Grievance.findById(grievanceId);
+    } catch (gErr) {
+      console.error("Error finding grievance for notifications:", gErr);
+    }
+
+    // 🚀 1. Emit real-time message and socket notifications
     const io = req.app.get("io");
     if (io) {
-      // 1. Send directly to active chat room for instant delivery
+      // Send directly to active chat room for instant delivery
       io.to(`grievance:${grievanceId}`).emit("receive_message", savedMessage);
 
-      // 2. Fetch grievance to notify student & assigned staff
-      try {
-        const grievance = await Grievance.findById(grievanceId);
+      if (grievance) {
         const notificationPayload = {
           _id: savedMessage._id,
           grievanceId,
@@ -47,26 +54,39 @@ export const sendMessage = async (req, res) => {
           message: finalMessage,
           messageType: msgType,
           createdAt: savedMessage.createdAt,
-          studentId: grievance?.userId,
-          assignedTo: grievance?.assignedTo,
-          category: grievance?.category || "General",
+          studentId: grievance.userId,
+          assignedTo: grievance.assignedTo,
+          category: grievance.category || "General",
         };
 
         // Direct to student's room if sender is staff/admin
-        if (grievance?.userId && senderId !== grievance.userId) {
+        if (grievance.userId && senderId !== grievance.userId) {
           io.to(`user:${grievance.userId.toUpperCase()}`).emit("chat_notification", notificationPayload);
         }
 
         // Direct to staff's room if sender is student
-        if (grievance?.assignedTo && senderId !== grievance.assignedTo) {
+        if (grievance.assignedTo && senderId !== grievance.assignedTo) {
           io.to(`user:${grievance.assignedTo.toUpperCase()}`).emit("chat_notification", notificationPayload);
         }
 
         // Global broadcast for dashboards to update unread badge in real time
         io.emit("global_chat_notification", notificationPayload);
-      } catch (notifErr) {
-        console.error("Error creating chat notification:", notifErr);
       }
+    }
+
+    // 📧 2. Send LinkedIn-style email notification asynchronously (non-blocking)
+    if (grievance) {
+      sendChatMessageEmail({
+        grievance,
+        senderId,
+        senderRole,
+        senderName: sender,
+        messageText: finalMessage,
+        hasAttachment: !!fileData,
+        attachmentName: fileData?.originalName || "",
+      }).catch((emailErr) => {
+        console.error("⚠️ Background chat email notification error:", emailErr);
+      });
     }
 
     res.status(201).json(savedMessage);
