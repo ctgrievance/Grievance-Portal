@@ -4,7 +4,7 @@ import IssueType from "../models/IssueType.js";
 // Create Routing Rule
 export const createRoutingRule = async (req, res) => {
   try {
-    const { issueTypeId, department, assignedStaff, assignmentMode } = req.body;
+    const { issueTypeId, department, assignedStaff, assignmentMode, targetAudience } = req.body;
 
     if (!issueTypeId || !department || !assignedStaff || !assignmentMode) {
       return res.status(400).json({ message: "All fields are required" });
@@ -16,6 +16,8 @@ export const createRoutingRule = async (req, res) => {
       return res.status(404).json({ message: "Issue type not found" });
     }
 
+    const audience = targetAudience || issueType.targetAudience || "student";
+
     // Check if routing rule already exists for this issue type and department
     const existingRule = await RoutingRule.findOne({ issueTypeId, department, isActive: true });
     if (existingRule) {
@@ -25,6 +27,7 @@ export const createRoutingRule = async (req, res) => {
     const routingRule = new RoutingRule({
       issueTypeId,
       department,
+      targetAudience: audience,
       assignedStaff: assignedStaff.map(staff => ({
         staffId: staff.staffId,
         staffName: staff.staffName,
@@ -45,8 +48,16 @@ export const createRoutingRule = async (req, res) => {
 // Get All Routing Rules
 export const getAllRoutingRules = async (req, res) => {
   try {
-    const { department } = req.query;
-    const filter = department ? { department, isActive: true } : { isActive: true };
+    const { department, targetAudience } = req.query;
+    const filter = { isActive: true };
+    if (department) filter.department = department;
+    if (targetAudience) {
+      if (targetAudience === "student") {
+        filter.$or = [{ targetAudience: "student" }, { targetAudience: { $exists: false } }, { targetAudience: null }];
+      } else {
+        filter.targetAudience = targetAudience;
+      }
+    }
     const routingRules = await RoutingRule.find(filter)
       .populate('issueTypeId')
       .sort({ department: 1 });
@@ -61,7 +72,17 @@ export const getAllRoutingRules = async (req, res) => {
 export const getRoutingRulesByDepartment = async (req, res) => {
   try {
     const { department } = req.params;
-    const routingRules = await RoutingRule.find({ department, isActive: true })
+    const { targetAudience } = req.query;
+
+    const filter = { department, isActive: true };
+    const audience = targetAudience || "student";
+    if (audience === "student") {
+      filter.$or = [{ targetAudience: "student" }, { targetAudience: { $exists: false } }, { targetAudience: null }];
+    } else {
+      filter.targetAudience = audience;
+    }
+
+    const routingRules = await RoutingRule.find(filter)
       .populate('issueTypeId')
       .sort({ 'issueTypeId.issueName': 1 });
     res.status(200).json(routingRules);

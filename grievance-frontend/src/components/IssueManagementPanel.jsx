@@ -6,6 +6,7 @@ function IssueManagementPanel({ department }) {
   const [routingRules, setRoutingRules] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingIssue, setEditingIssue] = useState(null);
+  const [targetAudience, setTargetAudience] = useState("student"); // "student" | "staff"
   const [formData, setFormData] = useState({
     issueName: "",
     description: ""
@@ -18,11 +19,11 @@ function IssueManagementPanel({ department }) {
       fetchIssues();
       fetchRoutingRules();
     }
-  }, [department]);
+  }, [department, targetAudience]);
 
   const fetchRoutingRules = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`);
       if (res.ok) {
         const data = await res.json();
         setRoutingRules(data);
@@ -34,7 +35,7 @@ function IssueManagementPanel({ department }) {
 
   const fetchIssues = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch error response:", errorText);
@@ -61,7 +62,8 @@ function IssueManagementPanel({ department }) {
         body: JSON.stringify({
           department,
           issueName: formData.issueName,
-          description: formData.description
+          description: formData.description,
+          targetAudience: targetAudience
         })
       });
 
@@ -176,10 +178,63 @@ function IssueManagementPanel({ department }) {
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h2 style={{ margin: 0, color: "#1e293b" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
+        <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.3rem" }}>
           Issue Types for {department}
         </h2>
+
+        {/* 🔄 Student / Staff Segmented Switch Toggle */}
+        <div style={{
+          display: "inline-flex",
+          background: "#e2e8f0",
+          padding: "4px",
+          borderRadius: "10px",
+          gap: "4px"
+        }}>
+          <button
+            type="button"
+            onClick={() => setTargetAudience("student")}
+            style={{
+              padding: "8px 22px",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              background: targetAudience === "student" ? "#2563eb" : "transparent",
+              color: targetAudience === "student" ? "#ffffff" : "#475569",
+              boxShadow: targetAudience === "student" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            🎓 Student
+          </button>
+          <button
+            type="button"
+            onClick={() => setTargetAudience("staff")}
+            style={{
+              padding: "8px 22px",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              background: targetAudience === "staff" ? "#2563eb" : "transparent",
+              color: targetAudience === "staff" ? "#ffffff" : "#475569",
+              boxShadow: targetAudience === "staff" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            👔 Staff
+          </button>
+        </div>
+
         {!showAddForm && !editingIssue && (
           <button
             onClick={() => setShowAddForm(true)}
@@ -196,7 +251,7 @@ function IssueManagementPanel({ department }) {
               gap: "8px"
             }}
           >
-            <PlusIcon width="16" height="16" /> Add Issue Type
+            <PlusIcon width="16" height="16" /> Add {targetAudience === "staff" ? "Staff" : "Student"} Issue Type
           </button>
         )}
       </div>
@@ -300,7 +355,9 @@ function IssueManagementPanel({ department }) {
           borderRadius: "12px",
           border: "1px dashed #cbd5e1"
         }}>
-          <p style={{ color: "#64748b", margin: 0 }}>No issue types defined yet</p>
+          <p style={{ color: "#64748b", margin: 0 }}>
+            No {targetAudience} issue types defined yet. Click "+ Add {targetAudience === "staff" ? "Staff" : "Student"} Issue Type" to create one.
+          </p>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "15px" }}>
@@ -325,6 +382,18 @@ function IssueManagementPanel({ department }) {
                     {issue.issueName}
                   </h3>
                   <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    <span
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "12px",
+                        fontSize: "0.7rem",
+                        fontWeight: "700",
+                        background: issue.targetAudience === "staff" ? "#fef3c7" : "#e0e7ff",
+                        color: issue.targetAudience === "staff" ? "#92400e" : "#3730a3"
+                      }}
+                    >
+                      {issue.targetAudience === "staff" ? "👔 Staff" : "🎓 Student"}
+                    </span>
                     {isProtected && (
                       <span style={{ padding: "3px 8px", borderRadius: "12px", fontSize: "0.7rem", fontWeight: "700", background: "#f3e8ff", color: "#7e22ce" }}>
                         🔒 Permanent

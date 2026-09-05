@@ -6,6 +6,7 @@ function RoutingRuleConfig({ department }) {
   const [issues, setIssues] = useState([]);
   const [departmentStaff, setDepartmentStaff] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [targetAudience, setTargetAudience] = useState("student"); // "student" | "staff"
   const [formData, setFormData] = useState({
     issueTypeId: "",
     assignedStaff: [],
@@ -20,11 +21,11 @@ function RoutingRuleConfig({ department }) {
       fetchIssues();
       fetchDepartmentStaff();
     }
-  }, [department]);
+  }, [department, targetAudience]);
 
   const fetchRoutingRules = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch routing rules error:", errorText);
@@ -40,7 +41,7 @@ function RoutingRuleConfig({ department }) {
 
   const fetchIssues = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch issues error:", errorText);
@@ -109,7 +110,8 @@ function RoutingRuleConfig({ department }) {
           issueTypeId: formData.issueTypeId,
           department,
           assignedStaff: formData.assignedStaff,
-          assignmentMode: formData.assignmentMode
+          assignmentMode: formData.assignmentMode,
+          targetAudience: targetAudience
         })
       });
 
@@ -177,10 +179,63 @@ function RoutingRuleConfig({ department }) {
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h2 style={{ margin: 0, color: "#1e293b" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
+        <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.3rem" }}>
           Routing Rules for {department}
         </h2>
+
+        {/* 🔄 Student / Staff Segmented Switch Toggle */}
+        <div style={{
+          display: "inline-flex",
+          background: "#e2e8f0",
+          padding: "4px",
+          borderRadius: "10px",
+          gap: "4px"
+        }}>
+          <button
+            type="button"
+            onClick={() => setTargetAudience("student")}
+            style={{
+              padding: "8px 22px",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              background: targetAudience === "student" ? "#2563eb" : "transparent",
+              color: targetAudience === "student" ? "#ffffff" : "#475569",
+              boxShadow: targetAudience === "student" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            🎓 Student
+          </button>
+          <button
+            type="button"
+            onClick={() => setTargetAudience("staff")}
+            style={{
+              padding: "8px 22px",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              background: targetAudience === "staff" ? "#2563eb" : "transparent",
+              color: targetAudience === "staff" ? "#ffffff" : "#475569",
+              boxShadow: targetAudience === "staff" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            👔 Staff
+          </button>
+        </div>
+
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
@@ -197,7 +252,7 @@ function RoutingRuleConfig({ department }) {
               gap: "8px"
             }}
           >
-            <PlusIcon width="16" height="16" /> Create Routing Rule
+            <PlusIcon width="16" height="16" /> Create {targetAudience === "staff" ? "Staff" : "Student"} Routing Rule
           </button>
         )}
       </div>
@@ -359,7 +414,9 @@ function RoutingRuleConfig({ department }) {
           borderRadius: "12px",
           border: "1px dashed #cbd5e1"
         }}>
-          <p style={{ color: "#64748b", margin: 0 }}>No routing rules configured yet</p>
+          <p style={{ color: "#64748b", margin: 0 }}>
+            No {targetAudience} routing rules configured yet. Click "+ Create {targetAudience === "staff" ? "Staff" : "Student"} Routing Rule" to set up automation.
+          </p>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "15px" }}>
@@ -374,7 +431,7 @@ function RoutingRuleConfig({ department }) {
                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
               }}
             >
-              <div style={{ marginBottom: "15px" }}>
+              <div style={{ marginBottom: "15px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{
                   padding: "4px 8px",
                   borderRadius: "12px",
@@ -384,6 +441,16 @@ function RoutingRuleConfig({ department }) {
                   color: "#1e40af"
                 }}>
                   {getAssignmentModeLabel(rule.assignmentMode)}
+                </span>
+                <span style={{
+                  padding: "4px 8px",
+                  borderRadius: "12px",
+                  fontSize: "0.75rem",
+                  fontWeight: "700",
+                  background: rule.targetAudience === "staff" ? "#fef3c7" : "#e0e7ff",
+                  color: rule.targetAudience === "staff" ? "#92400e" : "#3730a3"
+                }}>
+                  {rule.targetAudience === "staff" ? "👔 Staff Rule" : "🎓 Student Rule"}
                 </span>
               </div>
               

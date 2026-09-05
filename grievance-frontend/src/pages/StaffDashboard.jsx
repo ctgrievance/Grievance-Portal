@@ -50,6 +50,9 @@ function StaffDashboard() {
     message: "",
   });
 
+  const [staffIssueTypes, setStaffIssueTypes] = useState([]);
+  const [selectedIssueType, setSelectedIssueType] = useState("");
+  const [customIssueTitle, setCustomIssueTitle] = useState("");
   const [attachment, setAttachment] = useState(null); // ✅ Added Attachment State
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
@@ -108,6 +111,27 @@ function StaffDashboard() {
     };
     fetchStaffDetails();
   }, [userId]);
+
+  // Fetch Staff Issue Types when Department is selected
+  useEffect(() => {
+    if (!formData.department) {
+      setStaffIssueTypes([]);
+      setSelectedIssueType("");
+      return;
+    }
+    const fetchStaffIssues = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(formData.department)}?targetAudience=staff`);
+        if (res.ok) {
+          const data = await res.json();
+          setStaffIssueTypes(data);
+        }
+      } catch (err) {
+        console.error("Error fetching staff issue types:", err);
+      }
+    };
+    fetchStaffIssues();
+  }, [formData.department]);
 
   // Fetch grievances submitted by this staff
   const fetchMyGrievances = async () => {
@@ -236,9 +260,10 @@ function StaffDashboard() {
           regid: formData.staffId,
           school: formData.department, // Selected School
           category: formData.department, // Routes to School Admin
-          message: formData.message,
+          message: customIssueTitle ? `[Topic: ${customIssueTitle}]\n\n${formData.message}` : formData.message,
           studentProgram: "Staff Member", // Required by backend
-          attachment: attachmentUrl || "" // ✅ Send filename
+          attachment: attachmentUrl || "", // ✅ Send filename
+          issueTypeId: selectedIssueType || null // ✅ Include staff issue type for auto-assignment
         }),
       });
 
@@ -252,6 +277,8 @@ function StaffDashboard() {
         ...prev,
         message: "",
       }));
+      setSelectedIssueType("");
+      setCustomIssueTitle("");
       setErrors({});
       setAttachment(null);
       if (document.getElementById("staffFileInput")) document.getElementById("staffFileInput").value = "";
@@ -399,6 +426,48 @@ function StaffDashboard() {
                   </select>
                   {errors.department && <p className="error-text">{errors.department}</p>}
                 </div>
+
+                {formData.department && (
+                  <div className="input-group">
+                    <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>Grievance / Issue Type</span>
+                      <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: "600", background: "#eff6ff", padding: "2px 8px", borderRadius: "10px" }}>
+                        ⚡ Linked to Smart Assignment
+                      </span>
+                    </label>
+                    <select
+                      value={selectedIssueType}
+                      onChange={(e) => setSelectedIssueType(e.target.value)}
+                      required
+                    >
+                      <option value="">-- Select Grievance / Issue Type --</option>
+                      {staffIssueTypes.map((it) => (
+                        <option key={it._id} value={it._id}>
+                          {it.issueName} {it.description ? `- ${it.description}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <small style={{ color: "#64748b", marginTop: "4px", display: "block" }}>
+                      Choose your specific grievance category for auto-routing. Select "Others" if your concern is unlisted.
+                    </small>
+                  </div>
+                )}
+
+                {(() => {
+                  const sel = staffIssueTypes.find(i => i._id === selectedIssueType);
+                  return sel && (sel.issueName === "Others" || sel.isSystemReserved) ? (
+                    <div className="input-group">
+                      <label>Specify Custom Grievance Topic / Subject</label>
+                      <input
+                        type="text"
+                        value={customIssueTitle}
+                        onChange={(e) => setCustomIssueTitle(e.target.value)}
+                        placeholder="e.g., Salary discrepancy, Lab timings dispute, Course material..."
+                        required
+                      />
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="input-group">
                   <label>Message / Query</label>

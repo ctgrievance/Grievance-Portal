@@ -36,6 +36,12 @@ const routingRuleSchema = new mongoose.Schema({
     required: true,
     default: "single"
   },
+  targetAudience: {
+    type: String,
+    enum: ["student", "staff"],
+    default: "student",
+    index: true
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -50,8 +56,9 @@ const routingRuleSchema = new mongoose.Schema({
   }
 });
 
-// Compound index for quick lookups
-routingRuleSchema.index({ issueTypeId: 1, department: 1, isActive: 1 });
+// Compound indexes for quick lookups
+routingRuleSchema.index({ issueTypeId: 1, department: 1, targetAudience: 1, isActive: 1 });
+routingRuleSchema.index({ department: 1, targetAudience: 1, isActive: 1 });
 
 // Update timestamp on save
 routingRuleSchema.pre('save', function(next) {
