@@ -729,7 +729,7 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
   }
 });
 
-// ✅ C. Get All Staff List (ROUTE NAME FIXED)
+// ✅ C. Get All Staff List (ROUTE NAME FIXED) with Staff Average Ratings
 // New Route Name: /api/admin-staff/all (Matches Frontend)
 app.get("/api/admin-staff/all", async (req, res) => {
   try {
@@ -742,7 +742,57 @@ app.get("/api/admin-staff/all", async (req, res) => {
       role: { $in: ["staff", "admin"] } // Include both staff and admin roles
     }).select("id fullName email isDeptAdmin adminDepartment role");
 
-    res.json(staffList);
+    // Fetch all grievances with ratings
+    const ratedGrievances = await Grievance.find({
+      $or: [
+        { isRated: true },
+        { "rating.stars": { $exists: true, $ne: null } }
+      ]
+    }).select("_id category message assignedTo resolvedBy rating isRated");
+
+    const staffWithRatings = staffList.map(staff => {
+      const sId = String(staff.id || "").trim().toLowerCase();
+      const sName = String(staff.fullName || "").trim().toLowerCase();
+
+      // Find all rated grievances matching this staff member by ID or by Name
+      const matched = ratedGrievances.filter(g => {
+        const aTo = g.assignedTo ? String(g.assignedTo).trim().toLowerCase() : "";
+        const rBy = g.resolvedBy ? String(g.resolvedBy).trim().toLowerCase() : "";
+
+        // Check if assignedTo matches ID or Name
+        if (aTo && (aTo === sId || (sName && aTo === sName) || (sId && aTo.includes(sId)) || (sName && aTo.includes(sName)))) {
+          return true;
+        }
+        // Check if resolvedBy matches ID or Name
+        if (rBy && (rBy === sId || (sName && rBy === sName) || (sId && rBy.includes(sId)) || (sName && rBy.includes(sName)))) {
+          return true;
+        }
+        return false;
+      });
+
+      const totalRatings = matched.length;
+      const totalStars = matched.reduce((sum, g) => sum + (Number(g.rating?.stars) || 0), 0);
+      const averageRating = totalRatings > 0 ? Number((totalStars / totalRatings).toFixed(1)) : null;
+
+      const ratingsList = matched.map(g => ({
+        grievanceId: g._id,
+        category: g.category,
+        stars: g.rating?.stars,
+        feedback: g.rating?.feedback || "",
+        ratedAt: g.rating?.ratedAt || null
+      }));
+
+      const staffObj = staff.toObject ? staff.toObject() : { ...staff };
+
+      return {
+        ...staffObj,
+        averageRating,
+        totalRatings,
+        ratingsList
+      };
+    });
+
+    res.json(staffWithRatings);
   } catch (err) {
     console.error("Staff fetch error:", err);
     res.status(500).json({ message: "Error fetching staff list" });

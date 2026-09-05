@@ -248,7 +248,54 @@ const AdminManageStaff = () => {
                       return (
                         <tr key={staff.id} style={{ opacity: isEditable ? 1 : 0.6 }}>
                           <td>{staff.id}</td>
-                          <td>{staff.fullName}</td>
+                          <td>
+                            <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.95rem" }}>
+                              {staff.fullName}
+                            </div>
+                            {staff.totalRatings > 0 && staff.averageRating !== null ? (
+                              <div
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "5px",
+                                  marginTop: "4px",
+                                  background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+                                  border: "1px solid #fde68a",
+                                  padding: "2px 8px",
+                                  borderRadius: "14px",
+                                  fontSize: "0.78rem",
+                                  boxShadow: "0 1px 3px rgba(245, 158, 11, 0.1)"
+                                }}
+                                title={`Average rating: ${Number(staff.averageRating).toFixed(1)} / 5 (${staff.totalRatings} reviews)`}
+                              >
+                                <span style={{ color: "#f59e0b", letterSpacing: "1px", fontSize: "0.85rem" }}>
+                                  {"★".repeat(Math.round(staff.averageRating))}
+                                  <span style={{ color: "#d1d5db" }}>{"★".repeat(5 - Math.round(staff.averageRating))}</span>
+                                </span>
+                                <span style={{ fontWeight: "700", color: "#b45309" }}>
+                                  {Number(staff.averageRating).toFixed(1)}
+                                </span>
+                                <span style={{ color: "#78350f", fontSize: "0.72rem", opacity: 0.85 }}>
+                                  ({staff.totalRatings})
+                                </span>
+                              </div>
+                            ) : (
+                              <div
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  marginTop: "4px",
+                                  color: "#94a3b8",
+                                  fontSize: "0.76rem"
+                                }}
+                                title="No student ratings received yet"
+                              >
+                                <span style={{ color: "#cbd5e1" }}>★</span>
+                                <span>No ratings yet</span>
+                              </div>
+                            )}
+                          </td>
 
                           {/* ✅ HIERARCHY DISPLAY FIX */}
                           <td>

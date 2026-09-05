@@ -14,9 +14,41 @@ exports.getAllStaff = async (req, res) => {
     // Sometimes students might have 'role: staff' due to data errors, so we exclude them by ID length.
     const validStaffUsers = users.filter((user) => user.id.length !== 8);
 
+    // Fetch rated grievances
+    const ratedGrievances = await GrievanceModel.find({
+      $or: [
+        { isRated: true },
+        { "rating.stars": { $exists: true, $ne: null } }
+      ]
+    }).select("_id category message assignedTo resolvedBy rating isRated");
+
     const staffWithDetails = await Promise.all(
       validStaffUsers.map(async (user) => {
         const adminRecord = await AdminStaffModel.findOne({ id: user.id });
+
+        const sId = String(user.id || "").trim().toLowerCase();
+        const sName = String(user.fullName || "").trim().toLowerCase();
+
+        const matched = ratedGrievances.filter(g => {
+          const aTo = g.assignedTo ? String(g.assignedTo).trim().toLowerCase() : "";
+          const rBy = g.resolvedBy ? String(g.resolvedBy).trim().toLowerCase() : "";
+          if (aTo && (aTo === sId || (sName && aTo === sName) || (sId && aTo.includes(sId)) || (sName && aTo.includes(sName)))) return true;
+          if (rBy && (rBy === sId || (sName && rBy === sName) || (sId && rBy.includes(sId)) || (sName && rBy.includes(sName)))) return true;
+          return false;
+        });
+
+        const totalRatings = matched.length;
+        const totalStars = matched.reduce((sum, g) => sum + (Number(g.rating?.stars) || 0), 0);
+        const averageRating = totalRatings > 0 ? Number((totalStars / totalRatings).toFixed(1)) : null;
+
+        const ratingsList = matched.map(g => ({
+          grievanceId: g._id,
+          category: g.category,
+          stars: g.rating?.stars,
+          feedback: g.rating?.feedback || "",
+          ratedAt: g.rating?.ratedAt || null
+        }));
+
         return {
           id: user.id,
           fullName: user.fullName,
@@ -25,6 +57,9 @@ exports.getAllStaff = async (req, res) => {
           role: user.role, // ✅ Necessary for frontend filtering
           adminDepartment: adminRecord ? adminRecord.adminDepartment : "",
           isDeptAdmin: adminRecord ? adminRecord.isDeptAdmin : false,
+          averageRating,
+          totalRatings,
+          ratingsList
         };
       })
     );

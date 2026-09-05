@@ -399,7 +399,7 @@ export const getAssignedGrievances = async (req, res) => {
       assignedTo: staffId,
       ...hiddenFilter
     })
-      .select('name email regid message createdAt deadlineDate extensionRequest status attachment _id assignedTo updatedAt')
+      .select('name email regid message createdAt deadlineDate extensionRequest status attachment _id assignedTo updatedAt rating isRated category')
       .sort({ createdAt: -1 });
 
     // console.log(`getAssignedGrievances: returning ${grievances.length} grievances for staff ${staffId}`);
@@ -407,6 +407,82 @@ export const getAssignedGrievances = async (req, res) => {
   } catch (err) {
     console.error("getAssignedGrievances ERROR:", err);
     res.status(500).json({ message: "Failed to fetch assigned grievances" });
+  }
+};
+
+/* =====================================================
+   ⭐ STAFF → GET DETAILED RATINGS SUMMARY
+===================================================== */
+export const getStaffRatingsSummary = async (req, res) => {
+  try {
+    const { staffId } = req.params;
+    if (!staffId) {
+      return res.status(400).json({ message: "Staff ID is required" });
+    }
+
+    const sId = String(staffId).trim().toLowerCase();
+
+    // Look up staff to also get their full name
+    const staff = await StaffUser.findOne({ id: staffId })
+      || await User.findOne({ id: staffId })
+      || await StaffRecord.findOne({ id: staffId });
+    const sName = staff ? String(staff.fullName || staff.name || "").trim().toLowerCase() : "";
+
+    // Find all rated grievances
+    const ratedGrievances = await Grievance.find({
+      $or: [
+        { isRated: true },
+        { "rating.stars": { $exists: true, $ne: null } }
+      ]
+    }).select("_id name regid category message assignedTo resolvedBy rating isRated createdAt");
+
+    const matched = ratedGrievances.filter(g => {
+      const aTo = g.assignedTo ? String(g.assignedTo).trim().toLowerCase() : "";
+      const rBy = g.resolvedBy ? String(g.resolvedBy).trim().toLowerCase() : "";
+
+      if (aTo && (aTo === sId || (sName && aTo === sName) || (sId && aTo.includes(sId)) || (sName && aTo.includes(sName)))) {
+        return true;
+      }
+      if (rBy && (rBy === sId || (sName && rBy === sName) || (sId && rBy.includes(sId)) || (sName && rBy.includes(sName)))) {
+        return true;
+      }
+      return false;
+    });
+
+    const totalRatings = matched.length;
+    const totalStars = matched.reduce((sum, g) => sum + (Number(g.rating?.stars) || 0), 0);
+    const averageRating = totalRatings > 0 ? Number((totalStars / totalRatings).toFixed(1)) : null;
+
+    // Star breakdown 1-5
+    const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    matched.forEach(g => {
+      const star = g.rating?.stars;
+      if (star && breakdown[star] !== undefined) {
+        breakdown[star] += 1;
+      }
+    });
+
+    const reviews = matched.map(g => ({
+      grievanceId: g._id,
+      studentName: g.name,
+      studentRegId: g.regid,
+      category: g.category,
+      stars: g.rating?.stars,
+      feedback: g.rating?.feedback || "",
+      ratedAt: g.rating?.ratedAt || g.createdAt
+    })).sort((a, b) => new Date(b.ratedAt) - new Date(a.ratedAt));
+
+    res.json({
+      staffId,
+      staffName: staff ? (staff.fullName || staff.name) : staffId,
+      averageRating,
+      totalRatings,
+      breakdown,
+      reviews
+    });
+  } catch (err) {
+    console.error("getStaffRatingsSummary ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch staff ratings summary" });
   }
 };
 

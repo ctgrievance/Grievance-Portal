@@ -11,6 +11,7 @@ import {
   getUserGrievances,
   assignToStaff,
   getAssignedGrievances,
+  getStaffRatingsSummary,
   updateGrievanceStatus,
   requestExtension,
   resolveExtension,
@@ -44,6 +45,7 @@ router.put("/assign/:id", assignToStaff);
 /* ================= STAFF ================= */
 
 router.get("/assigned/:staffId", getAssignedGrievances);
+router.get("/staff-rating/:staffId", getStaffRatingsSummary);
 
 /* ================= UPDATE (STAFF / ADMIN) ================= */
 

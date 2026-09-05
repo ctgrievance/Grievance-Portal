@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 // IMPORT CHAT COMPONENT
@@ -114,6 +114,37 @@ function AdminStaffDashboard() {
 
   // EXPORT MODAL STATE
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // ⭐ STAFF RATINGS STATE
+  const [ratingData, setRatingData] = useState({
+    averageRating: null,
+    totalRatings: 0,
+    breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    reviews: []
+  });
+  const [loadingRatings, setLoadingRatings] = useState(false);
+
+  const fetchMyRatings = useCallback(async () => {
+    if (!staffId) return;
+    try {
+      setLoadingRatings(true);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/staff-rating/${staffId}`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("grievance_token")}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRatingData(data);
+      }
+    } catch (err) {
+      console.error("Error fetching staff ratings:", err);
+    } finally {
+      setLoadingRatings(false);
+    }
+  }, [staffId]);
+
+  useEffect(() => {
+    fetchMyRatings();
+  }, [fetchMyRatings]);
 
 
   // 1. Authorization Check
@@ -636,11 +667,40 @@ function AdminStaffDashboard() {
           <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
           <div className="header-content">
             <h1>Admin Staff Dashboard</h1>
-            <p>
+            <p style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               Welcome, {staffName || staffId}
               {/* ✅ Badge for Team Member */}
-              <span className="status-badge status-assigned" style={{ marginLeft: '10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <span className="status-badge status-assigned" style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                 <ShieldIcon width="14" height="14" /> Team: {myDepartment}
+              </span>
+
+              {/* ⭐ Staff Rating Element in Header */}
+              <span
+                onClick={() => setActiveTab("ratings")}
+                style={{
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "4px 12px",
+                  borderRadius: "20px",
+                  background: ratingData.totalRatings > 0 ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" : "#f1f5f9",
+                  border: ratingData.totalRatings > 0 ? "1px solid #fde68a" : "1px solid #e2e8f0",
+                  fontSize: "0.8rem",
+                  fontWeight: "600",
+                  color: ratingData.totalRatings > 0 ? "#92400e" : "#64748b",
+                  transition: "all 0.2s ease"
+                }}
+                title="Click to view your ratings & student feedback"
+                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.04)"}
+                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+              >
+                <span style={{ color: ratingData.totalRatings > 0 ? "#f59e0b" : "#94a3b8" }}>★</span>
+                <span>
+                  {ratingData.totalRatings > 0
+                    ? `${Number(ratingData.averageRating).toFixed(1)} / 5 (${ratingData.totalRatings} ${ratingData.totalRatings === 1 ? 'Review' : 'Reviews'})`
+                    : "No ratings yet"}
+                </span>
               </span>
             </p>
           </div>
@@ -661,6 +721,11 @@ function AdminStaffDashboard() {
           <li className={activeTab === "pool" ? "active" : ""}>
             <button onClick={() => setActiveTab("pool")} className="tab-link-button">
               Pool Accept Queue
+            </button>
+          </li>
+          <li className={activeTab === "ratings" ? "active" : ""}>
+            <button onClick={() => setActiveTab("ratings")} className="tab-link-button">
+              ⭐ My Ratings ({ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})
             </button>
           </li>
           <li className={activeTab === "submit" ? "active" : ""}>
@@ -810,7 +875,15 @@ function AdminStaffDashboard() {
                               );
                             })()}
                           </td>
-                          <td><span className={`status-badge status-${g.status.toLowerCase()}`}>{g.status}</span></td>
+                          <td>
+                            <span className={`status-badge status-${g.status.toLowerCase()}`}>{g.status}</span>
+                            {g.status === "Resolved" && g.rating?.stars && (
+                              <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px", fontSize: "0.8rem", color: "#f59e0b" }}>
+                                <span>{"★".repeat(g.rating.stars)}</span>
+                                <span style={{ fontWeight: "700", color: "#b45309", fontSize: "0.75rem" }}>{g.rating.stars}.0</span>
+                              </div>
+                            )}
+                          </td>
                           <td>
                             <div className="action-buttons">
                               <button className="action-btn resolve-btn" onClick={(e) => { e.stopPropagation(); updateStatus(g._id, "Resolved"); }} disabled={g.status === "Resolved" || g.status === "Rejected"} style={{ opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1, cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer" }}>Resolve</button>
@@ -1124,6 +1197,191 @@ function AdminStaffDashboard() {
                 </div>
               )}
             </>
+          )}
+
+          {/* TAB: MY RATINGS & STUDENT FEEDBACK */}
+          {activeTab === "ratings" && (
+            <div className="ratings-tab-content">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <h2 style={{ margin: 0, color: "#0f172a" }}>My Performance & Student Ratings</h2>
+                  <p style={{ margin: "4px 0 0 0", color: "#64748b" }}>
+                    Feedback and star ratings submitted by students upon resolution of their grievances.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchMyRatings}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "0.85rem",
+                    color: "#334155",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  🔄 Refresh Ratings
+                </button>
+              </div>
+
+              {/* Top Summary Cards Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px", marginBottom: "25px" }}>
+                {/* Card 1: Score & Stars */}
+                <div style={{
+                  background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+                  border: "1px solid #fde68a",
+                  borderRadius: "16px",
+                  padding: "24px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  boxShadow: "0 4px 12px rgba(245, 158, 11, 0.08)"
+                }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#92400e", textTransform: "uppercase", letterSpacing: "1px" }}>
+                    Average Rating
+                  </div>
+                  <div style={{ fontSize: "3.5rem", fontWeight: "900", color: "#78350f", lineHeight: 1.1, margin: "8px 0" }}>
+                    {ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : "—"}
+                    <span style={{ fontSize: "1.4rem", fontWeight: "600", color: "#b45309" }}> / 5.0</span>
+                  </div>
+                  <div style={{ fontSize: "1.6rem", color: "#f59e0b", letterSpacing: "3px" }}>
+                    {"★".repeat(Math.round(ratingData.averageRating || 0))}
+                    <span style={{ color: "#d1d5db" }}>{"★".repeat(5 - Math.round(ratingData.averageRating || 0))}</span>
+                  </div>
+                  <div style={{ marginTop: "8px", fontSize: "0.85rem", color: "#92400e", fontWeight: "600" }}>
+                    Based on {ratingData.totalRatings} {ratingData.totalRatings === 1 ? "student rating" : "student ratings"}
+                  </div>
+                </div>
+
+                {/* Card 2: Rating Breakdown */}
+                <div style={{
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "16px",
+                  padding: "20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+                }}>
+                  <div style={{ fontSize: "0.9rem", fontWeight: "700", color: "#1e293b", marginBottom: "12px" }}>
+                    Rating Breakdown
+                  </div>
+                  {[5, 4, 3, 2, 1].map((stars) => {
+                    const count = ratingData.breakdown?.[stars] || 0;
+                    const pct = ratingData.totalRatings > 0 ? Math.round((count / ratingData.totalRatings) * 100) : 0;
+                    return (
+                      <div key={stars} style={{ display: "flex", alignItems: "center", gap: "10px", margin: "4px 0", fontSize: "0.85rem" }}>
+                        <span style={{ width: "30px", fontWeight: "600", color: "#475569" }}>{stars} ★</span>
+                        <div style={{ flex: 1, height: "10px", background: "#f1f5f9", borderRadius: "5px", overflow: "hidden" }}>
+                          <div style={{
+                            width: `${pct}%`,
+                            height: "100%",
+                            background: stars >= 4 ? "#16a34a" : stars === 3 ? "#f59e0b" : "#ef4444",
+                            borderRadius: "5px",
+                            transition: "width 0.5s ease"
+                          }} />
+                        </div>
+                        <span style={{ width: "45px", textAlign: "right", color: "#64748b", fontSize: "0.8rem" }}>
+                          {count} ({pct}%)
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Student Feedback Reviews List */}
+              <h3 style={{ margin: "25px 0 15px 0", color: "#0f172a", fontSize: "1.1rem" }}>
+                Student Reviews & Comments ({ratingData.reviews?.length || 0})
+              </h3>
+
+              {ratingData.reviews && ratingData.reviews.length > 0 ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+                  {ratingData.reviews.map((rev, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        background: "#ffffff",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "14px",
+                        padding: "18px",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                        transition: "all 0.2s ease"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.06)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.03)";
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                        <div>
+                          <div style={{ color: "#f59e0b", fontSize: "1.1rem" }}>
+                            {"★".repeat(rev.stars || 0)}
+                            <span style={{ color: "#cbd5e1" }}>{"★".repeat(5 - (rev.stars || 0))}</span>
+                          </div>
+                          <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#1e293b", marginTop: "4px" }}>
+                            {rev.studentName}
+                            {rev.studentRegId && <span style={{ color: "#64748b", fontWeight: "400", fontSize: "0.78rem" }}> ({rev.studentRegId})</span>}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: "0.75rem", color: "#94a3b8", background: "#f8fafc", padding: "3px 8px", borderRadius: "6px" }}>
+                          {rev.ratedAt ? new Date(rev.ratedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
+                        </span>
+                      </div>
+
+                      {rev.feedback ? (
+                        <div style={{
+                          background: "#f8fafc",
+                          borderLeft: "3px solid #f59e0b",
+                          padding: "10px 12px",
+                          borderRadius: "0 8px 8px 0",
+                          color: "#334155",
+                          fontSize: "0.9rem",
+                          fontStyle: "italic",
+                          margin: "10px 0"
+                        }}>
+                          “{rev.feedback}”
+                        </div>
+                      ) : (
+                        <div style={{ color: "#94a3b8", fontSize: "0.82rem", fontStyle: "italic", margin: "10px 0" }}>
+                          (Rating provided without written comment)
+                        </div>
+                      )}
+
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "8px" }}>
+                        <strong>Category:</strong> {rev.category || "General"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  background: "#f8fafc",
+                  border: "1px dashed #cbd5e1",
+                  borderRadius: "14px",
+                  padding: "40px",
+                  textAlign: "center",
+                  color: "#64748b"
+                }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>⭐</div>
+                  <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Ratings Yet</h4>
+                  <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
+                    When students rate the grievances you resolve, their star ratings and feedback will appear right here.
+                  </p>
+                </div>
+              )}
+            </div>
           )}
 
           {/* --- DETAILS POPUP MODAL (Fixed for Long Text) --- */}
