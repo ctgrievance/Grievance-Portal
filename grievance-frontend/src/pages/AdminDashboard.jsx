@@ -5,6 +5,7 @@ import "../styles/Dashboard.css";
 import AdminUploadRecords from "../components/AdminUploadRecords";
 import StaffRoleManager from "../components/StaffRoleManager";
 import ExportPreviewModal from "../components/ExportPreviewModal";
+import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 
@@ -416,126 +417,12 @@ function AdminDashboard() {
 
         {/* MODAL */}
         {selectedGrievance && (
-          <div
-            onClick={() => setSelectedGrievance(null)}
-            style={{
-              position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-            }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'white', padding: '25px', borderRadius: '12px', width: '90%', maxWidth: '500px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: '85vh'
-              }}
-            >
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '15px' }}>
-                <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.25rem' }}>Grievance Details</h3>
-                <button onClick={() => setSelectedGrievance(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
-              </div>
-
-              <div style={{ overflowY: 'auto', paddingRight: '5px' }}>                <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Grievance ID:</strong> {selectedGrievance._id}</p>                <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Category:</strong> {selectedGrievance.category || selectedGrievance.school || "N/A"}</p>
-                <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Date:</strong> {formatDate(selectedGrievance.createdAt)}</p>
-                <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Status:</strong> <span className={`status-badge status-${(selectedGrievance.status || "").toLowerCase()}`}>{selectedGrievance.status}</span></p>
-
-                <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
-                  <strong style={{ display: 'block', marginBottom: '8px', color: '#334155' }}>Full Message:</strong>
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.6', color: '#1e293b', wordBreak: 'break-word' }}>
-                    {selectedGrievance.message}
-                  </p>
-                </div>
-
-                {/* ✅ ATTACHMENT BUTTON */}
-                {selectedGrievance.attachment && (
-                  <div style={{ marginTop: '15px' }}>
-                    <strong>Attachment: </strong>
-                    <a
-                      href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${selectedGrievance.attachment}`}
-                      target="_blank" rel="noopener noreferrer"
-                      style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
-                    >
-                      View Document <PaperclipIcon width="14" height="14" style={{ marginLeft: '4px' }} />
-                    </a>
-                  </div>
-                )}
-              </div>
-              {/* ⭐ STUDENT RATING (READ ONLY) */}
-              {selectedGrievance.status === "Resolved" &&
-                selectedGrievance.isRated &&
-                selectedGrievance.rating && (
-
-                  <div
-                    style={{
-                      marginTop: "20px",
-                      padding: "15px",
-                      background: "#f8fafc",
-                      borderRadius: "10px",
-                      border: "1px solid #e2e8f0"
-                    }}
-                  >
-                    <h4 style={{ marginBottom: "8px", color: "#1e293b" }}>
-                      ⭐ Student Feedback
-                    </h4>
-
-                    <ReadOnlyStars stars={selectedGrievance.rating.stars} />
-
-                    {selectedGrievance.rating.feedback && (
-                      <p
-                        style={{
-                          marginTop: "8px",
-                          fontStyle: "italic",
-                          color: "#475569"
-                        }}
-                      >
-                        “{selectedGrievance.rating.feedback}”
-                      </p>
-                    )}
-
-                    <p
-                      style={{
-                        marginTop: "6px",
-                        fontSize: "0.75rem",
-                        color: "#94a3b8"
-                      }}
-                    >
-                      Rated on{" "}
-                      {new Date(
-                        selectedGrievance.rating.ratedAt
-                      ).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-
-
-              <div style={{ textAlign: 'right', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
-                <button
-                  onClick={() => setSelectedGrievance(null)}
-                  style={{
-                    padding: '10px 20px', backgroundColor: '#e2e8f0', border: 'none', borderRadius: '6px',
-                    cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background 0.2s'
-                  }}
-                  onMouseOver={(e) => e.target.style.backgroundColor = '#cbd5e1'}
-                  onMouseOut={(e) => e.target.style.backgroundColor = '#e2e8f0'}
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => handleDeleteGrievance(selectedGrievance._id)}
-                  style={{
-                    padding: '10px 20px', backgroundColor: '#fee2e2', border: '1px solid #ef4444', borderRadius: '6px',
-                    cursor: 'pointer', fontWeight: '600', color: '#dc2626', transition: 'all 0.2s', marginLeft: '10px',
-                    display: 'inline-flex', alignItems: 'center', gap: '5px'
-                  }}
-                  onMouseOver={(e) => e.target.style.backgroundColor = '#fecaca'}
-                  onMouseOut={(e) => e.target.style.backgroundColor = '#fee2e2'}
-                >
-                  <TrashIcon width="16" height="16" /> Remove
-                </button>
-              </div>
-            </div>
-          </div>
+          <GrievanceDetailsModal
+            grievance={selectedGrievance}
+            staffMap={staffMap}
+            onClose={() => setSelectedGrievance(null)}
+            onDelete={handleDeleteGrievance}
+          />
         )}
 
         {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}

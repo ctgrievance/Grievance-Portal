@@ -2,6 +2,7 @@ import Grievance from "../models/GrievanceModel.js";
 import User from "../models/UserModel.js";
 import StaffUser from "../models/StaffUser.js";
 import StaffRecord from "../models/StaffRecord.js";
+import IssueType from "../models/IssueType.js";
 import nodemailer from "nodemailer";
 import { autoAssignGrievance } from "./routingRuleController.js";
 
@@ -275,7 +276,9 @@ export const getAllGrievances = async (req, res) => {
     const userId = req.user ? req.user.id : null;
     const query = userId ? { hiddenFor: { $ne: userId } } : {};
 
-    const grievances = await Grievance.find(query).sort({ createdAt: -1 });
+    const grievances = await Grievance.find(query)
+      .populate("issueTypeId", "issueName description")
+      .sort({ createdAt: -1 });
     res.json(grievances);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch grievances" });
@@ -299,7 +302,9 @@ export const getCategoryGrievances = async (req, res) => {
     const grievances = await Grievance.find({
       category,
       hiddenFor: { $ne: userId } // 🔍 Filter hidden
-    }).sort({ createdAt: -1 });
+    })
+      .populate("issueTypeId", "issueName description")
+      .sort({ createdAt: -1 });
 
     res.json(grievances);
   } catch (err) {
@@ -391,7 +396,6 @@ export const getAssignedGrievances = async (req, res) => {
   try {
     const { staffId } = req.params;
 
-    // Return only fields required by the UI to reduce response size and speed the query
     const userId = req.user?.id;
     const hiddenFilter = userId ? { hiddenFor: { $ne: userId } } : {};
 
@@ -399,10 +403,9 @@ export const getAssignedGrievances = async (req, res) => {
       assignedTo: staffId,
       ...hiddenFilter
     })
-      .select('name email regid message createdAt deadlineDate extensionRequest status attachment _id assignedTo updatedAt rating isRated category')
+      .populate("issueTypeId", "issueName description")
       .sort({ createdAt: -1 });
 
-    // console.log(`getAssignedGrievances: returning ${grievances.length} grievances for staff ${staffId}`);
     res.json(grievances);
   } catch (err) {
     console.error("getAssignedGrievances ERROR:", err);
@@ -501,7 +504,9 @@ export const getUserGrievances = async (req, res) => {
     const grievances = await Grievance.find({
       userId,
       hiddenFor: { $ne: requesterId } // 🔍 Filter hidden
-    }).sort({ createdAt: -1 });
+    })
+      .populate("issueTypeId", "issueName description")
+      .sort({ createdAt: -1 });
 
     res.json(grievances);
   } catch (err) {
