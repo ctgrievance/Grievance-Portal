@@ -7,7 +7,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import AdminStudentRecords from "../components/AdminStudentRecords";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
+import { ShieldIcon, DownloadIcon } from "../components/Icons";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -152,27 +152,7 @@ function StudentSectionAdminDashboard() {
     fetchGrievances();
   };
 
-  // ✅ EXTENSION REQUEST HANDLER
-  const handleExtensionResolution = async (action) => {
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/extension/resolve/${selectedGrievance._id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMsg(`Extension ${action}ed!`);
-        setStatusType("success");
-        setSelectedGrievance(null);
-        fetchGrievances();
-      } else {
-        alert(data.message);
-      }
-    } catch (err) {
-      alert("Action failed");
-    }
-  };
+
 
   const handleLogout = () => {
     localStorage.clear();

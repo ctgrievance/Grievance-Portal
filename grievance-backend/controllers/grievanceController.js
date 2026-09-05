@@ -702,11 +702,12 @@ export const resolveExtension = async (req, res) => {
   try {
     const { id } = req.params;
     const { action } = req.body; // 'approve' or 'reject'
+    const act = (action || "").toLowerCase();
 
     const grievance = await Grievance.findById(id);
     if (!grievance) return res.status(404).json({ message: "Grievance not found" });
 
-    if (action === 'approve') {
+    if (act === 'approve') {
       grievance.deadlineDate = grievance.extensionRequest.requestedDate;
       grievance.extensionRequest.status = "Approved";
     } else {

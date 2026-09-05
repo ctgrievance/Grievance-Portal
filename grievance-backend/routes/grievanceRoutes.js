@@ -55,6 +55,7 @@ router.put("/update/:id", updateGrievanceStatus);
 
 router.post("/extension/request/:id", requestExtension);
 router.post("/extension/resolve/:id", resolveExtension);
+router.put("/extension/resolve/:id", resolveExtension);
 
 /* ================= ⭐ RATING ================= */
 
