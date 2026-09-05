@@ -3,6 +3,8 @@ import "../styles/Dashboard.css"; // Ensure this has basic modal styles
 
 // ✅ Advanced Icons
 import { PaperclipIcon, CameraIcon, FileIcon, XIcon as CloseIcon } from "./Icons";
+import { getSocket, joinChatRoom, leaveChatRoom } from "../services/socket";
+import { playNotificationSound } from "../utils/soundAlert";
 
 function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRole }) {
   const [messages, setMessages] = useState([]);
@@ -21,10 +23,16 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
   const videoRef = useRef(null); // ✅ Video Ref
   const canvasRef = useRef(null); // ✅ Canvas Ref
 
-  // Poll for messages every 3 seconds
+  // ⚡ Real-Time Socket.io Connection & Messages
   useEffect(() => {
     if (!isOpen || !grievanceId) return;
 
+    const socket = getSocket();
+
+    // 1. Join real-time room for this grievance
+    joinChatRoom(grievanceId);
+
+    // 2. Initial fetch of message history
     const fetchMessages = async () => {
       try {
         const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/chat/${grievanceId}`);
@@ -37,15 +45,34 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
       }
     };
 
-    // ✅ Reset scroll state when switching chats
     hasScrolledRef.current = false;
     prevMessagesLength.current = 0;
-
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
 
-    return () => clearInterval(interval);
-  }, [isOpen, grievanceId]);
+    // 3. Real-time message listener (Instant 0ms delivery)
+    const handleReceiveMessage = (incomingMsg) => {
+      if (!incomingMsg || String(incomingMsg.grievanceId) !== String(grievanceId)) return;
+
+      setMessages((prev) => {
+        if (prev.some((m) => m._id && incomingMsg._id && String(m._id) === String(incomingMsg._id))) {
+          return prev;
+        }
+        return [...prev, incomingMsg];
+      });
+
+      // Play audio notification if message is from the other party
+      if (incomingMsg.senderId !== currentUserId) {
+        playNotificationSound();
+      }
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
+
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+      leaveChatRoom(grievanceId);
+    };
+  }, [isOpen, grievanceId, currentUserId]);
 
   // ✅ Fetch grievance details (name, message) for header
   useEffect(() => {
@@ -146,7 +173,12 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
       if (res.ok) {
         const sentMsg = await res.json();
-        setMessages([...messages, sentMsg]);
+        setMessages((prev) => {
+          if (prev.some((m) => m._id && sentMsg._id && String(m._id) === String(sentMsg._id))) {
+            return prev;
+          }
+          return [...prev, sentMsg];
+        });
         setNewMessage("");
         setSelectedFile(null); // Reset file
         if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input

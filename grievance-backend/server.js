@@ -1,5 +1,7 @@
 // server.js — Final Optimized: MongoDB + Twilio + GridFS + Excel Validation + Dynamic Roles
 import express from "express";
+import http from "http";
+import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -43,14 +45,44 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+
+// ✅ Socket.io initialization with CORS
+const io = new Server(server, {
+  cors: {
+    origin: true,
+    credentials: true
+  }
+});
+app.set("io", io);
+
+// 🔌 Socket connection and room routing
+io.on("connection", (socket) => {
+  // Join user's personal notification room
+  socket.on("join_user", (userId) => {
+    if (userId) {
+      socket.join(`user:${userId.toUpperCase()}`);
+    }
+  });
+
+  // Join specific grievance chat room
+  socket.on("join_chat", (grievanceId) => {
+    if (grievanceId) {
+      socket.join(`grievance:${grievanceId}`);
+    }
+  });
+
+  // Leave specific grievance chat room
+  socket.on("leave_chat", (grievanceId) => {
+    if (grievanceId) {
+      socket.leave(`grievance:${grievanceId}`);
+    }
+  });
+});
 
 // ------------------ 1️⃣ Middleware ------------------
 app.use(cors({
-  origin: [
-    "http://localhost:3000", 
-    "http://localhost:3001",
-    /\.vercel\.app$/
-  ],
+  origin: true, // Allow localhost, LAN IPs (e.g. 192.168.x.x), Capacitor, and deployed domains
   credentials: true,
 }));
 app.use(express.json());
@@ -873,4 +905,4 @@ app.get("/", (req, res) => res.send("✅ Backend Running"));
 
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server: http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server: http://localhost:${PORT}`));

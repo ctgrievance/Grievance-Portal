@@ -23,6 +23,7 @@
     "multer": "^2.0.2",
     "nanoid": "^5.1.6",
     "nodemailer": "^7.0.12",
+    "socket.io": "^4.8.3",
     "twilio": "^5.10.4",
     "xlsx": "^0.18.5"
   }

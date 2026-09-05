@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 // IMPORT CHAT COMPONENT
 import ChatPopup from "../components/ChatPopup";
+import ChatNotificationToast from "../components/ChatNotificationToast";
+import { connectSocketUser } from "../services/socket";
+import { playNotificationSound } from "../utils/soundAlert";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, BellIcon, PaperclipIcon, EyeIcon, ClockIcon, XIcon, TrashIcon, DownloadIcon } from "../components/Icons";
@@ -73,9 +76,8 @@ function AdminStaffDashboard() {
 
   // --- NOTIFICATION STATE ---
   const [unreadMap, setUnreadMap] = useState({});
+  const [chatNotification, setChatNotification] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "" });
-  const lastMessageRef = useRef({});
-  const isFirstPoll = useRef(true);
 
   // ✅ State for "See More" Details Popup
   const [selectedGrievance, setSelectedGrievance] = useState(null);
@@ -221,66 +223,71 @@ function AdminStaffDashboard() {
     return () => { canceled = true; if (timerId) clearTimeout(timerId); };
   }, [staffId, selectedGrievance]);
 
-  // --- 4. LIVE POLLING FOR NOTIFICATIONS ONLY ---
+  // --- 4. REAL-TIME SOCKET CHAT & NOTIFICATIONS ---
+  useEffect(() => {
+    if (!staffId) return;
+
+    const socket = connectSocketUser(staffId);
+
+    const handleChatNotification = (notif) => {
+      if (!notif) return;
+
+      const isForMyGrievance = grievances.some(g => String(g._id) === String(notif.grievanceId)) ||
+        (notif.assignedTo && notif.assignedTo.toUpperCase() === staffId.toUpperCase());
+
+      const isFromOther = notif.senderId !== staffId;
+
+      if (isForMyGrievance && isFromOther) {
+        if (!showChat || currentChatId !== notif.grievanceId) {
+          setUnreadMap((prev) => ({ ...prev, [notif.grievanceId]: true }));
+          setChatNotification(notif);
+          playNotificationSound();
+        }
+      }
+    };
+
+    socket.on("chat_notification", handleChatNotification);
+    socket.on("global_chat_notification", handleChatNotification);
+
+    return () => {
+      socket.off("chat_notification", handleChatNotification);
+      socket.off("global_chat_notification", handleChatNotification);
+    };
+  }, [staffId, grievances, showChat, currentChatId]);
+
+  // Initial check for unread messages on load
   useEffect(() => {
     if (!staffId || grievances.length === 0) return;
 
-    const pollMessages = async () => {
-      const newUnreadMap = { ...unreadMap };
-      let newToastMsg = null;
-
+    let isMounted = true;
+    const checkInitialUnread = async () => {
+      const initialMap = {};
       await Promise.all(grievances.map(async (g) => {
         try {
           const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/chat/${g._id}`);
           if (res.ok) {
             const msgs = await res.json();
-
             if (msgs.length > 0) {
               const lastMsg = msgs[msgs.length - 1];
-
-              // If sender is NOT staff, then it's student -> UNREAD
               const isStudentSender = (lastMsg.senderRole !== "staff" && lastMsg.senderId !== staffId);
-
-              // A. Red Dot Logic
-              if (showChat && currentChatId === g._id) {
-                newUnreadMap[g._id] = false;
-              } else {
-                newUnreadMap[g._id] = isStudentSender;
-              }
-
-              // B. Toast Logic
-              if (lastMessageRef.current[g._id] !== lastMsg._id) {
-                if (!isFirstPoll.current && isStudentSender) {
-                  newToastMsg = `New message from ${g.name}`;
-                }
-                lastMessageRef.current[g._id] = lastMsg._id;
+              if (isStudentSender) {
+                initialMap[g._id] = true;
               }
             }
           }
         } catch (err) {
-          console.warn("Polling error for", g._id);
+          // ignore
         }
       }));
 
-      setUnreadMap(newUnreadMap);
-
-      if (newToastMsg) {
-        showToastNotification(newToastMsg);
+      if (isMounted) {
+        setUnreadMap(prev => ({ ...prev, ...initialMap }));
       }
-
-      isFirstPoll.current = false;
     };
 
-    const intervalId = setInterval(pollMessages, 5000);
-    pollMessages(); // Run once immediately
-
-    return () => clearInterval(intervalId);
-  }, [grievances, staffId, showChat, currentChatId]);
-
-  const showToastNotification = (message) => {
-    setToast({ show: true, message });
-    setTimeout(() => setToast({ show: false, message: "" }), 3000);
-  };
+    checkInitialUnread();
+    return () => { isMounted = false; };
+  }, [grievances.length, staffId]);
 
   // --- CHAT FUNCTIONS ---
   const openChat = (grievanceId) => {
@@ -288,6 +295,7 @@ function AdminStaffDashboard() {
     setShowChat(true);
     // Remove red dot immediately
     setUnreadMap(prev => ({ ...prev, [grievanceId]: false }));
+    setChatNotification(prev => (prev && prev.grievanceId === grievanceId ? null : prev));
   };
 
   const closeChat = () => {
@@ -1165,6 +1173,13 @@ function AdminStaffDashboard() {
         grievanceId={currentChatId}
         currentUserId={staffId}
         currentUserRole="staff"
+      />
+
+      {/* 🔔 Real-Time Chat Notification Toast */}
+      <ChatNotificationToast
+        notification={chatNotification}
+        onOpenChat={openChat}
+        onClose={() => setChatNotification(null)}
       />
 
       {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
