@@ -21,6 +21,10 @@ const routingRuleSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    staffEmail: {
+      type: String,
+      default: ""
+    },
     isAvailable: {
       type: Boolean,
       default: true

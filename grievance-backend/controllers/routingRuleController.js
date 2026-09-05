@@ -1,5 +1,8 @@
 import RoutingRule from "../models/RoutingRule.js";
 import IssueType from "../models/IssueType.js";
+import StaffUser from "../models/StaffUser.js";
+import User from "../models/UserModel.js";
+import StaffRecord from "../models/StaffRecord.js";
 
 // Create Routing Rule
 export const createRoutingRule = async (req, res) => {
@@ -31,6 +34,7 @@ export const createRoutingRule = async (req, res) => {
       assignedStaff: assignedStaff.map(staff => ({
         staffId: staff.staffId,
         staffName: staff.staffName,
+        staffEmail: staff.staffEmail || "",
         isAvailable: staff.isAvailable !== undefined ? staff.isAvailable : true,
         roundRobinIndex: 0
       })),
@@ -121,6 +125,7 @@ export const updateRoutingRule = async (req, res) => {
       updateData.assignedStaff = assignedStaff.map(staff => ({
         staffId: staff.staffId,
         staffName: staff.staffName,
+        staffEmail: staff.staffEmail || "",
         isAvailable: staff.isAvailable !== undefined ? staff.isAvailable : true,
         roundRobinIndex: staff.roundRobinIndex || 0
       }));
@@ -210,9 +215,25 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
 
     console.log(`✅ Assigned to: ${assignedStaff.staffName} (${assignedStaff.staffId}) in ${mode} mode`);
 
+    // Resolve staff email if not present in rule
+    let staffEmail = assignedStaff.staffEmail || "";
+    if (!staffEmail && assignedStaff.staffId) {
+      try {
+        const staffUser = await StaffUser.findOne({ id: assignedStaff.staffId })
+          || await User.findOne({ id: assignedStaff.staffId })
+          || await StaffRecord.findOne({ id: assignedStaff.staffId });
+        if (staffUser && staffUser.email) {
+          staffEmail = staffUser.email;
+        }
+      } catch (lookupErr) {
+        console.warn("⚠️ Could not lookup staff email:", lookupErr.message);
+      }
+    }
+
     return {
       staffId: assignedStaff.staffId,
       staffName: assignedStaff.staffName,
+      staffEmail,
       assignmentMode: mode
     };
   } catch (error) {

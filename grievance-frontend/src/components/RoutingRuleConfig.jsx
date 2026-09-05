@@ -78,7 +78,7 @@ function RoutingRuleConfig({ department }) {
     }
   };
 
-  const handleStaffToggle = (staffId, staffName) => {
+  const handleStaffToggle = (staffId, staffName, staffEmail) => {
     const currentStaff = formData.assignedStaff.find(s => s.staffId === staffId);
     if (currentStaff) {
       setFormData({
@@ -88,7 +88,7 @@ function RoutingRuleConfig({ department }) {
     } else {
       setFormData({
         ...formData,
-        assignedStaff: [...formData.assignedStaff, { staffId, staffName, isAvailable: true }]
+        assignedStaff: [...formData.assignedStaff, { staffId, staffName, staffEmail: staffEmail || "", isAvailable: true }]
       });
     }
   };
@@ -338,7 +338,7 @@ function RoutingRuleConfig({ department }) {
                 {departmentStaff.map((staff) => (
                   <div
                     key={staff.id}
-                    onClick={() => handleStaffToggle(staff.id, staff.fullName)}
+                    onClick={() => handleStaffToggle(staff.id, staff.fullName, staff.email)}
                     style={{
                       padding: "10px",
                       borderRadius: "8px",

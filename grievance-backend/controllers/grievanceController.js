@@ -1,5 +1,7 @@
 import Grievance from "../models/GrievanceModel.js";
 import User from "../models/UserModel.js";
+import StaffUser from "../models/StaffUser.js";
+import StaffRecord from "../models/StaffRecord.js";
 import nodemailer from "nodemailer";
 import { autoAssignGrievance } from "./routingRuleController.js";
 
@@ -68,10 +70,10 @@ export const submitGrievance = async (req, res) => {
       status: (assignedStaff && assignedStaff.staffId) ? "Assigned" : "Pending",
     });
 
-    // 📧 Send email notification if auto-assigned
+    // 📧 Send email notification to staff if auto-assigned
     if (assignedStaff && assignedStaff.staffId) {
       try {
-        await sendAssignmentNotification(grievance, assignedStaff.staffName);
+        await sendAssignmentNotification(grievance, assignedStaff, true);
       } catch (emailError) {
         console.error("Email notification failed (non-blocking):", emailError.message);
         // Continue without failing the submission
@@ -103,9 +105,37 @@ function calculateDeadline() {
   return deadline;
 }
 
-// Helper: Send assignment notification email
-async function sendAssignmentNotification(grievance, staffName) {
+// Helper: Send assignment notification email to staff
+async function sendAssignmentNotification(grievance, assignedStaff, isAuto = true) {
   try {
+    const staffId = (assignedStaff && typeof assignedStaff === "object") 
+      ? assignedStaff.staffId 
+      : (grievance.assignedTo || assignedStaff);
+    
+    let staffName = (assignedStaff && typeof assignedStaff === "object" && assignedStaff.staffName) 
+      ? assignedStaff.staffName 
+      : (typeof assignedStaff === "string" ? assignedStaff : "Staff Member");
+    
+    let staffEmail = (assignedStaff && typeof assignedStaff === "object") 
+      ? assignedStaff.staffEmail 
+      : null;
+
+    // Resolve staff email from database if not directly supplied
+    if (!staffEmail && staffId) {
+      const staff = await StaffUser.findOne({ id: staffId })
+        || await User.findOne({ id: staffId })
+        || await StaffRecord.findOne({ id: staffId });
+      if (staff) {
+        if (staff.email) staffEmail = staff.email;
+        if (staff.fullName) staffName = staff.fullName;
+      }
+    }
+
+    if (!staffEmail) {
+      console.warn(`⚠️ Cannot send assignment notification: No email found for staff ID "${staffId}" (${staffName})`);
+      return;
+    }
+
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -114,30 +144,45 @@ async function sendAssignmentNotification(grievance, staffName) {
       },
     });
 
+    const subject = isAuto 
+      ? `🎯 New Grievance Auto-Assigned - ${grievance.category}`
+      : `📋 New Grievance Assigned - ${grievance.category}`;
+    const heading = isAuto 
+      ? "🎯 New Grievance Auto-Assigned" 
+      : "📋 New Grievance Assigned";
+    const introText = isAuto
+      ? "A new grievance has been automatically assigned to you:"
+      : "A new grievance has been assigned to you by the department administrator:";
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: grievance.email,
-      subject: `🎯 New Grievance Auto-Assigned - ${grievance.category}`,
+      to: staffEmail, // ✅ Send to staff's email (NOT grievance.email which is student)
+      subject,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">New Grievance Auto-Assigned</h2>
-          <p>Dear ${staffName},</p>
-          <p>A new grievance has been automatically assigned to you:</p>
-          <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Category:</strong> ${grievance.category}</p>
-            <p><strong>Student:</strong> ${grievance.name} (${grievance.userId})</p>
-            <p><strong>Message:</strong> ${grievance.message}</p>
-            <p><strong>Deadline:</strong> ${grievance.deadlineDate ? new Date(grievance.deadlineDate).toLocaleDateString() : 'N/A'}</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #2563eb; padding: 20px; color: white;">
+            <h2 style="margin: 0; font-size: 1.3rem;">${heading}</h2>
           </div>
-          <p>Please log in to the portal to view and process this grievance.</p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-          <p style="color: #64748b; font-size: 0.9rem;">Best regards,<br><strong>Grievance Portal Team</strong></p>
+          <div style="padding: 20px;">
+            <p>Dear <strong>${staffName}</strong>,</p>
+            <p>${introText}</p>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+              <p style="margin: 6px 0;"><strong>Grievance ID:</strong> #${grievance._id}</p>
+              <p style="margin: 6px 0;"><strong>Category:</strong> ${grievance.category}</p>
+              <p style="margin: 6px 0;"><strong>Student:</strong> ${grievance.name} (${grievance.userId || grievance.regid || 'N/A'})</p>
+              <p style="margin: 6px 0;"><strong>Message:</strong> ${grievance.message || 'No description provided'}</p>
+              <p style="margin: 6px 0;"><strong>Deadline:</strong> ${grievance.deadlineDate ? new Date(grievance.deadlineDate).toLocaleDateString() : 'N/A'}</p>
+            </div>
+            <p>Please log in to the portal to view and process this grievance.</p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="color: #64748b; font-size: 0.9rem;">Best regards,<br><strong>CTU Grievance Portal Team</strong></p>
+          </div>
         </div>
       `,
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Assignment notification sent to ${staffName}`);
+    console.log(`✅ Assignment notification sent to staff ${staffName} (${staffEmail})`);
   } catch (error) {
     console.error("⚠️ Failed to send assignment notification:", error);
   }
@@ -319,6 +364,13 @@ export const assignToStaff = async (req, res) => {
 
     const grievance = await Grievance.findByIdAndUpdate(id, update, { new: true });
 
+    // 📧 Send email notification to assigned staff (manual assignment, non-blocking)
+    try {
+      await sendAssignmentNotification(grievance, { staffId }, false);
+    } catch (emailError) {
+      console.error("Manual assignment email notification failed (non-blocking):", emailError.message);
+    }
+
     // console.log('Assign result (saved grievance):', grievance);
 
     res.json({
@@ -475,13 +527,17 @@ export const verifyResolution = async (req, res) => {
     let deptAdminEmail = null;
 
     if (grievance.assignedTo) {
-      const staff = await User.findOne({ id: grievance.assignedTo });
+      const staff = await StaffUser.findOne({ id: grievance.assignedTo })
+        || await User.findOne({ id: grievance.assignedTo })
+        || await StaffRecord.findOne({ id: grievance.assignedTo });
       if (staff) staffEmail = staff.email;
     }
 
     // If Rejected, we also need Dept Admin email (Assigned By usually is Admin)
     if (action === "reject" && grievance.assignedBy) {
-      const admin = await User.findOne({ id: grievance.assignedBy });
+      const admin = await StaffUser.findOne({ id: grievance.assignedBy })
+        || await User.findOne({ id: grievance.assignedBy })
+        || await StaffRecord.findOne({ id: grievance.assignedBy });
       if (admin) deptAdminEmail = admin.email;
     }
 
@@ -581,7 +637,9 @@ export const resolveExtension = async (req, res) => {
     // 📧 SEND EMAIL NOTIFICATION TO STAFF
     try {
       if (grievance.assignedTo) {
-        const staff = await User.findOne({ id: grievance.assignedTo });
+        const staff = await StaffUser.findOne({ id: grievance.assignedTo })
+          || await User.findOne({ id: grievance.assignedTo })
+          || await StaffRecord.findOne({ id: grievance.assignedTo });
 
         if (staff && staff.email) {
           const transporter = nodemailer.createTransport({
@@ -651,9 +709,9 @@ export const getGrievanceDetail = async (req, res) => {
     // Fetch assigned staff details if available
     let staffInfo = null;
     if (grievance.assignedTo) {
-      // Import User model dynamically to avoid circular dependency
-      const { default: User } = await import("../models/UserModel.js");
-      const staff = await User.findOne({ id: grievance.assignedTo });
+      const staff = await StaffUser.findOne({ id: grievance.assignedTo })
+        || await User.findOne({ id: grievance.assignedTo })
+        || await StaffRecord.findOne({ id: grievance.assignedTo });
       if (staff) {
         staffInfo = {
           id: staff.id,
