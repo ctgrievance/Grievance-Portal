@@ -456,6 +456,40 @@ textarea:focus {
   transform: translateY(0);
 }
 
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.submit-btn.submitting {
+  opacity: 0.75;
+  filter: blur(0.4px);
+  cursor: wait !important;
+  transform: none !important;
+  box-shadow: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.submit-btn.submitted {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+  color: #ffffff !important;
+  opacity: 0.88;
+  filter: blur(0.2px);
+  cursor: default !important;
+  transform: none !important;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 /* Enhancing Existing Table */
 .table-container {
   overflow-x: auto;

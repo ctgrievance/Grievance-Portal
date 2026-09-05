@@ -35,6 +35,7 @@ function Department() {
   const [attachment, setAttachment] = useState(null);
   const [msg, setMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
   const [issueTypes, setIssueTypes] = useState([]);
@@ -159,10 +160,12 @@ function Department() {
 
       setMsg("✅ Grievance submitted successfully!");
       setStatusType("success");
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 5000);
       setFormData(prev => ({ ...prev, message: "" }));
       setSelectedIssueType("");
       setAttachment(null);
-      document.getElementById("fileInput").value = "";
+      if (document.getElementById("fileInput")) document.getElementById("fileInput").value = "";
     } catch (err) {
       setMsg(`❌ ${err.message}`);
       setStatusType("error");
@@ -200,6 +203,7 @@ function Department() {
           <li className="active"><Link to="/student/department">Department</Link></li>
           <li><Link to="/student/hr">HR</Link></li>
           <li><Link to="/student/crc">CRC (Placement)</Link></li>
+          <li><Link to="/student/transport">Transport</Link></li>
         </ul>
       </nav>
 
@@ -282,9 +286,40 @@ function Department() {
                 />
               </div>
 
-              <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Grievance"}
+              <button
+                type="submit"
+                className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
+                disabled={isSubmitting || isSubmitted}
+                style={
+                  isSubmitted
+                    ? {
+                        background: "linear-gradient(135deg, #16a34a, #15803d)",
+                        color: "#ffffff",
+                        opacity: 0.88,
+                        filter: "blur(0.2px)",
+                        cursor: "default",
+                        boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
+                      }
+                    : isSubmitting
+                    ? {
+                        opacity: 0.75,
+                        filter: "blur(0.4px)",
+                        cursor: "wait",
+                      }
+                    : {}
+                }
+              >
+                {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
               </button>
+
+              {msg && (
+                <div
+                  className={`alert-box ${statusType}`}
+                  style={{ marginTop: "15px", textAlign: "center" }}
+                >
+                  {msg}
+                </div>
+              )}
             </form>
           )}
         </div>

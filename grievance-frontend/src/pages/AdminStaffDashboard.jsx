@@ -92,6 +92,8 @@ function AdminStaffDashboard() {
   const [customIssueTitle, setCustomIssueTitle] = useState("");
   const [attachment, setAttachment] = useState(null);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [myGrievances, setMyGrievances] = useState([]);
   const [loadingMine, setLoadingMine] = useState(false);
 
@@ -410,6 +412,7 @@ function AdminStaffDashboard() {
 
     setMsg("Submitting your grievance...");
     setStatusType("info");
+    setIsSubmitting(true);
 
     // 1️⃣ Upload File
     let attachmentUrl = "";
@@ -422,7 +425,10 @@ function AdminStaffDashboard() {
         const uploadJson = await uploadRes.json();
         attachmentUrl = uploadJson.filename;
       } catch (err) {
-        setMsg(`❌ Upload Error: ${err.message}`); setStatusType("error"); return;
+        setMsg(`❌ Upload Error: ${err.message}`);
+        setStatusType("error");
+        setIsSubmitting(false);
+        return;
       }
     }
 
@@ -448,8 +454,10 @@ function AdminStaffDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Submission failed");
 
-      setMsg("Grievance submitted successfully!");
+      setMsg("✅ Grievance submitted successfully!");
       setStatusType("success");
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 5000);
       setFormData({ department: "", message: "" });
       setSelectedIssueType("");
       setCustomIssueTitle("");
@@ -458,8 +466,10 @@ function AdminStaffDashboard() {
 
       fetchMySubmissions(); // Refresh list
     } catch (err) {
-      setMsg(`Error: ${err.message}`);
+      setMsg(`❌ Error: ${err.message}`);
       setStatusType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -988,7 +998,40 @@ function AdminStaffDashboard() {
                   <input id="adminStaffFile" type="file" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" className="file-input" />
                 </div>
 
-                <button type="submit" className="submit-btn">Submit Grievance</button>
+                <button
+                  type="submit"
+                  className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
+                  disabled={isSubmitting || isSubmitted}
+                  style={
+                    isSubmitted
+                      ? {
+                          background: "linear-gradient(135deg, #16a34a, #15803d)",
+                          color: "#ffffff",
+                          opacity: 0.88,
+                          filter: "blur(0.2px)",
+                          cursor: "default",
+                          boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
+                        }
+                      : isSubmitting
+                      ? {
+                          opacity: 0.75,
+                          filter: "blur(0.4px)",
+                          cursor: "wait",
+                        }
+                      : {}
+                  }
+                >
+                  {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
+                </button>
+
+                {msg && (
+                  <div
+                    className={`alert-box ${statusType}`}
+                    style={{ marginTop: "15px", textAlign: "center" }}
+                  >
+                    {msg}
+                  </div>
+                )}
               </form>
             </>
           )}

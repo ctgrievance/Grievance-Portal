@@ -1,5 +1,4 @@
 import User from "../models/UserModel.js"; // Legacy - kept for backup
-import UniversityRecord from "../models/UniversityRecord.js"; // Legacy - kept for backup
 import StudentRecord from "../models/StudentRecord.js"; // NEW: Student validation
 import StaffRecord from "../models/StaffRecord.js"; // NEW: Staff/Admin validation
 import StudentUser from "../models/StudentUser.js"; // NEW: Student users
@@ -61,20 +60,12 @@ export const registerRequest = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // ✅ Validate ID against appropriate University Records
+    // ✅ Validate ID against official records (StudentRecord for students, StaffRecord for staff/admin)
     let validRecord = null;
     if (userRole === "student") {
       validRecord = await StudentRecord.findOne({ id: safeId });
-      if (!validRecord) {
-        // Fallback to legacy UniversityRecord
-        validRecord = await UniversityRecord.findOne({ id: safeId, role: "student" });
-      }
     } else {
       validRecord = await StaffRecord.findOne({ id: safeId });
-      if (!validRecord) {
-        // Fallback to legacy UniversityRecord  
-        validRecord = await UniversityRecord.findOne({ id: safeId, role: { $in: ["staff", "admin"] } });
-      }
     }
 
     if (!validRecord) {

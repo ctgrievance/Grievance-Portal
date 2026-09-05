@@ -32,7 +32,6 @@ import studentRecordRoutes from "./routes/studentRecordRoutes.js"; // NEW: Stude
 import issueRoutes from "./routes/issueRoutes.js"; // NEW: Issue Type Routes
 import routingRuleRoutes from "./routes/routingRuleRoutes.js"; // NEW: Routing Rule Routes
 import staffPoolRoutes from "./routes/staffPoolRoutes.js"; // NEW: Staff Pool Routes
-import UniversityRecord from "./models/UniversityRecord.js"; // Legacy Backup
 import StudentRecord from "./models/StudentRecord.js"; // NEW: Student Records
 import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
 import StudentUser from "./models/StudentUser.js"; // NEW: Student Users
@@ -261,7 +260,6 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
     const BATCH_SIZE = 500;
     const studentBatch = [];
     const staffBatch = [];
-    const universityBatch = [];
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
@@ -349,23 +347,6 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
           staffCount++;
         }
 
-        // Legacy backup
-        universityBatch.push({
-          updateOne: {
-            filter: { id: safeId },
-            update: {
-              $set: {
-                id: safeId,
-                fullName: rowName ? rowName.toString().trim() : "",
-                email: safeEmail,
-                role: detectedRole,
-                department: rowDepartment ? rowDepartment.toString().trim() : "",
-                program: rowProgram ? rowProgram.toString().trim() : ""
-              }
-            },
-            upsert: true
-          }
-        });
 
         // 🔥 Process batch when size reached
         if (studentBatch.length >= BATCH_SIZE) {
@@ -377,10 +358,6 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
           await StaffRecord.bulkWrite(staffBatch);
           console.log(`✅ Processed ${staffBatch.length} staff (batch)`);
           staffBatch.length = 0;
-        }
-        if (universityBatch.length >= BATCH_SIZE) {
-          await UniversityRecord.bulkWrite(universityBatch);
-          universityBatch.length = 0;
         }
       }
 
@@ -398,9 +375,6 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
     if (staffBatch.length > 0) {
       await StaffRecord.bulkWrite(staffBatch);
       console.log(`✅ Processed ${staffBatch.length} staff (final batch)`);
-    }
-    if (universityBatch.length > 0) {
-      await UniversityRecord.bulkWrite(universityBatch);
     }
 
     console.log(`\n📊 UPLOAD COMPLETE: ${studentCount} Students, ${staffCount} Staff, ${skippedRecords.length} Skipped`);
