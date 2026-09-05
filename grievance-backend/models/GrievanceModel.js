@@ -114,7 +114,26 @@ const grievanceSchema = new mongoose.Schema(
     hiddenFor: {
       type: [String], // Array of User IDs who have "deleted" this grievance
       default: []
-    }
+    },
+
+    // ================= DEPARTMENT RE-ROUTING & TRANSFER =================
+    isRerouted: {
+      type: Boolean,
+      default: false
+    },
+    transferHistory: [
+      {
+        fromDepartment: { type: String, required: true },
+        toDepartment: { type: String, required: true },
+        transferredBy: { type: String, required: true }, // Staff / Admin ID
+        transferredByName: { type: String, default: "" },
+        transferredByRole: { type: String, default: "staff" },
+        reason: { type: String, required: true },
+        transferredAt: { type: Date, default: Date.now },
+        assignedToInNewDept: { type: String, default: null },
+        assignedToNameInNewDept: { type: String, default: null }
+      }
+    ]
   },
   { timestamps: true }
 );

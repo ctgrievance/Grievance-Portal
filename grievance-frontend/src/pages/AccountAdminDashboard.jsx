@@ -424,6 +424,10 @@ function AccountAdminDashboard() {
               onClose={() => setSelectedGrievance(null)}
               onDelete={handleDeleteGrievance}
               onResolveExtension={handleResolveExtension}
+              onTransferred={() => {
+                fetchGrievances();
+                setSelectedGrievance(null);
+              }}
             />
           )}
         </div>

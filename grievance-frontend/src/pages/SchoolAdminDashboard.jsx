@@ -482,6 +482,10 @@ function SchoolAdminDashboard() {
           onClose={() => setSelectedGrievance(null)}
           onDelete={handleDeleteGrievance}
           onResolveExtension={handleResolveExtension}
+          onTransferred={() => {
+            fetchMySchoolGrievances();
+            setSelectedGrievance(null);
+          }}
         />
       )}
 

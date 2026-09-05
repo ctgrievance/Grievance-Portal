@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import TransferDepartmentModal from "./TransferDepartmentModal";
 import {
   XIcon,
   TrashIcon,
@@ -108,8 +109,10 @@ const GrievanceDetailsModal = ({
   onDelete,
   onResolveExtension,
   onRequestExtension,
+  onTransferred,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
   if (!grievance) return null;
 
@@ -671,6 +674,77 @@ const GrievanceDetailsModal = ({
             </div>
           </div>
 
+          {/* 🔁 RE-ROUTING & TRANSFER AUDIT TRAIL */}
+          {(grievance.isRerouted || (grievance.transferHistory && grievance.transferHistory.length > 0)) && (
+            <div
+              style={{
+                background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                border: "1.5px solid #cbd5e1",
+                borderRadius: "12px",
+                padding: "16px 18px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "1.2rem" }}>🔁</span>
+                  <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#1e293b", fontWeight: "700" }}>
+                    Department Re-routing & Transfer Trail ({grievance.transferHistory?.length || 1})
+                  </h4>
+                </div>
+                <span style={{ fontSize: "0.75rem", background: "#e0e7ff", color: "#3730a3", padding: "3px 8px", borderRadius: "6px", fontWeight: "700" }}>
+                  RE-ROUTED TICKET
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {grievance.transferHistory && grievance.transferHistory.length > 0 ? (
+                  grievance.transferHistory.map((item, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: "#ffffff",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        padding: "12px 14px",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                        <span style={{ fontWeight: "700", fontSize: "0.85rem", color: "#2563eb", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                          <span>Step {idx + 1}:</span>
+                          <span style={{ color: "#dc2626" }}>{item.fromDepartment}</span>
+                          <span>➔</span>
+                          <span style={{ color: "#16a34a" }}>{item.toDepartment}</span>
+                        </span>
+                        <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                          {formatDateTime(item.transferredAt)}
+                        </span>
+                      </div>
+
+                      <p style={{ margin: "0 0 6px 0", fontSize: "0.83rem", color: "#475569" }}>
+                        <strong>Transferred By:</strong> {item.transferredByName || "Staff Member"} <span style={{ color: "#94a3b8" }}>({item.transferredBy})</span>
+                      </p>
+
+                      <div style={{ background: "#f8fafc", padding: "8px 10px", borderRadius: "6px", border: "1px dashed #cbd5e1", fontSize: "0.85rem", color: "#334155", fontStyle: "italic" }}>
+                        “{item.reason}”
+                      </div>
+
+                      {(item.assignedToNameInNewDept || item.assignedToInNewDept) && (
+                        <div style={{ marginTop: "6px", fontSize: "0.8rem", color: "#15803d", fontWeight: "600" }}>
+                          👤 Assigned in {item.toDepartment}: {item.assignedToNameInNewDept || item.assignedToInNewDept}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                    This grievance was re-routed from another department.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ⏳ SECTION 3: EXTENSION REQUEST (IF ANY) */}
           {grievance.extensionRequest &&
             grievance.extensionRequest.status &&
@@ -978,33 +1052,60 @@ const GrievanceDetailsModal = ({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
+            gap: "10px"
           }}
         >
-          {onDelete ? (
-            <button
-              onClick={() => onDelete(grievance._id)}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#fee2e2",
-                border: "1px solid #ef4444",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                color: "#dc2626",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "0.85rem",
-                transition: "all 0.2s",
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#fecaca")}
-              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#fee2e2")}
-            >
-              <TrashIcon width="15" height="15" /> Remove from View
-            </button>
-          ) : (
-            <div></div>
-          )}
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            {onDelete && (
+              <button
+                onClick={() => onDelete(grievance._id)}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#fee2e2",
+                  border: "1px solid #ef4444",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  color: "#dc2626",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "0.85rem",
+                  transition: "all 0.2s",
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#fecaca")}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#fee2e2")}
+              >
+                <TrashIcon width="15" height="15" /> Remove from View
+              </button>
+            )}
+
+            {!isResolved && !isRejected && (
+              <button
+                onClick={() => setShowTransferModal(true)}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#eff6ff",
+                  border: "1.5px solid #bfdbfe",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: "700",
+                  color: "#1d4ed8",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "0.85rem",
+                  transition: "all 0.2s",
+                  boxShadow: "0 1px 3px rgba(37, 99, 235, 0.1)"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#dbeafe")}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
+              >
+                <span>🔁</span> Forward to Department
+              </button>
+            )}
+          </div>
 
           <button
             onClick={onClose}
@@ -1026,6 +1127,18 @@ const GrievanceDetailsModal = ({
           </button>
         </div>
       </div>
+
+      {showTransferModal && (
+        <TransferDepartmentModal
+          grievance={grievance}
+          onClose={() => setShowTransferModal(false)}
+          onTransferred={(msg, updated) => {
+            setShowTransferModal(false);
+            if (onTransferred) onTransferred(msg, updated);
+            if (onClose) onClose();
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes modalFadeIn {

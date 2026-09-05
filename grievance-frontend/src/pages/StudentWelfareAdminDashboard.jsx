@@ -404,6 +404,10 @@ function StudentWelfareAdminDashboard() {
           onClose={() => setSelectedGrievance(null)}
           onDelete={handleDeleteGrievance}
           onResolveExtension={handleResolveExtension}
+          onTransferred={() => {
+            fetchGrievances();
+            setSelectedGrievance(null);
+          }}
         />
       )}
 

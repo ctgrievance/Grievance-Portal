@@ -130,7 +130,11 @@ function AdminDashboard() {
   const filteredGrievances = grievances.filter((g) => {
     const matchStudentId = (g.userId || "").toLowerCase().includes(searchStudentId.toLowerCase());
     const matchStaffId = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
-    const matchStatus = filterStatus === "All" || g.status === filterStatus;
+    const matchStatus = filterStatus === "All" 
+      ? true 
+      : filterStatus === "Rerouted"
+      ? !!g.isRerouted
+      : g.status === filterStatus;
 
     const categoryOrSchool = g.category || g.school || "";
     const matchDept = filterDepartment === "All" || categoryOrSchool === filterDepartment;
@@ -254,17 +258,35 @@ function AdminDashboard() {
 
         {activeTab === "triage" && (
           <div className="card">
-            <h2>All Incoming Grievances (Read Only)</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "15px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <h2 style={{ margin: 0 }}>All Incoming Grievances (Read Only)</h2>
+                {grievances.filter(g => g.isRerouted).length > 0 && (
+                  <span
+                    style={{
+                      fontSize: "0.8rem",
+                      fontWeight: "700",
+                      color: "#9333ea",
+                      background: "#f3e8ff",
+                      padding: "4px 10px",
+                      borderRadius: "20px",
+                      border: "1px solid #e9d5ff",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    🔁 {grievances.filter(g => g.isRerouted).length} Re-routed
+                  </span>
+                )}
+              </div>
+            </div>
 
-            {/* ✅ FILTER BAR */
-            }
-
+            {/* ✅ FILTER BAR */}
             <div className="filter-bar" style={{
               display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
               padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
-
-
               <input
                 type="text" placeholder="Search Student ID..."
                 value={searchStudentId} onChange={(e) => setSearchStudentId(e.target.value)}
@@ -277,13 +299,14 @@ function AdminDashboard() {
               />
               <select
                 value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 120px", cursor: "pointer" }}
+                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 140px", cursor: "pointer" }}
               >
                 <option value="All">All Status</option>
                 <option value="Pending">Pending</option>
                 <option value="Assigned">Assigned</option>
                 <option value="Resolved">Resolved</option>
                 <option value="Rejected">Rejected</option>
+                <option value="Rerouted">🔁 Re-routed Only</option>
               </select>
               <select
                 value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}
@@ -363,13 +386,34 @@ function AdminDashboard() {
                         </td>
 
                         <td data-label="Status">
-                          <span
-                            className={`status-badge status-${(g.status || "")
-                              .toLowerCase()
-                              .replace(" ", "")}`}
-                          >
-                            {g.status}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                            <span
+                              className={`status-badge status-${(g.status || "")
+                                .toLowerCase()
+                                .replace(" ", "")}`}
+                            >
+                              {g.status}
+                            </span>
+                            {g.isRerouted && (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "3px",
+                                  fontSize: "0.72rem",
+                                  fontWeight: "700",
+                                  color: "#9333ea",
+                                  background: "#f3e8ff",
+                                  padding: "2px 7px",
+                                  borderRadius: "12px",
+                                  border: "1px solid #e9d5ff",
+                                }}
+                                title={`Re-routed ${g.transferHistory?.length || 1} time(s)`}
+                              >
+                                🔁 Re-routed {g.transferHistory?.length > 1 ? `(${g.transferHistory.length})` : ""}
+                              </span>
+                            )}
+                          </div>
 
                           {/* ⭐ Rating under Resolved */}
                           {g.status?.toLowerCase() === "resolved" && (
@@ -422,6 +466,10 @@ function AdminDashboard() {
             staffMap={staffMap}
             onClose={() => setSelectedGrievance(null)}
             onDelete={handleDeleteGrievance}
+            onTransferred={() => {
+              fetchAllGrievances();
+              setSelectedGrievance(null);
+            }}
           />
         )}
 

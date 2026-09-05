@@ -85,6 +85,27 @@ function StaffDashboard() {
   });
 
   const [staffMap, setStaffMap] = useState({});
+  const [transferredGrievances, setTransferredGrievances] = useState([]);
+  const [loadingTransferred, setLoadingTransferred] = useState(false);
+
+  const fetchTransferredGrievances = useCallback(async () => {
+    if (!userId) return;
+    setLoadingTransferred(true);
+    try {
+      const token = localStorage.getItem("grievance_token");
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/staff-transfers/${userId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTransferredGrievances(data);
+      }
+    } catch (err) {
+      console.error("Error fetching transferred grievances:", err);
+    } finally {
+      setLoadingTransferred(false);
+    }
+  }, [userId]);
 
   const fetchStaffNames = useCallback(async () => {
     try {
@@ -123,7 +144,8 @@ function StaffDashboard() {
   useEffect(() => {
     fetchMyRatings();
     fetchStaffNames();
-  }, [fetchMyRatings, fetchStaffNames]);
+    fetchTransferredGrievances();
+  }, [fetchMyRatings, fetchStaffNames, fetchTransferredGrievances]);
 
   // Route protection
   useEffect(() => {
@@ -474,6 +496,14 @@ function StaffDashboard() {
               My Submissions
             </button>
           </li>
+          <li className={activeTab === "transferred" ? "active" : ""}>
+            <button
+              className="tab-link-button"
+              onClick={() => setActiveTab("transferred")}
+            >
+              🔁 Transferred Out ({transferredGrievances.length})
+            </button>
+          </li>
         </ul>
       </nav>
 
@@ -700,9 +730,30 @@ function StaffDashboard() {
                           {/* ---------------------------------------------------- */}
 
                           <td>
-                            <span className={`status-badge status-${g.status.toLowerCase()}`}>
-                              {g.status}
-                            </span>
+                            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                              <span className={`status-badge status-${g.status.toLowerCase()}`}>
+                                {g.status}
+                              </span>
+                              {g.isRerouted && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "3px",
+                                    fontSize: "0.72rem",
+                                    fontWeight: "700",
+                                    color: "#9333ea",
+                                    background: "#f3e8ff",
+                                    padding: "2px 6px",
+                                    borderRadius: "12px",
+                                    border: "1px solid #e9d5ff",
+                                  }}
+                                  title={`Re-routed ${g.transferHistory?.length || 1} time(s)`}
+                                >
+                                  🔁 Re-routed
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td>{g.assignedTo || "Not Assigned"}</td>
                           <td>{formatDate(g.createdAt)}</td>
@@ -899,6 +950,129 @@ function StaffDashboard() {
               )}
             </div>
           )}
+
+          {/* TAB 4: TRANSFERRED OUT GRIEVANCES */}
+          {activeTab === "transferred" && (
+            <div className="transferred-tab-content">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <h2 style={{ margin: 0, color: "#0f172a" }}>🔁 Forwarded / Transferred Grievances</h2>
+                  <p style={{ margin: "4px 0 0 0", color: "#64748b" }}>
+                    Grievances you forwarded to other departments because they were misrouted. Track their live resolution status here.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchTransferredGrievances}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    color: "#334155",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  🔄 Refresh
+                </button>
+              </div>
+
+              {loadingTransferred ? (
+                <p>Loading transferred grievances...</p>
+              ) : transferredGrievances.length === 0 ? (
+                <div style={{
+                  background: "#f8fafc",
+                  border: "1px dashed #cbd5e1",
+                  borderRadius: "14px",
+                  padding: "40px",
+                  textAlign: "center",
+                  color: "#64748b"
+                }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>🔁</div>
+                  <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Grievances Transferred Yet</h4>
+                  <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
+                    When you receive a grievance that belongs to another department, you can forward it using the "Forward to Department" button in the grievance details.
+                  </p>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="grievance-table">
+                    <thead>
+                      <tr>
+                        <th>Grievance ID</th>
+                        <th>Forwarded To</th>
+                        <th>Target Handler</th>
+                        <th>Reason for Transfer</th>
+                        <th>Live Status</th>
+                        <th>Forwarded Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transferredGrievances.map((g) => {
+                        const myTransfer = g.transferHistory && [...g.transferHistory].reverse().find(t => t.transferredBy === userId);
+                        return (
+                          <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
+                            <td data-label="Grievance ID" style={{ fontWeight: "700", color: "#334155" }}>
+                              {g.userId}
+                            </td>
+                            <td data-label="Forwarded To">
+                              <span style={{
+                                fontWeight: "700",
+                                color: "#0284c7",
+                                background: "#e0f2fe",
+                                padding: "3px 8px",
+                                borderRadius: "6px"
+                              }}>
+                                🏢 {myTransfer?.toDepartment || g.category || g.school}
+                              </span>
+                            </td>
+                            <td data-label="Target Handler">
+                              {myTransfer?.assignedToNameInNewDept ? (
+                                <div>
+                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{myTransfer.assignedToNameInNewDept}</span>
+                                  <span style={{ fontSize: "0.8rem", color: "#64748b", display: "block" }}>({myTransfer.assignedToInNewDept})</span>
+                                </div>
+                              ) : g.assignedTo ? (
+                                <div>
+                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{staffMap[g.assignedTo] || g.assignedTo}</span>
+                                </div>
+                              ) : (
+                                <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Auto-routing...</span>
+                              )}
+                            </td>
+                            <td data-label="Reason" style={{ maxWidth: "220px" }}>
+                              <span style={{
+                                display: "block",
+                                fontSize: "0.85rem",
+                                color: "#475569",
+                                fontStyle: "italic",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
+                              }} title={myTransfer?.reason}>
+                                "{myTransfer?.reason || "Misrouted department"}"
+                              </span>
+                            </td>
+                            <td data-label="Live Status">
+                              <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
+                                {g.status}
+                              </span>
+                            </td>
+                            <td data-label="Forwarded Date">
+                              {myTransfer ? formatDate(myTransfer.transferredAt) : formatDate(g.updatedAt)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
 
@@ -909,6 +1083,11 @@ function StaffDashboard() {
           staffMap={staffMap}
           onClose={() => setSelectedGrievance(null)}
           onDelete={handleDeleteGrievance}
+          onTransferred={() => {
+            fetchMyGrievances();
+            fetchTransferredGrievances();
+            setSelectedGrievance(null);
+          }}
         />
       )}
 

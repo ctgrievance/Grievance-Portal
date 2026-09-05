@@ -19,7 +19,9 @@ import {
   hideGrievance,
   getPoolAcceptGrievances,
   acceptGrievance,
-  getGrievanceDetail
+  getGrievanceDetail,
+  transferGrievance,
+  getStaffTransferHistory
 } from "../controllers/grievanceController.js";
 
 const router = express.Router();
@@ -56,6 +58,11 @@ router.put("/update/:id", updateGrievanceStatus);
 router.post("/extension/request/:id", requestExtension);
 router.post("/extension/resolve/:id", resolveExtension);
 router.put("/extension/resolve/:id", resolveExtension);
+
+/* ================= 🔁 RE-ROUTING & TRANSFER ================= */
+
+router.post("/transfer/:id", transferGrievance);
+router.get("/staff-transfers/:staffId", getStaffTransferHistory);
 
 /* ================= ⭐ RATING ================= */
 
