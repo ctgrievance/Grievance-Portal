@@ -128,7 +128,8 @@ function AdminDashboard() {
 
   // ✅ FILTER LOGIC
   const filteredGrievances = grievances.filter((g) => {
-    const matchStudentId = (g.userId || "").toLowerCase().includes(searchStudentId.toLowerCase());
+    const matchStudentId = (g.userId || "").toLowerCase().includes(searchStudentId.toLowerCase()) ||
+      (g.name || "").toLowerCase().includes(searchStudentId.toLowerCase());
     const matchStaffId = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
     const matchStatus = filterStatus === "All" 
       ? true 
@@ -288,7 +289,7 @@ function AdminDashboard() {
               padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
               <input
-                type="text" placeholder="Search Student ID..."
+                type="text" placeholder="Search Student ID or Name..."
                 value={searchStudentId} onChange={(e) => setSearchStudentId(e.target.value)}
                 style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
               />
@@ -359,7 +360,7 @@ function AdminDashboard() {
                 <table className="grievance-table">
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      <th>Student / User</th>
                       <th>Department / Category</th>
                       <th>Message</th>
                       <th>Status</th>
@@ -370,7 +371,16 @@ function AdminDashboard() {
                   <tbody>
                     {filteredGrievances.map((g) => (
                       <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                        <td data-label="ID" style={{ fontWeight: 'bold', color: '#334155' }}>{g.userId}</td>
+                        <td data-label="Student / User">
+                          <div>
+                            <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                              {g.name || "Student"}
+                            </span>
+                            <span style={{ fontSize: "0.85rem", color: "#64748b", fontFamily: "monospace" }}>
+                              {g.userId}
+                            </span>
+                          </div>
+                        </td>
                         <td data-label="Department / Category">{g.category || g.school || "N/A"}</td>
 
                         <td data-label="Message" className="message-cell" style={{ maxWidth: '200px' }}>

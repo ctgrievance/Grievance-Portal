@@ -15,6 +15,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
     // Column definitions
     const allColumns = [
         { key: "userId", label: "Student ID" },
+        { key: "name", label: "Student Name" },
         { key: "category", label: "Department" },
         { key: "message", label: "Message" },
         { key: "status", label: "Status" },
@@ -63,7 +64,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
             // Search filter
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
-                const matchesId = (g.userId || "").toLowerCase().includes(query);
+                const matchesId = (g.userId || "").toLowerCase().includes(query) || (g.name || "").toLowerCase().includes(query);
                 const matchesMsg = (g.message || "").toLowerCase().includes(query);
                 const matchesStaff = (g.assignedTo || "").toLowerCase().includes(query);
                 const matchesDept = (g.category || g.school || "").toLowerCase().includes(query);
@@ -130,6 +131,8 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
 
     const getCellValue = (grievance, key) => {
         switch (key) {
+            case "name":
+                return grievance.name || "N/A";
             case "category":
                 return grievance.category || grievance.school || "N/A";
             case "assignedTo":

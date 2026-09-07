@@ -49,6 +49,7 @@ router.get("/export", async (req, res) => {
 
     sheet.columns = [
       { header: "Student ID", key: "userId", width: 18 },
+      { header: "Student Name", key: "name", width: 22 },
       { header: "Department", key: "department", width: 25 },
       { header: "Message", key: "message", width: 45 },
       { header: "Status", key: "status", width: 15 },
@@ -59,6 +60,7 @@ router.get("/export", async (req, res) => {
     grievances.forEach((g) => {
       sheet.addRow({
         userId: g.userId,
+        name: g.name || "N/A",
         department: g.category || g.school || "N/A",
         message: g.message,
         status: g.status,
@@ -106,6 +108,7 @@ router.post("/export-selected", async (req, res) => {
     // Column mapping
     const columnConfig = {
       userId: { header: "Student ID", key: "userId", width: 18 },
+      name: { header: "Student Name", key: "name", width: 22 },
       category: { header: "Department/Category", key: "category", width: 25 },
       message: { header: "Message", key: "message", width: 50 },
       status: { header: "Status", key: "status", width: 15 },
@@ -139,6 +142,9 @@ router.post("/export-selected", async (req, res) => {
         switch (col) {
           case "userId":
             rowData.userId = g.userId || "N/A";
+            break;
+          case "name":
+            rowData.name = g.name || "N/A";
             break;
           case "category":
             rowData.category = g.category || g.school || "N/A";
