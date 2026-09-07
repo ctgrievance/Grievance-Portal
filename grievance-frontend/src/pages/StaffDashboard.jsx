@@ -335,6 +335,7 @@ function StaffDashboard() {
           category: formData.department, // Routes to School Admin
           message: customIssueTitle ? `[Topic: ${customIssueTitle}]\n\n${formData.message}` : formData.message,
           studentProgram: "Staff Member", // Required by backend
+          userType: "staff",
           attachment: attachmentUrl || "", // ✅ Send filename
           issueTypeId: selectedIssueType || null // ✅ Include staff issue type for auto-assignment
         }),

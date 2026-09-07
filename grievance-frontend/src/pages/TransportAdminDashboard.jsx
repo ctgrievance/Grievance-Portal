@@ -7,6 +7,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
+import { UserRoleBadge } from "../utils/userRoleHelper";
 
 const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -317,7 +318,12 @@ function TransportAdminDashboard() {
                                 {filteredGrievances.map((g) => (
                                     <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
                                         <td style={{ fontWeight: 'bold', color: '#334155' }}>{g.userId}</td>
-                                        <td>{g.name}</td>
+                                        <td>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                <span>{g.name}</span>
+                                                <UserRoleBadge grievance={g} />
+                                            </div>
+                                        </td>
                                         <td className="message-cell" style={{ maxWidth: '200px' }}>
                                             <div
                                                 style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}

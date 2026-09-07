@@ -8,6 +8,7 @@ import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
+import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -128,8 +129,10 @@ function AdminDashboard() {
 
   // ✅ FILTER LOGIC
   const filteredGrievances = grievances.filter((g) => {
+    const submitterRole = getSubmitterRole(g);
     const matchStudentId = (g.userId || "").toLowerCase().includes(searchStudentId.toLowerCase()) ||
-      (g.name || "").toLowerCase().includes(searchStudentId.toLowerCase());
+      (g.name || "").toLowerCase().includes(searchStudentId.toLowerCase()) ||
+      submitterRole.toLowerCase().includes(searchStudentId.toLowerCase());
     const matchStaffId = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
     const matchStatus = filterStatus === "All" 
       ? true 
@@ -373,9 +376,12 @@ function AdminDashboard() {
                       <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
                         <td data-label="Student / User">
                           <div>
-                            <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
-                              {g.name || "Student"}
-                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "2px" }}>
+                              <span style={{ fontWeight: "600", color: "#1e293b" }}>
+                                {g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}
+                              </span>
+                              <UserRoleBadge grievance={g} />
+                            </div>
                             <span style={{ fontSize: "0.85rem", color: "#64748b", fontFamily: "monospace" }}>
                               {g.userId}
                             </span>

@@ -10,12 +10,13 @@ import {
     ChartBarIcon,
     FileIcon
 } from "./Icons";
+import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
 const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport }) => {
     // Column definitions
     const allColumns = [
-        { key: "userId", label: "Student ID" },
-        { key: "name", label: "Student Name" },
+        { key: "userId", label: "User ID" },
+        { key: "name", label: "User Name" },
         { key: "category", label: "Department" },
         { key: "message", label: "Message" },
         { key: "status", label: "Status" },
@@ -64,7 +65,10 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
             // Search filter
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
-                const matchesId = (g.userId || "").toLowerCase().includes(query) || (g.name || "").toLowerCase().includes(query);
+                const role = getSubmitterRole(g);
+                const matchesId = (g.userId || "").toLowerCase().includes(query) || 
+                    (g.name || "").toLowerCase().includes(query) ||
+                    role.includes(query);
                 const matchesMsg = (g.message || "").toLowerCase().includes(query);
                 const matchesStaff = (g.assignedTo || "").toLowerCase().includes(query);
                 const matchesDept = (g.category || g.school || "").toLowerCase().includes(query);
@@ -98,30 +102,40 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
     if (!isOpen) return null;
 
     const toggleColumn = (key) => {
-        setSelectedColumns((prev) =>
-            prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-        );
+        if (selectedColumns.includes(key)) {
+            if (selectedColumns.length > 1) {
+                setSelectedColumns(selectedColumns.filter((col) => col !== key));
+            }
+        } else {
+            setSelectedColumns([...selectedColumns, key]);
+        }
     };
 
     const toggleRow = (id) => {
-        setSelectedRows((prev) => {
-            const newSelection = prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id];
-            setSelectAll(newSelection.length === filteredData.length);
-            return newSelection;
-        });
+        if (selectedRows.includes(id)) {
+            setSelectedRows(selectedRows.filter((rId) => rId !== id));
+            setSelectAll(false);
+        } else {
+            const next = [...selectedRows, id];
+            setSelectedRows(next);
+            if (next.length === filteredData.length) {
+                setSelectAll(true);
+            }
+        }
     };
 
     const toggleSelectAll = () => {
         if (selectAll) {
             setSelectedRows([]);
+            setSelectAll(false);
         } else {
             setSelectedRows(filteredData.map((g) => g._id));
+            setSelectAll(true);
         }
-        setSelectAll(!selectAll);
     };
 
     const formatDate = (dateString) => {
-        if (!dateString) return "N/A";
+        if (!dateString) return "—";
         return new Date(dateString).toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
@@ -131,8 +145,11 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
 
     const getCellValue = (grievance, key) => {
         switch (key) {
-            case "name":
-                return grievance.name || "N/A";
+            case "name": {
+                const role = getSubmitterRole(grievance);
+                const roleTag = role === "staff" ? "Staff" : "Student";
+                return `${grievance.name || "N/A"} [${roleTag}]`;
+            }
             case "category":
                 return grievance.category || grievance.school || "N/A";
             case "assignedTo":
@@ -597,6 +614,11 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                                         <span className={getStatusClass(g.status)}>
                                                             {g.status}
                                                         </span>
+                                                    ) : col.key === "name" ? (
+                                                        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                                            <span>{g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}</span>
+                                                            <UserRoleBadge grievance={g} />
+                                                        </div>
                                                     ) : (
                                                         getCellValue(g, col.key)
                                                     )}

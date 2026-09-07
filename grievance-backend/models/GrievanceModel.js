@@ -3,8 +3,9 @@ import mongoose from "mongoose";
 
 const grievanceSchema = new mongoose.Schema(
   {
-    // ================= STUDENT INFO =================
-    userId: { type: String, required: true }, // 8-digit Student ID
+    // ================= USER / SUBMITTER INFO =================
+    userId: { type: String, required: true }, // Student or Staff ID
+    userType: { type: String, enum: ["student", "staff"], default: "student" },
     name: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String },

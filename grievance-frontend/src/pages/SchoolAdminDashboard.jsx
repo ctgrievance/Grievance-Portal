@@ -7,6 +7,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import ctLogo from "../assets/ct-logo.png";
 import { SearchIcon, UserIcon, HomeIcon, DownloadIcon } from "../components/Icons";
+import { UserRoleBadge } from "../utils/userRoleHelper";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -392,7 +393,12 @@ function SchoolAdminDashboard() {
                     return (
                       <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
                         <td style={{ fontWeight: "bold", color: "#333" }}>{g.userId}</td>
-                        <td>{g.name}</td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span>{g.name}</span>
+                            <UserRoleBadge grievance={g} />
+                          </div>
+                        </td>
 
                         {/* ✅ ASSIGNED TO COLUMN (Standardized) */}
                         <td>

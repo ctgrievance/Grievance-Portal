@@ -15,6 +15,7 @@ import {
   AlertCircleIcon,
   FileIcon
 } from "./Icons";
+import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
 // Helper: Format date with time
 const formatDateTime = (dateString) => {
@@ -465,14 +466,17 @@ const GrievanceDetailsModal = ({
               }}
             >
               <div>
-                <span style={{ color: "#64748b", display: "block", fontSize: "0.78rem" }}>Student Name</span>
-                <strong style={{ color: "#0f172a", fontSize: "0.95rem" }}>
-                  {grievance.name || "N/A"}
-                </strong>
+                <span style={{ color: "#64748b", display: "block", fontSize: "0.78rem" }}>Submitter Name</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "3px", flexWrap: "wrap" }}>
+                  <strong style={{ color: "#0f172a", fontSize: "0.95rem" }}>
+                    {grievance.name || "N/A"}
+                  </strong>
+                  <UserRoleBadge grievance={grievance} />
+                </div>
               </div>
 
               <div>
-                <span style={{ color: "#64748b", display: "block", fontSize: "0.78rem" }}>Student ID / Roll No</span>
+                <span style={{ color: "#64748b", display: "block", fontSize: "0.78rem" }}>User ID</span>
                 <span style={{ color: "#0f172a", fontWeight: "600", fontFamily: "monospace", fontSize: "0.9rem" }}>
                   {grievance.userId || "N/A"}
                 </span>

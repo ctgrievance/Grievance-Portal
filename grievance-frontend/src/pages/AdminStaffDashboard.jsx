@@ -10,6 +10,7 @@ import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, BellIcon, PaperclipIcon, EyeIcon, ClockIcon, XIcon, TrashIcon, DownloadIcon } from "../components/Icons";
+import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -535,6 +536,7 @@ function AdminStaffDashboard() {
           category: formData.department, // Routes to School Admin
           message: customIssueTitle ? `[Topic: ${customIssueTitle}]\n\n${formData.message}` : formData.message,
           studentProgram: "Admin Staff", // Required by backend
+          userType: "staff",
           attachment: attachmentUrl || "",
           issueTypeId: selectedIssueType || null // ✅ Include staff issue type for auto-assignment
         }),
@@ -910,7 +912,12 @@ function AdminStaffDashboard() {
                     <tbody>
                       {getFilteredData(grievances, "assigned").map((g) => (
                         <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                          <td>{g.name}</td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span>{g.name}</span>
+                              <UserRoleBadge grievance={g} />
+                            </div>
+                          </td>
                           <td>{g.email}</td>
                           <td>{g.regid || "-"}</td>
                           <td className="message-cell" style={{ maxWidth: '150px' }}>
@@ -1003,7 +1010,12 @@ function AdminStaffDashboard() {
                     <tbody>
                       {poolGrievances.map((g) => (
                         <tr key={g._id}>
-                          <td>{g.name}</td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span>{g.name}</span>
+                              <UserRoleBadge grievance={g} />
+                            </div>
+                          </td>
                           <td>{g.email}</td>
                           <td>{g.regid || "-"}</td>
                           <td className="message-cell" style={{ maxWidth: '150px' }}>
@@ -1509,7 +1521,10 @@ function AdminStaffDashboard() {
                               </span>
                             </td>
                             <td>
-                              <strong>{g.name}</strong>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                                <strong>{g.name}</strong>
+                                <UserRoleBadge grievance={g} />
+                              </div>
                               <span style={{ display: "block", fontSize: "0.8rem", color: "#64748b" }}>
                                 {g.userId || g.regid} • {g.studentProgram}
                               </span>

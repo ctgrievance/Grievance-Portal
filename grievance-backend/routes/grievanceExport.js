@@ -48,8 +48,8 @@ router.get("/export", async (req, res) => {
     const sheet = workbook.addWorksheet("Grievances");
 
     sheet.columns = [
-      { header: "Student ID", key: "userId", width: 18 },
-      { header: "Student Name", key: "name", width: 22 },
+      { header: "User ID", key: "userId", width: 18 },
+      { header: "User Name", key: "name", width: 26 },
       { header: "Department", key: "department", width: 25 },
       { header: "Message", key: "message", width: 45 },
       { header: "Status", key: "status", width: 15 },
@@ -58,9 +58,11 @@ router.get("/export", async (req, res) => {
     ];
 
     grievances.forEach((g) => {
+      const isStaff = g.userType === "staff" || g.studentProgram === "Staff Member" || g.studentProgram === "Admin Staff";
+      const roleTag = isStaff ? "Staff" : "Student";
       sheet.addRow({
         userId: g.userId,
-        name: g.name || "N/A",
+        name: `${g.name || "N/A"} [${roleTag}]`,
         department: g.category || g.school || "N/A",
         message: g.message,
         status: g.status,
@@ -107,8 +109,8 @@ router.post("/export-selected", async (req, res) => {
 
     // Column mapping
     const columnConfig = {
-      userId: { header: "Student ID", key: "userId", width: 18 },
-      name: { header: "Student Name", key: "name", width: 22 },
+      userId: { header: "User ID", key: "userId", width: 18 },
+      name: { header: "User Name", key: "name", width: 26 },
       category: { header: "Department/Category", key: "category", width: 25 },
       message: { header: "Message", key: "message", width: 50 },
       status: { header: "Status", key: "status", width: 15 },
@@ -143,9 +145,12 @@ router.post("/export-selected", async (req, res) => {
           case "userId":
             rowData.userId = g.userId || "N/A";
             break;
-          case "name":
-            rowData.name = g.name || "N/A";
+          case "name": {
+            const isStaff = g.userType === "staff" || g.studentProgram === "Staff Member" || g.studentProgram === "Admin Staff";
+            const roleTag = isStaff ? "Staff" : "Student";
+            rowData.name = `${g.name || "N/A"} [${roleTag}]`;
             break;
+          }
           case "category":
             rowData.category = g.category || g.school || "N/A";
             break;
