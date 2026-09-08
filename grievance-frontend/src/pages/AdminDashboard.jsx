@@ -47,8 +47,7 @@ function AdminDashboard() {
   const [staffMap, setStaffMap] = useState({}); // ✅ Store Staff Names
 
   // ✅ FILTER STATES
-  const [searchStudentId, setSearchStudentId] = useState("");
-  const [searchStaffId, setSearchStaffId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDepartment, setFilterDepartment] = useState("All");
   const [filterMonth, setFilterMonth] = useState("");
@@ -130,10 +129,15 @@ function AdminDashboard() {
   // ✅ FILTER LOGIC
   const filteredGrievances = grievances.filter((g) => {
     const submitterRole = getSubmitterRole(g);
-    const matchStudentId = (g.userId || "").toLowerCase().includes(searchStudentId.toLowerCase()) ||
-      (g.name || "").toLowerCase().includes(searchStudentId.toLowerCase()) ||
-      submitterRole.toLowerCase().includes(searchStudentId.toLowerCase());
-    const matchStaffId = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
+    const query = searchQuery.trim().toLowerCase();
+    const assignedStaffName = staffMap[g.assignedTo] || "";
+    const matchSearch = !query ||
+      (g.userId || "").toLowerCase().includes(query) ||
+      (g.name || "").toLowerCase().includes(query) ||
+      submitterRole.toLowerCase().includes(query) ||
+      (g.assignedTo || "").toLowerCase().includes(query) ||
+      assignedStaffName.toLowerCase().includes(query);
+
     const matchStatus = filterStatus === "All" 
       ? true 
       : filterStatus === "Rerouted"
@@ -150,7 +154,7 @@ function AdminDashboard() {
       matchMonth = gDate.getFullYear() === parseInt(year) && (gDate.getMonth() + 1) === parseInt(month);
     }
 
-    return matchStudentId && matchStaffId && matchStatus && matchDept && matchMonth;
+    return matchSearch && matchStatus && matchDept && matchMonth;
   });
   // ✅ OPEN EXPORT PREVIEW MODAL
   const handleOpenExportModal = () => {
@@ -196,8 +200,7 @@ function AdminDashboard() {
 
   // ✅ Reset all filters
   const resetFilters = () => {
-    setSearchStudentId("");
-    setSearchStaffId("");
+    setSearchQuery("");
     setFilterStatus("All");
     setFilterDepartment("All");
     setFilterMonth("");
@@ -292,14 +295,11 @@ function AdminDashboard() {
               padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
               <input
-                type="text" placeholder="Search Student ID or Name..."
-                value={searchStudentId} onChange={(e) => setSearchStudentId(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
-              />
-              <input
-                type="text" placeholder="Search Staff ID..."
-                value={searchStaffId} onChange={(e) => setSearchStaffId(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
+                type="text"
+                placeholder="Search Student / Staff (ID or Name)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 240px" }}
               />
               <select
                 value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
