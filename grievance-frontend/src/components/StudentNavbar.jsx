@@ -17,7 +17,14 @@ const ROUTE_MAP = {
 
 function StudentNavbar({ activeCategory = "" }) {
   const location = useLocation();
-  const [departments, setDepartments] = useState([]);
+  const [departments, setDepartments] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem("cached_student_depts");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     const fetchDepts = async () => {
@@ -33,6 +40,11 @@ function StudentNavbar({ activeCategory = "" }) {
               (d) => d.targetAudience === "both" || d.targetAudience === "student" || !d.targetAudience
             );
             setDepartments(studentDepts);
+            try {
+              sessionStorage.setItem("cached_student_depts", JSON.stringify(studentDepts));
+            } catch (e) {
+              // ignore storage errors
+            }
           }
         }
       } catch (err) {
