@@ -375,4 +375,241 @@ export const sendChatMessageEmail = async ({
   }
 };
 
+// ============================================================================
+// 📢 SEND REJECTION NOTIFICATION TO DEPARTMENT ADMIN (INFORMATIONAL ONLY)
+// ============================================================================
+export const sendStaffRejectionNotificationToAdmin = async ({
+  grievance,
+  staffName,
+  staffId,
+  rejectionReason,
+  adminEmail,
+  adminName
+}) => {
+  try {
+    if (!adminEmail) return { success: false, message: "No admin email provided" };
+
+    const ticketDisplayId = grievance._id ? grievance._id.toString().slice(-8).toUpperCase() : "TICKET";
+    const rejectionDate = new Date().toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata"
+    });
+
+    const emailSubject = `ℹ️ Notice: Grievance #${ticketDisplayId} Rejected by ${escapeHtml(staffName)} (${escapeHtml(grievance.category)})`;
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(emailSubject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 30px 15px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+          
+          <!-- HEADER -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 24px 30px; color: #ffffff;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; font-weight: 700; margin-bottom: 4px;">
+                CT University Grievance Portal
+              </div>
+              <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff;">
+                Staff Grievance Rejection Notice
+              </h2>
+            </td>
+          </tr>
+
+          <!-- NOTICE BANNER -->
+          <tr>
+            <td style="padding: 20px 30px 10px 30px;">
+              <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 12px 16px; color: #1e40af; font-size: 13px; line-height: 1.5;">
+                <strong>📌 Informational Notice:</strong> This email is sent to notify you that an assigned staff member from your department has rejected this grievance. <em>No administrative approval or action is required.</em>
+              </div>
+            </td>
+          </tr>
+
+          <!-- BODY CONTENT -->
+          <tr>
+            <td style="padding: 15px 30px 25px 30px; color: #334155; font-size: 14px; line-height: 1.6;">
+              <p style="margin-top: 0;">Dear <strong>${escapeHtml(adminName || "Department Admin")}</strong>,</p>
+              <p>Staff member <strong>${escapeHtml(staffName)} (${escapeHtml(staffId)})</strong> has marked the following grievance as <strong>Rejected</strong> in the <strong>${escapeHtml(grievance.category)}</strong> department.</p>
+
+              <!-- GRIEVANCE DETAILS CARD -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 18px 0; font-size: 13px;">
+                <tr>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b; width: 35%;">Grievance ID</td>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">#${ticketDisplayId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Department</td>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">${escapeHtml(grievance.category)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Student / Submitter</td>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">
+                    ${escapeHtml(grievance.name || "Student")} ${grievance.studentRegId ? `(${escapeHtml(grievance.studentRegId)})` : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Rejected By</td>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #dc2626;">
+                    ${escapeHtml(staffName)} (${escapeHtml(staffId)})
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 16px; color: #64748b;">Date & Time</td>
+                  <td style="padding: 10px 16px; color: #0f172a;">${rejectionDate} IST</td>
+                </tr>
+              </table>
+
+              <!-- REJECTION REASON BOX -->
+              <div style="margin-top: 16px;">
+                <div style="font-weight: 700; color: #991b1b; font-size: 13px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Reason for Rejection:
+                </div>
+                <div style="background-color: #fef2f2; border: 1.5px solid #fecaca; border-left: 5px solid #ef4444; border-radius: 8px; padding: 14px 16px; color: #991b1b; font-size: 14px; line-height: 1.5;">
+                  ${escapeHtml(rejectionReason)}
+                </div>
+              </div>
+
+              <!-- ORIGINAL GRIEVANCE SUMMARY -->
+              <div style="margin-top: 20px;">
+                <div style="font-weight: 600; color: #64748b; font-size: 12px; margin-bottom: 4px; text-transform: uppercase;">
+                  Original Complaint Summary:
+                </div>
+                <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; color: #475569; font-size: 13px; font-style: italic;">
+                  "${escapeHtml(grievance.message ? grievance.message.substring(0, 300) : "No description provided")}${grievance.message && grievance.message.length > 300 ? "..." : ""}"
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 18px 30px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; line-height: 1.5;">
+              <p style="margin: 0 0 4px 0;">This is an automated departmental notification from <strong>CT University Grievance Portal</strong>.</p>
+              <p style="margin: 0;">Log in to your Admin Dashboard to view full audit history.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: adminEmail,
+      subject: emailSubject,
+      html: emailHtml,
+    });
+
+    console.log(`✅ Staff rejection notice sent to Dept Admin ${adminEmail} for Grievance #${ticketDisplayId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("⚠️ Failed to send rejection notice to Dept Admin:", error);
+    return { success: false, message: error.message };
+  }
+};
+
+// ============================================================================
+// 📢 SEND REJECTION NOTIFICATION TO STUDENT
+// ============================================================================
+export const sendGrievanceRejectionToStudent = async ({ grievance, rejectionReason, staffName }) => {
+  try {
+    if (!grievance.email) return { success: false, message: "No student email" };
+
+    const ticketDisplayId = grievance._id ? grievance._id.toString().slice(-8).toUpperCase() : "TICKET";
+
+    const emailSubject = `Update: Grievance #${ticketDisplayId} Status has been Marked as Rejected`;
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(emailSubject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 30px 15px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+          
+          <!-- HEADER -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 24px 30px; color: #ffffff;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #fecaca; font-weight: 700; margin-bottom: 4px;">
+                CT University Grievance Portal
+              </div>
+              <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff;">
+                Grievance Status: Rejected
+              </h2>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding: 25px 30px; color: #334155; font-size: 14px; line-height: 1.6;">
+              <p style="margin-top: 0;">Dear <strong>${escapeHtml(grievance.name || "Student")}</strong>,</p>
+              <p>Your grievance (Ticket <strong>#${ticketDisplayId}</strong>) under the <strong>${escapeHtml(grievance.category)}</strong> department has been reviewed and marked as <strong>Rejected</strong>.</p>
+
+              <div style="margin: 20px 0;">
+                <div style="font-weight: 700; color: #991b1b; font-size: 13px; margin-bottom: 6px; text-transform: uppercase;">
+                  Reason for Rejection:
+                </div>
+                <div style="background-color: #fef2f2; border: 1.5px solid #fecaca; border-left: 5px solid #ef4444; border-radius: 8px; padding: 14px 16px; color: #991b1b; font-size: 14px; line-height: 1.5;">
+                  ${escapeHtml(rejectionReason)}
+                </div>
+              </div>
+
+              <p style="color: #64748b; font-size: 13px;">
+                If you believe this was in error or require further clarification, please contact your department office or submit a revised grievance with the required details.
+              </p>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 18px 30px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; line-height: 1.5;">
+              <p style="margin: 0;">CT University Grievance Portal &bull; Automated Notification</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: grievance.email,
+      subject: emailSubject,
+      html: emailHtml,
+    });
+
+    console.log(`✅ Rejection email sent to student ${grievance.email} for Grievance #${ticketDisplayId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("⚠️ Failed to send rejection email to student:", error);
+    return { success: false, message: error.message };
+  }
+};
+
 export default transporter;

@@ -5,6 +5,10 @@ import StaffRecord from "../models/StaffRecord.js";
 import IssueType from "../models/IssueType.js";
 import nodemailer from "nodemailer";
 import { autoAssignGrievance } from "./routingRuleController.js";
+import {
+  sendStaffRejectionNotificationToAdmin,
+  sendGrievanceRejectionToStudent,
+} from "../utils/emailService.js";
 
 /* =====================================================
    1️⃣ STUDENT → SUBMIT GRIEVANCE
@@ -546,6 +550,12 @@ export const updateGrievanceStatus = async (req, res) => {
       updatedAt: Date.now(),
     };
 
+    if (finalStatus === "Rejected") {
+      updateData.rejectionReason = resolutionRemarks || "Rejected by Administrator";
+      updateData.rejectedBy = resolvedBy;
+      updateData.rejectedAt = Date.now();
+    }
+
     if (resolutionTime) {
       updateData.resolutionProposedAt = resolutionTime;
     }
@@ -1008,6 +1018,130 @@ export const getStaffTransferHistory = async (req, res) => {
   } catch (err) {
     console.error("Get Staff Transfer History Error:", err);
     res.status(500).json({ message: "Failed to fetch staff transfer history" });
+  }
+};
+
+/* =====================================================
+   ❌ STAFF REJECTS GRIEVANCE
+   → Sets status: "Rejected"
+   → Saves rejectionReason, rejectedBy, rejectedByName, rejectedAt
+   → Sends informational notification email to Dept Admin(s)
+   → Sends rejection update email to Student
+===================================================== */
+export const rejectGrievanceByStaff = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, rejectedBy, rejectedByName } = req.body;
+
+    if (!reason || !reason.trim() || reason.trim().length < 5) {
+      return res.status(400).json({ message: "A valid rejection reason (minimum 5 characters) is required." });
+    }
+
+    const grievance = await Grievance.findById(id);
+    if (!grievance) {
+      return res.status(404).json({ message: "Grievance not found." });
+    }
+
+    if (grievance.status === "Resolved") {
+      return res.status(400).json({ message: "Cannot reject a resolved grievance." });
+    }
+    if (grievance.status === "Rejected") {
+      return res.status(400).json({ message: "This grievance is already marked as rejected." });
+    }
+
+    const staffId = (rejectedBy || req.user?.id || "STAFF").toString().trim().toUpperCase();
+    let staffFullName = rejectedByName ? rejectedByName.trim() : "";
+
+    // Resolve staff name if not provided
+    if (!staffFullName && staffId) {
+      const staffUser =
+        (await StaffUser.findOne({ id: staffId })) ||
+        (await User.findOne({ id: staffId })) ||
+        (await StaffRecord.findOne({ id: staffId }));
+      if (staffUser) staffFullName = staffUser.fullName || staffId;
+      else staffFullName = staffId;
+    }
+
+    const trimmedReason = reason.trim();
+
+    grievance.status = "Rejected";
+    grievance.rejectionReason = trimmedReason;
+    grievance.resolutionRemarks = trimmedReason; // Keep in sync
+    grievance.rejectedBy = staffId;
+    grievance.rejectedByName = staffFullName;
+    grievance.rejectedAt = new Date();
+    grievance.updatedAt = new Date();
+
+    await grievance.save();
+
+    // 📧 Fire asynchronous email notifications (non-blocking for fast UI response)
+    (async () => {
+      try {
+        // 1. Find Department Admin(s) of this grievance's category
+        const deptName = grievance.category ? grievance.category.trim() : "";
+        const deptAdmins = await StaffUser.find({
+          adminDepartment: { $regex: new RegExp(`^${deptName}$`, "i") },
+          isDeptAdmin: true
+        }).select("email fullName id");
+
+        const adminEmailsSent = new Set();
+
+        for (const admin of deptAdmins) {
+          if (admin.email && !adminEmailsSent.has(admin.email.toLowerCase())) {
+            adminEmailsSent.add(admin.email.toLowerCase());
+            await sendStaffRejectionNotificationToAdmin({
+              grievance,
+              staffName: staffFullName,
+              staffId,
+              rejectionReason: trimmedReason,
+              adminEmail: admin.email,
+              adminName: admin.fullName
+            });
+          }
+        }
+
+        // Fallback: check User collection if no admin email found in StaffUser
+        if (adminEmailsSent.size === 0) {
+          const fallbackAdmins = await User.find({
+            adminDepartment: { $regex: new RegExp(`^${deptName}$`, "i") },
+            isDeptAdmin: true
+          }).select("email fullName id");
+
+          for (const admin of fallbackAdmins) {
+            if (admin.email && !adminEmailsSent.has(admin.email.toLowerCase())) {
+              adminEmailsSent.add(admin.email.toLowerCase());
+              await sendStaffRejectionNotificationToAdmin({
+                grievance,
+                staffName: staffFullName,
+                staffId,
+                rejectionReason: trimmedReason,
+                adminEmail: admin.email,
+                adminName: admin.fullName
+              });
+            }
+          }
+        }
+
+        // 2. Notify student
+        if (grievance.email) {
+          await sendGrievanceRejectionToStudent({
+            grievance,
+            rejectionReason: trimmedReason,
+            staffName: staffFullName
+          });
+        }
+      } catch (notifyErr) {
+        console.error("⚠️ Background rejection notification error:", notifyErr);
+      }
+    })();
+
+    res.json({
+      message: "✅ Grievance rejected successfully. Department Admin has been notified via email.",
+      grievance
+    });
+  } catch (err) {
+    console.error("Staff Reject Grievance Error:", err);
+    res.status(500).json({ message: "Failed to reject grievance", error: err.message });
   }
 };
 

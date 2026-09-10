@@ -66,9 +66,13 @@ const grievanceSchema = new mongoose.Schema(
     },
     assignedBy: { type: String, default: null },
 
-    // ================= RESOLUTION =================
+    // ================= RESOLUTION & REJECTION =================
     resolvedBy: { type: String, default: null },
     resolutionRemarks: { type: String, default: "" },
+    rejectedBy: { type: String, default: null },
+    rejectedByName: { type: String, default: "" },
+    rejectionReason: { type: String, default: "" },
+    rejectedAt: { type: Date, default: null },
 
     // ================= STATUS =================
     status: {
