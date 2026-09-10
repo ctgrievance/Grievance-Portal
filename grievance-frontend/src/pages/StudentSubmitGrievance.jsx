@@ -17,7 +17,6 @@ function StudentSubmitGrievance() {
   const userId = localStorage.getItem("grievance_id");
 
   const [activeDepartment, setActiveDepartment] = useState(initialDept);
-  const [departmentsList, setDepartmentsList] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     regid: userId || "",
@@ -49,30 +48,6 @@ function StudentSubmitGrievance() {
       setActiveDepartment(queryDeptName);
     }
   }, [routeDeptName, queryDeptName]);
-
-  // Fetch all active departments
-  useEffect(() => {
-    const fetchDepts = async () => {
-      try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            const studentDepts = data.filter(
-              (d) => d.targetAudience === "both" || d.targetAudience === "student" || !d.targetAudience
-            );
-            setDepartmentsList(studentDepts);
-            if (!activeDepartment && studentDepts.length > 0) {
-              setActiveDepartment(studentDepts[0].name);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch departments:", err);
-      }
-    };
-    fetchDepts();
-  }, []);
 
   // Fetch Student User Details
   useEffect(() => {
@@ -113,13 +88,17 @@ function StudentSubmitGrievance() {
         );
         if (res.ok) {
           const data = await res.json();
-          setIssueTypes(data || []);
+          if (Array.isArray(data) && data.length > 0) {
+            setIssueTypes(data);
+          } else {
+            setIssueTypes([{ _id: "general", issueName: "General Issue / Inquiry" }]);
+          }
         } else {
-          setIssueTypes([]);
+          setIssueTypes([{ _id: "general", issueName: "General Issue / Inquiry" }]);
         }
       } catch (error) {
         console.error("Error fetching issue types:", error);
-        setIssueTypes([]);
+        setIssueTypes([{ _id: "general", issueName: "General Issue / Inquiry" }]);
       }
     };
     fetchIssueTypes();
@@ -140,12 +119,6 @@ function StudentSubmitGrievance() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!activeDepartment) {
-      setMsg("Please select a department.");
-      setStatusType("error");
-      return;
-    }
-
     if (!selectedIssueType) {
       setMsg("Please select an issue type.");
       setStatusType("error");
@@ -153,7 +126,7 @@ function StudentSubmitGrievance() {
     }
 
     setIsSubmitting(true);
-    setMsg("Submitting your grievance...");
+    setMsg("Submitting...");
     setStatusType("info");
 
     // 1️⃣ Upload File to MongoDB (GridFS) First if attached
@@ -185,11 +158,11 @@ function StudentSubmitGrievance() {
       email: formData.email,
       phone: formData.phone,
       studentProgram: formData.school || "Student Program",
-      school: activeDepartment,
+      school: formData.school || "Student Program",
       category: activeDepartment,
       message: formData.message,
       attachment: attachmentUrl || "",
-      issueTypeId: selectedIssueType || null
+      issueTypeId: selectedIssueType && selectedIssueType !== "general" ? selectedIssueType : null
     };
 
     try {
@@ -228,24 +201,21 @@ function StudentSubmitGrievance() {
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
           <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
           <div className="header-content">
-            <h1>Student Grievance Portal</h1>
+            <h1>Student Dashboard</h1>
             <p>
-              Welcome, <strong>{formData.name || userId}</strong>{" "}
+              Welcome, <strong>{formData.name || userId}</strong>
               {formData.school && (
                 <span
+                  className="status-badge status-assigned"
                   style={{
                     marginLeft: "10px",
-                    background: "#e0f2fe",
-                    color: "#0369a1",
-                    padding: "2px 10px",
-                    borderRadius: "12px",
                     fontSize: "0.8rem",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "5px"
                   }}
                 >
-                  <GraduationCapIcon width="14" height="14" /> {formData.school}
+                  <GraduationCapIcon width="14" height="14" /> {formData.school.toUpperCase()}
                 </span>
               )}
             </p>
@@ -261,159 +231,151 @@ function StudentSubmitGrievance() {
 
       {/* BODY */}
       <main className="dashboard-body">
-        <div className="card form-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-            <h2>{activeDepartment || "Department"} Grievance Submission</h2>
-            {departmentsList.length > 0 && !routeDeptName && (
-              <select
-                value={activeDepartment}
-                onChange={(e) => setActiveDepartment(e.target.value)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "6px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                  background: "#fff"
-                }}
-              >
-                {departmentsList.map((d) => (
-                  <option key={d._id || d.name} value={d.name}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+        <div className="card">
+          <h2>Submit {activeDepartment} Grievance</h2>
 
-          {msg && (
-            <div className={`notification-banner ${statusType}`} style={{ marginBottom: "15px" }}>
-              {msg}
-            </div>
-          )}
-
-          {isSubmitted ? (
-            <div className="success-screen">
-              <div className="success-icon">✓</div>
-              <h3>Thank You!</h3>
-              <p>Your grievance for <strong>{activeDepartment}</strong> has been submitted.</p>
-              <button
-                onClick={() => navigate("/student/dashboard")}
-                className="btn-primary"
-                style={{ marginTop: "15px" }}
-              >
-                Go to Dashboard
-              </button>
-            </div>
+          {loading ? (
+            <p>Loading your details...</p>
           ) : (
-            <form onSubmit={handleSubmit} className="grievance-form">
+            <form onSubmit={handleSubmit}>
               <div className="form-row">
                 <div className="input-group">
                   <label>Full Name</label>
-                  <input type="text" name="name" value={formData.name} readOnly className="read-only-input" />
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    readOnly
+                    className="read-only-input"
+                  />
                 </div>
                 <div className="input-group">
                   <label>Registration ID</label>
-                  <input type="text" name="regid" value={formData.regid} readOnly className="read-only-input" />
+                  <input
+                    type="text"
+                    name="regid"
+                    value={formData.regid}
+                    readOnly
+                    className="read-only-input"
+                  />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="input-group">
                   <label>Email</label>
-                  <input type="email" name="email" value={formData.email} readOnly className="read-only-input" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    readOnly
+                    className="read-only-input"
+                  />
                 </div>
                 <div className="input-group">
                   <label>Phone</label>
-                  <input type="text" name="phone" value={formData.phone} readOnly className="read-only-input" />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="input-group">
-                  <label>Department / Category</label>
                   <input
                     type="text"
-                    value={activeDepartment}
+                    name="phone"
+                    value={formData.phone}
                     readOnly
                     className="read-only-input"
-                    style={{ fontWeight: "600", color: "#2563eb" }}
                   />
                 </div>
-
-                <div className="input-group">
-                  <label>Select Issue Type *</label>
-                  <select
-                    value={selectedIssueType}
-                    onChange={(e) => setSelectedIssueType(e.target.value)}
-                    required
-                    style={{
-                      padding: "10px",
-                      borderRadius: "6px",
-                      border: "1px solid #cbd5e1",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <option value="">-- Choose an Issue --</option>
-                    {issueTypes.map((issue) => (
-                      <option key={issue._id} value={issue._id}>
-                        {issue.issueName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
+              {/* Program / Course Field (Auto-Filled) */}
               <div className="input-group">
-                <label>Grievance Description *</label>
-                <textarea
-                  name="message"
-                  rows="4"
-                  required
-                  placeholder={`Describe your concern regarding ${activeDepartment} in detail...`}
-                  value={formData.message}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="input-group">
-                <label>Attachment (Optional)</label>
+                <label>Program / Course</label>
                 <input
-                  type="file"
-                  id="fileInput"
-                  onChange={handleFileChange}
-                  accept="image/*,.pdf,.doc,.docx"
+                  type="text"
+                  name="school"
+                  value={formData.school}
+                  readOnly
+                  className="read-only-input"
+                  placeholder="Loading department..."
                 />
-                <small style={{ color: "#64748b", marginTop: "4px" }}>
-                  Accepted formats: Images, PDF, Word documents (Max 5MB)
-                </small>
               </div>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button
-                  type="button"
-                  onClick={() => navigate("/student/dashboard")}
+              <div className="input-group">
+                <label>Issue Type</label>
+                <select
+                  value={selectedIssueType}
+                  onChange={(e) => setSelectedIssueType(e.target.value)}
+                  required
                   style={{
-                    padding: "10px 20px",
-                    background: "#f1f5f9",
-                    color: "#475569",
-                    border: "none",
+                    padding: "10px",
                     borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
                     cursor: "pointer",
-                    fontWeight: "600"
                   }}
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn-primary"
-                  style={{ flex: 1 }}
-                >
-                  {isSubmitting ? "Submitting..." : `Submit to ${activeDepartment}`}
-                </button>
+                  <option value="">Select an issue type</option>
+                  {issueTypes.map((issue) => (
+                    <option key={issue._id} value={issue._id}>
+                      {issue.issueName}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              <div className="input-group">
+                <label>Message</label>
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  rows="4"
+                  placeholder="Details..."
+                  required
+                ></textarea>
+              </div>
+
+              <div className="input-group">
+                <label>Attach Document (Optional)</label>
+                <input
+                  id="fileInput"
+                  type="file"
+                  onChange={handleFileChange}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="file-input"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
+                disabled={isSubmitting || isSubmitted}
+                style={
+                  isSubmitted
+                    ? {
+                        background: "linear-gradient(135deg, #16a34a, #15803d)",
+                        color: "#ffffff",
+                        opacity: 0.88,
+                        filter: "blur(0.2px)",
+                        cursor: "default",
+                        boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
+                      }
+                    : isSubmitting
+                    ? {
+                        opacity: 0.75,
+                        filter: "blur(0.4px)",
+                        cursor: "wait",
+                      }
+                    : {}
+                }
+              >
+                {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
+              </button>
+
+              {msg && (
+                <div
+                  className={`alert-box ${statusType}`}
+                  style={{ marginTop: "15px", textAlign: "center" }}
+                >
+                  {msg}
+                </div>
+              )}
             </form>
           )}
         </div>
