@@ -273,7 +273,8 @@ function HRAdminDashboard() {
           {allowStaffRecords && (
             <li className={activeTab === 'staff_records' ? 'active' : ''}>
               <span className="tab-link-button" onClick={() => setActiveTab('staff_records')}>
-                👥 Staff Records
+                Staff Records
+
               </span>
             </li>
           )}
@@ -281,7 +282,7 @@ function HRAdminDashboard() {
           {allowStudentRecords && (
             <li className={activeTab === 'student_records' ? 'active' : ''}>
               <span className="tab-link-button" onClick={() => setActiveTab('student_records')}>
-                📊 Student Records
+                Student Records
               </span>
             </li>
           )}

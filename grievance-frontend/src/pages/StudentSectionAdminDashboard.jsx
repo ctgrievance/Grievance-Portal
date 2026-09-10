@@ -261,14 +261,15 @@ function StudentSectionAdminDashboard() {
           {allowStudentRecords && (
             <li className={activeTab === "student_records" ? "active" : ""}>
               <span className="tab-link-button" onClick={() => setActiveTab("student_records")}>
-                📊 Student Records
+                Student Records
               </span>
             </li>
           )}
           {allowStaffRecords && (
             <li className={activeTab === "staff_records" ? "active" : ""}>
               <span className="tab-link-button" onClick={() => setActiveTab("staff_records")}>
-                👥 Staff Records
+                Staff Records
+
               </span>
             </li>
           )}
