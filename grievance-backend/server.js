@@ -32,6 +32,8 @@ import studentRecordRoutes from "./routes/studentRecordRoutes.js"; // NEW: Stude
 import issueRoutes from "./routes/issueRoutes.js"; // NEW: Issue Type Routes
 import routingRuleRoutes from "./routes/routingRuleRoutes.js"; // NEW: Routing Rule Routes
 import staffPoolRoutes from "./routes/staffPoolRoutes.js"; // NEW: Staff Pool Routes
+import departmentRoutes from "./routes/departmentRoutes.js"; // NEW: Dynamic Departments
+import Department from "./models/Department.js"; // NEW: Department Model
 import StudentRecord from "./models/StudentRecord.js"; // NEW: Student Records
 import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
 import StudentUser from "./models/StudentUser.js"; // NEW: Student Users
@@ -90,8 +92,10 @@ app.use(express.json());
 app.use("/api/staff-records", staffRecordRoutes);
 app.use("/api/student-records", studentRecordRoutes); // NEW: Student Records
 app.use("/api/issue-types", issueRoutes); // NEW: Issue Type Routes
+app.use("/api/issues", issueRoutes); // Alias for Issue Type Routes
 app.use("/api/routing-rules", routingRuleRoutes); // NEW: Routing Rule Routes
 app.use("/api/staff-pool", staffPoolRoutes); // NEW: Staff Pool Routes
+app.use("/api/departments", departmentRoutes); // NEW: Dynamic Departments Routes
 
 // ------------------ 2️⃣ Database & GridFS Init ------------------
 connectDB();
@@ -144,6 +148,37 @@ conn.once("open", async () => {
     }
   } catch (err) {
     console.error("❌ Seeding Error:", err);
+  }
+
+  // ✅ SEEDING: Default Departments if empty
+  try {
+    const deptCount = await Department.countDocuments({});
+    if (deptCount === 0) {
+      const DEFAULT_DEPARTMENTS = [
+        { name: "Accounts", code: "ACC", description: "Fee payments, receipts, refunds, and financial queries", targetAudience: "both", isAcademic: false },
+        { name: "Student Welfare", code: "DSW", description: "Hostel, cafeteria, extracurricular, and student well-being", targetAudience: "student", isAcademic: false },
+        { name: "Student Section", code: "SEC", description: "ID cards, bona-fide certificates, and student records", targetAudience: "student", isAcademic: false },
+        { name: "Admission", code: "ADM", description: "Admissions, verification, branch change, and enrollment", targetAudience: "student", isAcademic: false },
+        { name: "Examination", code: "EXAM", description: "Grades, re-evaluation, admit cards, and transcripts", targetAudience: "student", isAcademic: false },
+        { name: "HR", code: "HR", description: "Faculty, staff payroll, leaves, and employment grievances", targetAudience: "staff", isAcademic: false },
+        { name: "CRC (Placement)", code: "CRC", description: "Campus placements, internships, and corporate relations", targetAudience: "student", isAcademic: false },
+        { name: "Transport", code: "TRN", description: "Bus routes, bus passes, and university transport services", targetAudience: "both", isAcademic: false },
+        { name: "School of Engineering and Technology", code: "SOET", description: "B.Tech, BCA, MCA academic grievances", targetAudience: "both", isAcademic: true },
+        { name: "School of Management Studies", code: "SMS", description: "BBA, MBA, B.Com academic grievances", targetAudience: "both", isAcademic: true },
+        { name: "School of Law", code: "SOL", description: "BA LL.B, LL.B, LL.M academic grievances", targetAudience: "both", isAcademic: true },
+        { name: "School of Pharmaceutical Sciences", code: "SPS", description: "B.Pharm, D.Pharm academic grievances", targetAudience: "both", isAcademic: true },
+        { name: "School of Hotel Management", code: "SHM", description: "Hotel management & hospitality academic grievances", targetAudience: "both", isAcademic: true },
+        { name: "School of Design and innovation", code: "SDI", description: "Design, animation, multimedia academic grievances", targetAudience: "both", isAcademic: true },
+        { name: "School of Allied Health Sciences", code: "SAHS", description: "BPT, MLT, radiology, health sciences academic grievances", targetAudience: "both", isAcademic: true },
+        { name: "School of Social Sciences and Liberal Arts", code: "SSSLA", description: "Humanities, social sciences academic grievances", targetAudience: "both", isAcademic: true }
+      ];
+      await Department.insertMany(DEFAULT_DEPARTMENTS);
+      console.log(`🏛️ Initialized ${DEFAULT_DEPARTMENTS.length} default departments in database.`);
+    } else {
+      console.log(`🏛️ Departments verified (${deptCount} existing).`);
+    }
+  } catch (seedErr) {
+    console.warn("⚠️ Department seeding note:", seedErr.message);
   }
 });
 

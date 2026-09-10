@@ -20,7 +20,7 @@ const AdminManageStaff = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState("all"); // all | admins | team | general
 
-  const allDepartments = [
+  const defaultDepartments = [
     "Accounts",
     "Student Welfare",
     "Student Section",
@@ -39,7 +39,27 @@ const AdminManageStaff = () => {
     "Transport"
   ];
 
+  const [allDepartments, setAllDepartments] = useState(defaultDepartments);
   const token = localStorage.getItem("grievance_token");
+
+  useEffect(() => {
+    const fetchDynamicDepartments = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setAllDepartments(data.map((d) => d.name));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load dynamic departments in AdminManageStaff:", err);
+      }
+    };
+    fetchDynamicDepartments();
+  }, []);
 
   useEffect(() => {
     // Only Admin or Dept Admin allowed

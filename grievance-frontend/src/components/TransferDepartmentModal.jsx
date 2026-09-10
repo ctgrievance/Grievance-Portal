@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const DEPARTMENTS = [
+const DEFAULT_DEPARTMENTS = [
   "Accounts",
   "Student Welfare",
   "Student Section",
@@ -20,6 +20,7 @@ const DEPARTMENTS = [
 ];
 
 function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
+  const [departmentsList, setDepartmentsList] = useState(DEFAULT_DEPARTMENTS);
   const [targetDepartment, setTargetDepartment] = useState("");
   const [issueTypes, setIssueTypes] = useState([]);
   const [targetIssueTypeId, setTargetIssueTypeId] = useState("");
@@ -29,7 +30,27 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
   const [errorMsg, setErrorMsg] = useState("");
 
   const currentDept = grievance?.category || "";
-  const availableDepartments = DEPARTMENTS.filter(d => d !== currentDept);
+  const availableDepartments = departmentsList.filter(d => d !== currentDept);
+
+  // Fetch dynamic active departments
+  useEffect(() => {
+    const fetchActiveDepts = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setDepartmentsList(data.map((d) => d.name));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch dynamic departments, using defaults:", err);
+      }
+    };
+    fetchActiveDepts();
+  }, []);
 
   // When target department changes, fetch issue types for that department
   useEffect(() => {
@@ -44,7 +65,7 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
       setErrorMsg("");
       try {
         const res = await fetch(
-          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issues/department/${encodeURIComponent(targetDepartment)}`
+          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(targetDepartment)}`
         );
         if (res.ok) {
           const data = await res.json();

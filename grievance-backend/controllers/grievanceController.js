@@ -863,6 +863,10 @@ export const transferGrievance = async (req, res) => {
       return res.status(400).json({ message: "Target department and transfer reason are mandatory." });
     }
 
+    if (transferredByRole === "master_admin" || transferredBy?.toString().toUpperCase() === "10001") {
+      return res.status(403).json({ message: "Super Admin cannot transfer or re-route grievances. Re-routing is managed by department staff." });
+    }
+
     const grievance = await Grievance.findById(id);
     if (!grievance) {
       return res.status(404).json({ message: "Grievance not found." });

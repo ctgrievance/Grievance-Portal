@@ -6,6 +6,8 @@ import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import AdminStudentRecords from "../components/AdminStudentRecords";
+import StaffRecordsTab from "../components/StaffRecordsTab";
+import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
@@ -44,6 +46,7 @@ const getDeadlineStatus = (deadlineDateStr, status) => {
 function StudentSectionAdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("grievances");
+  const { allowStudentRecords, allowStaffRecords } = useDepartmentPermissions("Student Section");
 
   // role removed (unused)
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
@@ -255,11 +258,20 @@ function StudentSectionAdminDashboard() {
               Student Section Grievances
             </span>
           </li>
-          <li className={activeTab === "student_records" ? "active" : ""}>
-            <span className="tab-link-button" onClick={() => setActiveTab("student_records")}>
-              📊 Student Records
-            </span>
-          </li>
+          {allowStudentRecords && (
+            <li className={activeTab === "student_records" ? "active" : ""}>
+              <span className="tab-link-button" onClick={() => setActiveTab("student_records")}>
+                📊 Student Records
+              </span>
+            </li>
+          )}
+          {allowStaffRecords && (
+            <li className={activeTab === "staff_records" ? "active" : ""}>
+              <span className="tab-link-button" onClick={() => setActiveTab("staff_records")}>
+                👥 Staff Records
+              </span>
+            </li>
+          )}
           <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
           <li><SmartAssignmentNavLink department="Student Section" /></li>
         </ul>
@@ -267,6 +279,7 @@ function StudentSectionAdminDashboard() {
 
       <main className="dashboard-body">
         {activeTab === "student_records" && <AdminStudentRecords />}
+        {activeTab === "staff_records" && <StaffRecordsTab />}
         {activeTab === "grievances" && <div className="card">
           <h2>Incoming Grievances</h2>
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}

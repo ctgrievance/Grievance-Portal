@@ -85,6 +85,31 @@ const processUpload = async (jobId, rows) => {
         }));
         const result = await StaffRecord.bulkWrite(ops, { ordered: false });
         inserted += (result.upsertedCount || 0) + (result.modifiedCount || 0);
+
+        // 🔥 Sync updated name/contact details to registered accounts while strictly protecting Admin roles
+        for (const doc of docs) {
+          try {
+            const existingUser = await User.findOne({ id: doc.id });
+            if (existingUser) {
+              const syncUpdate = {};
+              if (doc.fullName) syncUpdate.fullName = doc.fullName;
+              if (doc.email) syncUpdate.email = doc.email;
+              if (doc.phone) syncUpdate.phone = doc.phone;
+
+              const isAlreadyAdmin = existingUser.isDeptAdmin || existingUser.isMasterAdmin || existingUser.role === "admin";
+              if (!isAlreadyAdmin && doc.role) {
+                syncUpdate.role = doc.role;
+              }
+
+              if (Object.keys(syncUpdate).length > 0) {
+                await User.updateOne({ id: doc.id }, { $set: syncUpdate });
+                await StaffUser.updateOne({ id: doc.id }, { $set: syncUpdate });
+              }
+            }
+          } catch (syncErr) {
+            console.warn("Could not sync user in bulk upload:", syncErr.message);
+          }
+        }
       } catch (bulkErr) {
         if (bulkErr.result) {
           inserted += (bulkErr.result.upsertedCount || 0) + (bulkErr.result.modifiedCount || 0);
@@ -195,25 +220,50 @@ export const updateRecord = async (req, res) => {
        updateData.id = updateData.id.toString().trim().toUpperCase();
     }
 
+    const cleanId = id.toString().trim().toUpperCase();
+
     const record = await StaffRecord.findOneAndUpdate(
-      { id: id.toString().trim().toUpperCase() },
+      { id: cleanId },
       { $set: updateData },
       { new: true }
     );
 
-    if (updateData.role) {
-      const normalizedRole = updateData.role.toLowerCase().trim();
-      await StaffUser.findOneAndUpdate(
-        { id: id.toString().trim().toUpperCase() },
-        { $set: { role: normalizedRole } }
-      );
-      await User.findOneAndUpdate(
-        { id: id.toString().trim().toUpperCase() },
-        { $set: { role: normalizedRole } }
-      );
+    if (!record) return res.status(404).json({ message: "Record not found" });
+
+    // 🔥 Sync all relevant fields to StaffUser and User so Manage Staff and Export Records update immediately
+    const syncFields = {};
+    if (updateData.fullName) syncFields.fullName = updateData.fullName.trim();
+    if (updateData.name) syncFields.fullName = updateData.name.trim();
+    if (updateData.email) syncFields.email = updateData.email.toLowerCase().trim();
+    if (updateData.phone) syncFields.phone = updateData.phone.trim();
+
+    // Check if target user is currently an admin to avoid demoting them to staff on verification record update
+    const existingUser = await User.findOne({ id: cleanId });
+    const isAlreadyAdmin = existingUser && (existingUser.isDeptAdmin || existingUser.isMasterAdmin || existingUser.role === "admin");
+
+    if (updateData.role && !isAlreadyAdmin) {
+      syncFields.role = updateData.role.toLowerCase().trim();
+    } else if (isAlreadyAdmin) {
+      syncFields.role = existingUser.role || "admin";
     }
 
-    if (!record) return res.status(404).json({ message: "Record not found" });
+    if (Object.keys(syncFields).length > 0 || updateData.department) {
+      const staffUserUpdate = { ...syncFields };
+      if (updateData.department) staffUserUpdate.staffDepartment = updateData.department.trim();
+      await StaffUser.findOneAndUpdate(
+        { id: cleanId },
+        { $set: staffUserUpdate }
+      );
+
+      const userUpdate = { ...syncFields };
+      if (updateData.department) userUpdate.department = updateData.department.trim();
+      await User.findOneAndUpdate(
+        { id: cleanId },
+        { $set: userUpdate }
+      );
+      console.log(`🔄 Synced updated staff details for ID ${cleanId} to StaffUser and User.`);
+    }
+
     res.json({ message: "Record updated successfully", record });
   } catch (error) {
     console.error("Update Record Error:", error);

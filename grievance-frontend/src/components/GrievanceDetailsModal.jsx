@@ -111,9 +111,23 @@ const GrievanceDetailsModal = ({
   onResolveExtension,
   onRequestExtension,
   onTransferred,
+  canTransfer = true,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const isMasterAdmin =
+    localStorage.getItem("is_master_admin") === "true" ||
+    storedUser.isMasterAdmin === true ||
+    localStorage.getItem("grievance_id")?.toUpperCase() === "10001";
+  const allowTransfer = canTransfer && !isMasterAdmin;
 
   if (!grievance) return null;
 
@@ -1085,7 +1099,7 @@ const GrievanceDetailsModal = ({
               </button>
             )}
 
-            {!isResolved && !isRejected && (
+            {!isResolved && !isRejected && allowTransfer && (
               <button
                 onClick={() => setShowTransferModal(true)}
                 style={{
@@ -1132,7 +1146,7 @@ const GrievanceDetailsModal = ({
         </div>
       </div>
 
-      {showTransferModal && (
+      {showTransferModal && allowTransfer && (
         <TransferDepartmentModal
           grievance={grievance}
           onClose={() => setShowTransferModal(false)}

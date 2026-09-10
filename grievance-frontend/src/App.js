@@ -12,6 +12,7 @@ import Examination from "./pages/Examination";
 import Department from "./pages/Department";
 import StudentHR from "./pages/StudentHR";
 import StudentCRC from "./pages/StudentCRC";
+import StudentSubmitGrievance from "./pages/StudentSubmitGrievance"; // Dynamic Student Grievance Submission
 import StaffDashboard from "./pages/StaffDashboard";
 import AdminStaffDashboard from "./pages/AdminStaffDashboard"; // ✅ Rajesh (Worker) ka Dashboard
 import AdminDashboard from "./pages/AdminDashboard";
@@ -32,6 +33,7 @@ import CRCAdminDashboard from "./pages/CRCAdminDashboard";
 import TransportAdminDashboard from "./pages/TransportAdminDashboard";
 import StudentTransport from "./pages/StudentTransport";
 import IssueManagementPage from "./pages/IssueManagementPage"; // NEW: Smart Assignment Configuration
+import AdminDepartments from "./pages/AdminDepartments"; // NEW: Dynamic Department Management
 
 // Helper to decide where DEPT ADMINS (Priya) go
 const getDeptAdminRoute = (department) => {
@@ -125,6 +127,8 @@ function App() {
         <Route path="/student/hr" element={<ProtectedRoute allowedRoles={["student"]}><StudentHR /></ProtectedRoute>} />
         <Route path="/student/crc" element={<ProtectedRoute allowedRoles={["student"]}><StudentCRC /></ProtectedRoute>} />
         <Route path="/student/transport" element={<ProtectedRoute allowedRoles={["student"]}><StudentTransport /></ProtectedRoute>} />
+        <Route path="/student/submit/:deptName" element={<ProtectedRoute allowedRoles={["student"]}><StudentSubmitGrievance /></ProtectedRoute>} />
+        <Route path="/student/submit" element={<ProtectedRoute allowedRoles={["student"]}><StudentSubmitGrievance /></ProtectedRoute>} />
 
         {/* --- STAFF ROUTES --- */}
 
@@ -139,6 +143,7 @@ function App() {
 
         {/* --- ADMIN ROUTES (Bosses) --- */}
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDepartments /></ProtectedRoute>} />
         <Route path="/admin/manage-staff" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AdminManageStaff /></ProtectedRoute>} />
         <Route path="/admin/smart-assignment" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><IssueManagementPage /></ProtectedRoute>} /> {/* NEW: Smart Assignment Config */}
 

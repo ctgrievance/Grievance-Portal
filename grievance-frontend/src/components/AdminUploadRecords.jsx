@@ -65,10 +65,14 @@ const AdminUploadRecords = () => {
   };
 
   const filteredUsers = users.filter(user => {
+    const isDeptAdminUser = (user.isDeptAdmin || user.role === "admin") && !user.isMasterAdmin;
+    const isStaffUser = user.role === "staff" && !user.isDeptAdmin && !user.isMasterAdmin;
+    const isStudentUser = user.role === "student" && !user.isDeptAdmin && !user.isMasterAdmin;
+
     if (roleFilter === "All") return true;
-    if (roleFilter === "Student" && user.role === "student") return true;
-    if (roleFilter === "Staff" && user.role === "staff" && !user.isMasterAdmin) return true;
-    if (roleFilter === "Admin" && user.role === "admin" && !user.isMasterAdmin) return true;
+    if (roleFilter === "Student" && isStudentUser) return true;
+    if (roleFilter === "Staff" && isStaffUser) return true;
+    if (roleFilter === "Admin" && isDeptAdminUser) return true;
     if (roleFilter === "Master Admin" && user.isMasterAdmin) return true;
     return false;
   });
@@ -192,11 +196,11 @@ const AdminUploadRecords = () => {
                         fontWeight: '600',
                         textTransform: 'uppercase',
                         letterSpacing: '0.5px',
-                        backgroundColor: user.isMasterAdmin ? '#fef3c7' : user.role === 'admin' ? '#dbeafe' : user.role === 'staff' ? '#f3e8ff' : '#e0f2fe',
-                        color: user.isMasterAdmin ? '#b45309' : user.role === 'admin' ? '#1d4ed8' : user.role === 'staff' ? '#7e22ce' : '#0369a1',
-                        border: `1px solid ${user.isMasterAdmin ? '#fde68a' : user.role === 'admin' ? '#bfdbfe' : user.role === 'staff' ? '#e9d5ff' : '#bae6fd'}`
+                        backgroundColor: user.isMasterAdmin ? '#fef3c7' : (user.isDeptAdmin || user.role === 'admin') ? '#dbeafe' : user.role === 'staff' ? '#f3e8ff' : '#e0f2fe',
+                        color: user.isMasterAdmin ? '#b45309' : (user.isDeptAdmin || user.role === 'admin') ? '#1d4ed8' : user.role === 'staff' ? '#7e22ce' : '#0369a1',
+                        border: `1px solid ${user.isMasterAdmin ? '#fde68a' : (user.isDeptAdmin || user.role === 'admin') ? '#bfdbfe' : user.role === 'staff' ? '#e9d5ff' : '#bae6fd'}`
                       }}>
-                        {user.isMasterAdmin ? 'Master Admin' : user.role}
+                        {user.isMasterAdmin ? 'Master Admin' : (user.isDeptAdmin || user.role === 'admin') ? 'Admin' : user.role}
                       </span>
                     </td>
                   </tr>

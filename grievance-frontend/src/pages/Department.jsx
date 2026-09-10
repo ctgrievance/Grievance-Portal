@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
+import StudentNavbar from "../components/StudentNavbar";
 import ctLogo from "../assets/ct-logo.png";
 import { GraduationCapIcon } from "../components/Icons";
 
@@ -40,6 +41,29 @@ function Department() {
   const [loading, setLoading] = useState(true);
   const [issueTypes, setIssueTypes] = useState([]);
   const [selectedIssueType, setSelectedIssueType] = useState("");
+  const [schoolsList, setSchoolsList] = useState(Object.keys(academicPrograms));
+
+  // Fetch dynamic active schools / departments
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            // Include all active student-facing departments & schools
+            const studentDepts = data
+              .filter((d) => d.targetAudience === "both" || d.targetAudience === "student" || !d.targetAudience)
+              .map((d) => d.name);
+            setSchoolsList(studentDepts.length > 0 ? studentDepts : data.map((d) => d.name));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load dynamic schools:", err);
+      }
+    };
+    fetchSchools();
+  }, []);
 
   useEffect(() => {
     if (!role || role !== "student") navigate("/");
@@ -192,20 +216,8 @@ function Department() {
         <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>
 
-      <nav className="navbar">
-        <ul>
-          <li><Link to="/student/dashboard">Dashboard</Link></li>
-          <li><Link to="/student/welfare">Student Welfare</Link></li>
-          <li><Link to="/student/admission">Admission</Link></li>
-          <li><Link to="/student/section">Student Section</Link></li>
-          <li><Link to="/student/accounts">Accounts</Link></li>
-          <li><Link to="/student/examination">Examination</Link></li>
-          <li className="active"><Link to="/student/department">Department</Link></li>
-          <li><Link to="/student/hr">HR</Link></li>
-          <li><Link to="/student/crc">CRC (Placement)</Link></li>
-          <li><Link to="/student/transport">Transport</Link></li>
-        </ul>
-      </nav>
+      {/* ✅ DYNAMIC NAVBAR */}
+      <StudentNavbar activeCategory="department" />
 
       <main className="dashboard-body">
         <div className="card">
@@ -244,7 +256,7 @@ function Department() {
                 <label>Select Your School / Department</label>
                 <select name="school" value={formData.school} onChange={handleChange} required>
                   <option value="">-- Select Your School --</option>
-                  {Object.keys(academicPrograms).map((school) => (
+                  {schoolsList.map((school) => (
                     <option key={school} value={school}>{school}</option>
                   ))}
                 </select>
