@@ -181,22 +181,22 @@ function StaffRoleManager() {
       {msg && <div className="alert-box info" style={{ marginBottom: "15px" }}>{msg}</div>}
 
       {/* Controls: Search + Filter + Sort */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
         <input
           placeholder="Search by name or ID..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ padding: '8px 10px', flex: 1 }}
+          style={{ padding: '8px 10px', flex: '1 1 200px', minWidth: '160px' }}
         />
 
-        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ padding: '8px' }}>
+        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ padding: '8px', flex: '1 1 130px' }}>
           <option value="all">All</option>
           <option value="admins">Admins (Dept Admin)</option>
           <option value="team">Admin Staff (Team Members)</option>
           <option value="general">General Staff</option>
         </select>
 
-        <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} style={{ padding: '8px' }}>
+        <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} style={{ padding: '8px', flex: '1 1 130px' }}>
           <option value="admins-first">Admins First</option>
           <option value="alpha">Name A → Z</option>
           <option value="rating-high">Highest Rated</option>

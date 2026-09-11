@@ -56,9 +56,9 @@ export const UserRoleBadge = ({ grievance, role, style = {} }) => {
     letterSpacing: "0.5px",
     lineHeight: "1.2",
     whiteSpace: "nowrap",
-    backgroundColor: isStaff ? "#fef3c7" : "#e0e7ff",
-    color: isStaff ? "#92400e" : "#3730a3",
-    border: isStaff ? "1px solid #fde68a" : "1px solid #c7d2fe",
+    backgroundColor: isStaff ? "#f8fafc" : "#f1f5f9",
+    color: isStaff ? "#0f172a" : "#475569",
+    border: isStaff ? "1px solid #cbd5e1" : "1px solid #e2e8f0",
     ...style,
   };
 

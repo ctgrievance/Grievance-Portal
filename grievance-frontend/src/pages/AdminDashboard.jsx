@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 
@@ -9,7 +9,19 @@ import RegisteredUsersView from "../components/RegisteredUsersView";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
+import {
+  ShieldIcon,
+  PaperclipIcon,
+  TrashIcon,
+  DownloadIcon,
+  RerouteIcon,
+  SearchIcon,
+  ClipboardIcon,
+  ChartBarIcon,
+  UsersIcon,
+  BuildingIcon,
+  UserIcon
+} from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 
@@ -58,6 +70,54 @@ function AdminDashboard() {
 
   // ✅ EXPORT MODAL STATE
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // ✅ MOBILE VIEW SELECTOR STATE
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Navigation Tabs Definition (SVG icons only, no emojis)
+  const adminNavTabs = useMemo(() => [
+    {
+      id: "triage",
+      label: "All Grievances",
+      IconComponent: ClipboardIcon,
+      description: "Review incoming grievances, status & triage"
+    },
+    {
+      id: "upload",
+      label: "Export Records",
+      IconComponent: ChartBarIcon,
+      description: "Filter & export grievance spreadsheets"
+    },
+    ...(canManageStaff
+      ? [
+          {
+            id: "staff",
+            label: "Manage Staff",
+            IconComponent: UsersIcon,
+            description: "Manage staff roles & assignments"
+          }
+        ]
+      : []),
+    ...(isMasterAdmin
+      ? [
+          {
+            id: "departments",
+            label: "Departments",
+            IconComponent: BuildingIcon,
+            description: "Configure academic departments & rules"
+          },
+          {
+            id: "registered_users",
+            label: "Registered Users",
+            IconComponent: UserIcon,
+            description: "Live verified students & staff accounts",
+            isLive: true
+          }
+        ]
+      : [])
+  ], [canManageStaff, isMasterAdmin]);
+
+  const currentTab = adminNavTabs.find((t) => t.id === activeTab) || adminNavTabs[0];
 
 
 
@@ -118,7 +178,7 @@ function AdminDashboard() {
       if (res.ok) {
         setGrievances(prev => prev.filter(g => g._id !== id));
         setSelectedGrievance(null);
-        setMsg("✅ Grievance removed from view.");
+        setMsg("Grievance removed from view.");
         setStatusType("success");
         setTimeout(() => setMsg(""), 3000);
       } else {
@@ -195,12 +255,12 @@ function AdminDashboard() {
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setMsg("✅ Export successful!");
+        setMsg("Export successful!");
         setStatusType("success");
         setTimeout(() => setMsg(""), 3000);
       })
       .catch(() => {
-        alert("❌ Excel export failed");
+        alert("Excel export failed");
       });
   };
 
@@ -219,75 +279,135 @@ function AdminDashboard() {
   return (
     <div className="dashboard-container">
       {/* HEADER */}
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" style={{ height: "46px" }} />
           <div className="header-content">
             <h1>Admin Dashboard</h1>
-            <p>
+            <p className="admin-header-user-info">
               Welcome, <strong>{userId}</strong>
-              <span className="status-badge status-resolved" style={{ marginLeft: '10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                <ShieldIcon width="14" height="14" /> Master Admin
+              <span className="admin-master-badge">
+                <ShieldIcon width="12" height="12" /> Master Admin
               </span>
             </p>
           </div>
-          <ProfileHeaderButton />
         </div>
-        <button className="logout-btn-header" onClick={handleLogout}>
-          Logout
-        </button>
+        <div className="admin-header-actions">
+          <ProfileHeaderButton />
+          <button className="logout-btn-header" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* NAV */}
-      <nav className="navbar">
-        <ul>
-          <li
-            className={activeTab === "triage" ? "active" : ""}
-            onClick={() => setActiveTab("triage")}
-          >
-            <span className="tab-link-button">All Grievances</span>
-          </li>
-
-          <li
-            className={activeTab === "upload" ? "active" : ""}
-            onClick={() => setActiveTab("upload")}
-          >
-            <span className="tab-link-button">Export Records</span>
-          </li>
-
-          {canManageStaff && (
-            <li
-              className={activeTab === "staff" ? "active" : ""}
-              onClick={() => setActiveTab("staff")}
-            >
-              <span className="tab-link-button">Manage Staff</span>
-            </li>
-          )}
-
-          {isMasterAdmin && (
-            <>
+      <nav className="navbar admin-navbar">
+        <div className="admin-nav-container">
+          {/* Desktop Navigation: Segmented Control Tabs */}
+          <ul className="admin-nav-tabs admin-desktop-only">
+            {adminNavTabs.map((tab) => (
               <li
-                className={activeTab === "departments" ? "active" : ""}
-                onClick={() => setActiveTab("departments")}
+                key={tab.id}
+                className={activeTab === tab.id ? "active" : ""}
+                onClick={() => setActiveTab(tab.id)}
               >
-                <span className="tab-link-button">Departments</span>
-              </li>
-              <li
-                className={activeTab === "registered_users" ? "active" : ""}
-                onClick={() => setActiveTab("registered_users")}
-              >
-                <span className="tab-link-button" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                  Registered Users
-                  <span style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.68rem", padding: "1px 5px", borderRadius: "8px", fontWeight: "700" }}>Live</span>
+                <span className="tab-link-button">
+                  {tab.label}
+                  {tab.isLive && <span className="admin-tab-live-badge">Live</span>}
                 </span>
               </li>
-            </>
-          )}
-        </ul>
+            ))}
+          </ul>
+
+          {/* Mobile Navigation: View Selector Dropdown (Zero Scrolling) */}
+          <div className="admin-mobile-nav-wrapper admin-mobile-only">
+            <button
+              type="button"
+              className={`admin-mobile-view-trigger ${isMobileNavOpen ? "open" : ""}`}
+              onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+              aria-expanded={isMobileNavOpen}
+              aria-haspopup="true"
+            >
+              <div className="admin-mobile-trigger-left">
+                {currentTab?.IconComponent && (
+                  <span className="admin-mobile-trigger-icon">
+                    <currentTab.IconComponent width="18" height="18" />
+                  </span>
+                )}
+                <span className="admin-mobile-trigger-label">{currentTab?.label || "All Grievances"}</span>
+                {currentTab?.isLive && <span className="admin-tab-live-badge">Live</span>}
+              </div>
+              <div className="admin-mobile-trigger-right">
+                <span className="admin-mobile-trigger-hint">Switch View</span>
+                <span className={`admin-mobile-trigger-chevron ${isMobileNavOpen ? "rotated" : ""}`}>
+                  ▾
+                </span>
+              </div>
+            </button>
+
+            {isMobileNavOpen && (
+              <>
+                <div
+                  className="admin-mobile-nav-backdrop"
+                  onClick={() => setIsMobileNavOpen(false)}
+                />
+                <div className="admin-mobile-nav-dropdown" role="menu">
+                  <div className="admin-mobile-dropdown-header">
+                    <span className="admin-mobile-dropdown-title">Select Section</span>
+                    <button
+                      type="button"
+                      className="admin-mobile-dropdown-close"
+                      onClick={() => setIsMobileNavOpen(false)}
+                      title="Close menu"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="admin-mobile-dropdown-list">
+                    {adminNavTabs.map((tab) => {
+                      const isActive = activeTab === tab.id;
+                      const TabIcon = tab.IconComponent;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          className={`admin-mobile-dropdown-item ${isActive ? "active" : ""}`}
+                          onClick={() => {
+                            setActiveTab(tab.id);
+                            setIsMobileNavOpen(false);
+                          }}
+                          role="menuitem"
+                        >
+                          {TabIcon && (
+                            <span className="admin-mitem-icon">
+                              <TabIcon width="18" height="18" />
+                            </span>
+                          )}
+                          <div className="admin-mitem-content">
+                            <div className="admin-mitem-label-wrap">
+                              <span className="admin-mitem-label">{tab.label}</span>
+                              {tab.isLive && <span className="admin-tab-live-badge">Live</span>}
+                            </div>
+                            <span className="admin-mitem-desc">{tab.description}</span>
+                          </div>
+                          {isActive ? (
+                            <span className="admin-mitem-check" aria-hidden="true">✓</span>
+                          ) : (
+                            <span className="admin-mitem-arrow" aria-hidden="true">›</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </nav>
 
       {/* BODY */}
-      <main className="dashboard-body">
+      <main className="dashboard-body admin-dashboard-body">
         {activeTab === "upload" && <AdminUploadRecords />}
         {activeTab === "staff" && canManageStaff && <StaffRoleManager />}
         {activeTab === "departments" && isMasterAdmin && <AdminDepartments />}
@@ -300,221 +420,299 @@ function AdminDashboard() {
         )}
 
         {activeTab === "triage" && (
-          <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "15px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                <h2 style={{ margin: 0 }}>All Incoming Grievances (Read Only)</h2>
+          <div className="card admin-triage-card">
+            <div className="admin-card-header">
+              <div className="admin-card-title-wrap">
+                <h2 className="admin-card-title">All Incoming Grievances (Read Only)</h2>
                 {grievances.filter(g => g.isRerouted).length > 0 && (
                   <span
-                    style={{
-                      fontSize: "0.8rem",
-                      fontWeight: "700",
-                      color: "#9333ea",
-                      background: "#f3e8ff",
-                      padding: "4px 10px",
-                      borderRadius: "20px",
-                      border: "1px solid #e9d5ff",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px"
-                    }}
+                    className="admin-reroute-summary-badge"
+                    title="Re-routed grievances requiring triage"
                   >
-                    🔁 {grievances.filter(g => g.isRerouted).length} Re-routed
+                    <RerouteIcon width="13" height="13" />
+                    <span>{grievances.filter(g => g.isRerouted).length} Re-routed</span>
                   </span>
                 )}
               </div>
             </div>
 
             {/* ✅ FILTER BAR */}
-            <div className="filter-bar" style={{
-              display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
-              padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
-            }}>
-              <input
-                type="text"
-                placeholder="Search Student / Staff (ID or Name)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 240px" }}
-              />
-              <select
-                value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 140px", cursor: "pointer" }}
-              >
-                <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Rerouted">🔁 Re-routed Only</option>
-              </select>
-              <select
-                value={filterRole} onChange={(e) => setFilterRole(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 140px", cursor: "pointer" }}
-              >
-                <option value="All">All Users</option>
-                <option value="student">Student</option>
-                <option value="staff">Staff</option>
-              </select>
-              <select
-                value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 200px", cursor: "pointer" }}
-              >
-                <option value="All">All Departments</option>
-                {uniqueDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-              </select>
-              <input
-                type="month"
-                value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
-              />
-              <button
-                onClick={resetFilters}
-                style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}
-              >
-                Reset
-              </button>
-              <button
-                onClick={handleOpenExportModal}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "6px",
-                  border: "none",
-                  background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-                  color: "white",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  boxShadow: "0 4px 6px rgba(22, 163, 74, 0.2)",
-                  transition: "all 0.2s"
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
-              >
-                <DownloadIcon width="16" height="16" /> Export to Excel
-              </button>
-            </div>
+            <div className="admin-filter-bar">
+              {/* Row 1: Search & Action Buttons */}
+              <div className="admin-filter-top-row">
+                <div className="admin-filter-search-box">
+                  <SearchIcon width="16" height="16" className="admin-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search Student / Staff (ID or Name)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="admin-search-input"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="admin-search-clear-btn"
+                      title="Clear search"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
 
+                <div className="admin-filter-actions">
+                  {(searchQuery || filterStatus !== "All" || filterRole !== "All" || filterDepartment !== "All" || filterMonth) && (
+                    <button onClick={resetFilters} className="admin-btn-reset">
+                      Reset Filters
+                    </button>
+                  )}
+                  <button onClick={handleOpenExportModal} className="admin-btn-export">
+                    <DownloadIcon width="15" height="15" />
+                    <span>Export to Excel</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Filter Selects */}
+              <div className="admin-filter-bottom-row">
+                <div className="admin-filter-pill-group">
+                  <span className="admin-filter-pill-label">Status</span>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="admin-select"
+                  >
+                    <option value="All">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Rerouted">Re-routed Only</option>
+                  </select>
+                </div>
+
+                <div className="admin-filter-pill-group">
+                  <span className="admin-filter-pill-label">User</span>
+                  <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                    className="admin-select"
+                  >
+                    <option value="All">All Users</option>
+                    <option value="student">Student</option>
+                    <option value="staff">Staff</option>
+                  </select>
+                </div>
+
+                <div className="admin-filter-pill-group">
+                  <span className="admin-filter-pill-label">Dept</span>
+                  <select
+                    value={filterDepartment}
+                    onChange={(e) => setFilterDepartment(e.target.value)}
+                    className="admin-select"
+                  >
+                    <option value="All">All Departments</option>
+                    {uniqueDepartments.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="admin-filter-pill-group">
+                  <span className="admin-filter-pill-label">Month</span>
+                  <input
+                    type="month"
+                    value={filterMonth}
+                    onChange={(e) => setFilterMonth(e.target.value)}
+                    className="admin-select admin-month-input"
+                    title="Filter by month"
+                  />
+                </div>
+              </div>
+            </div>
 
             {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
             {filteredGrievances.length === 0 ? (
               <p>No grievances found matching criteria.</p>
             ) : (
-              <div className="table-container">
-                <table className="grievance-table">
-                  <thead>
-                    <tr>
-                      <th>Student / User</th>
-                      <th>Department / Category</th>
-                      <th>Message</th>
-                      <th>Status</th>
-                      <th>Assigned Staff</th>
-                      <th>Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredGrievances.map((g) => (
-                      <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                        <td data-label="Student / User">
-                          <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "2px" }}>
-                              <span style={{ fontWeight: "600", color: "#1e293b" }}>
-                                {g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}
-                              </span>
-                              <UserRoleBadge grievance={g} />
-                            </div>
-                            <span style={{ fontSize: "0.85rem", color: "#64748b", fontFamily: "monospace" }}>
-                              {g.userId}
-                            </span>
-                          </div>
-                        </td>
-                        <td data-label="Department / Category">{g.category || g.school || "N/A"}</td>
-
-                        <td data-label="Message" className="message-cell" style={{ maxWidth: '200px' }}>
-                          <div
-                            style={{ padding: "4px", borderRadius: "4px", transition: "background 0.2s" }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                          >
-                            <span style={{ wordBreak: 'break-word', lineHeight: '1.3', color: "#334155", fontWeight: "500" }}>
-                              {g.message.substring(0, 40)}{g.message.length > 40 ? "..." : ""}
-                            </span>
-                          </div>
-                        </td>
-
-                        <td data-label="Status">
-                          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-                            <span
-                              className={`status-badge status-${(g.status || "")
-                                .toLowerCase()
-                                .replace(" ", "")}`}
-                            >
-                              {g.status}
-                            </span>
-                            {g.isRerouted && (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "3px",
-                                  fontSize: "0.72rem",
-                                  fontWeight: "700",
-                                  color: "#9333ea",
-                                  background: "#f3e8ff",
-                                  padding: "2px 7px",
-                                  borderRadius: "12px",
-                                  border: "1px solid #e9d5ff",
-                                }}
-                                title={`Re-routed ${g.transferHistory?.length || 1} time(s)`}
-                              >
-                                🔁 Re-routed {g.transferHistory?.length > 1 ? `(${g.transferHistory.length})` : ""}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* ⭐ Rating under Resolved */}
-                          {g.status?.toLowerCase() === "resolved" && (
-                            <div style={{ marginTop: "4px", fontSize: "0.9rem" }}>
-                              {g.rating?.stars ? (
-                                <span style={{ color: "#facc15" }}>
-                                  {"★".repeat(g.rating.stars)}
-                                  <span style={{ color: "#cbd5e1" }}>
-                                    {"★".repeat(5 - g.rating.stars)}
-                                  </span>
+              <>
+                {/* Desktop View: Full Table */}
+                <div className="table-container admin-table-container admin-desktop-only">
+                  <table className="grievance-table admin-grievance-table">
+                    <thead>
+                      <tr>
+                        <th>Student / User</th>
+                        <th>Department / Category</th>
+                        <th>Message</th>
+                        <th>Status</th>
+                        <th>Assigned Staff</th>
+                        <th>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredGrievances.map((g) => (
+                        <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
+                          <td data-label="Student / User">
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "2px" }}>
+                                <span style={{ fontWeight: "600", color: "#1e293b" }}>
+                                  {g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}
                                 </span>
-                              ) : (
-                                <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
-                                  No rating yet
+                                <UserRoleBadge grievance={g} />
+                              </div>
+                              <span style={{ fontSize: "0.85rem", color: "#64748b", fontFamily: "monospace" }}>
+                                {g.userId}
+                              </span>
+                            </div>
+                          </td>
+                          <td data-label="Department / Category">{g.category || g.school || "N/A"}</td>
+
+                          <td data-label="Message" className="message-cell" style={{ maxWidth: '200px' }}>
+                            <div
+                              style={{ padding: "4px", borderRadius: "4px", transition: "background 0.2s" }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                            >
+                              <span style={{ wordBreak: 'break-word', lineHeight: '1.3', color: "#334155", fontWeight: "500" }}>
+                                {g.message.substring(0, 40)}{g.message.length > 40 ? "..." : ""}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td data-label="Status">
+                            <div className="admin-status-cell">
+                              <span
+                                className={`status-badge status-${(g.status || "")
+                                  .toLowerCase()
+                                  .replace(" ", "")}`}
+                              >
+                                {g.status}
+                              </span>
+                              {g.isRerouted && (
+                                <span
+                                  className="admin-reroute-icon-badge"
+                                  title={
+                                    g.transferHistory?.length > 1
+                                      ? `Re-routed (${g.transferHistory.length} times)`
+                                      : "Re-routed"
+                                  }
+                                  aria-label="Re-routed"
+                                >
+                                  <RerouteIcon width="13" height="13" />
+                                  {g.transferHistory?.length > 1 && (
+                                    <span className="admin-reroute-count">{g.transferHistory.length}</span>
+                                  )}
                                 </span>
                               )}
                             </div>
+
+                            {/* Rating under Resolved */}
+                            {g.status?.toLowerCase() === "resolved" && (
+                              <div style={{ marginTop: "4px", fontSize: "0.9rem" }}>
+                                {g.rating?.stars ? (
+                                  <span style={{ color: "#facc15" }}>
+                                    {"★".repeat(g.rating.stars)}
+                                    <span style={{ color: "#cbd5e1" }}>
+                                      {"★".repeat(5 - g.rating.stars)}
+                                    </span>
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
+                                    No rating yet
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+
+                          {/* ✅ ASSIGNED STAFF COLUMN */}
+                          <td data-label="Assigned Staff">
+                            {g.assignedTo ? (
+                              <div>
+                                <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                                  {staffMap[g.assignedTo] || "Staff"}
+                                </span>
+                                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>({g.assignedTo})</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned Yet</span>
+                            )}
+                          </td>
+
+                          <td data-label="Created">{formatDate(g.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile App View: Compact Cards (No message text on front, tap to view modal) */}
+                <div className="admin-mobile-cards-list admin-mobile-only">
+                  {filteredGrievances.map((g) => (
+                    <div
+                      key={g._id}
+                      className="admin-mobile-compact-card"
+                      onClick={() => setSelectedGrievance(g)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedGrievance(g);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="admin-mcard-row-top">
+                        <div className="admin-mcard-user-info">
+                          <span className="admin-mcard-user-name">
+                            {g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}
+                          </span>
+                          <UserRoleBadge grievance={g} />
+                        </div>
+                        <div className="admin-mcard-status-info">
+                          <span
+                            className={`status-badge status-${(g.status || "")
+                              .toLowerCase()
+                              .replace(" ", "")}`}
+                          >
+                            {g.status}
+                          </span>
+                          {g.isRerouted && (
+                            <span
+                              className="admin-reroute-icon-badge"
+                              title={
+                                g.transferHistory?.length > 1
+                                  ? `Re-routed (${g.transferHistory.length} times)`
+                                  : "Re-routed"
+                              }
+                            >
+                              <RerouteIcon width="11" height="11" />
+                            </span>
                           )}
-                        </td>
+                        </div>
+                      </div>
 
-
-                        {/* ✅ ASSIGNED STAFF COLUMN */}
-                        <td data-label="Assigned Staff">
-                          {g.assignedTo ? (
-                            <div>
-                              <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
-                                {staffMap[g.assignedTo] || "Staff"}
-                              </span>
-                              <span style={{ fontSize: "0.85rem", color: "#64748b" }}>({g.assignedTo})</span>
-                            </div>
-                          ) : (
-                            <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned Yet</span>
-                          )}
-                        </td>
-
-                        <td data-label="Created">{formatDate(g.createdAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      <div className="admin-mcard-row-bottom">
+                        <div className="admin-mcard-meta-wrap">
+                          <span className="admin-mcard-dept-name">
+                            {g.category || g.school || "General"}
+                          </span>
+                          <span className="admin-mcard-sep">•</span>
+                          <span className="admin-mcard-user-id">{g.userId}</span>
+                          <span className="admin-mcard-sep">•</span>
+                          <span className="admin-mcard-date-str">
+                            {new Date(g.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                        </div>
+                        <span className="admin-mcard-chevron" aria-hidden="true">›</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -554,7 +752,7 @@ function AdminDashboard() {
           button:active, .action-btn:active { transform: scale(0.95); }
 
           /* Inputs */
-          input:focus, select:focus, textarea:focus {
+          input:not(.admin-search-input):focus, select:focus, textarea:focus {
             transform: scale(1.01);
             border-color: #2563eb !important;
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;

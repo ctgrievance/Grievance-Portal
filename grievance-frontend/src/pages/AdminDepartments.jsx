@@ -282,6 +282,7 @@ function AdminDepartments() {
 
       {/* Summary KPI Cards */}
       <div
+        className="dept-stat-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",

@@ -50,10 +50,8 @@ function TransportAdminDashboard() {
     const navigate = useNavigate();
 
     // LocalStorage Data
-    const role = localStorage.getItem("grievance_role")?.toLowerCase();
     const userId = localStorage.getItem("grievance_id")?.toUpperCase();
     const adminDept = localStorage.getItem("admin_department");
-    const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true";
 
     const [activeTab, setActiveTab] = useState("grievances");
     const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions("Transport");

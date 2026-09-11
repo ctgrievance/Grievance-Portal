@@ -79,7 +79,7 @@ const AdminUploadRecords = () => {
 
   return (
     <div className="upload-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ marginBottom: '10px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <UsersIcon width="28" height="28" />

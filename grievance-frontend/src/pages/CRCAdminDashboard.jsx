@@ -49,11 +49,9 @@ const getDeadlineStatus = (deadlineDateStr, status) => {
 function CRCAdminDashboard() {
   const navigate = useNavigate();
 
-  // ✅ LocalStorage se Data lo
-  const role = localStorage.getItem("grievance_role")?.toLowerCase();
+  // LocalStorage se Data lo
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
   const adminDept = localStorage.getItem("admin_department");
-  const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true";
 
   const [activeTab, setActiveTab] = useState("grievances");
   const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions("CRC");
