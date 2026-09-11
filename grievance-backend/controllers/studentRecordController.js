@@ -1,4 +1,6 @@
 import StudentRecord from "../models/StudentRecord.js";
+import StudentUser from "../models/StudentUser.js";
+import User from "../models/UserModel.js";
 import xlsx from "xlsx";
 import fs from "fs";
 
@@ -258,13 +260,29 @@ export const updateStudentRecord = async (req, res) => {
     const { id } = req.params;
     const { ctuId, fullName, email, phone, program, studentType, school, batch } = req.body;
     
+    const cleanId = id.trim().toUpperCase();
     const record = await StudentRecord.findOneAndUpdate(
-      { id: id.trim().toUpperCase() },
+      { id: cleanId },
       { ctuId: ctuId || null, fullName, email, phone, program, studentType, school, batch },
       { new: true, runValidators: true }
     );
     
     if (!record) return res.status(404).json({ message: "Record not found" });
+
+    // 🔥 Sync updates to StudentUser and User
+    const studentSync = {};
+    if (fullName) studentSync.fullName = fullName.trim();
+    if (email) studentSync.email = email.toLowerCase().trim();
+    if (phone) studentSync.phone = phone.trim();
+    if (program) studentSync.program = program;
+    if (studentType) studentSync.studentType = studentType;
+
+    if (Object.keys(studentSync).length > 0) {
+      await StudentUser.findOneAndUpdate({ id: cleanId }, { $set: studentSync });
+      await User.findOneAndUpdate({ id: cleanId }, { $set: studentSync });
+      console.log(`🔄 Synced updated student details for ID ${cleanId} to StudentUser and User.`);
+    }
+
     res.json({ message: "Record updated successfully", record });
   } catch (error) {
     res.status(500).json({ message: "Failed to update record", error: error.message });

@@ -5,6 +5,9 @@ import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
+import AdminStudentRecords from "../components/AdminStudentRecords";
+import StaffRecordsTab from "../components/StaffRecordsTab";
+import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
@@ -42,6 +45,9 @@ function AdmissionAdminDashboard() {
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
   const adminDept = localStorage.getItem("admin_department");
   const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true";
+
+  const [activeTab, setActiveTab] = useState("grievances");
+  const { allowStudentRecords, allowStaffRecords } = useDepartmentPermissions("Admission");
 
   // State
   const [grievances, setGrievances] = useState([]);
@@ -244,14 +250,37 @@ function AdmissionAdminDashboard() {
 
       <nav className="navbar">
         <ul>
-          <li className="admin-nav-title"><span>Admission Grievances</span></li>
+          <li className="admin-nav-title"><span>Admission</span></li>
+          <li className={activeTab === "grievances" ? "active" : ""}>
+            <span className="tab-link-button" onClick={() => setActiveTab("grievances")}>
+              Admission Grievances
+            </span>
+          </li>
+          {allowStudentRecords && (
+            <li className={activeTab === "student_records" ? "active" : ""}>
+              <span className="tab-link-button" onClick={() => setActiveTab("student_records")}>
+                Student Records
+              </span>
+            </li>
+          )}
+          {allowStaffRecords && (
+            <li className={activeTab === "staff_records" ? "active" : ""}>
+              <span className="tab-link-button" onClick={() => setActiveTab("staff_records")}>
+                Staff Records
+
+              </span>
+            </li>
+          )}
           <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
           <li><SmartAssignmentNavLink department="Admission" /></li>
         </ul>
       </nav>
 
       <main className="dashboard-body">
-        <div className="card">
+        {activeTab === "student_records" && <AdminStudentRecords />}
+        {activeTab === "staff_records" && <StaffRecordsTab />}
+        {activeTab === "grievances" && (
+          <div className="card">
           <h2>Incoming Grievances</h2>
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
@@ -420,6 +449,7 @@ function AdmissionAdminDashboard() {
             />
           )}
         </div>
+        )}
       </main>
 
       {/* Popups */}

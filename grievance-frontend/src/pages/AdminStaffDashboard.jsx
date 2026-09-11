@@ -9,7 +9,7 @@ import { playNotificationSound } from "../utils/soundAlert";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, BellIcon, PaperclipIcon, EyeIcon, ClockIcon, XIcon, TrashIcon, DownloadIcon } from "../components/Icons";
+import { ShieldIcon, BellIcon, PaperclipIcon, EyeIcon, ClockIcon, XIcon, TrashIcon, DownloadIcon, AlertCircleIcon } from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
 const formatDate = (dateString) => {
@@ -116,6 +116,11 @@ function AdminStaffDashboard() {
 
   // EXPORT MODAL STATE
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // ❌ STAFF REJECTION POPUP STATE
+  const [rejectPopup, setRejectPopup] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isSubmittingReject, setIsSubmittingReject] = useState(false);
 
   // ⭐ STAFF RATINGS STATE
   const [ratingData, setRatingData] = useState({
@@ -459,6 +464,45 @@ function AdminStaffDashboard() {
       }
     } catch (err) {
       alert("Failed to request extension");
+    }
+  };
+
+  const handleRejectGrievance = async () => {
+    if (!rejectionReason || rejectionReason.trim().length < 5) {
+      alert("Please enter a valid rejection reason (minimum 5 characters).");
+      return;
+    }
+    setIsSubmittingReject(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/reject/${rejectPopup._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: rejectionReason.trim(),
+          rejectedBy: staffId,
+          rejectedByName: staffName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to reject grievance");
+
+      setMsg("✅ Grievance rejected. Department Admin has been notified via email.");
+      setStatusType("success");
+
+      setGrievances((prev) =>
+        prev.map((g) => (g._id === rejectPopup._id ? data.grievance : g))
+      );
+      if (selectedGrievance && selectedGrievance._id === rejectPopup._id) {
+        setSelectedGrievance(data.grievance);
+      }
+      setRejectPopup(null);
+      setRejectionReason("");
+      setTimeout(() => setMsg(""), 5000);
+    } catch (err) {
+      console.error("Error rejecting grievance:", err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsSubmittingReject(false);
     }
   };
 
@@ -957,6 +1001,24 @@ function AdminStaffDashboard() {
                           <td>
                             <div className="action-buttons">
                               <button className="action-btn resolve-btn" onClick={(e) => { e.stopPropagation(); updateStatus(g._id, "Resolved"); }} disabled={g.status === "Resolved" || g.status === "Rejected"} style={{ opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1, cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer" }}>Resolve</button>
+                              <button
+                                className="action-btn reject-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRejectPopup(g);
+                                  setRejectionReason("");
+                                }}
+                                disabled={g.status === "Resolved" || g.status === "Rejected"}
+                                style={{
+                                  background: "#ef4444",
+                                  color: "white",
+                                  opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1,
+                                  cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer",
+                                  marginLeft: "5px"
+                                }}
+                              >
+                                Reject
+                              </button>
                               {g.extensionRequest?.status === "Pending" && (
                                 <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '600' }}>⏳ Pending</span>
                               )}
@@ -1624,6 +1686,10 @@ function AdminStaffDashboard() {
               staffMap={staffMap}
               onClose={() => setSelectedGrievance(null)}
               onDelete={handleDeleteGrievance}
+              onReject={(g) => {
+                setRejectPopup(g);
+                setRejectionReason("");
+              }}
               onTransferred={(message) => {
                 setMsg(message);
                 setStatusType("success");
@@ -1742,6 +1808,95 @@ function AdminStaffDashboard() {
             >
               Submit Request
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- STAFF REJECTION MODAL --- */}
+      {rejectPopup && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(15, 23, 42, 0.65)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2500,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            background: "white", padding: "26px", borderRadius: "14px", width: "470px", maxWidth: "92%",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.2)", position: "relative", animation: "modalFadeIn 0.2s ease-out"
+          }}>
+            <button
+              onClick={() => { setRejectPopup(null); setRejectionReason(""); }}
+              style={{ position: "absolute", top: "14px", right: "14px", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}
+            >
+              <XIcon />
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
+              <div style={{ background: "#fee2e2", padding: "10px", borderRadius: "10px", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AlertCircleIcon width="24" height="24" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", color: "#0f172a" }}>Reject Grievance</h3>
+                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                  Ticket #{rejectPopup._id?.slice(-8).toUpperCase()} &bull; {rejectPopup.category}
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px",
+              padding: "10px 14px", marginBottom: "16px", fontSize: "0.82rem", color: "#1e40af", lineHeight: "1.45"
+            }}>
+              <strong>📌 Notice to Department Administrator:</strong> When you reject, your Department Administrator will be automatically notified via email with your explanation (just to inform, not a permission).
+            </div>
+
+            <p style={{ margin: "0 0 8px 0", fontSize: "0.85rem", color: "#334155", fontWeight: "600" }}>
+              Student: <span style={{ fontWeight: "400", color: "#64748b" }}>{rejectPopup.name} {rejectPopup.studentRegId ? `(${rejectPopup.studentRegId})` : ""}</span>
+            </p>
+
+            <div style={{ marginBottom: "18px" }}>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.88rem", color: "#1e293b" }}>
+                Rejection Reason <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Explain clearly why this grievance is being rejected (e.g. out of university policy, duplicate ticket, invalid details)..."
+                rows={4}
+                style={{
+                  width: "100%", padding: "10px 12px", border: "1.5px solid #cbd5e1", borderRadius: "8px",
+                  fontSize: "0.9rem", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit"
+                }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", fontSize: "0.75rem", color: "#94a3b8" }}>
+                <span>Minimum 5 characters required</span>
+                <span>{rejectionReason.length} chars</span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => { setRejectPopup(null); setRejectionReason(""); }}
+                disabled={isSubmittingReject}
+                style={{
+                  padding: "9px 18px", background: "#f1f5f9", color: "#475569", border: "none",
+                  borderRadius: "8px", fontWeight: "600", cursor: "pointer", fontSize: "0.88rem"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectGrievance}
+                disabled={isSubmittingReject || rejectionReason.trim().length < 5}
+                style={{
+                  padding: "9px 20px", background: "#ef4444", color: "white", border: "none",
+                  borderRadius: "8px", fontWeight: "600", cursor: (isSubmittingReject || rejectionReason.trim().length < 5) ? "not-allowed" : "pointer",
+                  opacity: (isSubmittingReject || rejectionReason.trim().length < 5) ? 0.6 : 1, fontSize: "0.88rem"
+                }}
+              >
+                {isSubmittingReject ? "Rejecting & Notifying..." : "Confirm Rejection"}
+              </button>
+            </div>
           </div>
         </div>
       )}

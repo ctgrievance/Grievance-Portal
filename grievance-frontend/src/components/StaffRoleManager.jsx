@@ -1,6 +1,25 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { ShieldIcon, LockIcon, AlertCircleIcon, AdminIcon, CheckCircleIcon, XIcon, UserIcon } from "./Icons";
 
+const DEFAULT_DEPARTMENTS = [
+  "Accounts",
+  "Admission",
+  "CRC (Placement)",
+  "Examination",
+  "HR",
+  "School of Allied Health Sciences",
+  "School of Design and innovation",
+  "School of Engineering and Technology",
+  "School of Hotel Management",
+  "School of Law",
+  "School of Management Studies",
+  "School of Pharmaceutical Sciences",
+  "School of Social Sciences and Liberal Arts",
+  "Student Section",
+  "Student Welfare",
+  "Transport"
+];
+
 function StaffRoleManager() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,10 +34,30 @@ function StaffRoleManager() {
   const isMasterAdmin = localStorage.getItem("is_master_admin") === "true"; // ✅ Dynamic Master Check
   const token = localStorage.getItem("grievance_token");
 
+  // 🔥 Dynamic Departments State
+  const [departmentsList, setDepartmentsList] = useState([]);
+
   // 🔥 Toggle for Danger Zone
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [processingId, setProcessingId] = useState(null); // Tracks which staff ID is being updated
   const [selectedReviewsStaff, setSelectedReviewsStaff] = useState(null); // Staff selected for ratings modal
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setDepartmentsList(data.map((d) => d.name));
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch departments in StaffRoleManager:", err);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   const fetchStaffList = useCallback(async () => {
     try {
@@ -350,24 +389,7 @@ function StaffRoleManager() {
                                   defaultValue={isMasterAdmin ? "" : myDept}
                                 >
                                   <option value="" disabled>Select Dept...</option>
-                                  {[
-                                    "Accounts",
-                                    "Student Welfare",
-                                    "Student Section",
-                                    "Admission",
-                                    "Examination",
-                                    "School of Engineering and Technology",
-                                    "School of Management Studies",
-                                    "School of Law",
-                                    "School of Pharmaceutical Sciences",
-                                    "School of Hotel Management",
-                                    "School of Design and innovation",
-                                    "School of Allied Health Sciences",
-                                    "School of Social Sciences and Liberal Arts",
-                                    "HR",
-                                    "CRC (Placement)",
-                                    "Transport"
-                                  ].map(d => (
+                                  {(departmentsList.length > 0 ? departmentsList : DEFAULT_DEPARTMENTS).map(d => (
                                     <option key={d} value={d}>{d}</option>
                                   ))}
                                 </select>

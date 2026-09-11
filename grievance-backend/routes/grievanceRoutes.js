@@ -21,7 +21,8 @@ import {
   acceptGrievance,
   getGrievanceDetail,
   transferGrievance,
-  getStaffTransferHistory
+  getStaffTransferHistory,
+  rejectGrievanceByStaff
 } from "../controllers/grievanceController.js";
 
 const router = express.Router();
@@ -52,6 +53,7 @@ router.get("/staff-rating/:staffId", getStaffRatingsSummary);
 /* ================= UPDATE (STAFF / ADMIN) ================= */
 
 router.put("/update/:id", updateGrievanceStatus);
+router.put("/reject/:id", rejectGrievanceByStaff);
 
 /* ================= EXTENSION ================= */
 

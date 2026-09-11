@@ -111,9 +111,24 @@ const GrievanceDetailsModal = ({
   onResolveExtension,
   onRequestExtension,
   onTransferred,
+  onReject,
+  canTransfer = true,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const isMasterAdmin =
+    localStorage.getItem("is_master_admin") === "true" ||
+    storedUser.isMasterAdmin === true ||
+    localStorage.getItem("grievance_id")?.toUpperCase() === "10001";
+  const allowTransfer = canTransfer && !isMasterAdmin;
 
   if (!grievance) return null;
 
@@ -417,17 +432,32 @@ const GrievanceDetailsModal = ({
             <div
               style={{
                 background: "#fef2f2",
-                border: "1px solid #fecaca",
+                border: "1.5px solid #fecaca",
                 borderRadius: "12px",
-                padding: "14px 20px",
-                color: "#dc2626",
+                padding: "16px 20px",
+                color: "#991b1b",
                 display: "flex",
-                alignItems: "center",
-                gap: "10px",
+                alignItems: "flex-start",
+                gap: "12px",
               }}
             >
-              <AlertCircleIcon width="20" height="20" />
-              <span style={{ fontWeight: "700" }}>This grievance was rejected.</span>
+              <AlertCircleIcon width="22" height="22" style={{ color: "#ef4444", flexShrink: 0, marginTop: "2px" }} />
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: "700", fontSize: "0.95rem", display: "block", color: "#b91c1c" }}>
+                  This grievance was rejected.
+                </span>
+                {(grievance.rejectionReason || grievance.resolutionRemarks) && (
+                  <div style={{ marginTop: "6px", fontSize: "0.88rem", lineHeight: "1.5", color: "#7f1d1d" }}>
+                    <strong>Reason:</strong> {grievance.rejectionReason || grievance.resolutionRemarks}
+                  </div>
+                )}
+                {grievance.rejectedBy && (
+                  <div style={{ marginTop: "6px", fontSize: "0.78rem", color: "#991b1b" }}>
+                    Rejected by: <strong>{grievance.rejectedByName ? `${grievance.rejectedByName} (${grievance.rejectedBy})` : grievance.rejectedBy}</strong>
+                    {grievance.rejectedAt && ` on ${formatDateTime(grievance.rejectedAt)}`}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1085,7 +1115,7 @@ const GrievanceDetailsModal = ({
               </button>
             )}
 
-            {!isResolved && !isRejected && (
+            {!isResolved && !isRejected && allowTransfer && (
               <button
                 onClick={() => setShowTransferModal(true)}
                 style={{
@@ -1107,6 +1137,31 @@ const GrievanceDetailsModal = ({
                 onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
               >
                 <span>🔁</span> Forward to Department
+              </button>
+            )}
+
+            {!isResolved && !isRejected && onReject && (
+              <button
+                onClick={() => onReject(grievance)}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#fef2f2",
+                  border: "1.5px solid #fecaca",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: "700",
+                  color: "#dc2626",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "0.85rem",
+                  transition: "all 0.2s",
+                  boxShadow: "0 1px 3px rgba(220, 38, 38, 0.1)"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#fee2e2")}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#fef2f2")}
+              >
+                <span>❌</span> Reject Grievance
               </button>
             )}
           </div>
@@ -1132,7 +1187,7 @@ const GrievanceDetailsModal = ({
         </div>
       </div>
 
-      {showTransferModal && (
+      {showTransferModal && allowTransfer && (
         <TransferDepartmentModal
           grievance={grievance}
           onClose={() => setShowTransferModal(false)}

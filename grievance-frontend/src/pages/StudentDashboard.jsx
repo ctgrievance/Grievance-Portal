@@ -7,6 +7,7 @@ import ChatNotificationToast from "../components/ChatNotificationToast";
 import { connectSocketUser } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
 import Verifications from "../components/Verifications";
+import StudentNavbar from "../components/StudentNavbar";
 import ctLogo from "../assets/ct-logo.png";
 import {
   BellIcon, GraduationCapIcon, ChartBarIcon, ClockIcon, CheckCircleIcon,
@@ -249,8 +250,16 @@ function StudentDashboard() {
     return matchStaff && matchStatus && matchDept && matchMonth;
   });
 
-  // ✅ Unique Departments for Dropdown
-  const uniqueDepartments = [...new Set(history.map(g => g.category || g.school).filter(Boolean))];
+  // ✅ Dynamic & Historic Departments for Dropdown
+  const [activeDepts, setActiveDepts] = useState([]);
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setActiveDepts(data.map(d => d.name)); })
+      .catch(() => {});
+  }, []);
+
+  const uniqueDepartments = [...new Set([...activeDepts, ...history.map(g => g.category || g.school).filter(Boolean)])];
 
   // Graph Percentages
   const totalG = stats.total || 1;
@@ -396,21 +405,8 @@ function StudentDashboard() {
         <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>
 
-      {/* ✅ NAVBAR */}
-      <nav className="navbar">
-        <ul>
-          <li className="active"><Link to="/student/dashboard">Dashboard</Link></li>
-          <li><Link to="/student/welfare">Student Welfare</Link></li>
-          <li><Link to="/student/admission">Admission</Link></li>
-          <li><Link to="/student/section">Student Section</Link></li>
-          <li><Link to="/student/accounts">Accounts</Link></li>
-          <li><Link to="/student/examination">Examination</Link></li>
-          <li><Link to="/student/department">Department</Link></li>
-          <li><Link to="/student/hr">HR</Link></li>
-          <li><Link to="/student/crc">CRC (Placement)</Link></li>
-          <li><Link to="/student/transport">Transport</Link></li>
-        </ul>
-      </nav>
+      {/* ✅ DYNAMIC NAVBAR */}
+      <StudentNavbar activeCategory="dashboard" />
 
       <main className="dashboard-body">
 

@@ -5,6 +5,8 @@ import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import StaffRecordsTab from "../components/StaffRecordsTab";
+import AdminStudentRecords from "../components/AdminStudentRecords";
+import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
@@ -57,7 +59,8 @@ function HRAdminDashboard() {
   const [staffMap, setStaffMap] = useState({}); // ✅ Store Staff Names
 
   // ✅ TABS STATE
-  const [activeTab, setActiveTab] = useState("grievances"); // "grievances" | "staff_records"
+  const [activeTab, setActiveTab] = useState("grievances"); // "grievances" | "staff_records" | "student_records"
+  const { allowStudentRecords, allowStaffRecords } = useDepartmentPermissions("HR");
 
   // ✅ FILTER STATES
   const [searchId, setSearchId] = useState("");
@@ -267,11 +270,22 @@ function HRAdminDashboard() {
             </span>
           </li>
           
-          <li className={activeTab === 'staff_records' ? 'active' : ''}>
-            <span className="tab-link-button" onClick={() => setActiveTab('staff_records')}>
-              Staff Records
-            </span>
-          </li>
+          {allowStaffRecords && (
+            <li className={activeTab === 'staff_records' ? 'active' : ''}>
+              <span className="tab-link-button" onClick={() => setActiveTab('staff_records')}>
+                Staff Records
+
+              </span>
+            </li>
+          )}
+
+          {allowStudentRecords && (
+            <li className={activeTab === 'student_records' ? 'active' : ''}>
+              <span className="tab-link-button" onClick={() => setActiveTab('student_records')}>
+                Student Records
+              </span>
+            </li>
+          )}
 
           <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
           <li><SmartAssignmentNavLink department="HR" /></li>
@@ -279,7 +293,9 @@ function HRAdminDashboard() {
       </nav>
 
       <main className="dashboard-body">
-        {activeTab === "grievances" ? (
+        {activeTab === "student_records" && <AdminStudentRecords />}
+        {activeTab === "staff_records" && <StaffRecordsTab />}
+        {activeTab === "grievances" && (
         <div className="card">
           <h2>Incoming Grievances</h2>
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
@@ -420,8 +436,6 @@ function HRAdminDashboard() {
             </div>
           )}
         </div>
-        ) : (
-          <StaffRecordsTab />
         )}
       </main>
 

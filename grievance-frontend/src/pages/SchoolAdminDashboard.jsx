@@ -5,6 +5,9 @@ import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
+import AdminStudentRecords from "../components/AdminStudentRecords";
+import StaffRecordsTab from "../components/StaffRecordsTab";
+import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
 import { SearchIcon, UserIcon, HomeIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
@@ -39,6 +42,9 @@ function SchoolAdminDashboard() {
 
   const mySchoolName = localStorage.getItem("admin_department");
   const isAuthorized = !!mySchoolName;
+
+  const [activeTab, setActiveTab] = useState("grievances");
+  const { allowStudentRecords, allowStaffRecords } = useDepartmentPermissions(mySchoolName);
 
   // Data States
   const [grievances, setGrievances] = useState([]);
@@ -293,17 +299,40 @@ function SchoolAdminDashboard() {
 
       <nav className="navbar">
         <ul>
-          <li className="admin-nav-title" style={{ marginLeft: '20px' }}><span>Department Issues</span></li>
+          <li className="admin-nav-title" style={{ marginLeft: '20px' }}><span>{mySchoolName || "Department"}</span></li>
+          <li className={activeTab === "grievances" ? "active" : ""}>
+            <span className="tab-link-button" onClick={() => setActiveTab("grievances")}>
+              Department Issues
+            </span>
+          </li>
+          {allowStudentRecords && (
+            <li className={activeTab === "student_records" ? "active" : ""}>
+              <span className="tab-link-button" onClick={() => setActiveTab("student_records")}>
+                Student Records
+              </span>
+            </li>
+          )}
+          {allowStaffRecords && (
+            <li className={activeTab === "staff_records" ? "active" : ""}>
+              <span className="tab-link-button" onClick={() => setActiveTab("staff_records")}>
+                Staff Records
+
+              </span>
+            </li>
+          )}
           <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
           <li><SmartAssignmentNavLink department={mySchoolName} /></li>
         </ul>
       </nav>
 
       <main className="dashboard-body">
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-            <h2>Grievances Assigned to {mySchoolName}</h2>
-          </div>
+        {activeTab === "student_records" && <AdminStudentRecords />}
+        {activeTab === "staff_records" && <StaffRecordsTab />}
+        {activeTab === "grievances" && (
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+              <h2>Grievances Assigned to {mySchoolName}</h2>
+            </div>
 
           {/* ✅ Feedback Message Alert Box */}
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
@@ -479,6 +508,7 @@ function SchoolAdminDashboard() {
             </div>
           )}
         </div>
+        )}
       </main>
 
       {selectedGrievance && (

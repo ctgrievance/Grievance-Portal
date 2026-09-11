@@ -31,24 +31,7 @@ const grievanceSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      enum: [
-        "Accounts",
-        "Student Welfare",
-        "Student Section",
-        "Admission",
-        "Examination",
-        "School of Engineering and Technology",
-        "School of Management Studies",
-        "School of Law",
-        "School of Pharmaceutical Sciences",
-        "School of Hotel Management",
-        "School of Design and innovation",
-        "School of Allied Health Sciences",
-        "School of Social Sciences and Liberal Arts",
-        "HR",
-        "CRC (Placement)",
-        "Transport"
-      ]
+      trim: true
     },
     issueTypeId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -83,9 +66,13 @@ const grievanceSchema = new mongoose.Schema(
     },
     assignedBy: { type: String, default: null },
 
-    // ================= RESOLUTION =================
+    // ================= RESOLUTION & REJECTION =================
     resolvedBy: { type: String, default: null },
     resolutionRemarks: { type: String, default: "" },
+    rejectedBy: { type: String, default: null },
+    rejectedByName: { type: String, default: "" },
+    rejectionReason: { type: String, default: "" },
+    rejectedAt: { type: Date, default: null },
 
     // ================= STATUS =================
     status: {

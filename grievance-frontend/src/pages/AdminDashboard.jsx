@@ -4,6 +4,7 @@ import "../styles/Dashboard.css";
 
 import AdminUploadRecords from "../components/AdminUploadRecords";
 import StaffRoleManager from "../components/StaffRoleManager";
+import AdminDepartments from "./AdminDepartments";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
@@ -255,6 +256,15 @@ function AdminDashboard() {
               <span className="tab-link-button">Manage Staff</span>
             </li>
           )}
+
+          {isMasterAdmin && (
+            <li
+              className={activeTab === "departments" ? "active" : ""}
+              onClick={() => setActiveTab("departments")}
+            >
+              <span className="tab-link-button">Departments</span>
+            </li>
+          )}
         </ul>
       </nav>
 
@@ -262,6 +272,7 @@ function AdminDashboard() {
       <main className="dashboard-body">
         {activeTab === "upload" && <AdminUploadRecords />}
         {activeTab === "staff" && canManageStaff && <StaffRoleManager />}
+        {activeTab === "departments" && isMasterAdmin && <AdminDepartments />}
 
         {activeTab === "triage" && (
           <div className="card">
@@ -480,6 +491,7 @@ function AdminDashboard() {
           <GrievanceDetailsModal
             grievance={selectedGrievance}
             staffMap={staffMap}
+            canTransfer={false}
             onClose={() => setSelectedGrievance(null)}
             onDelete={handleDeleteGrievance}
             onTransferred={() => {

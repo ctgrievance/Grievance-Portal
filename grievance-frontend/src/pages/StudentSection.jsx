@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
+import StudentNavbar from "../components/StudentNavbar";
 import ctLogo from "../assets/ct-logo.png";
 import { GraduationCapIcon } from "../components/Icons";
 
@@ -171,20 +172,8 @@ function StudentSection() {
         <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>
 
-      <nav className="navbar">
-        <ul>
-          <li><Link to="/student/dashboard">Dashboard</Link></li>
-          <li><Link to="/student/welfare">Student Welfare</Link></li>
-          <li><Link to="/student/admission">Admission</Link></li>
-          <li className="active"><Link to="/student/section">Student Section</Link></li>
-          <li><Link to="/student/accounts">Accounts</Link></li>
-          <li><Link to="/student/examination">Examination</Link></li>
-          <li><Link to="/student/department">Department</Link></li>
-          <li><Link to="/student/hr">HR</Link></li>
-          <li><Link to="/student/crc">CRC (Placement)</Link></li>
-          <li><Link to="/student/transport">Transport</Link></li>
-        </ul>
-      </nav>
+      {/* ✅ DYNAMIC NAVBAR */}
+      <StudentNavbar activeCategory="student section" />
 
       <main className="dashboard-body">
         <div className="card">

@@ -1,37 +1,40 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import StudentDashboard from "./pages/StudentDashboard";
-import StudentWelfare from "./pages/StudentWelfare";
-import Admission from "./pages/Admission";
-import StudentSection from "./pages/StudentSection";
-import Accounts from "./pages/Accounts";
-import Examination from "./pages/Examination";
-import Department from "./pages/Department";
-import StudentHR from "./pages/StudentHR";
-import StudentCRC from "./pages/StudentCRC";
-import StaffDashboard from "./pages/StaffDashboard";
-import AdminStaffDashboard from "./pages/AdminStaffDashboard"; // ✅ Rajesh (Worker) ka Dashboard
-import AdminDashboard from "./pages/AdminDashboard";
-import AccountAdminDashboard from "./pages/AccountAdminDashboard";
-import StudentWelfareAdminDashboard from "./pages/StudentWelfareAdminDashboard";
-import AdmissionAdminDashboard from "./pages/AdmissionAdminDashboard";
-import StudentSectionAdminDashboard from "./pages/StudentSectionAdminDashboard";
-import ExaminationAdminDashboard from "./pages/ExaminationAdminDashboard";
-import AdminManageStaff from "./pages/AdminManageStaff";
-import SchoolAdminDashboard from "./pages/SchoolAdminDashboard";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+// Lazy-load dashboards for fast initial bundle load
+const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
+const StudentWelfare = lazy(() => import("./pages/StudentWelfare"));
+const Admission = lazy(() => import("./pages/Admission"));
+const StudentSection = lazy(() => import("./pages/StudentSection"));
+const Accounts = lazy(() => import("./pages/Accounts"));
+const Examination = lazy(() => import("./pages/Examination"));
+const Department = lazy(() => import("./pages/Department"));
+const StudentHR = lazy(() => import("./pages/StudentHR"));
+const StudentCRC = lazy(() => import("./pages/StudentCRC"));
+const StudentSubmitGrievance = lazy(() => import("./pages/StudentSubmitGrievance"));
+const StudentTransport = lazy(() => import("./pages/StudentTransport"));
 
+const StaffDashboard = lazy(() => import("./pages/StaffDashboard"));
+const AdminStaffDashboard = lazy(() => import("./pages/AdminStaffDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminDepartments = lazy(() => import("./pages/AdminDepartments"));
+const AdminManageStaff = lazy(() => import("./pages/AdminManageStaff"));
+const IssueManagementPage = lazy(() => import("./pages/IssueManagementPage"));
 
-import HRAdminDashboard from "./pages/HRAdminDashboard";
-import CRCAdminDashboard from "./pages/CRCAdminDashboard";
-import TransportAdminDashboard from "./pages/TransportAdminDashboard";
-import StudentTransport from "./pages/StudentTransport";
-import IssueManagementPage from "./pages/IssueManagementPage"; // NEW: Smart Assignment Configuration
+const AccountAdminDashboard = lazy(() => import("./pages/AccountAdminDashboard"));
+const StudentWelfareAdminDashboard = lazy(() => import("./pages/StudentWelfareAdminDashboard"));
+const AdmissionAdminDashboard = lazy(() => import("./pages/AdmissionAdminDashboard"));
+const StudentSectionAdminDashboard = lazy(() => import("./pages/StudentSectionAdminDashboard"));
+const ExaminationAdminDashboard = lazy(() => import("./pages/ExaminationAdminDashboard"));
+const SchoolAdminDashboard = lazy(() => import("./pages/SchoolAdminDashboard"));
+const HRAdminDashboard = lazy(() => import("./pages/HRAdminDashboard"));
+const CRCAdminDashboard = lazy(() => import("./pages/CRCAdminDashboard"));
+const TransportAdminDashboard = lazy(() => import("./pages/TransportAdminDashboard"));
 
 // Helper to decide where DEPT ADMINS (Priya) go
 const getDeptAdminRoute = (department) => {
@@ -110,56 +113,78 @@ function ProtectedRoute({ children, allowedRoles }) {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+      <Suspense
+        fallback={
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "100vh",
+              fontFamily: "Outfit, sans-serif",
+              color: "#6366f1",
+              fontSize: "1.1rem",
+              fontWeight: 500,
+            }}
+          >
+            Loading...
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-        {/* --- STUDENT ROUTES --- */}
-        <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
-        <Route path="/student/welfare" element={<ProtectedRoute allowedRoles={["student"]}><StudentWelfare /></ProtectedRoute>} />
-        <Route path="/student/admission" element={<ProtectedRoute allowedRoles={["student"]}><Admission /></ProtectedRoute>} />
-        <Route path="/student/section" element={<ProtectedRoute allowedRoles={["student"]}><StudentSection /></ProtectedRoute>} />
-        <Route path="/student/accounts" element={<ProtectedRoute allowedRoles={["student"]}><Accounts /></ProtectedRoute>} />
-        <Route path="/student/examination" element={<ProtectedRoute allowedRoles={["student"]}><Examination /></ProtectedRoute>} />
-        <Route path="/student/department" element={<ProtectedRoute allowedRoles={["student"]}><Department /></ProtectedRoute>} />
-        <Route path="/student/hr" element={<ProtectedRoute allowedRoles={["student"]}><StudentHR /></ProtectedRoute>} />
-        <Route path="/student/crc" element={<ProtectedRoute allowedRoles={["student"]}><StudentCRC /></ProtectedRoute>} />
-        <Route path="/student/transport" element={<ProtectedRoute allowedRoles={["student"]}><StudentTransport /></ProtectedRoute>} />
+          {/* --- STUDENT ROUTES --- */}
+          <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
+          <Route path="/student/welfare" element={<ProtectedRoute allowedRoles={["student"]}><StudentWelfare /></ProtectedRoute>} />
+          <Route path="/student/admission" element={<ProtectedRoute allowedRoles={["student"]}><Admission /></ProtectedRoute>} />
+          <Route path="/student/section" element={<ProtectedRoute allowedRoles={["student"]}><StudentSection /></ProtectedRoute>} />
+          <Route path="/student/accounts" element={<ProtectedRoute allowedRoles={["student"]}><Accounts /></ProtectedRoute>} />
+          <Route path="/student/examination" element={<ProtectedRoute allowedRoles={["student"]}><Examination /></ProtectedRoute>} />
+          <Route path="/student/department" element={<ProtectedRoute allowedRoles={["student"]}><Department /></ProtectedRoute>} />
+          <Route path="/student/hr" element={<ProtectedRoute allowedRoles={["student"]}><StudentHR /></ProtectedRoute>} />
+          <Route path="/student/crc" element={<ProtectedRoute allowedRoles={["student"]}><StudentCRC /></ProtectedRoute>} />
+          <Route path="/student/transport" element={<ProtectedRoute allowedRoles={["student"]}><StudentTransport /></ProtectedRoute>} />
+          <Route path="/student/submit/:deptName" element={<ProtectedRoute allowedRoles={["student"]}><StudentSubmitGrievance /></ProtectedRoute>} />
+          <Route path="/student/submit" element={<ProtectedRoute allowedRoles={["student"]}><StudentSubmitGrievance /></ProtectedRoute>} />
 
-        {/* --- STAFF ROUTES --- */}
+          {/* --- STAFF ROUTES --- */}
 
-        {/* 1. General Staff (Unassigned) */}
-        <Route path="/staff/general" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
+          {/* 1. General Staff (Unassigned) */}
+          <Route path="/staff/general" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
 
-        {/* 2. Department Worker (Rajesh - The Worker Dashboard) */}
-        <Route path="/staff/admin" element={<ProtectedRoute allowedRoles={["staff"]}><AdminStaffDashboard /></ProtectedRoute>} />
+          {/* 2. Department Worker (Rajesh - The Worker Dashboard) */}
+          <Route path="/staff/admin" element={<ProtectedRoute allowedRoles={["staff"]}><AdminStaffDashboard /></ProtectedRoute>} />
 
-        {/* Default Redirects for Staff */}
-        <Route path="/staff" element={<Navigate to="/staff/general" replace />} />
+          {/* Default Redirects for Staff */}
+          <Route path="/staff" element={<Navigate to="/staff/general" replace />} />
 
-        {/* --- ADMIN ROUTES (Bosses) --- */}
-        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/manage-staff" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AdminManageStaff /></ProtectedRoute>} />
-        <Route path="/admin/smart-assignment" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><IssueManagementPage /></ProtectedRoute>} /> {/* NEW: Smart Assignment Config */}
+          {/* --- ADMIN ROUTES (Bosses) --- */}
+          <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDepartments /></ProtectedRoute>} />
+          <Route path="/admin/manage-staff" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AdminManageStaff /></ProtectedRoute>} />
+          <Route path="/admin/smart-assignment" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><IssueManagementPage /></ProtectedRoute>} /> {/* NEW: Smart Assignment Config */}
 
-        {/* Dept Boss Dashboards */}
-        <Route path="/admin/account" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AccountAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/studentwelfare" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><StudentWelfareAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/admission" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AdmissionAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/studentsection" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><StudentSectionAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/examination" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><ExaminationAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/school" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><SchoolAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/hr" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><HRAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/crc" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><CRCAdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/transport" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><TransportAdminDashboard /></ProtectedRoute>} />
+          {/* Dept Boss Dashboards */}
+          <Route path="/admin/account" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AccountAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/studentwelfare" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><StudentWelfareAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/admission" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AdmissionAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/studentsection" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><StudentSectionAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/examination" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><ExaminationAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/school" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><SchoolAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/hr" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><HRAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/crc" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><CRCAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/transport" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><TransportAdminDashboard /></ProtectedRoute>} />
 
 
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Catch All */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Catch All */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
