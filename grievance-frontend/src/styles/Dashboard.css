@@ -111,6 +111,138 @@ body {
   box-shadow: 0 2px 5px rgba(37, 99, 235, 0.12);
 }
 
+.profile-btn-attention {
+  border-color: #f59e0b !important;
+  color: #b45309 !important;
+  background: #fffbeb !important;
+}
+
+.profile-warning-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 17px;
+  height: 17px;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px white, 0 2px 5px rgba(239, 68, 68, 0.4);
+  animation: pulseWarning 1.8s infinite;
+}
+
+@keyframes pulseWarning {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* ============ UNASSIGNED DEPARTMENT WARNING BANNER ============ */
+.unassigned-dept-warning-banner {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #fde68a;
+  border-left: 5px solid #f59e0b;
+  border-radius: 12px;
+  padding: 16px 22px;
+  margin: 15px auto 20px;
+  max-width: 1200px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+  animation: slideDownFade 0.3s ease-out;
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.warning-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.warning-icon-badge {
+  background: #f59e0b;
+  color: white;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.warning-text-wrapper h4 {
+  margin: 0 0 4px 0;
+  color: #92400e;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.warning-text-wrapper p {
+  margin: 0;
+  color: #b45309;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.warning-action-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+}
+
+.warning-action-btn:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);
+}
+
+@media (max-width: 768px) {
+  .unassigned-dept-warning-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .warning-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ============ NAVBAR (Floating Glass Pill) ============ */
 .navbar {
   background: rgba(255, 255, 255, 0.85);

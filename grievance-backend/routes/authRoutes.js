@@ -1,5 +1,7 @@
 import express from "express";
 import User from "../models/UserModel.js";
+import StaffUser from "../models/StaffUser.js";
+import StudentUser from "../models/StudentUser.js";
 import {
   registerRequest,
   verifyRegistration,
@@ -46,7 +48,9 @@ router.get("/user/:id", async (req, res) => {
     const safeId = req.params.id.toString().trim().toUpperCase();
     console.log(`🔍 Fetching user with ID: ${safeId}`);
     
-    let user = await User.findOne({ id: safeId });
+    let user = await StaffUser.findOne({ id: safeId }) ||
+               await StudentUser.findOne({ id: safeId }) ||
+               await User.findOne({ id: safeId });
     console.log(`👤 User found: ${user ? 'YES' : 'NO'}`);
 
     if (!user) {

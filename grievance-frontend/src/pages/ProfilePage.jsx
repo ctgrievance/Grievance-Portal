@@ -569,6 +569,35 @@ function ProfilePage() {
               </div>
 
               <form onSubmit={handleSaveBasic}>
+                {(!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) && (
+                  <div
+                    style={{
+                      background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+                      border: "1px solid #fde68a",
+                      borderLeft: "5px solid #f59e0b",
+                      borderRadius: "10px",
+                      padding: "14px 18px",
+                      marginBottom: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      boxShadow: "0 2px 8px rgba(245, 158, 11, 0.1)"
+                    }}
+                  >
+                    <div style={{ background: "#f59e0b", color: "white", padding: "8px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <AlertCircleIcon width="20" height="20" />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: "700", color: "#92400e", fontSize: "0.95rem" }}>
+                        ⚠️ Department Selection Required
+                      </div>
+                      <div style={{ color: "#b45309", fontSize: "0.85rem", marginTop: "2px" }}>
+                        You did not choose your department during registration. Please select your official department from the dropdown below and click <strong>Save Basic Details</strong> to join your department team.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
                   {/* University ID (Immutable) */}
                   <div className="input-group" style={{ margin: 0 }}>
@@ -667,9 +696,10 @@ function ProfilePage() {
                             width: "100%",
                             padding: "10px 14px",
                             borderRadius: "8px",
-                            border: "1px solid #cbd5e1",
+                            border: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "2px solid #f59e0b" : "1px solid #cbd5e1",
                             fontSize: "0.95rem",
-                            backgroundColor: "white"
+                            backgroundColor: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "#fffbeb" : "white",
+                            boxShadow: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "0 0 0 3px rgba(245, 158, 11, 0.15)" : "none"
                           }}
                         >
                           <option value="">-- Select Department --</option>
@@ -679,8 +709,8 @@ function ProfilePage() {
                             </option>
                           ))}
                         </select>
-                        <span style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px", display: "block" }}>
-                          Choose from departments configured by Super Admin
+                        <span style={{ fontSize: "0.75rem", color: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "#b45309" : "#64748b", marginTop: "4px", display: "block", fontWeight: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "600" : "400" }}>
+                          {(!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "⚠️ Please select your department to join your team" : "Choose from departments configured by Super Admin"}
                         </span>
                       </div>
                     )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import ctLogo from "../assets/ct-logo.png";
-import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon } from "../components/Icons";
+import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 
@@ -473,7 +473,27 @@ function StaffDashboard() {
             <p style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               {loadingProfile
                 ? "Loading your profile..."
-                : <>Welcome, <strong>{staffName || userId}</strong> {staffDept && (
+                : <>Welcome, <strong>{staffName || userId}</strong> {(!staffDept || staffDept.toLowerCase() === "general" || staffDept.trim() === "") ? (
+                  <span
+                    style={{
+                      background: "#fffbeb",
+                      color: "#b45309",
+                      border: "1px solid #fde68a",
+                      fontSize: "0.8rem",
+                      padding: "3px 10px",
+                      borderRadius: "20px",
+                      fontWeight: "600",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => navigate("/profile")}
+                    title="Click to select your department in profile"
+                  >
+                    ⚠️ Department Unassigned - Click to Update
+                  </span>
+                ) : (
                   <span className="status-badge status-assigned" style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                     <ClipboardIcon width="14" height="14" /> {staffDept}
                   </span>
@@ -515,6 +535,32 @@ function StaffDashboard() {
           Logout
         </button>
       </header>
+
+      {/* ⚠️ WARNING BANNER FOR UNASSIGNED STAFF */}
+      {!loadingProfile && (!staffDept || staffDept.toLowerCase() === "general" || staffDept.trim() === "") && (
+        <div style={{ padding: "10px 24px 0" }}>
+          <div className="unassigned-dept-warning-banner">
+            <div className="warning-banner-content">
+              <div className="warning-icon-badge">
+                <AlertCircleIcon width="24" height="24" />
+              </div>
+              <div className="warning-text-wrapper">
+                <h4>Department Selection Required</h4>
+                <p>
+                  You haven't selected your department during registration. Please select your official department from your <strong>Profile</strong> to join your department team and receive grievance tasks.
+                </p>
+              </div>
+            </div>
+            <button
+              className="warning-action-btn"
+              onClick={() => navigate("/profile")}
+            >
+              <UserIcon width="16" height="16" />
+              <span>Select Department in Profile</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ✅ FIXED NAVBAR TABS (Glass Pill Style) */}
       <nav className="navbar">
