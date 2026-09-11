@@ -2640,3 +2640,556 @@ textarea:focus {
     display: table !important;
   }
 }
+
+/* ==========================================================================
+   STUDENT SERVICES GRID & COMPACT APP NAVIGATION
+   ========================================================================== */
+
+/* --- 1. Compact Dashboard Navbar --- */
+.student-dashboard-navbar {
+  margin-bottom: 1.5rem !important;
+}
+
+.student-compact-nav-list {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  list-style: none !important;
+  margin: 0 auto !important;
+  padding: 0.35rem 0.5rem !important;
+  background: white !important;
+  width: fit-content !important;
+  border-radius: 999px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.student-nav-pill-link,
+.student-nav-pill-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 999px !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
+  color: #475569 !important;
+  text-decoration: none !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.student-nav-pill-link:hover,
+.student-nav-pill-button:hover {
+  color: #2563eb !important;
+  background: #f1f5f9 !important;
+}
+
+.student-compact-nav-list li.active .student-nav-pill-link {
+  background: #2563eb !important;
+  color: white !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
+}
+
+.student-nav-pill-button.accent {
+  color: #2563eb !important;
+  background: #eff6ff !important;
+  font-weight: 600 !important;
+}
+
+.student-nav-pill-button.accent:hover {
+  background: #dbeafe !important;
+}
+
+/* --- 2. Form App-Style Header Navbar --- */
+.student-form-navbar {
+  padding: 0.6rem 0 !important;
+  margin-bottom: 1.25rem !important;
+}
+
+.student-form-nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.student-nav-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.student-nav-back-link:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #1e293b;
+  transform: translateX(-2px);
+}
+
+.student-nav-center-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.breadcrumb-path {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.breadcrumb-sep {
+  color: #cbd5e1;
+}
+
+.breadcrumb-current-name {
+  color: #1d4ed8;
+  font-weight: 700;
+  background: #eff6ff;
+  padding: 0.2rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #bfdbfe;
+}
+
+/* Switcher Dropdown */
+.student-nav-switcher-wrap {
+  position: relative;
+}
+
+.student-nav-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.student-nav-switcher-btn:hover,
+.student-nav-switcher-btn.open {
+  background: white;
+  border-color: #2563eb;
+  color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.student-nav-switcher-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  max-height: 380px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 1100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: dropdownFade 0.15s ease-out;
+}
+
+@keyframes dropdownFade {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.switcher-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+
+.switcher-search-box input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+.switcher-options-list {
+  padding: 0.35rem;
+  overflow-y: auto;
+  max-height: 310px;
+}
+
+.switcher-option-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.15s ease;
+}
+
+.switcher-option-item:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.switcher-option-item.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.current-dot {
+  color: #2563eb;
+  font-size: 1.2rem;
+  line-height: 0;
+}
+
+.switcher-no-results {
+  padding: 1.5rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+/* --- 3. Student Service Grid Styles --- */
+.service-grid-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.75rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.service-grid-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.service-grid-title-wrap h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem 0;
+}
+
+.service-grid-title-wrap p {
+  font-size: 0.88rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.service-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+  flex: 1 1 260px;
+  max-width: 360px;
+}
+
+.service-search-wrap .search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.service-search-input {
+  width: 100%;
+  padding: 0.55rem 2rem 0.55rem 2.25rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.service-search-input:focus {
+  background: white;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 10px;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 5px;
+}
+
+/* Category Pills Bar */
+.service-category-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.25rem;
+  scrollbar-width: thin;
+}
+
+.service-category-pills::-webkit-scrollbar {
+  height: 4px;
+}
+
+.service-category-pills::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.category-pill {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.category-pill:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.category-pill.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+/* Service Grid Container */
+.service-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.service-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  text-decoration: none;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -3px rgba(37, 99, 235, 0.08), 0 4px 6px -4px rgba(37, 99, 235, 0.05);
+}
+
+.service-card-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.service-card:hover .service-card-icon-wrap {
+  transform: scale(1.06);
+}
+
+.service-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.service-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 0.2rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.service-card-subtitle {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.service-card-arrow {
+  color: #cbd5e1;
+  align-self: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.service-card:hover .service-card-arrow {
+  color: #2563eb;
+  transform: translateX(3px);
+}
+
+.service-grid-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #64748b;
+}
+
+.reset-search-btn {
+  margin-top: 0.75rem;
+  padding: 0.45rem 1rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #2563eb;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --- Responsive Media Queries (Mobile / App View) --- */
+@media (max-width: 768px) {
+  .student-form-nav-container {
+    padding: 0 0.75rem;
+  }
+
+  .breadcrumb-path,
+  .breadcrumb-sep {
+    display: none;
+  }
+
+  .service-grid-section {
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+  }
+
+  .service-search-wrap {
+    max-width: 100%;
+  }
+
+  .service-grid-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .service-card {
+    padding: 0.75rem;
+    gap: 8px;
+    flex-direction: column;
+  }
+
+  .service-card-icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+
+  .service-card-icon-wrap svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .service-card-title {
+    font-size: 0.85rem;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .service-card-subtitle {
+    font-size: 0.72rem;
+    -webkit-line-clamp: 2;
+  }
+
+  .service-card-arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-compact-nav-list {
+    max-width: 100% !important;
+    gap: 0.25rem !important;
+    padding: 0.25rem !important;
+  }
+
+  .student-nav-pill-link,
+  .student-nav-pill-button {
+    padding: 0.4rem 0.65rem !important;
+    font-size: 0.76rem !important;
+    gap: 0.3rem !important;
+  }
+
+  .student-nav-switcher-btn span {
+    display: none;
+  }
+
+  .student-nav-switcher-btn::after {
+    content: "Switch";
+    font-size: 0.8rem;
+  }
+
+  .back-text {
+    display: none;
+  }
+}
+

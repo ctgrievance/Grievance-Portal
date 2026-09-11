@@ -270,3 +270,83 @@ export const SaveIcon = (props) => (
         <polyline points="7 3 7 8 15 8" />
     </svg>
 );
+
+export const ChevronDownIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <polyline points="6 9 12 15 18 9" />
+    </svg>
+);
+
+export const ArrowLeftIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+    </svg>
+);
+
+export const CreditCardIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+        <line x1="1" y1="10" x2="23" y2="10" />
+    </svg>
+);
+
+export const BuildingIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+        <path d="M6 12H4a2 2 0 0 0-2 2v8h20v-8a2 2 0 0 0-2-2h-2" />
+        <line x1="10" y1="6" x2="10" y2="6.01" />
+        <line x1="14" y1="6" x2="14" y2="6.01" />
+        <line x1="10" y1="10" x2="10" y2="10.01" />
+        <line x1="14" y1="10" x2="14" y2="10.01" />
+        <line x1="10" y1="14" x2="10" y2="14.01" />
+        <line x1="14" y1="14" x2="14" y2="14.01" />
+        <path d="M10 22v-4h4v4" />
+    </svg>
+);
+
+export const BriefcaseIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+);
+
+export const BusIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <rect x="3" y="3" width="18" height="15" rx="3" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+        <path d="M4 18v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2" />
+        <path d="M17 18v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2" />
+    </svg>
+);
+
+export const CpuIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <rect x="9" y="9" width="6" height="6" />
+        <line x1="9" y1="1" x2="9" y2="4" />
+        <line x1="15" y1="1" x2="15" y2="4" />
+        <line x1="9" y1="20" x2="9" y2="23" />
+        <line x1="15" y1="20" x2="15" y2="23" />
+        <line x1="20" y1="9" x2="23" y2="9" />
+        <line x1="20" y1="14" x2="23" y2="14" />
+        <line x1="1" y1="9" x2="4" y2="9" />
+        <line x1="1" y1="14" x2="4" y2="14" />
+    </svg>
+);
+
+export const HeartIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+);
+
+export const SparklesIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+    </svg>
+);
+

@@ -8,6 +8,7 @@ import { connectSocketUser } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
 import Verifications from "../components/Verifications";
 import StudentNavbar from "../components/StudentNavbar";
+import StudentServiceGrid from "../components/StudentServiceGrid";
 import ctLogo from "../assets/ct-logo.png";
 import {
   BellIcon, GraduationCapIcon, ChartBarIcon, ClockIcon, CheckCircleIcon,
@@ -63,6 +64,7 @@ function StudentDashboard() {
   // ✅ User Details State
   const [studentName, setStudentName] = useState("");
   const [studentDept, setStudentDept] = useState(""); // 🔥 Department State Added
+  const [departments, setDepartments] = useState([]); // Services Grid Departments
   const [staffMap, setStaffMap] = useState({}); // ✅ Store Staff Names for "Assigned To"
 
   // Chat State
@@ -127,6 +129,18 @@ function StudentDashboard() {
           const pending = total - resolved - rejected;
 
           setStats({ total, resolved, rejected, pending });
+        }
+
+        // 3. Departments for Service Grid
+        const deptRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`);
+        if (deptRes.ok) {
+          const deptData = await deptRes.json();
+          if (Array.isArray(deptData)) {
+            const studentDepts = deptData.filter(
+              (d) => d.targetAudience === "both" || d.targetAudience === "student" || !d.targetAudience
+            );
+            setDepartments(studentDepts);
+          }
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -471,8 +485,11 @@ function StudentDashboard() {
           </div>
         )}
 
+        {/* ✅ 2. SERVICES GRID (Lodge Grievance) */}
+        <StudentServiceGrid departments={departments} />
+
         {/* ✅ TAB SWITCHER (Makhan UI) */}
-        <div className="dashboard-tabs">
+        <div id="recent-activity-section" className="dashboard-tabs">
           <button
             onClick={() => setActiveTab('activity')}
             className={`tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
@@ -554,7 +571,9 @@ function StudentDashboard() {
                 {history.length === 0 && (
                   <button
                     style={{ marginTop: '15px', padding: '10px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
-                    onClick={() => navigate('/student/welfare')}
+                    onClick={() => {
+                      document.getElementById("lodge-grievance-section")?.scrollIntoView({ behavior: "smooth" });
+                    }}
                   >
                     Submit a Grievance
                   </button>
