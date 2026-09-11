@@ -7,8 +7,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
-import RegisteredStudentsTab from "../components/RegisteredStudentsTab";
-import RegisteredStaffTab from "../components/RegisteredStaffTab";
+import RegisteredUsersView from "../components/RegisteredUsersView";
 import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
@@ -284,17 +283,10 @@ function TransportAdminDashboard() {
                             </span>
                         </li>
                     )}
-                    {allowRegisteredStudents && (
-                        <li className={activeTab === "registered_students" ? "active" : ""}>
-                            <span className="tab-link-button" onClick={() => setActiveTab("registered_students")}>
-                                Registered Students
-                            </span>
-                        </li>
-                    )}
-                    {allowRegisteredStaff && (
-                        <li className={activeTab === "registered_staff" ? "active" : ""}>
-                            <span className="tab-link-button" onClick={() => setActiveTab("registered_staff")}>
-                                Registered Staff
+                    {(allowRegisteredStudents || allowRegisteredStaff) && (
+                        <li className={activeTab === "registered_users" ? "active" : ""}>
+                            <span className="tab-link-button" onClick={() => setActiveTab("registered_users")}>
+                                Registered Users
                             </span>
                         </li>
                     )}
@@ -306,8 +298,12 @@ function TransportAdminDashboard() {
             <main className="dashboard-body">
                 {activeTab === "student_records" && <AdminStudentRecords />}
                 {activeTab === "staff_records" && <StaffRecordsTab />}
-                {activeTab === "registered_students" && <RegisteredStudentsTab />}
-                {activeTab === "registered_staff" && <RegisteredStaffTab />}
+                {activeTab === "registered_users" && (allowRegisteredStudents || allowRegisteredStaff) && (
+                    <RegisteredUsersView
+                        allowRegisteredStudents={allowRegisteredStudents}
+                        allowRegisteredStaff={allowRegisteredStaff}
+                    />
+                )}
                 {activeTab === "grievances" && (
                     <div className="card">
                     <h2>Incoming Grievances</h2>

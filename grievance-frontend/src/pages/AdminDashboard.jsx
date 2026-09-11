@@ -5,8 +5,7 @@ import "../styles/Dashboard.css";
 import AdminUploadRecords from "../components/AdminUploadRecords";
 import StaffRoleManager from "../components/StaffRoleManager";
 import AdminDepartments from "./AdminDepartments";
-import RegisteredStudentsTab from "../components/RegisteredStudentsTab";
-import RegisteredStaffTab from "../components/RegisteredStaffTab";
+import RegisteredUsersView from "../components/RegisteredUsersView";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
@@ -274,21 +273,12 @@ function AdminDashboard() {
                 <span className="tab-link-button">Departments</span>
               </li>
               <li
-                className={activeTab === "registered_students" ? "active" : ""}
-                onClick={() => setActiveTab("registered_students")}
+                className={activeTab === "registered_users" ? "active" : ""}
+                onClick={() => setActiveTab("registered_users")}
               >
                 <span className="tab-link-button" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                  Registered Students
+                  Registered Users
                   <span style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.68rem", padding: "1px 5px", borderRadius: "8px", fontWeight: "700" }}>Live</span>
-                </span>
-              </li>
-              <li
-                className={activeTab === "registered_staff" ? "active" : ""}
-                onClick={() => setActiveTab("registered_staff")}
-              >
-                <span className="tab-link-button" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                  Registered Staff
-                  <span style={{ background: "#ede9fe", color: "#5b21b6", fontSize: "0.68rem", padding: "1px 5px", borderRadius: "8px", fontWeight: "700" }}>Live</span>
                 </span>
               </li>
             </>
@@ -301,8 +291,13 @@ function AdminDashboard() {
         {activeTab === "upload" && <AdminUploadRecords />}
         {activeTab === "staff" && canManageStaff && <StaffRoleManager />}
         {activeTab === "departments" && isMasterAdmin && <AdminDepartments />}
-        {activeTab === "registered_students" && isMasterAdmin && <RegisteredStudentsTab />}
-        {activeTab === "registered_staff" && isMasterAdmin && <RegisteredStaffTab />}
+        {activeTab === "registered_users" && isMasterAdmin && (
+          <RegisteredUsersView
+            allowRegisteredStudents={true}
+            allowRegisteredStaff={true}
+            isSuperAdmin={true}
+          />
+        )}
 
         {activeTab === "triage" && (
           <div className="card">
