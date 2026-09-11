@@ -715,6 +715,9 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         currentDepts.push(targetMember.adminDepartment);
       }
 
+      const removedDept = deptToRemove || targetMember.adminDepartment || (currentDepts.length > 0 ? currentDepts.join(", ") : "Department");
+      let isStillAdmin = false;
+
       if (deptToRemove && currentDepts.length > 1) {
         // Multi-dept admin: Remove only this specific department
         currentDepts = currentDepts.filter(d => d !== deptToRemove);
@@ -722,12 +725,14 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         targetMember.adminDepartment = currentDepts[0] || "";
         targetMember.isDeptAdmin = true;
         targetMember.role = "admin";
+        isStillAdmin = true;
       } else {
         // Single dept or remove admin completely: cleanly revert to general staff
         targetMember.isDeptAdmin = false;
         targetMember.adminDepartment = "";
         targetMember.adminDepartments = [];
         targetMember.role = "staff"; // Revert to staff
+        isStillAdmin = false;
       }
 
       await targetMember.save();
@@ -744,27 +749,39 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       );
 
       // 🔥 RESET ASSIGNED GRIEVANCES TO PENDING
+      const grievanceQuery = {
+        assignedTo: safeTargetId,
+        ...(isStillAdmin && deptToRemove ? { department: deptToRemove } : {}),
+        status: { $nin: ["Resolved", "Rejected"] }
+      };
+
       const updateResult = await Grievance.updateMany(
-        {
-          assignedTo: safeTargetId,
-          status: { $nin: ["Resolved", "Rejected"] }
-        },
+        grievanceQuery,
         {
           $set: { status: "Pending", assignedTo: null, assignedRole: null, assignedBy: null, deadlineDate: null }
         }
       );
 
-      console.log(`🔄 Reset ${updateResult.modifiedCount} grievances for demoted staff ${safeTargetId}`);
+      console.log(`🔄 Reset ${updateResult.modifiedCount} grievances for staff ${safeTargetId}`);
 
-      // ✅ SEND DEMOTION EMAIL
+      // ✅ SEND NOTIFICATION EMAIL
       const demotionDate = new Date().toLocaleString("en-IN", {
         day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata"
       });
 
-      const demotionEmailBody = `
+      const demotionEmailBody = isStillAdmin ? `
+        <h2 style="color: #64748b;">Department Assignment Update</h2>
+        <p>Dear ${targetMember.fullName},</p>
+        <p>This is to inform you that your administrative responsibilities for <strong>${removedDept}</strong> have concluded.</p>
+        <p>You continue to serve as Administrator for: <strong>${targetMember.adminDepartments.join(", ")}</strong>.</p>
+        <p><strong>Date & Time:</strong> ${demotionDate}</p>
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border: 1px solid #22c55e; color: #15803d; margin-top: 10px;">
+          <strong>ℹ️ Note:</strong> You can continue using your <strong>'Admin'</strong> login and switch between your active departments using the department switcher.
+        </div>
+      ` : `
         <h2 style="color: #64748b;">Role Update Notification</h2>
         <p>Dear ${targetMember.fullName},</p>
-        <p>This is to respectfully inform you that your administrative responsibilities for <strong>${oldDept}</strong> have been concluded.</p>
+        <p>This is to respectfully inform you that your administrative responsibilities for <strong>${removedDept}</strong> have concluded.</p>
         <p>You have been reassigned as a <strong>General Staff</strong> member.</p>
         <p><strong>Date & Time:</strong> ${demotionDate}</p>
         <p>We sincerely appreciate your contributions and leadership during your tenure.</p>
@@ -777,12 +794,16 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: targetMember.email,
-        subject: `Role Update - ${oldDept} (Ref: ${Date.now().toString().slice(-4)})`,
+        subject: `Role Update - ${removedDept} (Ref: ${Date.now().toString().slice(-4)})`,
         html: demotionEmailBody
-      }).then(() => console.log(`✅ Demotion email sent to ${targetMember.email}`))
+      }).then(() => console.log(`✅ Demotion/update email sent to ${targetMember.email}`))
         .catch(emailErr => console.error("⚠️ Email sending failed:", emailErr));
 
-      res.json({ message: `✅ ${targetMember.fullName} removed from department role. ${updateResult.modifiedCount} grievances reset to Pending.` });
+      const resultMsg = isStillAdmin
+        ? `✅ Removed ${removedDept} from ${targetMember.fullName}. Remaining department(s): ${targetMember.adminDepartments.join(", ")}.`
+        : `✅ ${targetMember.fullName} removed from department role. ${updateResult.modifiedCount} grievances reset to Pending.`;
+
+      res.json({ message: resultMsg });
     } else {
       res.status(400).json({ message: "Invalid action" });
     }
