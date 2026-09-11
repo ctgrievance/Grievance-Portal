@@ -91,25 +91,35 @@ function DepartmentSwitcher({ currentDepartment, onDepartmentChange }) {
           display: "inline-flex",
           alignItems: "center",
           gap: "8px",
-          background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-          color: "#ffffff",
-          border: "1px solid #334155",
+          background: "#ffffff",
+          color: "#334155",
+          border: isOpen ? "1px solid #6366f1" : "1px solid #cbd5e1",
           borderRadius: "20px",
-          padding: "6px 14px",
-          fontSize: "0.82rem",
+          padding: "0.42rem 0.9rem",
+          fontSize: "0.85rem",
           fontWeight: "600",
           cursor: "pointer",
-          boxShadow: "0 2px 8px rgba(15, 23, 42, 0.15)",
+          boxShadow: isOpen ? "0 0 0 3px rgba(99, 102, 241, 0.15)" : "0 1px 3px rgba(0, 0, 0, 0.06)",
           transition: "all 0.2s ease",
           whiteSpace: "nowrap"
         }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.background = "#eff6ff";
+          e.currentTarget.style.borderColor = "#93c5fd";
+          e.currentTarget.style.boxShadow = "0 2px 6px rgba(37, 99, 235, 0.12)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.background = "#ffffff";
+          e.currentTarget.style.borderColor = isOpen ? "#6366f1" : "#cbd5e1";
+          e.currentTarget.style.boxShadow = isOpen ? "0 0 0 3px rgba(99, 102, 241, 0.15)" : "0 1px 3px rgba(0, 0, 0, 0.06)";
+        }}
         title="Click to switch department dashboard"
       >
-        <ShieldIcon width="14" height="14" />
-        <span>Dept: <strong style={{ color: "#38bdf8" }}>{activeDept || "Select"}</strong></span>
-        <span style={{ fontSize: "0.7rem", opacity: 0.8, marginLeft: "2px" }}>
+        <ShieldIcon width="15" height="15" color="#4f46e5" />
+        <span>Dept: <strong style={{ color: "#4f46e5", fontWeight: "700" }}>{activeDept || "Select"}</strong></span>
+        <span style={{ fontSize: "0.7rem", color: "#64748b", marginLeft: "2px" }}>
           {isOpen ? "▲" : "▼"}
         </span>
       </button>
