@@ -35,7 +35,9 @@ function AdminDepartments() {
     isAcademic: false,
     isActive: true,
     allowStudentRecords: false,
-    allowStaffRecords: false
+    allowStaffRecords: false,
+    allowRegisteredStudents: false,
+    allowRegisteredStaff: false
   });
   const [modalTab, setModalTab] = useState("general"); // "general" | "advanced"
 
@@ -83,7 +85,9 @@ function AdminDepartments() {
       isAcademic: false,
       isActive: true,
       allowStudentRecords: false,
-      allowStaffRecords: false
+      allowStaffRecords: false,
+      allowRegisteredStudents: false,
+      allowRegisteredStaff: false
     });
     setModalTab("general");
     setShowAddModal(true);
@@ -100,7 +104,9 @@ function AdminDepartments() {
       isAcademic: !!dept.isAcademic,
       isActive: dept.isActive !== false,
       allowStudentRecords: dept.allowStudentRecords !== undefined ? !!dept.allowStudentRecords : dept.name.toLowerCase() === "student section",
-      allowStaffRecords: dept.allowStaffRecords !== undefined ? !!dept.allowStaffRecords : dept.name.toLowerCase() === "hr"
+      allowStaffRecords: dept.allowStaffRecords !== undefined ? !!dept.allowStaffRecords : dept.name.toLowerCase() === "hr",
+      allowRegisteredStudents: !!dept.allowRegisteredStudents,
+      allowRegisteredStaff: !!dept.allowRegisteredStaff
     });
     setModalTab("general");
     setShowEditModal(true);
@@ -613,12 +619,50 @@ function AdminDepartments() {
                         : "Staff Only"}
                     </td>
 
-                    {/* Record Permissions Badges */}
+                    {/* Record & User Permissions Badges */}
                     <td style={{ padding: "12px", fontSize: "0.82rem" }}>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                        {dept.allowRegisteredStudents && (
+                          <span
+                            title="Allowed to View, Edit & Delete Live Registered Students"
+                            style={{
+                              background: "#ecfdf5",
+                              color: "#047857",
+                              border: "1px solid #a7f3d0",
+                              padding: "2px 7px",
+                              borderRadius: "10px",
+                              fontSize: "0.72rem",
+                              fontWeight: "700",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px"
+                            }}
+                          >
+                            🟢 Live Students
+                          </span>
+                        )}
+                        {dept.allowRegisteredStaff && (
+                          <span
+                            title="Allowed to View, Edit & Delete Live Registered Staff / Faculty"
+                            style={{
+                              background: "#faf5ff",
+                              color: "#7e22ce",
+                              border: "1px solid #e9d5ff",
+                              padding: "2px 7px",
+                              borderRadius: "10px",
+                              fontSize: "0.72rem",
+                              fontWeight: "700",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px"
+                            }}
+                          >
+                            🟣 Live Staff
+                          </span>
+                        )}
                         {(dept.allowStudentRecords || dept.name === "Student Section") && (
                           <span
-                            title="Allowed to manage Student Verification Records"
+                            title="Allowed to manage Student Verification Records (Excel)"
                             style={{
                               background: "#dbeafe",
                               color: "#1e40af",
@@ -631,12 +675,12 @@ function AdminDepartments() {
                               gap: "3px"
                             }}
                           >
-                            🎓 Students
+                            🎓 Student Records
                           </span>
                         )}
                         {(dept.allowStaffRecords || dept.name === "HR") && (
                           <span
-                            title="Allowed to manage Staff Verification Records"
+                            title="Allowed to manage Staff Verification Records (Excel)"
                             style={{
                               background: "#f3e8ff",
                               color: "#6b21a8",
@@ -649,11 +693,13 @@ function AdminDepartments() {
                               gap: "3px"
                             }}
                           >
-                            👥 Staff
+                            👥 Staff Records
                           </span>
                         )}
-                        {!(dept.allowStudentRecords || dept.name === "Student Section") && !(dept.allowStaffRecords || dept.name === "HR") && (
-                          <span style={{ color: "#94a3b8", fontSize: "0.76rem" }}>—</span>
+                        {!dept.allowStudentRecords && !dept.allowStaffRecords && !dept.allowRegisteredStudents && !dept.allowRegisteredStaff && dept.name !== "Student Section" && dept.name !== "HR" && (
+                          <span style={{ color: "#94a3b8", fontSize: "0.75rem", fontStyle: "italic" }}>
+                            None
+                          </span>
                         )}
                       </div>
                     </td>
@@ -848,7 +894,7 @@ function AdminDepartments() {
                 }}
               >
                 Advanced & Permissions
-                {(formData.allowStudentRecords || formData.allowStaffRecords) && (
+                {(formData.allowStudentRecords || formData.allowStaffRecords || formData.allowRegisteredStudents || formData.allowRegisteredStaff) && (
                   <span style={{ background: "#dbeafe", color: "#1e40af", fontSize: "0.68rem", padding: "1px 6px", borderRadius: "10px", fontWeight: "700" }}>
                     Active
                   </span>
@@ -957,17 +1003,100 @@ function AdminDepartments() {
               )}
 
               {modalTab === "advanced" && (
-                <div style={{ padding: "4px 0", minHeight: "220px" }}>
-                  <div style={{ marginBottom: "16px", background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <h4 style={{ margin: "0 0 6px 0", fontSize: "0.92rem", color: "#1e293b", fontWeight: "700" }}>
-                      🛡️ Record Management Permissions
+                <div style={{ padding: "4px 0", maxHeight: "420px", overflowY: "auto" }}>
+                  {/* SECTION 1: LIVE REGISTERED USERS MANAGEMENT */}
+                  <div style={{ marginBottom: "16px", background: "#f0fdf4", padding: "12px", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                    <h4 style={{ margin: "0 0 4px 0", fontSize: "0.92rem", color: "#166534", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}>
+                      ⚡ Live Registered Users Access (Live Accounts)
                     </h4>
-                    <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
-                      Grant this department admin access to add, view, and bulk-upload official verification records. The corresponding management tabs will automatically appear in their dashboard.
+                    <p style={{ margin: 0, fontSize: "0.78rem", color: "#15803d", lineHeight: "1.4" }}>
+                      Empower this department admin to view real-time registered students and faculty on the portal, including capabilities to edit profiles or delete accounts.
                     </p>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "18px" }}>
+                    {/* Live Registered Students Card */}
+                    <div
+                      onClick={() => setFormData({ ...formData, allowRegisteredStudents: !formData.allowRegisteredStudents })}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "12px",
+                        padding: "12px 14px",
+                        borderRadius: "8px",
+                        border: formData.allowRegisteredStudents ? "2px solid #059669" : "1px solid #cbd5e1",
+                        background: formData.allowRegisteredStudents ? "#ecfdf5" : "#fff",
+                        cursor: "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.allowRegisteredStudents}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, allowRegisteredStudents: e.target.checked });
+                        }}
+                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#059669", cursor: "pointer" }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                          🎓 Allow Managing Live Registered Students
+                          <span style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.7rem", padding: "1px 6px", borderRadius: "8px", fontWeight: "700" }}>Live</span>
+                        </div>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
+                          Authorized admin can view all live registered students, view verified status, and <strong>edit or delete</strong> student accounts.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Live Registered Staff Card */}
+                    <div
+                      onClick={() => setFormData({ ...formData, allowRegisteredStaff: !formData.allowRegisteredStaff })}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "12px",
+                        padding: "12px 14px",
+                        borderRadius: "8px",
+                        border: formData.allowRegisteredStaff ? "2px solid #7c3aed" : "1px solid #cbd5e1",
+                        background: formData.allowRegisteredStaff ? "#faf5ff" : "#fff",
+                        cursor: "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.allowRegisteredStaff}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, allowRegisteredStaff: e.target.checked });
+                        }}
+                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#7c3aed", cursor: "pointer" }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                          👥 Allow Managing Live Registered Staff & Faculty
+                          <span style={{ background: "#ede9fe", color: "#5b21b6", fontSize: "0.7rem", padding: "1px 6px", borderRadius: "8px", fontWeight: "700" }}>Live + Edit/Delete</span>
+                        </div>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
+                          Authorized admin can view all registered staff/faculty, and has full access to <strong>edit details/department</strong> and <strong>delete</strong> existing staff.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: PRE-LOADED VERIFICATION RECORDS */}
+                  <div style={{ marginBottom: "12px", background: "#f8fafc", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <h4 style={{ margin: "0 0 3px 0", fontSize: "0.88rem", color: "#334155", fontWeight: "700" }}>
+                      📋 Verification Records (Excel Pre-Upload)
+                    </h4>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b", lineHeight: "1.3" }}>
+                      Allow admin to upload Excel spreadsheets to pre-verify IDs before registration.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {/* Student Records Card */}
                     <div
                       onClick={() => setFormData({ ...formData, allowStudentRecords: !formData.allowStudentRecords })}
@@ -975,7 +1104,7 @@ function AdminDepartments() {
                         display: "flex",
                         alignItems: "flex-start",
                         gap: "12px",
-                        padding: "14px",
+                        padding: "10px 12px",
                         borderRadius: "8px",
                         border: formData.allowStudentRecords ? "2px solid #3b82f6" : "1px solid #cbd5e1",
                         background: formData.allowStudentRecords ? "#eff6ff" : "#fff",
@@ -990,15 +1119,12 @@ function AdminDepartments() {
                           e.stopPropagation();
                           setFormData({ ...formData, allowStudentRecords: e.target.checked });
                         }}
-                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#2563eb", cursor: "pointer" }}
+                        style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb", cursor: "pointer" }}
                       />
                       <div>
-                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                          🎓 Allow Managing Student Records
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.85rem" }}>
+                          Allow Managing Student Verification Records (.xlsx)
                         </div>
-                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
-                          Department admin can view, add individual records, and upload Excel spreadsheets (.xlsx) to manage Student Verification Details.
-                        </p>
                       </div>
                     </div>
 
@@ -1009,7 +1135,7 @@ function AdminDepartments() {
                         display: "flex",
                         alignItems: "flex-start",
                         gap: "12px",
-                        padding: "14px",
+                        padding: "10px 12px",
                         borderRadius: "8px",
                         border: formData.allowStaffRecords ? "2px solid #8b5cf6" : "1px solid #cbd5e1",
                         background: formData.allowStaffRecords ? "#f5f3ff" : "#fff",
@@ -1024,15 +1150,12 @@ function AdminDepartments() {
                           e.stopPropagation();
                           setFormData({ ...formData, allowStaffRecords: e.target.checked });
                         }}
-                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#7c3aed", cursor: "pointer" }}
+                        style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#7c3aed", cursor: "pointer" }}
                       />
                       <div>
-                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                          👥 Allow Managing Staff Records
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.85rem" }}>
+                          Allow Managing Staff Verification Records (.xlsx)
                         </div>
-                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
-                          Department admin can view, add individual staff members, and upload Excel spreadsheets (.xlsx) to manage Staff Verification / HR Details.
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -1152,7 +1275,7 @@ function AdminDepartments() {
                 }}
               >
                 Advanced & Permissions
-                {(formData.allowStudentRecords || formData.allowStaffRecords) && (
+                {(formData.allowStudentRecords || formData.allowStaffRecords || formData.allowRegisteredStudents || formData.allowRegisteredStaff) && (
                   <span style={{ background: "#dbeafe", color: "#1e40af", fontSize: "0.68rem", padding: "1px 6px", borderRadius: "10px", fontWeight: "700" }}>
                     Active
                   </span>
@@ -1271,17 +1394,100 @@ function AdminDepartments() {
               )}
 
               {modalTab === "advanced" && (
-                <div style={{ padding: "4px 0", minHeight: "220px" }}>
-                  <div style={{ marginBottom: "16px", background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <h4 style={{ margin: "0 0 6px 0", fontSize: "0.92rem", color: "#1e293b", fontWeight: "700" }}>
-                      🛡️ Record Management Permissions
+                <div style={{ padding: "4px 0", maxHeight: "420px", overflowY: "auto" }}>
+                  {/* SECTION 1: LIVE REGISTERED USERS MANAGEMENT */}
+                  <div style={{ marginBottom: "16px", background: "#f0fdf4", padding: "12px", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                    <h4 style={{ margin: "0 0 4px 0", fontSize: "0.92rem", color: "#166534", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}>
+                      ⚡ Live Registered Users Access (Live Accounts)
                     </h4>
-                    <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
-                      Grant this department admin access to add, view, and bulk-upload official verification records. You can freely check or uncheck these permissions for any department.
+                    <p style={{ margin: 0, fontSize: "0.78rem", color: "#15803d", lineHeight: "1.4" }}>
+                      Empower this department admin to view real-time registered students and faculty on the portal, including capabilities to edit profiles or delete accounts.
                     </p>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "18px" }}>
+                    {/* Live Registered Students Card */}
+                    <div
+                      onClick={() => setFormData({ ...formData, allowRegisteredStudents: !formData.allowRegisteredStudents })}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "12px",
+                        padding: "12px 14px",
+                        borderRadius: "8px",
+                        border: formData.allowRegisteredStudents ? "2px solid #059669" : "1px solid #cbd5e1",
+                        background: formData.allowRegisteredStudents ? "#ecfdf5" : "#fff",
+                        cursor: "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.allowRegisteredStudents}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, allowRegisteredStudents: e.target.checked });
+                        }}
+                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#059669", cursor: "pointer" }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                          🎓 Allow Managing Live Registered Students
+                          <span style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.7rem", padding: "1px 6px", borderRadius: "8px", fontWeight: "700" }}>Live</span>
+                        </div>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
+                          Authorized admin can view all live registered students, view verified status, and <strong>edit or delete</strong> student accounts.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Live Registered Staff Card */}
+                    <div
+                      onClick={() => setFormData({ ...formData, allowRegisteredStaff: !formData.allowRegisteredStaff })}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "12px",
+                        padding: "12px 14px",
+                        borderRadius: "8px",
+                        border: formData.allowRegisteredStaff ? "2px solid #7c3aed" : "1px solid #cbd5e1",
+                        background: formData.allowRegisteredStaff ? "#faf5ff" : "#fff",
+                        cursor: "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.allowRegisteredStaff}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, allowRegisteredStaff: e.target.checked });
+                        }}
+                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#7c3aed", cursor: "pointer" }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                          👥 Allow Managing Live Registered Staff & Faculty
+                          <span style={{ background: "#ede9fe", color: "#5b21b6", fontSize: "0.7rem", padding: "1px 6px", borderRadius: "8px", fontWeight: "700" }}>Live + Edit/Delete</span>
+                        </div>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
+                          Authorized admin can view all registered staff/faculty, and has full access to <strong>edit details/department</strong> and <strong>delete</strong> existing staff.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: PRE-LOADED VERIFICATION RECORDS */}
+                  <div style={{ marginBottom: "12px", background: "#f8fafc", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <h4 style={{ margin: "0 0 3px 0", fontSize: "0.88rem", color: "#334155", fontWeight: "700" }}>
+                      📋 Verification Records (Excel Pre-Upload)
+                    </h4>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b", lineHeight: "1.3" }}>
+                      Allow admin to upload Excel spreadsheets to pre-verify IDs before registration.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {/* Student Records Card */}
                     <div
                       onClick={() => setFormData({ ...formData, allowStudentRecords: !formData.allowStudentRecords })}
@@ -1289,7 +1495,7 @@ function AdminDepartments() {
                         display: "flex",
                         alignItems: "flex-start",
                         gap: "12px",
-                        padding: "14px",
+                        padding: "10px 12px",
                         borderRadius: "8px",
                         border: formData.allowStudentRecords ? "2px solid #3b82f6" : "1px solid #cbd5e1",
                         background: formData.allowStudentRecords ? "#eff6ff" : "#fff",
@@ -1304,15 +1510,12 @@ function AdminDepartments() {
                           e.stopPropagation();
                           setFormData({ ...formData, allowStudentRecords: e.target.checked });
                         }}
-                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#2563eb", cursor: "pointer" }}
+                        style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb", cursor: "pointer" }}
                       />
                       <div>
-                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                          🎓 Allow Managing Student Records
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.85rem" }}>
+                          Allow Managing Student Verification Records (.xlsx)
                         </div>
-                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
-                          Department admin can view, add individual records, and upload Excel spreadsheets (.xlsx) to manage Student Verification Details.
-                        </p>
                       </div>
                     </div>
 
@@ -1323,7 +1526,7 @@ function AdminDepartments() {
                         display: "flex",
                         alignItems: "flex-start",
                         gap: "12px",
-                        padding: "14px",
+                        padding: "10px 12px",
                         borderRadius: "8px",
                         border: formData.allowStaffRecords ? "2px solid #8b5cf6" : "1px solid #cbd5e1",
                         background: formData.allowStaffRecords ? "#f5f3ff" : "#fff",
@@ -1338,15 +1541,12 @@ function AdminDepartments() {
                           e.stopPropagation();
                           setFormData({ ...formData, allowStaffRecords: e.target.checked });
                         }}
-                        style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: "#7c3aed", cursor: "pointer" }}
+                        style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#7c3aed", cursor: "pointer" }}
                       />
                       <div>
-                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                          👥 Allow Managing Staff Records
+                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.85rem" }}>
+                          Allow Managing Staff Verification Records (.xlsx)
                         </div>
-                        <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: "1.4" }}>
-                          Department admin can view, add individual staff members, and upload Excel spreadsheets (.xlsx) to manage Staff Verification / HR Details.
-                        </p>
                       </div>
                     </div>
                   </div>

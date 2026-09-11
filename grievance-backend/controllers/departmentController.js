@@ -104,7 +104,7 @@ export const getAllDepartmentsAdmin = async (req, res) => {
 // =====================================================
 export const createDepartment = async (req, res) => {
   try {
-    const { name, code, description, targetAudience, isAcademic, allowStudentRecords, allowStaffRecords } = req.body;
+    const { name, code, description, targetAudience, isAcademic, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Department name is required" });
@@ -112,11 +112,10 @@ export const createDepartment = async (req, res) => {
 
     const cleanName = name.trim();
 
-    // Check for duplicate name (case-insensitive)
+    // Check duplicate
     const existing = await Department.findOne({
       name: { $regex: new RegExp(`^${cleanName}$`, "i") }
     });
-
     if (existing) {
       return res.status(400).json({ message: `Department "${cleanName}" already exists.` });
     }
@@ -129,6 +128,8 @@ export const createDepartment = async (req, res) => {
       isAcademic: !!isAcademic,
       allowStudentRecords: !!allowStudentRecords,
       allowStaffRecords: !!allowStaffRecords,
+      allowRegisteredStudents: !!allowRegisteredStudents,
+      allowRegisteredStaff: !!allowRegisteredStaff,
       isActive: true
     });
 
@@ -171,7 +172,7 @@ export const createDepartment = async (req, res) => {
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, code, description, targetAudience, isAcademic, isActive, allowStudentRecords, allowStaffRecords } = req.body;
+    const { name, code, description, targetAudience, isAcademic, isActive, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = req.body;
 
     const dept = await Department.findById(id);
     if (!dept) {
@@ -210,6 +211,8 @@ export const updateDepartment = async (req, res) => {
     if (isActive !== undefined) dept.isActive = !!isActive;
     if (allowStudentRecords !== undefined) dept.allowStudentRecords = !!allowStudentRecords;
     if (allowStaffRecords !== undefined) dept.allowStaffRecords = !!allowStaffRecords;
+    if (allowRegisteredStudents !== undefined) dept.allowRegisteredStudents = !!allowRegisteredStudents;
+    if (allowRegisteredStaff !== undefined) dept.allowRegisteredStaff = !!allowRegisteredStaff;
 
     await dept.save();
 
@@ -318,14 +321,18 @@ export const getDepartmentPermissions = async (req, res) => {
       return res.status(200).json({
         name: cleanName,
         allowStudentRecords: isStudentSection,
-        allowStaffRecords: isHR
+        allowStaffRecords: isHR,
+        allowRegisteredStudents: false,
+        allowRegisteredStaff: false
       });
     }
 
     res.status(200).json({
       name: dept.name,
       allowStudentRecords: dept.allowStudentRecords !== undefined ? dept.allowStudentRecords : (dept.name.toLowerCase() === "student section"),
-      allowStaffRecords: dept.allowStaffRecords !== undefined ? dept.allowStaffRecords : (dept.name.toLowerCase() === "hr")
+      allowStaffRecords: dept.allowStaffRecords !== undefined ? dept.allowStaffRecords : (dept.name.toLowerCase() === "hr"),
+      allowRegisteredStudents: !!dept.allowRegisteredStudents,
+      allowRegisteredStaff: !!dept.allowRegisteredStaff
     });
   } catch (error) {
     console.error("Error fetching dept permissions:", error);

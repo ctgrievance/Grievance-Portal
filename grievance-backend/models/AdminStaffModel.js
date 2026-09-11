@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const AdminStaffSchema = new mongoose.Schema({
   id: {
@@ -10,16 +10,15 @@ const AdminStaffSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  // ✅ Ye field zaroori hai nayi hierarchy ke liye
   adminDepartment: {
     type: String,
     default: "", // e.g., "Student Welfare"
   },
-  // ✅ Ye sabse important hai: Batayega ki banda BOSS hai ya WORKER
   isDeptAdmin: {
     type: Boolean,
     default: false, 
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model("AdminStaff", AdminStaffSchema);
+const AdminStaffModel = mongoose.models.AdminStaff || mongoose.model("AdminStaff", AdminStaffSchema);
+export default AdminStaffModel;

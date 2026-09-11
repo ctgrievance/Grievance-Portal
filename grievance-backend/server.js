@@ -33,6 +33,7 @@ import issueRoutes from "./routes/issueRoutes.js"; // NEW: Issue Type Routes
 import routingRuleRoutes from "./routes/routingRuleRoutes.js"; // NEW: Routing Rule Routes
 import staffPoolRoutes from "./routes/staffPoolRoutes.js"; // NEW: Staff Pool Routes
 import departmentRoutes from "./routes/departmentRoutes.js"; // NEW: Dynamic Departments
+import registeredUserRoutes from "./routes/registeredUserRoutes.js"; // NEW: Live Registered Users
 import Department from "./models/Department.js"; // NEW: Department Model
 import StudentRecord from "./models/StudentRecord.js"; // NEW: Student Records
 import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
@@ -96,6 +97,7 @@ app.use("/api/issues", issueRoutes); // Alias for Issue Type Routes
 app.use("/api/routing-rules", routingRuleRoutes); // NEW: Routing Rule Routes
 app.use("/api/staff-pool", staffPoolRoutes); // NEW: Staff Pool Routes
 app.use("/api/departments", departmentRoutes); // NEW: Dynamic Departments Routes
+app.use("/api/registered-users", registeredUserRoutes); // NEW: Live Registered Students and Staff Routes
 
 // ------------------ 2️⃣ Database & GridFS Init ------------------
 connectDB();

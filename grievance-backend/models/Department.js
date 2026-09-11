@@ -41,6 +41,14 @@ const departmentSchema = new mongoose.Schema(
     allowStaffRecords: {
       type: Boolean,
       default: false
+    },
+    allowRegisteredStudents: {
+      type: Boolean,
+      default: false
+    },
+    allowRegisteredStaff: {
+      type: Boolean,
+      default: false
     }
   },
   { timestamps: true }

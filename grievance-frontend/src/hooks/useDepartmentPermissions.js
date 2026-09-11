@@ -4,6 +4,8 @@ export const useDepartmentPermissions = (deptName) => {
   const [permissions, setPermissions] = useState({
     allowStudentRecords: false,
     allowStaffRecords: false,
+    allowRegisteredStudents: false,
+    allowRegisteredStaff: false,
     loading: true,
   });
 
@@ -12,6 +14,8 @@ export const useDepartmentPermissions = (deptName) => {
       setPermissions({
         allowStudentRecords: false,
         allowStaffRecords: false,
+        allowRegisteredStudents: false,
+        allowRegisteredStaff: false,
         loading: false,
       });
       return;
@@ -30,6 +34,8 @@ export const useDepartmentPermissions = (deptName) => {
             setPermissions({
               allowStudentRecords: !!data.allowStudentRecords,
               allowStaffRecords: !!data.allowStaffRecords,
+              allowRegisteredStudents: !!data.allowRegisteredStudents,
+              allowRegisteredStaff: !!data.allowRegisteredStaff,
               loading: false,
             });
           }
@@ -45,6 +51,8 @@ export const useDepartmentPermissions = (deptName) => {
         setPermissions({
           allowStudentRecords: clean === "student section",
           allowStaffRecords: clean === "hr",
+          allowRegisteredStudents: false,
+          allowRegisteredStaff: false,
           loading: false,
         });
       }
