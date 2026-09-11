@@ -121,14 +121,27 @@ function StudentNavbar({ activeCategory = "" }) {
   // List of all departments for switcher
   const allDeptItems = useMemo(() => {
     const list = [];
-    const hasAcademic = departments.some((d) => d.isAcademic);
-    if (hasAcademic) {
-      list.push({ name: "Academic Department", url: "/student/department" });
+    if (departments && departments.length > 0) {
+      const hasAcademic = departments.some((d) => d.isAcademic);
+      if (hasAcademic) {
+        list.push({ name: "Academic Department", url: "/student/department" });
+      }
+      departments.filter((d) => !d.isAcademic).forEach((d) => {
+        list.push({ name: d.name, url: getDeptUrl(d) });
+      });
+      return list;
     }
-    departments.filter((d) => !d.isAcademic).forEach((d) => {
-      list.push({ name: d.name, url: getDeptUrl(d) });
-    });
-    return list;
+    return [
+      { name: "Academic Department", url: "/student/department" },
+      { name: "Admission", url: "/student/admission" },
+      { name: "Examination", url: "/student/examination" },
+      { name: "Accounts", url: "/student/accounts" },
+      { name: "Student Section", url: "/student/section" },
+      { name: "Student Welfare", url: "/student/welfare" },
+      { name: "CRC (Placement)", url: "/student/crc" },
+      { name: "Transport", url: "/student/transport" },
+      { name: "HR", url: "/student/hr" },
+    ];
   }, [departments]);
 
   const filteredDeptItems = useMemo(() => {

@@ -2096,6 +2096,16 @@ textarea:focus {
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Compact header on grievance forms must stay visible & allow dropdown in front */
+  .navbar.student-form-navbar,
+  .student-form-navbar {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: auto !important;
+    z-index: 9999 !important;
+  }
+
   .navbar ul {
     width: 100% !important;
     max-width: 100% !important;
@@ -2705,9 +2715,17 @@ textarea:focus {
 }
 
 /* --- 2. Form App-Style Header Navbar --- */
+.navbar.student-form-navbar,
 .student-form-navbar {
   padding: 0.6rem 0 !important;
   margin-bottom: 1.25rem !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 9999 !important;
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  -webkit-overflow-scrolling: auto !important;
 }
 
 .student-form-nav-container {
@@ -2718,6 +2736,9 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 10000 !important;
 }
 
 .student-nav-back-link {
@@ -2770,7 +2791,9 @@ textarea:focus {
 
 /* Switcher Dropdown */
 .student-nav-switcher-wrap {
-  position: relative;
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 10001 !important;
 }
 
 .student-nav-switcher-btn {
@@ -2797,19 +2820,20 @@ textarea:focus {
 }
 
 .student-nav-switcher-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 280px;
-  max-height: 380px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  z-index: 1100;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  width: 290px !important;
+  max-width: 90vw !important;
+  max-height: 420px !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22), 0 8px 16px rgba(0, 0, 0, 0.12) !important;
+  z-index: 99999 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
   animation: dropdownFade 0.15s ease-out;
 }
 
@@ -3190,6 +3214,22 @@ textarea:focus {
 
   .back-text {
     display: none;
+  }
+
+  /* Form page compact header & search dropdown floating in front */
+  .navbar.student-form-navbar,
+  .student-form-navbar {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    z-index: 99999 !important;
+  }
+
+  .student-nav-switcher-dropdown {
+    width: min(320px, calc(100vw - 20px)) !important;
+    right: 0 !important;
+    z-index: 100000 !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
   }
 }
 

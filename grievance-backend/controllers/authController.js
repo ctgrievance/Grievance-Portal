@@ -574,7 +574,7 @@ export const updateUserProfile = async (req, res) => {
       user.fullName = fullName.trim();
     }
 
-    // Department handling
+    // Department handling: department should not be changed once saved at registration
     let newDept = "";
     if (user.isMasterAdmin) {
       // Super admin department: default to "Super Admin" or as selected
@@ -582,9 +582,16 @@ export const updateUserProfile = async (req, res) => {
       user.adminDepartment = newDept;
       user.staffDepartment = newDept;
     } else if (!isStudent && department !== undefined) {
-      newDept = department.trim();
-      user.staffDepartment = newDept;
-      user.adminDepartment = newDept;
+      const existingDept = (user.staffDepartment || user.adminDepartment || "").trim();
+      // Department should NOT be changed once saved at registration
+      if (!existingDept || existingDept.toLowerCase() === "general") {
+        newDept = department.trim();
+        user.staffDepartment = newDept;
+        user.adminDepartment = newDept;
+      } else {
+        // Keep existing registered department intact
+        newDept = existingDept;
+      }
     }
 
     await user.save();

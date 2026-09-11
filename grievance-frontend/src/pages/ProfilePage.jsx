@@ -115,12 +115,11 @@ function ProfilePage() {
       const data = await res.json();
       setProfile(data);
       setFullName(data.fullName || "");
-      // Super admin department shows Super Admin / Administrative
-      setDepartment(
-        data.isMasterAdmin
-          ? (data.department || "Super Admin")
-          : (data.department || data.adminDepartment || data.staffDepartment || "")
-      );
+      // Initialize department from registered profile data
+      const assignedDept = data.isMasterAdmin
+        ? (data.department || "Super Admin")
+        : (data.department || data.school || data.adminDepartment || data.staffDepartment || "");
+      setDepartment(assignedDept);
     } catch (err) {
       console.error(err);
       showToast(err.message || "Could not fetch profile details", "error");
@@ -191,7 +190,9 @@ function ProfilePage() {
           },
           body: JSON.stringify({
             fullName,
-            department: profile.isMasterAdmin ? (department || "Super Admin") : department
+            department: profile.isMasterAdmin
+              ? (department || "Super Admin")
+              : (profile.role === "student" ? (profile.department || profile.school || department) : (profile.department || department))
           })
         }
       );
@@ -599,94 +600,129 @@ function ProfilePage() {
                 )}
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
-                  {/* University ID (Immutable) */}
-                  <div className="input-group" style={{ margin: 0 }}>
-                    <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>University ID</label>
-                    <input
-                      type="text"
-                      value={profile.id || storedId}
-                      disabled
-                      style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: "1px solid #e2e8f0",
-                        backgroundColor: "#f1f5f9",
-                        color: "#64748b",
-                        cursor: "not-allowed",
-                        fontWeight: "600"
-                      }}
-                    />
-                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px", display: "block" }}>Official University ID (Read-only)</span>
-                  </div>
+                    {/* University ID (Immutable) */}
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>University ID</label>
+                      <input
+                        type="text"
+                        value={profile.id || storedId}
+                        disabled
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid #e2e8f0",
+                          backgroundColor: "#f1f5f9",
+                          color: "#64748b",
+                          cursor: "not-allowed",
+                          fontWeight: "600"
+                        }}
+                      />
+                    </div>
 
-                  {/* Role (Immutable) */}
-                  <div className="input-group" style={{ margin: 0 }}>
-                    <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>System Role</label>
-                    <input
-                      type="text"
-                      value={profile.isMasterAdmin ? "Super Admin" : (profile.isDeptAdmin ? "Department Admin" : profile.role?.toUpperCase() || "Staff")}
-                      disabled
-                      style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: "1px solid #e2e8f0",
-                        backgroundColor: "#f1f5f9",
-                        color: "#64748b",
-                        cursor: "not-allowed",
-                        fontWeight: "600"
-                      }}
-                    />
-                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px", display: "block" }}>Managed by administrative authority</span>
-                  </div>
+                    {/* Role (Immutable) */}
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>System Role</label>
+                      <input
+                        type="text"
+                        value={profile.isMasterAdmin ? "Super Admin" : (profile.isDeptAdmin ? "Department Admin" : profile.role?.toUpperCase() || "Staff")}
+                        disabled
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid #e2e8f0",
+                          backgroundColor: "#f1f5f9",
+                          color: "#64748b",
+                          cursor: "not-allowed",
+                          fontWeight: "600"
+                        }}
+                      />
+                    </div>
 
-                  {/* Full Name (Editable) */}
-                  <div className="input-group" style={{ margin: 0 }}>
-                    <label style={{ fontWeight: "600", color: "#1e293b", marginBottom: "6px", display: "block" }}>Full Name</label>
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Enter your full name"
-                      required
-                      style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "0.95rem"
-                      }}
-                    />
-                  </div>
+                    {/* Full Name (Editable) */}
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: "600", color: "#1e293b", marginBottom: "6px", display: "block" }}>Full Name</label>
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Enter your full name"
+                        required
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.95rem"
+                        }}
+                      />
+                    </div>
 
-                  {/* Department (Editable / Selectable) */}
-                  <div className="input-group" style={{ margin: 0 }}>
-                    <label style={{ fontWeight: "600", color: "#1e293b", marginBottom: "6px", display: "block" }}>
-                      Department
-                    </label>
+                    {/* Department (Locked once saved at registration) */}
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>
+                        {profile.role === "student" ? "Academic School / Department" : "Department"}
+                      </label>
 
-                    {profile.isMasterAdmin ? (
-                      <div>
-                        <input
-                          type="text"
-                          value={department || "Super Admin"}
-                          onChange={(e) => setDepartment(e.target.value)}
-                          placeholder="Super Admin / Administrative"
-                          style={{
-                            width: "100%",
-                            padding: "10px 14px",
-                            borderRadius: "8px",
-                            border: "1px solid #cbd5e1",
-                            fontSize: "0.95rem",
-                            fontWeight: "500"
-                          }}
-                        />
-                        <span style={{ fontSize: "0.75rem", color: "#b45309", marginTop: "4px", display: "block" }}>
-                          Super Admin department designation (e.g. Super Admin, Administrative)
-                        </span>
-                      </div>
+                      {profile.role === "student" ? (
+                        /* 🎓 Student: Strictly read-only, tied to academic school/department saved at registration */
+                        <div>
+                          <input
+                            type="text"
+                            value={profile.department || profile.school || department || "General"}
+                            disabled
+                            style={{
+                              width: "100%",
+                              padding: "10px 14px",
+                              borderRadius: "8px",
+                              border: "1px solid #e2e8f0",
+                              backgroundColor: "#f1f5f9",
+                              color: "#64748b",
+                              cursor: "not-allowed",
+                              fontWeight: "600"
+                            }}
+                          />
+                        </div>
+                      ) : profile.isMasterAdmin ? (
+                        /* 🛡️ Super Admin */
+                        <div>
+                          <input
+                            type="text"
+                            value={department || "Super Admin"}
+                            onChange={(e) => setDepartment(e.target.value)}
+                            placeholder="Super Admin / Administrative"
+                            style={{
+                              width: "100%",
+                              padding: "10px 14px",
+                              borderRadius: "8px",
+                              border: "1px solid #cbd5e1",
+                              fontSize: "0.95rem",
+                              fontWeight: "500"
+                            }}
+                          />
+                        </div>
+                      ) : (profile.department && profile.department.toLowerCase() !== "general" && profile.department.trim() !== "") ? (
+                        /* 🏢 Staff with registered department: Locked / Read-only */
+                        <div>
+                          <input
+                            type="text"
+                            value={profile.department || department}
+                            disabled
+                            style={{
+                              width: "100%",
+                              padding: "10px 14px",
+                              borderRadius: "8px",
+                              border: "1px solid #e2e8f0",
+                              backgroundColor: "#f1f5f9",
+                              color: "#64748b",
+                              cursor: "not-allowed",
+                              fontWeight: "600"
+                            }}
+                          />
+                        </div>
                     ) : (
+                      /* ⚠️ Unassigned Staff: Allow initial selection to complete setup */
                       <div>
                         <select
                           value={department}
@@ -696,10 +732,10 @@ function ProfilePage() {
                             width: "100%",
                             padding: "10px 14px",
                             borderRadius: "8px",
-                            border: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "2px solid #f59e0b" : "1px solid #cbd5e1",
+                            border: "2px solid #f59e0b",
                             fontSize: "0.95rem",
-                            backgroundColor: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "#fffbeb" : "white",
-                            boxShadow: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "0 0 0 3px rgba(245, 158, 11, 0.15)" : "none"
+                            backgroundColor: "#fffbeb",
+                            boxShadow: "0 0 0 3px rgba(245, 158, 11, 0.15)"
                           }}
                         >
                           <option value="">-- Select Department --</option>
@@ -709,8 +745,8 @@ function ProfilePage() {
                             </option>
                           ))}
                         </select>
-                        <span style={{ fontSize: "0.75rem", color: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "#b45309" : "#64748b", marginTop: "4px", display: "block", fontWeight: (!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "600" : "400" }}>
-                          {(!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) ? "⚠️ Please select your department to join your team" : "Choose from departments configured by Super Admin"}
+                        <span style={{ fontSize: "0.75rem", color: "#b45309", marginTop: "4px", display: "block", fontWeight: "600" }}>
+                          ⚠️ Please select your department to join your team (locked once saved)
                         </span>
                       </div>
                     )}
