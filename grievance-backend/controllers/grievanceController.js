@@ -47,12 +47,14 @@ export const submitGrievance = async (req, res) => {
     }
 
     // Determine user type (student or staff)
-    const resolvedUserType = req.body.userType || (
+    const isStaffSubmitter =
+      req.body.userType === "staff" ||
       studentProgram === "Staff Member" ||
-      studentProgram === "Admin Staff"
-        ? "staff"
-        : "student"
-    );
+      studentProgram === "Admin Staff" ||
+      (studentProgram && studentProgram.toLowerCase().includes("staff")) ||
+      /^\d{5}$/.test(String(userId || "").trim());
+
+    const resolvedUserType = isStaffSubmitter ? "staff" : (req.body.userType || "student");
 
     const grievance = await Grievance.create({
       userId,

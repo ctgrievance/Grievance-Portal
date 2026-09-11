@@ -58,7 +58,12 @@ router.get("/export", async (req, res) => {
     ];
 
     grievances.forEach((g) => {
-      const isStaff = g.userType === "staff" || g.studentProgram === "Staff Member" || g.studentProgram === "Admin Staff";
+      const isStaff =
+        g.userType === "staff" ||
+        g.studentProgram === "Staff Member" ||
+        g.studentProgram === "Admin Staff" ||
+        (g.studentProgram && g.studentProgram.toLowerCase().includes("staff")) ||
+        /^\d{5}$/.test(String(g.userId || "").trim());
       const roleTag = isStaff ? "Staff" : "Student";
       sheet.addRow({
         userId: g.userId,
@@ -146,7 +151,12 @@ router.post("/export-selected", async (req, res) => {
             rowData.userId = g.userId || "N/A";
             break;
           case "name": {
-            const isStaff = g.userType === "staff" || g.studentProgram === "Staff Member" || g.studentProgram === "Admin Staff";
+            const isStaff =
+              g.userType === "staff" ||
+              g.studentProgram === "Staff Member" ||
+              g.studentProgram === "Admin Staff" ||
+              (g.studentProgram && g.studentProgram.toLowerCase().includes("staff")) ||
+              /^\d{5}$/.test(String(g.userId || "").trim());
             const roleTag = isStaff ? "Staff" : "Student";
             rowData.name = `${g.name || "N/A"} [${roleTag}]`;
             break;

@@ -5,7 +5,7 @@ const grievanceSchema = new mongoose.Schema(
   {
     // ================= USER / SUBMITTER INFO =================
     userId: { type: String, required: true }, // Student or Staff ID
-    userType: { type: String, enum: ["student", "staff"], default: "student" },
+    userType: { type: String, enum: ["student", "staff"] },
     name: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String },

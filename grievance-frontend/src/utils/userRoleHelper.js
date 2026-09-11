@@ -6,13 +6,33 @@ import React from "react";
  */
 export const getSubmitterRole = (grievance) => {
   if (!grievance) return "student";
-  if (grievance.userType) return grievance.userType.toLowerCase();
+
+  // 1. Explicit userType === "staff"
+  if (grievance.userType && grievance.userType.toLowerCase() === "staff") {
+    return "staff";
+  }
+
+  // 2. Check studentProgram for Staff / Admin Staff
+  const program = (grievance.studentProgram || "").trim().toLowerCase();
   if (
-    grievance.studentProgram === "Staff Member" ||
-    grievance.studentProgram === "Admin Staff"
+    program === "staff member" ||
+    program === "admin staff" ||
+    program === "staff" ||
+    program.includes("staff")
   ) {
     return "staff";
   }
+
+  // 3. CT University Staff ID check (Staff IDs are 5-digit employee numbers e.g. 26170, 26144, 24166; student IDs are 8 digits e.g. 72311390)
+  const userIdStr = String(grievance.userId || grievance.regid || "").trim();
+  if (/^\d{5}$/.test(userIdStr)) {
+    return "staff";
+  }
+
+  if (grievance.userType && grievance.userType.toLowerCase() === "student") {
+    return "student";
+  }
+
   return "student";
 };
 

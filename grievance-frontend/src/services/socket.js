@@ -44,6 +44,7 @@ export const connectSocketUser = (userId) => {
         s.emit("join_user", userId.toUpperCase());
       });
     }
+    
   }
   return s;
 };
