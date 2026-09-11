@@ -38,6 +38,7 @@ const userSchema = new mongoose.Schema({
   staffDepartment: { type: String, default: "" },
   isDeptAdmin: { type: Boolean, default: false },
   adminDepartment: { type: String, default: "" },
+  adminDepartments: { type: [String], default: [] },
   isMasterAdmin: { type: Boolean, default: false }, // 🔥 Added for Transferable Ownership
 
 }, { timestamps: true });

@@ -37,6 +37,7 @@ const staffUserSchema = new mongoose.Schema({
     // Admin Role Management
     isDeptAdmin: { type: Boolean, default: false },
     adminDepartment: { type: String, default: "" },
+    adminDepartments: { type: [String], default: [] },
     isMasterAdmin: { type: Boolean, default: false },
 
 }, { timestamps: true });

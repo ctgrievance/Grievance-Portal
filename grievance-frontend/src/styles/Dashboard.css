@@ -50,7 +50,7 @@ body {
   box-shadow: var(--shadow-sm);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   position: relative;
-  z-index: 50;
+  z-index: 1005;
 }
 
 .header-content h1 {

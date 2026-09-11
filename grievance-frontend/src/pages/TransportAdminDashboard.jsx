@@ -13,6 +13,7 @@ import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
+import DepartmentSwitcher from "../components/DepartmentSwitcher";
 
 const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -257,6 +258,7 @@ function TransportAdminDashboard() {
                         </p>
                     </div>
                     <ProfileHeaderButton />
+                    <DepartmentSwitcher currentDepartment="Transport" />
                 </div>
                 <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
             </header>

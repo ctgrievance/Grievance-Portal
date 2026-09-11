@@ -14,6 +14,10 @@ const AdminStaffSchema = new mongoose.Schema({
     type: String,
     default: "", // e.g., "Student Welfare"
   },
+  adminDepartments: {
+    type: [String],
+    default: [],
+  },
   isDeptAdmin: {
     type: Boolean,
     default: false, 

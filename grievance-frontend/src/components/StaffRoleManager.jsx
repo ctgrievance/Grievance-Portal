@@ -344,12 +344,50 @@ function StaffRoleManager() {
 
                     <td>
                       {staff.isDeptAdmin ? (
-                        <span
-                          className="status-badge status-resolved"
-                          style={{ border: '1px solid #16a34a', padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                        >
-                          <AdminIcon width="14" height="14" /> Admin: {staff.adminDepartment}
-                        </span>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                          {(() => {
+                            const depts = (Array.isArray(staff.adminDepartments) && staff.adminDepartments.length > 0)
+                              ? staff.adminDepartments
+                              : (staff.adminDepartment ? [staff.adminDepartment] : []);
+                            return (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                {depts.map(d => (
+                                  <span
+                                    key={d}
+                                    className="status-badge status-resolved"
+                                    style={{ border: '1px solid #16a34a', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
+                                  >
+                                    <AdminIcon width="12" height="12" /> Admin: {d}
+                                    {isMasterAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (window.confirm(`Remove Admin role for "${d}" from ${staff.fullName}?`)) {
+                                            handleRoleChange(staff.id, "demote", d);
+                                          }
+                                        }}
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          color: "#dc2626",
+                                          cursor: "pointer",
+                                          fontWeight: "bold",
+                                          padding: "0 2px",
+                                          fontSize: "0.85rem",
+                                          lineHeight: 1
+                                        }}
+                                        title={`Revoke ${d} admin role`}
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
                       ) : staff.adminDepartment ? (
                         <span
                           className="status-badge status-assigned"
@@ -372,7 +410,61 @@ function StaffRoleManager() {
                           </span>
                         ) : (
                           <>
-                            {staff.adminDepartment ? (
+                            {staff.isDeptAdmin && isMasterAdmin ? (
+                              /* Multi-Dept Admin Action: Add Another Department or Remove */
+                              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                                {(() => {
+                                  const depts = (Array.isArray(staff.adminDepartments) && staff.adminDepartments.length > 0)
+                                    ? staff.adminDepartments
+                                    : (staff.adminDepartment ? [staff.adminDepartment] : []);
+                                  const allDepts = departmentsList.length > 0 ? departmentsList : DEFAULT_DEPARTMENTS;
+                                  const availableToAdd = allDepts.filter(d => !depts.includes(d));
+
+                                  return (
+                                    <>
+                                      {availableToAdd.length > 0 && (
+                                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                          <select
+                                            id={`add-dept-${staff.id}`}
+                                            className="modern-select-dept"
+                                            defaultValue=""
+                                            style={{ minWidth: "140px", padding: "6px 8px", fontSize: "0.82rem" }}
+                                          >
+                                            <option value="" disabled>+ Add Dept Head...</option>
+                                            {availableToAdd.map(d => (
+                                              <option key={d} value={d}>{d}</option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            className="btn-action-modern btn-action-modern-success"
+                                            style={{ minWidth: "95px", padding: "6px 10px", fontSize: "0.82rem" }}
+                                            onClick={() => {
+                                              const selectElem = document.getElementById(`add-dept-${staff.id}`);
+                                              if (!selectElem || !selectElem.value) return alert("Please select a department to add.");
+                                              handleRoleChange(staff.id, "promote", selectElem.value);
+                                            }}
+                                            title="Assign an additional department head role"
+                                          >
+                                            <ShieldIcon width="12" height="12" /> + Add
+                                          </button>
+                                        </div>
+                                      )}
+                                      <button
+                                        className="btn-action-modern btn-action-modern-danger"
+                                        style={{ minWidth: "110px", padding: "6px 10px", fontSize: "0.82rem" }}
+                                        onClick={() => {
+                                          if (window.confirm(`Are you sure you want to remove all admin roles from ${staff.fullName}? They will revert to General Staff.`)) {
+                                            handleRoleChange(staff.id, "demote");
+                                          }
+                                        }}
+                                      >
+                                        <XIcon width="12" height="12" /> Remove All
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            ) : staff.adminDepartment ? (
                               <button
                                 className="btn-action-modern btn-action-modern-danger"
                                 style={{ minWidth: "160px" }}

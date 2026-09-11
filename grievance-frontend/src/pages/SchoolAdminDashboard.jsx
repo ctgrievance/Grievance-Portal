@@ -13,6 +13,7 @@ import ctLogo from "../assets/ct-logo.png";
 import { SearchIcon, UserIcon, HomeIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
+import DepartmentSwitcher from "../components/DepartmentSwitcher";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -296,6 +297,7 @@ function SchoolAdminDashboard() {
             </p>
           </div>
           <ProfileHeaderButton />
+          <DepartmentSwitcher currentDepartment={mySchoolName} />
         </div>
         <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>

@@ -523,7 +523,7 @@ app.get("/api/admin/export-users", verifyToken, async (req, res) => {
 // A5. Get all users as JSON
 app.get("/api/admin/all-users", verifyToken, async (req, res) => {
   try {
-    const users = await User.find({}).select('id fullName email phone role department program isDeptAdmin adminDepartment isMasterAdmin');
+    const users = await User.find({}).select('id fullName email phone role department program isDeptAdmin adminDepartment adminDepartments isMasterAdmin');
     res.json(users);
   } catch (err) {
     console.error("Fetch all users error:", err);
@@ -580,32 +580,34 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
 
     // 3. Perform Action
     if (action === "promote") {
-      // 🔥 NEW: Check if another admin already exists for this department
+      // Check if another admin already exists for this department
       if (isMaster) {
-        // Master promoting someone to Admin -> Check if dept already has an admin
         const existingAdmin = await User.findOne({
-          // role: "staff", // ❌ REMOVED: Existing admins have role="admin", so this was failing
-          adminDepartment: department,
+          $or: [
+            { adminDepartment: department },
+            { adminDepartments: department }
+          ],
           isDeptAdmin: true,
           id: { $ne: safeTargetId } // Exclude current target
         });
 
         if (existingAdmin) {
-          // Remove the old admin
+          // Remove the old admin and cleanly revert to staff
           existingAdmin.isDeptAdmin = false;
           existingAdmin.adminDepartment = "";
-          existingAdmin.role = "staff"; // ✅ Reset role to staff
+          existingAdmin.adminDepartments = [];
+          existingAdmin.role = "staff"; // Reset role to staff
           await existingAdmin.save();
 
-          // 🔥 Sync to StaffUser
+          // Sync to StaffUser
           await StaffUser.findOneAndUpdate(
             { id: existingAdmin.id },
-            { adminDepartment: "", isDeptAdmin: false, role: "staff" }
+            { adminDepartment: "", adminDepartments: [], isDeptAdmin: false, role: "staff" }
           );
 
           console.log(`🔄 Removed ${existingAdmin.fullName} from Admin role for ${department}`);
 
-          // ✅ SEND DEMOTION EMAIL TO DISPLACED ADMIN
+          // SEND DEMOTION EMAIL TO DISPLACED ADMIN
           const demotionDate = new Date().toLocaleString("en-IN", {
             day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata"
           });
@@ -622,7 +624,6 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
             </div>
           `;
 
-          // 🔥 ASYNC EMAIL (Fire and Forget)
           transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: existingAdmin.email,
@@ -633,32 +634,42 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         }
       }
 
-      targetMember.adminDepartment = department;
-
-      // 🔥 CRITICAL HIERARCHY FIX 🔥
-      // Agar Master Admin kar raha hai -> Boss (Admin) banao
-      // Agar Dept Admin kar raha hai -> Team Member (Staff) banao
+      // CRITICAL HIERARCHY & MULTI-DEPT SUPPORT:
       if (isMaster) {
         targetMember.isDeptAdmin = true;
-        targetMember.role = "admin"; // 🔥 Change role to admin
+        targetMember.role = "admin";
+
+        // Multi-Department Head Support: Add to adminDepartments array without duplicates
+        let currentDepts = Array.isArray(targetMember.adminDepartments) ? [...targetMember.adminDepartments] : [];
+        if (targetMember.adminDepartment && !currentDepts.includes(targetMember.adminDepartment)) {
+          currentDepts.push(targetMember.adminDepartment);
+        }
+        if (!currentDepts.includes(department)) {
+          currentDepts.push(department);
+        }
+        targetMember.adminDepartments = currentDepts;
+        targetMember.adminDepartment = department; // Active / newly assigned department
       } else {
         targetMember.isDeptAdmin = false;
         targetMember.role = "staff"; // Keep as staff (team member)
+        targetMember.adminDepartment = department;
+        targetMember.adminDepartments = [];
       }
 
       await targetMember.save();
 
-      // 🔥 Sync to StaffUser
+      // Sync to StaffUser
       await StaffUser.findOneAndUpdate(
         { id: safeTargetId },
         { 
-          adminDepartment: department,
+          adminDepartment: targetMember.adminDepartment,
+          adminDepartments: targetMember.adminDepartments,
           isDeptAdmin: targetMember.isDeptAdmin,
           role: targetMember.role
         }
       );
 
-      // ✅ SEND PROMOTION EMAIL
+      // SEND PROMOTION EMAIL
       const promotionDate = new Date().toLocaleString("en-IN", {
         day: "2-digit",
         month: "short",
@@ -671,7 +682,6 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
 
       const newRole = targetMember.isDeptAdmin ? "Department Admin" : "Admin Staff";
 
-      // ✅ Login Instruction for Admins
       const loginInstruction = targetMember.isDeptAdmin
         ? "<br><br><strong>👉 Please select 'Admin' option while logging in.</strong>"
         : "";
@@ -679,19 +689,18 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       const emailBody = `
         <h2 style="color: #2563eb;">Congratulations!</h2>
         <p>Dear ${targetMember.fullName},</p>
-        <p>You have been promoted to <strong>${newRole}</strong> for <strong>${department}</strong>.</p>
+        <p>You have been appointed to <strong>${newRole}</strong> for <strong>${department}</strong>.</p>
         <p><strong>Date & Time:</strong> ${promotionDate}</p>
         <p><strong>Staff ID:</strong> ${targetMember.id}</p>
         <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border: 1px solid #f59e0b; color: #92400e; margin-top: 10px;">
-          <strong>⚠️ Important:</strong> Please logout and login again to see your new dashboard.${loginInstruction}
+          <strong>⚠️ Important:</strong> Please logout and login again to see your updated dashboard.${loginInstruction}
         </div>
       `;
 
-      // 🔥 ASYNC EMAIL (Fire and Forget)
       transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: targetMember.email,
-        subject: `🎉 Promotion Notification - ${newRole}`,
+        subject: `🎉 Role Notification - ${newRole}`,
         html: emailBody
       }).then(() => console.log(`✅ Promotion email sent to ${targetMember.email}`))
         .catch(emailErr => console.error("⚠️ Email sending failed:", emailErr));
@@ -700,19 +709,37 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       res.json({ message: `✅ ${targetMember.fullName} is now ${title} of ${department}` });
 
     } else if (action === "demote") {
-      const oldDept = targetMember.adminDepartment || "your department"; // Capture dept name
-      targetMember.isDeptAdmin = false;
-      targetMember.adminDepartment = "";
-      targetMember.role = "staff"; // 🔥 Change role back to staff
+      const deptToRemove = department ? department.trim() : "";
+      let currentDepts = Array.isArray(targetMember.adminDepartments) ? [...targetMember.adminDepartments] : [];
+      if (targetMember.adminDepartment && !currentDepts.includes(targetMember.adminDepartment)) {
+        currentDepts.push(targetMember.adminDepartment);
+      }
+
+      if (deptToRemove && currentDepts.length > 1) {
+        // Multi-dept admin: Remove only this specific department
+        currentDepts = currentDepts.filter(d => d !== deptToRemove);
+        targetMember.adminDepartments = currentDepts;
+        targetMember.adminDepartment = currentDepts[0] || "";
+        targetMember.isDeptAdmin = true;
+        targetMember.role = "admin";
+      } else {
+        // Single dept or remove admin completely: cleanly revert to general staff
+        targetMember.isDeptAdmin = false;
+        targetMember.adminDepartment = "";
+        targetMember.adminDepartments = [];
+        targetMember.role = "staff"; // Revert to staff
+      }
+
       await targetMember.save();
 
-      // 🔥 Sync to StaffUser
+      // Sync to StaffUser
       await StaffUser.findOneAndUpdate(
         { id: safeTargetId },
         { 
-          adminDepartment: "",
-          isDeptAdmin: false,
-          role: "staff"
+          adminDepartment: targetMember.adminDepartment,
+          adminDepartments: targetMember.adminDepartments,
+          isDeptAdmin: targetMember.isDeptAdmin,
+          role: targetMember.role
         }
       );
 
@@ -777,7 +804,7 @@ app.get("/api/admin-staff/all", async (req, res) => {
     const staffList = await User.find({
       isMasterAdmin: { $ne: true }, // Exclude Master Admin
       role: { $in: ["staff", "admin"] } // Include both staff and admin roles
-    }).select("id fullName email isDeptAdmin adminDepartment role");
+    }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role");
 
     // Fetch all grievances with ratings
     const ratedGrievances = await Grievance.find({

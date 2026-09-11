@@ -37,8 +37,8 @@ const HRAdminDashboard = lazy(() => import("./pages/HRAdminDashboard"));
 const CRCAdminDashboard = lazy(() => import("./pages/CRCAdminDashboard"));
 const TransportAdminDashboard = lazy(() => import("./pages/TransportAdminDashboard"));
 
-// Helper to decide where DEPT ADMINS (Priya) go
-const getDeptAdminRoute = (department) => {
+// Helper to decide where DEPT ADMINS go
+export const getDeptAdminRoute = (department) => {
   if (!department) return "/admin/school";
   const dept = department.trim().toLowerCase();
   
@@ -57,9 +57,18 @@ const getDeptAdminRoute = (department) => {
 function ProtectedRoute({ children, allowedRoles }) {
   const role = localStorage.getItem("grievance_role")?.toLowerCase();
   const id = localStorage.getItem("grievance_id")?.toUpperCase();
-  const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true"; // Boss (Priya)
-  const isMasterAdmin = localStorage.getItem("is_master_admin") === "true"; // Kavita (New Master)
-  const adminDept = localStorage.getItem("admin_department"); // Both Priya & Rajesh have this
+  const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true"; // Boss
+  const isMasterAdmin = localStorage.getItem("is_master_admin") === "true"; // Master
+  let adminDept = localStorage.getItem("admin_department");
+  let adminDepts = [];
+  try {
+    adminDepts = JSON.parse(localStorage.getItem("admin_departments")) || [];
+  } catch (e) {
+    adminDepts = [];
+  }
+  if (!adminDepts.length && adminDept) {
+    adminDepts = [adminDept];
+  }
 
   if (!role || !id) return <Navigate to="/" replace />;
 
@@ -74,12 +83,18 @@ function ProtectedRoute({ children, allowedRoles }) {
     return children;
   }
 
-  // 2. Department Admin Logic (Priya)
+  // 2. Department Admin Logic
   if (role === "admin" || (role === "staff" && isDeptAdmin)) {
-    // Allowed routes: Her Dept Dashboard, Manage Staff, or Generic Staff pages
-    // If she tries to go to root or login, redirect to HER dashboard
+    // If they have multiple departments, check if current path belongs to any of them
+    const currentPath = window.location.pathname.toLowerCase();
+    const matchedDept = adminDepts.find(d => getDeptAdminRoute(d).toLowerCase() === currentPath);
+    if (matchedDept && matchedDept !== adminDept) {
+      localStorage.setItem("admin_department", matchedDept);
+    }
+
+    // If trying to go to root or generic staff page, redirect to active department dashboard
     if (window.location.pathname === "/" || window.location.pathname === "/staff/general") {
-      return <Navigate to={getDeptAdminRoute(adminDept)} replace />;
+      return <Navigate to={getDeptAdminRoute(adminDept || adminDepts[0])} replace />;
     }
     return children;
   }

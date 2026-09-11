@@ -59,7 +59,14 @@ function LoginPage() {
     if (data.user.isDeptAdmin) localStorage.setItem("is_dept_admin", "true");
     else localStorage.removeItem("is_dept_admin");
 
-    if (data.user.adminDepartment) localStorage.setItem("admin_department", data.user.adminDepartment);
+    const adminDepts = Array.isArray(data.user.adminDepartments) && data.user.adminDepartments.length > 0
+      ? data.user.adminDepartments
+      : (data.user.adminDepartment ? [data.user.adminDepartment] : []);
+
+    localStorage.setItem("admin_departments", JSON.stringify(adminDepts));
+
+    const activeDept = adminDepts[0] || data.user.adminDepartment || "";
+    if (activeDept) localStorage.setItem("admin_department", activeDept);
     else localStorage.removeItem("admin_department");
 
     if (data.user.isMasterAdmin) localStorage.setItem("is_master_admin", "true");
@@ -77,7 +84,7 @@ function LoginPage() {
       }
       else if (role === "staff") {
         if (isDeptAdmin) {
-          navigate(getDeptAdminRoute(data.user.adminDepartment));
+          navigate(getDeptAdminRoute(activeDept));
         } else if (data.user.adminDepartment) {
           navigate("/staff/admin");
         } else {
@@ -88,7 +95,7 @@ function LoginPage() {
         if (data.user.isMasterAdmin) {
           navigate("/admin/dashboard");
         } else {
-          navigate(getDeptAdminRoute(data.user.adminDepartment));
+          navigate(getDeptAdminRoute(activeDept));
         }
       }
     }, 1000);

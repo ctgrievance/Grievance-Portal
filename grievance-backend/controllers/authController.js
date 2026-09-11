@@ -246,12 +246,17 @@ export const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
+    const userAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
+      ? user.adminDepartments
+      : (user.adminDepartment ? [user.adminDepartment] : []);
+
     // Generate Token with appropriate role info
     const tokenPayload = {
       id: user.id,
       role: isStudent ? "student" : (user.role || "staff"),
       isDeptAdmin: user.isDeptAdmin || false,
-      adminDepartment: user.adminDepartment || "",
+      adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+      adminDepartments: userAdminDepts,
       isMasterAdmin: user.isMasterAdmin || false
     };
 
@@ -270,7 +275,8 @@ export const loginUser = async (req, res) => {
         role: isStudent ? "student" : (user.role || "staff"),
         fullName: user.fullName,
         isDeptAdmin: user.isDeptAdmin || false,
-        adminDepartment: user.adminDepartment || "",
+        adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+        adminDepartments: userAdminDepts,
         isMasterAdmin: user.isMasterAdmin || false,
         program: user.program || "",
         department: user.staffDepartment || user.adminDepartment || ""
@@ -329,12 +335,17 @@ export const verifyLogin = async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
+    const userAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
+      ? user.adminDepartments
+      : (user.adminDepartment ? [user.adminDepartment] : []);
+
     // Generate Token with appropriate role info
     const tokenPayload = {
       id: user.id,
       role: isStudent ? "student" : (user.role || "staff"),
       isDeptAdmin: user.isDeptAdmin || false,
-      adminDepartment: user.adminDepartment || "",
+      adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+      adminDepartments: userAdminDepts,
       isMasterAdmin: user.isMasterAdmin || false
     };
 
@@ -353,7 +364,8 @@ export const verifyLogin = async (req, res) => {
         role: isStudent ? "student" : (user.role || "staff"),
         fullName: user.fullName,
         isDeptAdmin: user.isDeptAdmin || false,
-        adminDepartment: user.adminDepartment || "",
+        adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+        adminDepartments: userAdminDepts,
         isMasterAdmin: user.isMasterAdmin || false,
         program: user.program || "",
         department: user.staffDepartment || user.adminDepartment || ""
