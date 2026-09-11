@@ -204,12 +204,47 @@ function StaffRoleManager() {
     }
   };
 
+  // Helper to check if a staff member belongs to a department
+  // Matches registered department, profile department, or assigned admin department
+  const isStaffInDepartment = (staff, targetDept) => {
+    if (!staff || !targetDept) return false;
+    const target = targetDept.trim().toLowerCase();
+
+    // 1. Registered or profile department
+    const registeredDept = (staff.staffDepartment || staff.department || "").trim().toLowerCase();
+
+    // 2. Assigned admin departments
+    const assignedDepts = [
+      ...(Array.isArray(staff.adminDepartments) ? staff.adminDepartments : []),
+      staff.adminDepartment
+    ].filter(Boolean).map((d) => d.trim().toLowerCase());
+
+    const checkMatch = (deptStr) => {
+      if (!deptStr) return false;
+      const d = deptStr.toLowerCase();
+      if (d === target) return true;
+
+      // Special match for CRC / Placement variations
+      const isCrcTarget = target.includes("crc") || target.includes("placement");
+      if (isCrcTarget && (d.includes("crc") || d.includes("placement"))) return true;
+
+      // Substring match for lengthy titles (e.g. "School of Engineering and Technology")
+      if (d.length > 4 && (target.includes(d) || d.includes(target))) return true;
+
+      return false;
+    };
+
+    if (checkMatch(registeredDept)) return true;
+    if (assignedDepts.some(checkMatch)) return true;
+
+    return false;
+  };
+
   // Check whether logged-in user can edit target staff
   const canEdit = (staff) => {
     if (isMasterAdmin) return true;
-    if (!staff.adminDepartment) return true;
-    if (staff.adminDepartment === myDept && !staff.isDeptAdmin) return true;
-    return false;
+    if (staff.id === requesterId && staff.isDeptAdmin) return false;
+    return isStaffInDepartment(staff, myDept);
   };
 
   // All valid departments list
@@ -218,9 +253,15 @@ function StaffRoleManager() {
   }, [departmentsList]);
 
   // Clean staff list (exclude student 8-digit IDs)
+  // When logged in as Department Admin (!isMasterAdmin), scope ONLY to myDept!
   const validStaffList = useMemo(() => {
-    return staffList.filter((s) => s.id && s.id.length !== 8);
-  }, [staffList]);
+    const nonStudents = staffList.filter((s) => s.id && s.id.length !== 8);
+    if (isMasterAdmin) {
+      return nonStudents;
+    }
+    // Department Admin: ONLY show staff from their department (registration, profile, or assignment)
+    return nonStudents.filter((s) => isStaffInDepartment(s, myDept));
+  }, [staffList, isMasterAdmin, myDept]);
 
   // Summary Metrics
   const totalStaffCount = validStaffList.length;
@@ -242,17 +283,9 @@ function StaffRoleManager() {
       list = list.filter((s) => !s.adminDepartment);
     }
 
-    // Department filter
-    if (filterDept !== "all") {
-      list = list.filter((s) => {
-        const depts =
-          Array.isArray(s.adminDepartments) && s.adminDepartments.length > 0
-            ? s.adminDepartments
-            : s.adminDepartment
-            ? [s.adminDepartment]
-            : [];
-        return depts.includes(filterDept);
-      });
+    // Department filter (only applicable when Master Admin selects a specific department)
+    if (isMasterAdmin && filterDept !== "all") {
+      list = list.filter((s) => isStaffInDepartment(s, filterDept));
     }
 
     // Search query
@@ -261,7 +294,9 @@ function StaffRoleManager() {
         (s) =>
           (s.fullName || "").toLowerCase().includes(q) ||
           (s.id || "").toLowerCase().includes(q) ||
-          (s.adminDepartment || "").toLowerCase().includes(q)
+          (s.adminDepartment || "").toLowerCase().includes(q) ||
+          (s.staffDepartment || "").toLowerCase().includes(q) ||
+          (s.department || "").toLowerCase().includes(q)
       );
     }
 
@@ -295,7 +330,7 @@ function StaffRoleManager() {
     }
 
     return list;
-  }, [validStaffList, filterRole, filterDept, searchQuery, sortMode]);
+  }, [validStaffList, filterRole, filterDept, isMasterAdmin, searchQuery, sortMode]);
 
   // Helper to get array of assigned departments for a staff member
   const getStaffDepartments = (staff) => {
@@ -397,19 +432,40 @@ function StaffRoleManager() {
         </div>
 
         <div className="staff-filter-actions">
-          {/* Department Filter */}
-          <select
-            className="staff-filter-select"
-            value={filterDept}
-            onChange={(e) => setFilterDept(e.target.value)}
-          >
-            <option value="all">All Departments</option>
-            {allDepartments.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+          {/* Department Filter - Only for Master Admin, fixed for Department Admin */}
+          {isMasterAdmin ? (
+            <select
+              className="staff-filter-select"
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+            >
+              <option value="all">All Departments</option>
+              {allDepartments.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div
+              className="staff-dept-badge-fixed"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 12px",
+                borderRadius: "6px",
+                background: "#f1f5f9",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.82rem",
+                fontWeight: "600",
+                color: "#334155"
+              }}
+            >
+              <ShieldIcon width="13" height="13" color="#64748b" />
+              <span>{myDept || "My Department"}</span>
+            </div>
+          )}
 
           {/* Role Filter */}
           <select
@@ -524,7 +580,7 @@ function StaffRoleManager() {
                             </span>
                           ) : (
                             <span className="staff-role-pill general">
-                              General Staff
+                              General Staff{staff.staffDepartment ? ` • ${staff.staffDepartment}` : ""}
                             </span>
                           )}
                         </div>
@@ -607,7 +663,9 @@ function StaffRoleManager() {
                         <UserIcon width="12" height="12" /> Team: {staff.adminDepartment}
                       </span>
                     ) : (
-                      <span className="staff-role-pill general">General Staff</span>
+                      <span className="staff-role-pill general">
+                        General Staff{staff.staffDepartment ? ` • ${staff.staffDepartment}` : ""}
+                      </span>
                     )}
                   </div>
 

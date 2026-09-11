@@ -5,6 +5,7 @@ import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, AdminIcon, ArrowLeftIcon } from "../components/Icons";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import StaffRoleManager from "../components/StaffRoleManager";
+import { getDeptAdminRoute } from "../App";
 
 const AdminManageStaff = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const AdminManageStaff = () => {
               type="button"
               className="tab-link-button"
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", background: "none", border: "none" }}
-              onClick={() => navigate("/admin/dashboard")}
+              onClick={() => navigate(isMaster ? "/admin/dashboard" : getDeptAdminRoute(myDepartment))}
             >
               <ArrowLeftIcon width="14" height="14" /> Back to Dashboard
             </button>

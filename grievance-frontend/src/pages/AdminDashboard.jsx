@@ -21,6 +21,7 @@ import {
 } from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
+import { getDeptAdminRoute } from "../App";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -47,9 +48,16 @@ function AdminDashboard() {
 
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
   const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true";
+  const myDept = localStorage.getItem("admin_department");
 
   const isMasterAdmin = localStorage.getItem("is_master_admin") === "true"; // 🔥 Dynamic Check
   const canManageStaff = isMasterAdmin || isDeptAdmin;
+
+  useEffect(() => {
+    if (!isMasterAdmin && (isDeptAdmin || myDept)) {
+      navigate(getDeptAdminRoute(myDept), { replace: true });
+    }
+  }, [isMasterAdmin, isDeptAdmin, myDept, navigate]);
 
   const [activeTab, setActiveTab] = useState("triage");
   const [grievances, setGrievances] = useState([]);
@@ -277,7 +285,7 @@ function AdminDashboard() {
             <p className="admin-header-user-info">
               Welcome, <strong>{userId}</strong>
               <span className="admin-master-badge">
-                <ShieldIcon width="12" height="12" /> Master Admin
+                <ShieldIcon width="12" height="12" /> {isMasterAdmin ? "Master Admin" : `${localStorage.getItem("admin_department") || "Dept"} Admin`}
               </span>
             </p>
           </div>

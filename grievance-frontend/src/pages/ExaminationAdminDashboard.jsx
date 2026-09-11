@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
@@ -8,6 +8,7 @@ import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
 import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
 import RegisteredUsersView from "../components/RegisteredUsersView";
+import StaffRoleManager from "../components/StaffRoleManager";
 import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
@@ -280,7 +281,11 @@ function ExaminationAdminDashboard() {
               </span>
             </li>
           )}
-          <li><Link to="/admin/manage-staff">Manage Staff</Link></li>
+          <li className={activeTab === "manage_staff" ? "active" : ""}>
+            <span className="tab-link-button" onClick={() => setActiveTab("manage_staff")}>
+              Manage Staff
+            </span>
+          </li>
           <li><SmartAssignmentNavLink department="Examination" /></li>
         </ul>
       </nav>
@@ -294,6 +299,7 @@ function ExaminationAdminDashboard() {
             allowRegisteredStaff={allowRegisteredStaff}
           />
         )}
+        {activeTab === "manage_staff" && <StaffRoleManager />}
         {activeTab === "grievances" && (
           <div className="card">
           <h2>Incoming Grievances</h2>

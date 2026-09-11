@@ -92,8 +92,12 @@ function ProtectedRoute({ children, allowedRoles }) {
       localStorage.setItem("admin_department", matchedDept);
     }
 
-    // If trying to go to root or generic staff page, redirect to active department dashboard
-    if (window.location.pathname === "/" || window.location.pathname === "/staff/general") {
+    // If trying to go to root, generic staff page, or master admin dashboard, redirect to active department dashboard
+    if (
+      window.location.pathname === "/" ||
+      window.location.pathname === "/staff/general" ||
+      (!isMasterAdmin && window.location.pathname.toLowerCase() === "/admin/dashboard")
+    ) {
       return <Navigate to={getDeptAdminRoute(adminDept || adminDepts[0])} replace />;
     }
     return children;

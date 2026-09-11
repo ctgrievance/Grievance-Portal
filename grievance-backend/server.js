@@ -558,10 +558,17 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       return res.status(403).json({ message: "❌ Access Denied: Insufficient Permissions" });
     }
 
+    // Collect all departments requester has admin rights for
+    const requesterDepts = [
+      ...(Array.isArray(requester.adminDepartments) ? requester.adminDepartments : []),
+      requester.adminDepartment
+    ].filter(Boolean);
+
     // Dept Admin Restriction: Can only add to own department
     if (!isMaster && isDeptAdmin) {
-      if (action === "promote" && department !== requester.adminDepartment) {
-        return res.status(403).json({ message: `❌ You can only manage staff for ${requester.adminDepartment}.` });
+      const hasDept = requesterDepts.some(d => d.toLowerCase() === (department || "").toLowerCase());
+      if (action === "promote" && !hasDept) {
+        return res.status(403).json({ message: `❌ You can only manage staff for ${requesterDepts.join(", ")}.` });
       }
     }
 
@@ -571,9 +578,16 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
 
     if (!targetMember) return res.status(404).json({ message: "Target staff member not found." });
 
-    // Dept Admin Restriction: Cannot remove other Dept Admins
+    // Dept Admin Restriction: Cannot manage staff of other departments
     if (!isMaster && isDeptAdmin && action === "demote") {
-      if (targetMember.adminDepartment !== requester.adminDepartment) {
+      const targetDepts = [
+        ...(Array.isArray(targetMember.adminDepartments) ? targetMember.adminDepartments : []),
+        targetMember.adminDepartment,
+        targetMember.staffDepartment,
+        targetMember.department
+      ].filter(Boolean);
+      const isTargetInMyDept = targetDepts.some(td => requesterDepts.some(rd => rd.toLowerCase() === td.toLowerCase()));
+      if (!isTargetInMyDept) {
         return res.status(403).json({ message: "❌ You cannot manage staff of other departments." });
       }
     }
@@ -825,7 +839,21 @@ app.get("/api/admin-staff/all", async (req, res) => {
     const staffList = await User.find({
       isMasterAdmin: { $ne: true }, // Exclude Master Admin
       role: { $in: ["staff", "admin"] } // Include both staff and admin roles
-    }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role");
+    }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment department school");
+
+    // Also fetch staff records to fill in department for anyone whose staffDepartment is missing
+    const staffRecords = await StaffRecord.find({}).select("id department").lean();
+    const staffRecordDeptMap = {};
+    staffRecords.forEach(r => {
+      if (r.id) staffRecordDeptMap[String(r.id).trim().toUpperCase()] = r.department;
+    });
+
+    // Also fetch StaffUser records to fill in staffDepartment if missing
+    const staffUsers = await StaffUser.find({}).select("id staffDepartment adminDepartment").lean();
+    const staffUserDeptMap = {};
+    staffUsers.forEach(su => {
+      if (su.id) staffUserDeptMap[String(su.id).trim().toUpperCase()] = su.staffDepartment || su.adminDepartment;
+    });
 
     // Fetch all grievances with ratings
     const ratedGrievances = await Grievance.find({
@@ -837,7 +865,11 @@ app.get("/api/admin-staff/all", async (req, res) => {
 
     const staffWithRatings = staffList.map(staff => {
       const sId = String(staff.id || "").trim().toLowerCase();
+      const sCleanId = String(staff.id || "").trim().toUpperCase();
       const sName = String(staff.fullName || "").trim().toLowerCase();
+
+      // Resolved registered / profile department
+      const registeredDept = staff.staffDepartment || staff.department || staff.school || staffUserDeptMap[sCleanId] || staffRecordDeptMap[sCleanId] || staff.adminDepartment || "";
 
       // Find all rated grievances matching this staff member by ID or by Name
       const matched = ratedGrievances.filter(g => {
@@ -871,6 +903,8 @@ app.get("/api/admin-staff/all", async (req, res) => {
 
       return {
         ...staffObj,
+        staffDepartment: registeredDept,
+        department: registeredDept,
         averageRating,
         totalRatings,
         ratingsList
