@@ -31,6 +31,8 @@ const userSchema = new mongoose.Schema({
   pendingPhoneOtpExpires: { type: Number },
 
   // Student Info
+  school: { type: String, default: "" },
+  department: { type: String, default: "" },
   program: String,
   studentType: String,
 

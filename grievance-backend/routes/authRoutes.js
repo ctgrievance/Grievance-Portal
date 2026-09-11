@@ -2,6 +2,8 @@ import express from "express";
 import User from "../models/UserModel.js";
 import StaffUser from "../models/StaffUser.js";
 import StudentUser from "../models/StudentUser.js";
+import StudentRecord from "../models/StudentRecord.js";
+import StaffRecord from "../models/StaffRecord.js";
 import {
   registerRequest,
   verifyRegistration,
@@ -47,56 +49,88 @@ router.get("/user/:id", async (req, res) => {
   try {
     const safeId = req.params.id.toString().trim().toUpperCase();
     console.log(`🔍 Fetching user with ID: ${safeId}`);
-    
-    let user = await StaffUser.findOne({ id: safeId }) ||
-               await StudentUser.findOne({ id: safeId }) ||
-               await User.findOne({ id: safeId });
-    console.log(`👤 User found: ${user ? 'YES' : 'NO'}`);
 
-    if (!user) {
-      // If user doesn't exist, try to create a basic profile
-      console.log(`👤 User not found, attempting to create basic profile for ID: ${safeId}`);
-      
-      // Check if this is a student ID pattern (all numbers)
-      const isStudent = /^\d+$/.test(safeId);
-      
-      // Create a basic user profile with minimal data
-      user = new User({
-        id: safeId,
-        role: isStudent ? "student" : "staff",
-        fullName: "Student", // Default name
-        email: `${safeId}@ctuniversity.edu`, // Default email
-        phone: "",
-        password: "default_password_change_me", // Default password - should be changed
-        isVerified: true,
-        program: isStudent ? "B.Tech" : "", // Default program for students
-        adminDepartment: isStudent ? "" : "General"
+    // 1️⃣ Check Staff collection first
+    const staffUser = await StaffUser.findOne({ id: safeId });
+    if (staffUser) {
+      const staffRecord = await StaffRecord.findOne({ id: safeId });
+      const dept = staffUser.staffDepartment || staffUser.adminDepartment || (staffRecord ? staffRecord.department : "") || "General";
+      return res.json({
+        fullName: staffUser.fullName || "",
+        email: staffUser.email || "",
+        phone: staffUser.phone || "",
+        role: staffUser.role || "staff",
+        department: dept,
+        adminDepartment: staffUser.adminDepartment || "",
+        staffDepartment: staffUser.staffDepartment || "",
+        isDeptAdmin: staffUser.isDeptAdmin || false,
+        isMasterAdmin: staffUser.isMasterAdmin || false,
       });
-      
-      await user.save();
-      console.log(`👤 Created basic user profile for ID: ${safeId}`);
     }
 
-    // 🔥 LOGIC FIX:
-    // Agar Student hai -> toh 'program' bhejo
-    // Agar Staff hai -> toh 'staffDepartment' ya 'adminDepartment' bhejo
-    let deptToSend = "";
+    // 2️⃣ Check Student collections
+    const studentUser = await StudentUser.findOne({ id: safeId });
+    const studentRecord = await StudentRecord.findOne({ id: safeId });
+    const legacyUser = await User.findOne({ id: safeId });
 
-    if (user.role === "student") {
-      deptToSend = user.program;
-    } else {
-      deptToSend = user.staffDepartment || user.adminDepartment;
+    const isStudent = !!studentUser || !!studentRecord || (legacyUser && legacyUser.role === "student") || /^\d+$/.test(safeId);
+
+    if (isStudent) {
+      const studentSchool = studentUser?.school || studentRecord?.school || legacyUser?.school || "";
+      const studentProgram = studentUser?.program || studentRecord?.program || legacyUser?.program || "";
+      const studentDept = studentSchool || studentProgram || "General";
+
+      // Self-heal StudentUser record if school or role is missing
+      if (studentUser) {
+        let needsSave = false;
+        if (!studentUser.school && studentSchool) {
+          studentUser.school = studentSchool;
+          studentUser.department = studentSchool;
+          needsSave = true;
+        }
+        if (!studentUser.role) {
+          studentUser.role = "student";
+          needsSave = true;
+        }
+        if (needsSave) {
+          await studentUser.save().catch((e) => console.error("StudentUser heal error:", e));
+        }
+      }
+
+      // Self-heal legacy User record if missing school
+      if (legacyUser && !legacyUser.school && studentSchool) {
+        legacyUser.school = studentSchool;
+        legacyUser.department = studentSchool;
+        legacyUser.role = "student";
+        await legacyUser.save().catch((e) => console.error("Legacy User heal error:", e));
+      }
+
+      return res.json({
+        fullName: studentUser?.fullName || studentRecord?.fullName || legacyUser?.fullName || "Student",
+        email: studentUser?.email || studentRecord?.email || legacyUser?.email || "",
+        phone: studentUser?.phone || studentRecord?.phone || legacyUser?.phone || "",
+        role: "student",
+        school: studentSchool || studentDept,
+        program: studentProgram,
+        department: studentDept,
+        adminDepartment: ""
+      });
     }
 
-    res.json({
-      fullName: user.fullName,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      // Frontend ko ab hamesha 'department' milega
-      department: deptToSend || "General",
-      adminDepartment: user.adminDepartment || ""
-    });
+    // 3️⃣ Check legacy User fallback (if non-student staff/admin)
+    if (legacyUser) {
+      return res.json({
+        fullName: legacyUser.fullName || "",
+        email: legacyUser.email || "",
+        phone: legacyUser.phone || "",
+        role: legacyUser.role || "staff",
+        department: legacyUser.staffDepartment || legacyUser.adminDepartment || "General",
+        adminDepartment: legacyUser.adminDepartment || ""
+      });
+    }
+
+    // 4️⃣ User not found
+    return res.status(404).json({ message: "User not found" });
 
   } catch (err) {
     console.error(err);

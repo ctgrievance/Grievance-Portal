@@ -62,7 +62,7 @@ function StudentSubmitGrievance() {
             name: data.fullName || "",
             email: data.email || "",
             phone: data.phone || "",
-            school: data.department || data.program || "",
+            school: data.school || data.department || data.program || "",
           }));
         }
       } catch (err) {

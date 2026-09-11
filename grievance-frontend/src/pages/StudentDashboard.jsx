@@ -109,8 +109,8 @@ function StudentDashboard() {
 
         if (userRes.ok) {
           setStudentName(userData.fullName);
-          // ✅ Ab server se 'department' sahi aa raha hai
-          setStudentDept(userData.department);
+          // ✅ Ab server se 'department' / 'school' sahi aa raha hai
+          setStudentDept(userData.school || userData.department || userData.program || "");
         }
 
         // 2. Grievance History

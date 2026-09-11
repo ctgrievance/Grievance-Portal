@@ -81,7 +81,7 @@ function Department() {
             name: data.fullName || "",
             email: data.email || "",
             phone: data.phone || "",
-            studentProgram: data.department || data.program || "", // 🔥
+            studentProgram: data.school || data.department || data.program || "", // 🔥
             // school is intentionally left blank for manual selection
           }));
         }

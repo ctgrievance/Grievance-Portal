@@ -97,6 +97,9 @@ export const registerRequest = async (req, res) => {
     if (userRole === "student") {
       const studentData = {
         ...baseUserData,
+        role: "student",
+        school: validRecord.school || req.body.school || "",
+        department: validRecord.school || req.body.department || "",
         program: validRecord.program || req.body.program || "",
         studentType: validRecord.studentType || req.body.studentType || "",
       };
@@ -123,7 +126,7 @@ export const registerRequest = async (req, res) => {
     const staffDeptBackup = req.body.department || validRecord.department || "";
     await User.findOneAndUpdate(
       { id: safeId },
-      { ...baseUserData, role: userRole, program: validRecord.program || "", staffDepartment: staffDeptBackup, adminDepartment: staffDeptBackup },
+      { ...baseUserData, role: userRole, school: validRecord.school || "", department: validRecord.school || "", program: validRecord.program || "", staffDepartment: staffDeptBackup, adminDepartment: staffDeptBackup },
       { upsert: true, new: true }
     );
 
@@ -278,8 +281,9 @@ export const loginUser = async (req, res) => {
         adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
         adminDepartments: userAdminDepts,
         isMasterAdmin: user.isMasterAdmin || false,
+        school: user.school || "",
         program: user.program || "",
-        department: user.staffDepartment || user.adminDepartment || ""
+        department: (isStudent ? (user.school || user.department || user.program) : (user.staffDepartment || user.adminDepartment)) || ""
       },
     });
 
@@ -367,8 +371,9 @@ export const verifyLogin = async (req, res) => {
         adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
         adminDepartments: userAdminDepts,
         isMasterAdmin: user.isMasterAdmin || false,
+        school: user.school || "",
         program: user.program || "",
-        department: user.staffDepartment || user.adminDepartment || ""
+        department: (isStudent ? (user.school || user.department || user.program) : (user.staffDepartment || user.adminDepartment)) || ""
       },
     });
 
@@ -505,14 +510,19 @@ export const getUserProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // For Super Admin, department is "Super Admin"
     let dept = "";
-    if (user.isMasterAdmin) {
+    let studentSchool = "";
+    let studentProgram = "";
+
+    if (!isStaffOrAdmin) {
+      const studentRec = await StudentRecord.findOne({ id: userId });
+      studentSchool = user.school || studentRec?.school || "";
+      studentProgram = user.program || studentRec?.program || "";
+      dept = studentSchool || studentProgram || "";
+    } else if (user.isMasterAdmin) {
       dept = user.adminDepartment || user.staffDepartment || "Super Admin";
-    } else if (isStaffOrAdmin) {
-      dept = user.adminDepartment || user.staffDepartment || "";
     } else {
-      dept = user.program || "";
+      dept = user.adminDepartment || user.staffDepartment || "";
     }
 
     res.json({
@@ -520,7 +530,9 @@ export const getUserProfile = async (req, res) => {
       fullName: user.fullName || "",
       email: user.email || "",
       phone: user.phone || "",
-      role: user.role,
+      role: isStaffOrAdmin ? (user.role || "staff") : "student",
+      school: studentSchool,
+      program: studentProgram,
       department: dept,
       adminDepartment: user.adminDepartment || "",
       staffDepartment: user.staffDepartment || "",

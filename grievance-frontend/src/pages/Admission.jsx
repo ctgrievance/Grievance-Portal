@@ -47,7 +47,7 @@ function Admission() {
             name: data.fullName || "",
             email: data.email || "",
             phone: data.phone || "",
-            school: data.department || "",
+            school: data.school || data.department || data.program || "",
           }));
         }
         } catch (err) {

@@ -48,7 +48,7 @@ function StudentTransport() {
                         name: data.fullName || "",
                         email: data.email || "",
                         phone: data.phone || "",
-                        program: data.department || data.program || "",
+                        program: data.school || data.department || data.program || "",
                     }));
                 }
               } catch (err) {

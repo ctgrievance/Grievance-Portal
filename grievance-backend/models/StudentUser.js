@@ -12,6 +12,7 @@ const studentUserSchema = new mongoose.Schema({
 
     // Auth
     password: { type: String, required: true },
+    role: { type: String, default: "student" },
 
     // OTP & Verification
     isVerified: { type: Boolean, default: false },
@@ -23,6 +24,8 @@ const studentUserSchema = new mongoose.Schema({
     resetOtpExpires: { type: Date },
 
     // Student Specific Info
+    school: { type: String, default: "" },
+    department: { type: String, default: "" },
     program: { type: String, default: "" },
     studentType: { type: String, default: "" },
 

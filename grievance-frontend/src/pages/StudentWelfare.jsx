@@ -50,7 +50,7 @@ function StudentWelfare() {
             name: data.fullName || "",
             email: data.email || "",
             phone: data.phone || "",
-            program: data.department || data.program || "", // 🔥 IMPORTANT
+            program: data.school || data.department || data.program || "",
           }));
         }
         } catch (err) {
