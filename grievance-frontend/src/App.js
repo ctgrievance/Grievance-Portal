@@ -25,6 +25,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminDepartments = lazy(() => import("./pages/AdminDepartments"));
 const AdminManageStaff = lazy(() => import("./pages/AdminManageStaff"));
 const IssueManagementPage = lazy(() => import("./pages/IssueManagementPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 
 const AccountAdminDashboard = lazy(() => import("./pages/AccountAdminDashboard"));
 const StudentWelfareAdminDashboard = lazy(() => import("./pages/StudentWelfareAdminDashboard"));
@@ -61,6 +62,11 @@ function ProtectedRoute({ children, allowedRoles }) {
   const adminDept = localStorage.getItem("admin_department"); // Both Priya & Rajesh have this
 
   if (!role || !id) return <Navigate to="/" replace />;
+
+  // 0. Profile Page is accessible to all logged-in users
+  if (window.location.pathname.toLowerCase() === "/profile") {
+    return children;
+  }
 
   // 1. Master Admin Logic
   if (isMasterAdmin) {
@@ -177,6 +183,8 @@ function App() {
           <Route path="/admin/crc" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><CRCAdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/transport" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><TransportAdminDashboard /></ProtectedRoute>} />
 
+          {/* User Profile Route */}
+          <Route path="/profile" element={<ProtectedRoute allowedRoles={["admin", "staff", "student"]}><ProfilePage /></ProtectedRoute>} />
 
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

@@ -9,14 +9,14 @@ import { sendEmailOtp } from "../utils/emailService.js";
 
 
 // ================= SMS SETUP (Innuvis API) =================
-const sendSms = async (phone, otp) => {
+const sendSms = async (phone, otp, customMessage = null) => {
   try {
     let formattedPhone = phone.toString().trim();
     if (formattedPhone.length === 10) {
       formattedPhone = "91" + formattedPhone;
     }
 
-    const message = `Dear User, Your One-Time Password (OTP) for registering on the CT University Grievance Portal is: ${otp} - CTU Support Team`;
+    const message = customMessage || `Dear User, Your One-Time Password (OTP) for registering on the CT University Grievance Portal is: ${otp} - CTU Support Team`;
     const encodedMessage = encodeURIComponent(message);
 
     const url = `${process.env.SMS_API_URL}&number=${formattedPhone}&text=${encodedMessage}`;
@@ -102,21 +102,28 @@ export const registerRequest = async (req, res) => {
       };
       await StudentUser.findOneAndUpdate({ id: safeId }, studentData, { upsert: true, new: true });
     } else {
+      const staffDept = req.body.department || validRecord.department || "";
       const staffData = {
         ...baseUserData,
         role: validRecord.role || userRole,
-        staffDepartment: validRecord.department || req.body.department || "",
+        staffDepartment: staffDept,
         isDeptAdmin: false,
-        adminDepartment: "",
+        adminDepartment: staffDept,
         isMasterAdmin: false,
       };
       await StaffUser.findOneAndUpdate({ id: safeId }, staffData, { upsert: true, new: true });
+
+      if (validRecord && !validRecord.department && staffDept) {
+        validRecord.department = staffDept;
+        await validRecord.save();
+      }
     }
 
     // Also save to legacy User collection for backup
+    const staffDeptBackup = req.body.department || validRecord.department || "";
     await User.findOneAndUpdate(
       { id: safeId },
-      { ...baseUserData, role: userRole, program: validRecord.program || "", staffDepartment: validRecord.department || "" },
+      { ...baseUserData, role: userRole, program: validRecord.program || "", staffDepartment: staffDeptBackup, adminDepartment: staffDeptBackup },
       { upsert: true, new: true }
     );
 
@@ -463,3 +470,365 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ message: "Password reset failed" });
   }
 };
+
+// =================================================
+// 7️⃣ GET USER PROFILE
+// =================================================
+export const getUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id?.toString().trim().toUpperCase();
+    let user = await StaffUser.findOne({ id: userId });
+    let isStaffOrAdmin = true;
+
+    if (!user) {
+      user = await StudentUser.findOne({ id: userId });
+      isStaffOrAdmin = false;
+    }
+    if (!user) {
+      user = await User.findOne({ id: userId });
+      isStaffOrAdmin = user?.role !== "student";
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // For Super Admin, department is "Super Admin"
+    let dept = "";
+    if (user.isMasterAdmin) {
+      dept = user.adminDepartment || user.staffDepartment || "Super Admin";
+    } else if (isStaffOrAdmin) {
+      dept = user.adminDepartment || user.staffDepartment || "";
+    } else {
+      dept = user.program || "";
+    }
+
+    res.json({
+      id: user.id,
+      fullName: user.fullName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role,
+      department: dept,
+      adminDepartment: user.adminDepartment || "",
+      staffDepartment: user.staffDepartment || "",
+      isDeptAdmin: user.isDeptAdmin || false,
+      isMasterAdmin: user.isMasterAdmin || false,
+    });
+  } catch (err) {
+    console.error("Get Profile Error:", err);
+    res.status(500).json({ message: "Failed to fetch profile" });
+  }
+};
+
+// =================================================
+// 8️⃣ UPDATE USER PROFILE (Name, Department)
+// =================================================
+export const updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id?.toString().trim().toUpperCase();
+    const { fullName, department } = req.body;
+
+    let user = await StaffUser.findOne({ id: userId });
+    let isStudent = false;
+
+    if (!user) {
+      user = await StudentUser.findOne({ id: userId });
+      isStudent = true;
+    }
+    if (!user) {
+      user = await User.findOne({ id: userId });
+      isStudent = user?.role === "student";
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update Full Name
+    if (fullName && fullName.trim()) {
+      user.fullName = fullName.trim();
+    }
+
+    // Department handling
+    let newDept = "";
+    if (user.isMasterAdmin) {
+      // Super admin department: default to "Super Admin" or as selected
+      newDept = department?.trim() || user.adminDepartment || user.staffDepartment || "Super Admin";
+      user.adminDepartment = newDept;
+      user.staffDepartment = newDept;
+    } else if (!isStudent && department !== undefined) {
+      newDept = department.trim();
+      user.staffDepartment = newDept;
+      user.adminDepartment = newDept;
+    }
+
+    await user.save();
+
+    // Sync with User model
+    const userUpdate = {};
+    if (fullName && fullName.trim()) userUpdate.fullName = fullName.trim();
+    if (newDept) {
+      userUpdate.staffDepartment = newDept;
+      userUpdate.adminDepartment = newDept;
+    }
+    await User.findOneAndUpdate({ id: userId }, { $set: userUpdate });
+
+    // Sync with StaffRecord
+    if (!isStudent) {
+      const staffRecordUpdate = {};
+      if (fullName && fullName.trim()) staffRecordUpdate.fullName = fullName.trim();
+      if (newDept) staffRecordUpdate.department = newDept;
+      await StaffRecord.findOneAndUpdate({ id: userId }, { $set: staffRecordUpdate });
+    }
+
+    // Generate updated JWT token so client session stays updated
+    const tokenPayload = {
+      id: user.id,
+      role: user.role || (isStudent ? "student" : "staff"),
+      isDeptAdmin: user.isDeptAdmin || false,
+      adminDepartment: user.adminDepartment || newDept || "",
+      isMasterAdmin: user.isMasterAdmin || false,
+    };
+
+    const token = jwt.sign(
+      tokenPayload,
+      process.env.JWT_SECRET || "fallback_secret_key_123",
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Profile updated successfully",
+      token,
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        department: newDept || user.adminDepartment || user.staffDepartment || (user.isMasterAdmin ? "Super Admin" : ""),
+        adminDepartment: user.adminDepartment || newDept || "",
+        staffDepartment: user.staffDepartment || newDept || "",
+        isDeptAdmin: user.isDeptAdmin || false,
+        isMasterAdmin: user.isMasterAdmin || false,
+      },
+    });
+  } catch (err) {
+    console.error("Update Profile Error:", err);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+};
+
+// =================================================
+// 9️⃣ REQUEST EMAIL UPDATE OTP
+// =================================================
+export const requestEmailOtp = async (req, res) => {
+  try {
+    const userId = req.user.id?.toString().trim().toUpperCase();
+    const { newEmail } = req.body;
+
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    const cleanEmail = newEmail.toLowerCase().trim();
+
+    // Check if email is already in use by another user
+    const existing = await StaffUser.findOne({ email: cleanEmail, id: { $ne: userId } }) ||
+                     await StudentUser.findOne({ email: cleanEmail, id: { $ne: userId } }) ||
+                     await User.findOne({ email: cleanEmail, id: { $ne: userId } });
+
+    if (existing) {
+      return res.status(400).json({ message: "This email address is already registered to another account." });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 10 * 60 * 1000;
+
+    let user = await StaffUser.findOne({ id: userId }) ||
+               await StudentUser.findOne({ id: userId }) ||
+               await User.findOne({ id: userId });
+
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    user.pendingEmail = cleanEmail;
+    user.pendingEmailOtp = otp;
+    user.pendingEmailOtpExpires = expires;
+    await user.save();
+
+    await User.findOneAndUpdate({ id: userId }, {
+      pendingEmail: cleanEmail,
+      pendingEmailOtp: otp,
+      pendingEmailOtpExpires: expires,
+    });
+
+    await sendEmailOtp(cleanEmail, otp);
+    if (global.logOTP) global.logOTP("PROFILE_EMAIL_UPDATE", cleanEmail, otp);
+
+    res.json({ message: `Verification code sent to ${cleanEmail}` });
+  } catch (err) {
+    console.error("Request Email OTP Error:", err);
+    res.status(500).json({ message: "Failed to send email verification OTP." });
+  }
+};
+
+// =================================================
+// 🔟 VERIFY EMAIL UPDATE OTP
+// =================================================
+export const verifyEmailOtp = async (req, res) => {
+  try {
+    const userId = req.user.id?.toString().trim().toUpperCase();
+    const { newEmail, otp } = req.body;
+
+    const cleanEmail = newEmail?.toLowerCase().trim();
+
+    let user = await StaffUser.findOne({ id: userId }) ||
+               await StudentUser.findOne({ id: userId }) ||
+               await User.findOne({ id: userId });
+
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    if (!user.pendingEmail || user.pendingEmail !== cleanEmail) {
+      return res.status(400).json({ message: "Pending email mismatch. Please request a new OTP." });
+    }
+
+    if (user.pendingEmailOtp !== otp || user.pendingEmailOtpExpires < Date.now()) {
+      return res.status(400).json({ message: "Invalid or expired verification code." });
+    }
+
+    user.email = cleanEmail;
+    user.pendingEmail = undefined;
+    user.pendingEmailOtp = undefined;
+    user.pendingEmailOtpExpires = undefined;
+    await user.save();
+
+    await User.findOneAndUpdate({ id: userId }, {
+      email: cleanEmail,
+      pendingEmail: undefined,
+      pendingEmailOtp: undefined,
+      pendingEmailOtpExpires: undefined,
+    });
+
+    await StaffRecord.findOneAndUpdate({ id: userId }, { email: cleanEmail });
+    await StudentRecord.findOneAndUpdate({ id: userId }, { email: cleanEmail });
+
+    // Refresh JWT
+    const tokenPayload = {
+      id: user.id,
+      role: user.role,
+      isDeptAdmin: user.isDeptAdmin || false,
+      adminDepartment: user.adminDepartment || "",
+      isMasterAdmin: user.isMasterAdmin || false,
+    };
+
+    const token = jwt.sign(
+      tokenPayload,
+      process.env.JWT_SECRET || "fallback_secret_key_123",
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Email address verified and updated successfully!",
+      email: cleanEmail,
+      token,
+    });
+  } catch (err) {
+    console.error("Verify Email OTP Error:", err);
+    res.status(500).json({ message: "Failed to verify email OTP." });
+  }
+};
+
+// =================================================
+// 1️⃣1️⃣ REQUEST PHONE UPDATE OTP
+// =================================================
+export const requestPhoneOtp = async (req, res) => {
+  try {
+    const userId = req.user.id?.toString().trim().toUpperCase();
+    const { newPhone } = req.body;
+
+    const cleanPhone = newPhone?.toString().trim();
+    if (!cleanPhone || !/^\d{10}$/.test(cleanPhone)) {
+      return res.status(400).json({ message: "Please provide a valid 10-digit mobile number." });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 10 * 60 * 1000;
+
+    let user = await StaffUser.findOne({ id: userId }) ||
+               await StudentUser.findOne({ id: userId }) ||
+               await User.findOne({ id: userId });
+
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    user.pendingPhone = cleanPhone;
+    user.pendingPhoneOtp = otp;
+    user.pendingPhoneOtpExpires = expires;
+    await user.save();
+
+    await User.findOneAndUpdate({ id: userId }, {
+      pendingPhone: cleanPhone,
+      pendingPhoneOtp: otp,
+      pendingPhoneOtpExpires: expires,
+    });
+
+    await sendSms(cleanPhone, otp, `Dear User, Your One-Time Password (OTP) for updating your phone number on the CT University Grievance Portal is: ${otp} - CTU Support Team`);
+    if (global.logOTP) global.logOTP("PROFILE_PHONE_UPDATE", user.email, null, otp);
+
+    res.json({ message: `Verification code sent to ${cleanPhone}` });
+  } catch (err) {
+    console.error("Request Phone OTP Error:", err);
+    res.status(500).json({ message: "Failed to send SMS verification OTP." });
+  }
+};
+
+// =================================================
+// 1️⃣2️⃣ VERIFY PHONE UPDATE OTP
+// =================================================
+export const verifyPhoneOtp = async (req, res) => {
+  try {
+    const userId = req.user.id?.toString().trim().toUpperCase();
+    const { newPhone, otp } = req.body;
+
+    const cleanPhone = newPhone?.toString().trim();
+
+    let user = await StaffUser.findOne({ id: userId }) ||
+               await StudentUser.findOne({ id: userId }) ||
+               await User.findOne({ id: userId });
+
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    if (!user.pendingPhone || user.pendingPhone !== cleanPhone) {
+      return res.status(400).json({ message: "Pending phone mismatch. Please request a new OTP." });
+    }
+
+    if (user.pendingPhoneOtp !== otp || user.pendingPhoneOtpExpires < Date.now()) {
+      return res.status(400).json({ message: "Invalid or expired verification code." });
+    }
+
+    user.phone = cleanPhone;
+    user.pendingPhone = undefined;
+    user.pendingPhoneOtp = undefined;
+    user.pendingPhoneOtpExpires = undefined;
+    await user.save();
+
+    await User.findOneAndUpdate({ id: userId }, {
+      phone: cleanPhone,
+      pendingPhone: undefined,
+      pendingPhoneOtp: undefined,
+      pendingPhoneOtpExpires: undefined,
+    });
+
+    await StaffRecord.findOneAndUpdate({ id: userId }, { phone: cleanPhone });
+    await StudentRecord.findOneAndUpdate({ id: userId }, { phone: cleanPhone });
+
+    res.json({
+      message: "Phone number verified and updated successfully!",
+      phone: cleanPhone,
+    });
+  } catch (err) {
+    console.error("Verify Phone OTP Error:", err);
+    res.status(500).json({ message: "Failed to verify phone OTP." });
+  }
+};
+

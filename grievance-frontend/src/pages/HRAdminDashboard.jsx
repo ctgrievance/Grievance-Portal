@@ -11,6 +11,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
+import ProfileHeaderButton from "../components/ProfileHeaderButton";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -256,6 +257,7 @@ function HRAdminDashboard() {
               </span>
             </p>
           </div>
+          <ProfileHeaderButton />
         </div>
         <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>

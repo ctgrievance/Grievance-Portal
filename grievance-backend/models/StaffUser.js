@@ -23,6 +23,14 @@ const staffUserSchema = new mongoose.Schema({
     resetOtp: { type: String },
     resetOtpExpires: { type: Date },
 
+    // Profile Update OTPs
+    pendingEmail: { type: String },
+    pendingEmailOtp: { type: String },
+    pendingEmailOtpExpires: { type: Number },
+    pendingPhone: { type: String },
+    pendingPhoneOtp: { type: String },
+    pendingPhoneOtpExpires: { type: Number },
+
     // Staff/Admin Specific Info
     staffDepartment: { type: String, default: "" },
 
