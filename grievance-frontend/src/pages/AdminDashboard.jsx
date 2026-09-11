@@ -50,6 +50,7 @@ function AdminDashboard() {
   // ✅ FILTER STATES
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [filterRole, setFilterRole] = useState("All"); // All, student, staff
   const [filterDepartment, setFilterDepartment] = useState("All");
   const [filterMonth, setFilterMonth] = useState("");
 
@@ -139,11 +140,11 @@ function AdminDashboard() {
       (g.assignedTo || "").toLowerCase().includes(query) ||
       assignedStaffName.toLowerCase().includes(query);
 
-    const matchStatus = filterStatus === "All" 
-      ? true 
+    const matchStatus = filterStatus === "All"
+      ? true
       : filterStatus === "Rerouted"
-      ? !!g.isRerouted
-      : g.status === filterStatus;
+        ? !!g.isRerouted
+        : g.status === filterStatus;
 
     const categoryOrSchool = g.category || g.school || "";
     const matchDept = filterDepartment === "All" || categoryOrSchool === filterDepartment;
@@ -155,7 +156,9 @@ function AdminDashboard() {
       matchMonth = gDate.getFullYear() === parseInt(year) && (gDate.getMonth() + 1) === parseInt(month);
     }
 
-    return matchSearch && matchStatus && matchDept && matchMonth;
+    const matchRole = filterRole === "All" || submitterRole === filterRole;
+
+    return matchSearch && matchStatus && matchRole && matchDept && matchMonth;
   });
   // ✅ OPEN EXPORT PREVIEW MODAL
   const handleOpenExportModal = () => {
@@ -203,6 +206,7 @@ function AdminDashboard() {
   const resetFilters = () => {
     setSearchQuery("");
     setFilterStatus("All");
+    setFilterRole("All");
     setFilterDepartment("All");
     setFilterMonth("");
   };
@@ -322,6 +326,14 @@ function AdminDashboard() {
                 <option value="Resolved">Resolved</option>
                 <option value="Rejected">Rejected</option>
                 <option value="Rerouted">🔁 Re-routed Only</option>
+              </select>
+              <select
+                value={filterRole} onChange={(e) => setFilterRole(e.target.value)}
+                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 140px", cursor: "pointer" }}
+              >
+                <option value="All">All Users</option>
+                <option value="student">Student</option>
+                <option value="staff">Staff</option>
               </select>
               <select
                 value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}
