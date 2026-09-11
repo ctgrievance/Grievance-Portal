@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
-// ✅ ChatPopup Import
+// ChatPopup Import
 import ChatPopup from "../components/ChatPopup";
 import ChatNotificationToast from "../components/ChatNotificationToast";
 import { connectSocketUser } from "../services/socket";
@@ -9,10 +9,11 @@ import { playNotificationSound } from "../utils/soundAlert";
 import Verifications from "../components/Verifications";
 import StudentNavbar from "../components/StudentNavbar";
 import StudentServiceGrid from "../components/StudentServiceGrid";
+import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import ctLogo from "../assets/ct-logo.png";
 import {
   BellIcon, GraduationCapIcon, ChartBarIcon, ClockIcon, CheckCircleIcon,
-  AlertCircleIcon, PaperclipIcon, MessageCircleIcon, TrashIcon
+  PaperclipIcon, TrashIcon
 } from "../components/Icons";
 
 
@@ -49,7 +50,7 @@ function StudentDashboard() {
       if (res.ok) {
         setHistory(prev => prev.filter(g => g._id !== id));
         setSelectedGrievance(null);
-        setMsg("✅ Grievance removed from view.");
+        setMsg("Grievance removed from view.");
         setStatusType("success");
         setTimeout(() => setMsg(""), 3000);
       } else {
@@ -281,23 +282,23 @@ function StudentDashboard() {
   const pendingPct = (stats.pending / totalG) * 100;
   const rejectedPct = (stats.rejected / totalG) * 100;
 
-  // Inline Styles for Graph (Clean & Professional)
+  // Inline Styles for Graph (Clean & Executive Slate Aesthetic)
   const graphStyles = {
     statsContainer: {
-      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px', width: '100%'
+      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px', width: '100%'
     },
     statCard: {
-      background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+      background: '#ffffff', padding: '18px 22px', borderRadius: '10px', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
     },
     statIcon: {
-      width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem'
+      width: '46px', height: '46px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center'
     },
     graphSection: {
-      background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '30px', width: '100%', boxSizing: 'border-box'
+      background: '#ffffff', padding: '20px 24px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '24px', width: '100%', boxSizing: 'border-box'
     },
-    barGroup: { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' },
-    barTrack: { flex: 1, height: '12px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' },
-    barLabel: { width: '100px', fontWeight: '500', color: '#64748b', fontSize: '0.9rem' }
+    barGroup: { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '12px' },
+    barTrack: { flex: 1, height: '10px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' },
+    barLabel: { width: '100px', fontWeight: '600', color: '#475569', fontSize: '0.85rem' }
   };
   const StarRating = ({ value, onChange }) => (
     <div style={{ fontSize: "1.8rem", marginBottom: "10px" }}>
@@ -317,7 +318,7 @@ function StudentDashboard() {
     </div>
   );
   const submitRating = async () => {
-    if (ratingStars === 0) return alert("⭐ Mandatory Rating: Please select 1 to 5 stars before submitting!");
+    if (ratingStars === 0) return alert("Mandatory Rating: Please select 1 to 5 stars before submitting!");
     if (ratingStars < 3 && !ratingFeedback.trim()) {
       return alert("Please provide a reason for giving a low rating.");
     }
@@ -344,7 +345,7 @@ function StudentDashboard() {
       const data = await res.json();
 
       if (res.ok) {
-        alert("⭐ Thank you for your feedback!");
+        alert("Thank you for your feedback!");
         setHistory(prev =>
           prev.map(g =>
             g._id === selectedGrievance._id
@@ -400,23 +401,27 @@ function StudentDashboard() {
         </div>
       )}
 
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" />
           <div className="header-content">
             <h1>Student Dashboard</h1>
-            <p>
+            <p className="admin-header-user-info">
               Welcome back, <strong>{studentName || userId}</strong>
-              {/* ✅ Department Badge added here */}
               {studentDept && (
-                <span className="status-badge status-assigned" style={{ marginLeft: '10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <GraduationCapIcon width="14" height="14" /> {studentDept}
+                <span className="admin-master-badge">
+                  <GraduationCapIcon width="12" height="12" /> {studentDept}
                 </span>
               )}
             </p>
           </div>
         </div>
-        <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
+        <div className="admin-header-actions">
+          <ProfileHeaderButton />
+          <button className="logout-btn-header" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* ✅ DYNAMIC NAVBAR */}
@@ -428,33 +433,33 @@ function StudentDashboard() {
         <div style={graphStyles.statsContainer}>
           <div style={graphStyles.statCard}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase' }}>Total Grievances</h3>
-              <p style={{ margin: '5px 0 0', fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>{stats.total}</p>
+              <h3 style={{ margin: 0, fontSize: '0.74rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Total Grievances</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '1.85rem', fontWeight: 700, color: '#0f172a' }}>{stats.total}</p>
             </div>
-            <div style={{ ...graphStyles.statIcon, background: '#eff6ff', color: '#2563eb' }}><ChartBarIcon width="24" height="24" /></div>
+            <div style={{ ...graphStyles.statIcon, background: '#f1f5f9', color: '#334155' }}><ChartBarIcon width="22" height="22" /></div>
           </div>
 
           <div style={graphStyles.statCard}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase' }}>Pending</h3>
-              <p style={{ margin: '5px 0 0', fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>{stats.pending}</p>
+              <h3 style={{ margin: 0, fontSize: '0.74rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Pending</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '1.85rem', fontWeight: 700, color: '#0f172a' }}>{stats.pending}</p>
             </div>
-            <div style={{ ...graphStyles.statIcon, background: '#fff7ed', color: '#ea580c' }}><ClockIcon width="24" height="24" /></div>
+            <div style={{ ...graphStyles.statIcon, background: '#fffbeb', color: '#b45309' }}><ClockIcon width="22" height="22" /></div>
           </div>
 
           <div style={graphStyles.statCard}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase' }}>Resolved</h3>
-              <p style={{ margin: '5px 0 0', fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>{stats.resolved}</p>
+              <h3 style={{ margin: 0, fontSize: '0.74rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Resolved</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '1.85rem', fontWeight: 700, color: '#0f172a' }}>{stats.resolved}</p>
             </div>
-            <div style={{ ...graphStyles.statIcon, background: '#f0fdf4', color: '#16a34a' }}><CheckCircleIcon width="24" height="24" /></div>
+            <div style={{ ...graphStyles.statIcon, background: '#ecfdf5', color: '#16a34a' }}><CheckCircleIcon width="22" height="22" /></div>
           </div>
         </div>
 
         {/* ✅ 2. GRAPH / VISUAL REPRESENTATION */}
         {stats.total > 0 && (
           <div style={graphStyles.graphSection}>
-            <h2 style={{ margin: '0 0 20px', fontSize: '1.2rem', color: '#1e293b' }}>Resolution Status</h2>
+            <h2 style={{ margin: '0 0 16px', fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Resolution Status</h2>
 
             {/* Resolved Bar */}
             <div style={graphStyles.barGroup}>
@@ -520,19 +525,19 @@ function StudentDashboard() {
           <div className="card">
             <h2>Recent Activity</h2>
 
-            {/* ✅ FILTER BAR */}
+            {/* FILTER BAR */}
             <div className="mobile-filter-bar filter-bar" style={{
-              display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
-              padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
+              display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "18px",
+              padding: "12px 14px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
               <input
                 type="text" placeholder="Search Staff ID..."
                 value={searchStaffId} onChange={(e) => setSearchStaffId(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
+                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", fontSize: "0.85rem", background: "#ffffff" }}
               />
               <select
                 value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 120px", cursor: "pointer" }}
+                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 120px", cursor: "pointer", fontSize: "0.85rem", background: "#ffffff" }}
               >
                 <option value="All">All Status</option>
                 <option value="Pending">Pending</option>
@@ -542,7 +547,7 @@ function StudentDashboard() {
               </select>
               <select
                 value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
+                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer", fontSize: "0.85rem", background: "#ffffff" }}
               >
                 <option value="All">All Departments</option>
                 {uniqueDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
@@ -550,27 +555,29 @@ function StudentDashboard() {
               <input
                 type="month"
                 value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
-                style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
+                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer", fontSize: "0.85rem", background: "#ffffff" }}
               />
               <button
                 onClick={() => {
                   setSearchStaffId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
                 }}
-                style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}
+                style={{ padding: "8px 16px", borderRadius: "6px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#334155", cursor: "pointer", fontWeight: "600", fontSize: "0.84rem", transition: "all 0.15s ease" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = "#0f172a"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "#ffffff"; e.currentTarget.style.color = "#334155"; }}
               >
                 Reset
               </button>
             </div>
 
             {loading ? (
-              <p>Loading records...</p>
+              <p style={{ color: "#64748b", padding: "20px 0" }}>Loading records...</p>
             ) : filteredHistory.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
-                <h3>No grievances found</h3>
-                <p>{history.length === 0 ? "You haven't submitted any grievances yet." : "No grievances match your filters."}</p>
+                <h3 style={{ color: "#0f172a" }}>No grievances found</h3>
+                <p style={{ color: "#64748b" }}>{history.length === 0 ? "You haven't submitted any grievances yet." : "No grievances match your filters."}</p>
                 {history.length === 0 && (
                   <button
-                    style={{ marginTop: '15px', padding: '10px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                    style={{ marginTop: '15px', padding: '8px 18px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: "0.85rem" }}
                     onClick={() => {
                       document.getElementById("lodge-grievance-section")?.scrollIntoView({ behavior: "smooth" });
                     }}
@@ -633,7 +640,7 @@ function StudentDashboard() {
                           <div className="chat-btn-wrapper">
                             <button
                               className="action-btn"
-                              style={{ backgroundColor: "#3b82f6", color: "white" }}
+                              style={{ backgroundColor: "#0f172a", color: "white" }}
                               onClick={(e) => { e.stopPropagation(); openChat(g._id); }}
                             >
                               Chat
@@ -741,12 +748,13 @@ function StudentDashboard() {
                           onClick={submitRating}
                           disabled={ratingSubmitting}
                           style={{
-                            padding: "10px 20px",
-                            background: "#facc15",
-                            color: "#78350f",
+                            padding: "8px 18px",
+                            background: "#0f172a",
+                            color: "#ffffff",
                             border: "none",
-                            borderRadius: "8px",
+                            borderRadius: "6px",
                             fontWeight: "600",
+                            fontSize: "0.85rem",
                             cursor: "pointer"
                           }}
                         >
@@ -872,37 +880,36 @@ function StudentDashboard() {
 
 
 
-      {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
+      {/* ✅ SUPER SMOOTH INTERACTIONS */}
       <style>{`
-        .dashboard-container { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .dashboard-container { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Smooth Transitions */
         .card, .navbar, input, select, textarea, button, .action-btn, .submit-btn, .logout-btn-header {
-          transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+          transition: all 0.15s ease !important;
         }
 
         /* Hover Effects */
-        .card:hover { box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
+        .card:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04) !important; }
         
         button:hover, .action-btn:hover, .submit-btn:hover, .logout-btn-header:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+          transform: translateY(-1px);
         }
-        button:active, .action-btn:active { transform: scale(0.95); }
+        button:active, .action-btn:active { transform: scale(0.98); }
 
         /* Inputs */
         input:focus, select:focus, textarea:focus {
-          transform: scale(1.01);
-          border-color: #2563eb !important;
-          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+          border-color: #0f172a !important;
+          box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08) !important;
+          outline: none;
         }
 
         /* Table */
-        tr { transition: background-color 0.2s ease; }
+        tr { transition: background-color 0.15s ease; }
         tr:hover { background-color: #f8fafc !important; }
       `}</style>
-    </div >
+    </div>
   );
 }
 
@@ -965,14 +972,14 @@ function VerificationModal({ grievance, onVerify, onClose }) {
         {!showRejectInput ? (
           <div style={{ textAlign: "center" }}>
 
-            {/* ⚠️ Warning after first rejection */}
+            {/* Warning after first rejection */}
             {isLastAttempt && (
               <p style={{
                 color: "#b91c1c",
                 fontSize: "0.85rem",
                 marginBottom: "12px"
               }}>
-                ⚠️ You have already rejected once.
+                You have already rejected once.
                 As per university policy, further rejection is not allowed.
               </p>
             )}

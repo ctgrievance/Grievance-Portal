@@ -1749,16 +1749,14 @@ textarea:focus {
 
 /* Hover Effect: Soft Glow Background */
 .tab-btn:hover {
-  background: rgba(59, 130, 246, 0.05);
-  /* Soft Blue Tint */
-  color: #3b82f6;
-  transform: translateY(-2px);
-  /* Slight Lift */
+  background: rgba(15, 23, 42, 0.04);
+  color: #0f172a;
+  transform: translateY(-1px);
 }
 
 /* Active State */
 .tab-btn.active {
-  color: #2563eb;
+  color: #0f172a;
 }
 
 /* The Animated Underline (Magic Line) */
@@ -1768,10 +1766,10 @@ textarea:focus {
   bottom: 0px;
   left: 0;
   width: 0%;
-  height: 3px;
-  background: #2563eb;
-  border-radius: 3px 3px 0 0;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 2px;
+  background: #0f172a;
+  border-radius: 2px 2px 0 0;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tab-btn.active::after {
@@ -1780,37 +1778,37 @@ textarea:focus {
 
 /* Specific Style for Verifications Tab (Red Accent) */
 .tab-btn.tab-verifications:hover {
-  background: rgba(239, 68, 68, 0.05);
-  color: #ef4444;
+  background: rgba(220, 38, 38, 0.04);
+  color: #dc2626;
 }
 
 .tab-btn.tab-verifications.active {
-  color: #ef4444;
+  color: #dc2626;
 }
 
 .tab-btn.tab-verifications::after {
-  background: #ef4444;
+  background: #dc2626;
 }
 
-/* Ripple Click Effect (Optional - pseudo) */
+/* Ripple Click Effect */
 .tab-btn:active {
-  transform: scale(0.96);
-  background: rgba(0, 0, 0, 0.05);
+  transform: scale(0.98);
+  background: rgba(15, 23, 42, 0.04);
 }
 
 .badge-count {
-  background: #ef4444;
+  background: #dc2626;
   color: white;
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-  transition: transform 0.2s;
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.25);
+  transition: transform 0.15s ease;
 }
 
 .tab-btn:hover .badge-count {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 /* ========================================= */
@@ -2720,24 +2718,24 @@ textarea:focus {
 
 .student-nav-pill-link:hover,
 .student-nav-pill-button:hover {
-  color: #2563eb !important;
+  color: #0f172a !important;
   background: #f1f5f9 !important;
 }
 
 .student-compact-nav-list li.active .student-nav-pill-link {
-  background: #2563eb !important;
-  color: white !important;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2) !important;
 }
 
 .student-nav-pill-button.accent {
-  color: #2563eb !important;
-  background: #eff6ff !important;
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
   font-weight: 600 !important;
 }
 
 .student-nav-pill-button.accent:hover {
-  background: #dbeafe !important;
+  background: #e2e8f0 !important;
 }
 
 /* --- 2. Form App-Style Header Navbar --- */
@@ -2807,12 +2805,12 @@ textarea:focus {
 }
 
 .breadcrumb-current-name {
-  color: #1d4ed8;
-  font-weight: 700;
-  background: #eff6ff;
+  color: #0f172a;
+  font-weight: 600;
+  background: #f1f5f9;
   padding: 0.2rem 0.65rem;
   border-radius: 6px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid #e2e8f0;
 }
 
 /* Switcher Dropdown */
@@ -2840,9 +2838,9 @@ textarea:focus {
 .student-nav-switcher-btn:hover,
 .student-nav-switcher-btn.open {
   background: white;
-  border-color: #2563eb;
-  color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #0f172a;
+  color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
 }
 
 .student-nav-switcher-dropdown {
@@ -2915,13 +2913,13 @@ textarea:focus {
 }
 
 .switcher-option-item.active {
-  background: #eff6ff;
-  color: #2563eb;
+  background: #f1f5f9;
+  color: #0f172a;
   font-weight: 600;
 }
 
 .current-dot {
-  color: #2563eb;
+  color: #0f172a;
   font-size: 1.2rem;
   line-height: 0;
 }
@@ -2995,8 +2993,8 @@ textarea:focus {
 
 .service-search-input:focus {
   background: white;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
 }
 
 .clear-search-btn {
@@ -3050,11 +3048,11 @@ textarea:focus {
 }
 
 .category-pill.active {
-  background: #2563eb;
+  background: #0f172a;
   color: white;
-  border-color: #2563eb;
+  border-color: #0f172a;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
 }
 
 /* Service Grid Container */
@@ -3079,9 +3077,9 @@ textarea:focus {
 }
 
 .service-card:hover {
-  border-color: #93c5fd;
+  border-color: #cbd5e1;
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px -3px rgba(37, 99, 235, 0.08), 0 4px 6px -4px rgba(37, 99, 235, 0.05);
+  box-shadow: 0 6px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
 }
 
 .service-card-icon-wrap {
@@ -3133,7 +3131,7 @@ textarea:focus {
 }
 
 .service-card:hover .service-card-arrow {
-  color: #2563eb;
+  color: #0f172a;
   transform: translateX(3px);
 }
 
@@ -3146,13 +3144,18 @@ textarea:focus {
 .reset-search-btn {
   margin-top: 0.75rem;
   padding: 0.45rem 1rem;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  color: #2563eb;
+  color: #0f172a;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reset-search-btn:hover {
+  background: #e2e8f0;
 }
 
 /* --- Responsive Media Queries (Mobile / App View) --- */

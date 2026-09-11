@@ -161,10 +161,10 @@ const ROUTE_MAP = {
 
 const CATEGORY_TABS = [
   { key: "all", label: "All Services" },
-  { key: "academic", label: "🎓 Academic" },
-  { key: "finance", label: "💳 Fees & Admin" },
-  { key: "facilities", label: "🏛️ Campus Facilities" },
-  { key: "support", label: "🤝 Support & Welfare" }
+  { key: "academic", label: "Academic" },
+  { key: "finance", label: "Fees & Admin" },
+  { key: "facilities", label: "Campus Facilities" },
+  { key: "support", label: "Support & Welfare" }
 ];
 
 export default function StudentServiceGrid({ departments = [] }) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { CheckCircleIcon, AlertCircleIcon } from "./Icons";
 
 // Helper for date formatting
@@ -55,7 +55,7 @@ function Verifications({ history, onOpenModal }) {
                             {g.message.substring(0, 80)}...
                         </p>
 
-                        <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', marginBottom: '20px', borderLeft: '3px solid #3b82f6' }}>
+                        <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', marginBottom: '20px', borderLeft: '3px solid #0f172a' }}>
                             <p style={{ fontSize: '0.85rem', color: '#334155', fontStyle: 'italic', margin: 0 }}>
                                 "{g.resolutionRemarks || 'Resolution provided.'}"
                             </p>
@@ -64,15 +64,15 @@ function Verifications({ history, onOpenModal }) {
                         <button
                             onClick={() => onOpenModal(g)}
                             style={{
-                                width: '100%', padding: '12px',
-                                background: 'linear-gradient(to right, #3b82f6, #2563eb)',
+                                width: '100%', padding: '10px 16px',
+                                background: '#0f172a',
                                 color: 'white', border: 'none', borderRadius: '8px',
-                                fontWeight: '600', cursor: 'pointer',
-                                boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)',
-                                transition: 'all 0.2s'
+                                fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer',
+                                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
+                                transition: 'all 0.15s ease'
                             }}
-                            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-                            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+                            onMouseOver={(e) => { e.currentTarget.style.background = '#1e293b'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = '#0f172a'; }}
                         >
                             Review & Verify
                         </button>
