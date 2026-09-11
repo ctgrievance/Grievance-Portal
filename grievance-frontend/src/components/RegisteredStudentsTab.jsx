@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  GraduationCapIcon,
   CheckCircleIcon,
   AlertCircleIcon,
   TrashIcon,
   EditIcon,
-  XIcon
+  XIcon,
+  SearchIcon,
+  RefreshIcon,
+  PhoneIcon,
+  MailIcon
 } from "./Icons";
 
 const formatDate = (dateString) => {
@@ -126,7 +129,7 @@ function RegisteredStudentsTab() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update student");
 
-      showNotification(`✅ Student ${selectedStudent.id} updated successfully!`, "success");
+      showNotification(`Student ${selectedStudent.id} updated successfully.`, "success");
       setShowEditModal(false);
       setSelectedStudent(null);
       fetchStudents();
@@ -167,643 +170,415 @@ function RegisteredStudentsTab() {
   };
 
   return (
-    <div style={{ padding: "8px 0" }}>
-      {/* HEADER BAR */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "12px",
-          padding: "20px 24px",
-          marginBottom: "20px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          border: "1px solid #e2e8f0",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "16px"
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-            <span style={{ fontSize: "1.3rem" }}>🎓</span>
-            <h2 style={{ margin: 0, fontSize: "1.35rem", color: "#1e293b", fontWeight: "700" }}>
-              Live Registered Students
-            </h2>
-            <span
-              style={{
-                background: "#ecfdf5",
-                color: "#059669",
-                border: "1px solid #a7f3d0",
-                fontSize: "0.75rem",
-                padding: "2px 10px",
-                borderRadius: "20px",
-                fontWeight: "700",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px"
-              }}
-            >
-              <span style={{ width: "7px", height: "7px", background: "#10b981", borderRadius: "50%" }}></span>
-              LIVE DATA
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: "0.86rem", color: "#64748b" }}>
-            Real-time directory of students who have registered on the CT University Grievance Portal.
-          </p>
-        </div>
-
-        {/* STAT BADGES */}
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <div
-            style={{
-              background: "#ecfdf5",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #a7f3d0",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#065f46", fontWeight: "600", textTransform: "uppercase" }}>
-              Registered Students (OTP Verified)
-            </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#047857" }}>{totalVerified}</span>
-          </div>
-          <div
-            style={{
-              background: "#fffbeb",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #fde68a",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#92400e", fontWeight: "600", textTransform: "uppercase" }}>
-              Incomplete Signups (Pending OTP)
-            </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#b45309" }}>{totalPending}</span>
-          </div>
+    <div className="registered-tab-wrapper">
+      {/* EXECUTIVE KPI METRICS */}
+      <div className="reg-users-kpi-grid">
+        <div className="reg-users-kpi-card verified">
+          <span className="reg-users-kpi-label">Registered Students</span>
+          <div className="reg-users-kpi-val">{totalVerified}</div>
         </div>
       </div>
 
-      {/* NOTIFICATION */}
+      {/* NOTIFICATION BANNER */}
       {msg && (
-        <div
-          style={{
-            padding: "12px 18px",
-            borderRadius: "8px",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            background: msgType === "error" ? "#fee2e2" : "#dcfce7",
-            color: msgType === "error" ? "#991b1b" : "#166534",
-            border: `1px solid ${msgType === "error" ? "#fca5a5" : "#86efac"}`,
-            fontWeight: "500",
-            fontSize: "0.9rem"
-          }}
-        >
-          {msgType === "error" ? <AlertCircleIcon width="18" height="18" /> : <CheckCircleIcon width="18" height="18" />}
+        <div className={`reg-users-alert ${msgType === "error" ? "error" : "success"}`}>
+          {msgType === "error" ? <AlertCircleIcon width="16" height="16" /> : <CheckCircleIcon width="16" height="16" />}
           <span>{msg}</span>
         </div>
       )}
 
-      {/* FILTER CONTROLS */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "10px",
-          padding: "14px 18px",
-          marginBottom: "18px",
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-          alignItems: "center",
-          border: "1px solid #e2e8f0"
-        }}
-      >
-        <div style={{ flex: "1 1 280px" }}>
+      {/* FILTER & SEARCH CONTROLS */}
+      <div className="reg-users-filters-bar">
+        <div className="reg-users-search-box">
+          <span className="reg-users-search-icon">
+            <SearchIcon width="16" height="16" />
+          </span>
           <input
             type="text"
-            placeholder="🔍 Search by Student ID, Name, Email, Phone, Program..."
+            className="reg-users-search-input"
+            placeholder="Search by ID, name, email, phone, program..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            style={{
-              width: "100%",
-              padding: "9px 14px",
-              borderRadius: "6px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.88rem",
-              outline: "none"
-            }}
           />
         </div>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
-          }}
-          style={{
-            padding: "9px 14px",
-            borderRadius: "6px",
-            border: "1px solid #cbd5e1",
-            fontSize: "0.88rem",
-            background: "#fff",
-            cursor: "pointer",
-            fontWeight: "600",
-            color: "#334155"
-          }}
-        >
-          <option value="registered">🎓 Registered Students (OTP Verified)</option>
-          <option value="pending">⏳ Incomplete Signups (Pending OTP)</option>
-          <option value="all">🌐 All Accounts (Registered + Incomplete)</option>
-        </select>
+        <div className="reg-users-filter-actions">
+          <select
+            className="reg-users-select"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="registered">Verified Only</option>
+            <option value="pending">Pending OTP</option>
+            <option value="all">All Accounts</option>
+          </select>
 
-        <button
-          onClick={() => {
-            setSearch("");
-            setStatusFilter("registered");
-            setPage(1);
-          }}
-          style={{
-            padding: "9px 16px",
-            borderRadius: "6px",
-            border: "1px solid #cbd5e1",
-            background: "#f8fafc",
-            color: "#475569",
-            fontWeight: "600",
-            cursor: "pointer",
-            fontSize: "0.85rem"
-          }}
-        >
-          Reset Filters
-        </button>
+          <button
+            type="button"
+            className="reg-users-btn-reset"
+            onClick={() => {
+              setSearch("");
+              setStatusFilter("registered");
+              setPage(1);
+            }}
+          >
+            Reset
+          </button>
 
-        <button
-          onClick={fetchStudents}
-          style={{
-            padding: "9px 16px",
-            borderRadius: "6px",
-            border: "none",
-            background: "#2563eb",
-            color: "#fff",
-            fontWeight: "600",
-            cursor: "pointer",
-            fontSize: "0.85rem",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px"
-          }}
-        >
-          🔄 Refresh
-        </button>
+          <button
+            type="button"
+            className="reg-users-btn-refresh"
+            onClick={fetchStudents}
+          >
+            <RefreshIcon width="14" height="14" />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
-      {/* TABLE SECTION */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "10px",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          overflow: "hidden"
-        }}
-      >
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Student ID
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Full Name
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Contact (Email / Phone)
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Program / Course
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Type
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Status
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Registered At
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase", textAlign: "right" }}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+      {/* VIEW 1: DESKTOP TABLE VIEW */}
+      <div className="reg-users-desktop-table">
+        <div className="reg-users-table-card">
+          <div className="table-responsive">
+            <table className="reg-users-table">
+              <thead>
                 <tr>
-                  <td colSpan="8" style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-                    <div style={{ fontSize: "1.1rem", fontWeight: "500" }}>Loading registered students...</div>
-                  </td>
+                  <th>Student ID</th>
+                  <th>Full Name</th>
+                  <th>Contact Info</th>
+                  <th>Program / Course</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Registered At</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
-              ) : students.length === 0 ? (
-                <tr>
-                  <td colSpan="8" style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-                    <div style={{ fontSize: "1.3rem", marginBottom: "8px" }}>🔍</div>
-                    <div style={{ fontWeight: "600", fontSize: "1rem", color: "#334155" }}>No registered students found</div>
-                    <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem" }}>
-                      {search ? "Try adjusting your search criteria" : "Students will appear here once they create accounts on the portal."}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                students.map((student) => (
-                  <tr
-                    key={student._id || student.id}
-                    style={{
-                      borderBottom: "1px solid #f1f5f9",
-                      transition: "background 0.15s"
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                  >
-                    {/* Student ID */}
-                    <td style={{ padding: "12px 16px" }}>
-                      <span
-                        style={{
-                          fontWeight: "700",
-                          fontFamily: "monospace",
-                          color: "#1e293b",
-                          background: "#f1f5f9",
-                          padding: "3px 8px",
-                          borderRadius: "4px",
-                          fontSize: "0.82rem"
-                        }}
-                      >
-                        {student.id}
-                      </span>
-                    </td>
-
-                    {/* Name */}
-                    <td style={{ padding: "12px 16px" }}>
-                      <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.88rem" }}>
-                        {student.fullName || "Student"}
-                      </div>
-                    </td>
-
-                    {/* Contact */}
-                    <td style={{ padding: "12px 16px", fontSize: "0.82rem" }}>
-                      <div style={{ color: "#334155" }}>{student.email}</div>
-                      {student.phone && <div style={{ color: "#64748b", fontSize: "0.78rem" }}>📞 {student.phone}</div>}
-                    </td>
-
-                    {/* Program */}
-                    <td style={{ padding: "12px 16px", fontSize: "0.82rem", color: "#334155" }}>
-                      {student.program || "-"}
-                    </td>
-
-                    {/* Type */}
-                    <td style={{ padding: "12px 16px", fontSize: "0.82rem" }}>
-                      <span
-                        style={{
-                          background: "#f1f5f9",
-                          color: "#475569",
-                          padding: "2px 8px",
-                          borderRadius: "10px",
-                          fontSize: "0.75rem",
-                          fontWeight: "500"
-                        }}
-                      >
-                        {student.studentType || "Regular"}
-                      </span>
-                    </td>
-
-                    {/* Verification Status */}
-                    <td style={{ padding: "12px 16px" }}>
-                      {student.isOtpVerified || (student.isVerified && !student.otpPending) ? (
-                        <span
-                          style={{
-                            background: "#dcfce7",
-                            color: "#15803d",
-                            padding: "3px 9px",
-                            borderRadius: "12px",
-                            fontSize: "0.72rem",
-                            fontWeight: "700",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px"
-                          }}
-                        >
-                          <CheckCircleIcon width="12" height="12" /> Registered (OTP Verified)
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            background: "#fef3c7",
-                            color: "#b45309",
-                            padding: "3px 9px",
-                            borderRadius: "12px",
-                            fontSize: "0.72rem",
-                            fontWeight: "700",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px"
-                          }}
-                        >
-                          <AlertCircleIcon width="12" height="12" /> Incomplete (Pending OTP)
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Registered Date */}
-                    <td style={{ padding: "12px 16px", fontSize: "0.8rem", color: "#64748b" }}>
-                      {formatDate(student.createdAt)}
-                    </td>
-
-                    {/* Actions */}
-                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <button
-                          onClick={() => handleOpenEdit(student)}
-                          title="Edit Student Account"
-                          style={{
-                            padding: "5px 9px",
-                            borderRadius: "6px",
-                            border: "1px solid #cbd5e1",
-                            background: "#fff",
-                            color: "#2563eb",
-                            cursor: "pointer",
-                            fontSize: "0.78rem",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            fontWeight: "600"
-                          }}
-                        >
-                          <EditIcon width="14" height="14" /> Edit
-                        </button>
-                        <button
-                          onClick={() => handleOpenDelete(student)}
-                          title="Delete Student Account"
-                          style={{
-                            padding: "5px 9px",
-                            borderRadius: "6px",
-                            border: "1px solid #fecaca",
-                            background: "#fff5f5",
-                            color: "#dc2626",
-                            cursor: "pointer",
-                            fontSize: "0.78rem",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            fontWeight: "600"
-                          }}
-                        >
-                          <TrashIcon width="14" height="14" /> Delete
-                        </button>
-                      </div>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="reg-users-empty-cell">
+                      <div className="reg-users-loading-spinner">Loading registered students...</div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : students.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="reg-users-empty-cell">
+                      <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
+                      <div style={{ fontWeight: "600", color: "#334155" }}>No registered students found</div>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                        {search ? "Try adjusting your search criteria" : "Students will appear here once registered."}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  students.map((student) => (
+                    <tr key={student._id || student.id}>
+                      {/* ID */}
+                      <td>
+                        <span className="reg-user-id-badge">{student.id}</span>
+                      </td>
 
-        {/* PAGINATION */}
-        <div
-          style={{
-            padding: "12px 18px",
-            background: "#f8fafc",
-            borderTop: "1px solid #e2e8f0",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: "0.84rem",
-            color: "#64748b"
-          }}
-        >
-          <div>
-            Showing <strong>{students.length}</strong> of <strong>{total}</strong> students
+                      {/* Name */}
+                      <td>
+                        <div className="reg-user-name">{student.fullName || "Student"}</div>
+                      </td>
+
+                      {/* Contact */}
+                      <td>
+                        <div className="reg-user-contact-item">
+                          <MailIcon width="12" height="12" />
+                          <span>{student.email}</span>
+                        </div>
+                        {student.phone && (
+                          <div className="reg-user-contact-item secondary">
+                            <PhoneIcon width="12" height="12" />
+                            <span>{student.phone}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Program */}
+                      <td>
+                        <span className="reg-user-dept-text">{student.program || "-"}</span>
+                      </td>
+
+                      {/* Type */}
+                      <td>
+                        <span className="reg-user-type-badge">{student.studentType || "Regular"}</span>
+                      </td>
+
+                      {/* Verification Status */}
+                      <td>
+                        {student.isOtpVerified || (student.isVerified && !student.otpPending) ? (
+                          <span className="reg-status-badge verified">
+                            <CheckCircleIcon width="12" height="12" />
+                            <span>Verified</span>
+                          </span>
+                        ) : (
+                          <span className="reg-status-badge pending">
+                            <AlertCircleIcon width="12" height="12" />
+                            <span>Pending OTP</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Date */}
+                      <td className="reg-user-date">{formatDate(student.createdAt)}</td>
+
+                      {/* Actions */}
+                      <td style={{ textAlign: "right" }}>
+                        <div className="reg-user-actions-wrap">
+                          <button
+                            type="button"
+                            className="reg-user-action-btn edit"
+                            onClick={() => handleOpenEdit(student)}
+                            title="Edit Student"
+                          >
+                            <EditIcon width="13" height="13" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="reg-user-action-btn delete"
+                            onClick={() => handleOpenDelete(student)}
+                            title="Delete Student"
+                          >
+                            <TrashIcon width="13" height="13" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "5px",
-                border: "1px solid #cbd5e1",
-                background: page <= 1 ? "#f1f5f9" : "#fff",
-                color: page <= 1 ? "#94a3b8" : "#334155",
-                cursor: page <= 1 ? "not-allowed" : "pointer"
-              }}
-            >
-              Previous
-            </button>
-            <span style={{ fontWeight: "600", color: "#1e293b" }}>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "5px",
-                border: "1px solid #cbd5e1",
-                background: page >= totalPages ? "#f1f5f9" : "#fff",
-                color: page >= totalPages ? "#94a3b8" : "#334155",
-                cursor: page >= totalPages ? "not-allowed" : "pointer"
-              }}
-            >
-              Next
-            </button>
+        </div>
+      </div>
+
+      {/* VIEW 2: MOBILE COMPACT CARDS VIEW (SLEEK ZERO HORIZONTAL SCROLL) */}
+      <div className="reg-users-mobile-cards">
+        {loading ? (
+          <div className="reg-user-mobile-card empty-card">
+            <span>Loading registered students...</span>
           </div>
+        ) : students.length === 0 ? (
+          <div className="reg-user-mobile-card empty-card">
+            <SearchIcon width="24" height="24" style={{ color: "#94a3b8" }} />
+            <span style={{ fontWeight: "600", color: "#334155" }}>No students found</span>
+            <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+              {search ? "Adjust your search criteria" : "Students will appear here once registered."}
+            </p>
+          </div>
+        ) : (
+          students.map((student) => {
+            const isVerified = student.isOtpVerified || (student.isVerified && !student.otpPending);
+
+            return (
+              <div key={student._id || student.id} className="reg-user-mobile-card">
+                {/* Header Row: Name + ID + Status */}
+                <div className="reg-user-mcard-header">
+                  <div className="reg-user-mcard-title-group">
+                    <span className="reg-user-mcard-name">{student.fullName || "Student"}</span>
+                    <span className="reg-user-id-badge">{student.id}</span>
+                  </div>
+                  {isVerified ? (
+                    <span className="reg-status-badge verified">
+                      <CheckCircleIcon width="11" height="11" />
+                      <span>Verified</span>
+                    </span>
+                  ) : (
+                    <span className="reg-status-badge pending">
+                      <AlertCircleIcon width="11" height="11" />
+                      <span>Pending OTP</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Metadata Row: Program & Type */}
+                <div className="reg-user-mcard-meta">
+                  <span className="reg-user-mcard-prog">{student.program || "Unassigned"}</span>
+                  <span className="reg-user-mcard-dot">•</span>
+                  <span className="reg-user-type-badge">{student.studentType || "Regular"}</span>
+                </div>
+
+                {/* Contact Row */}
+                <div className="reg-user-mcard-contacts">
+                  <div className="reg-user-contact-item">
+                    <MailIcon width="12" height="12" />
+                    <span>{student.email}</span>
+                  </div>
+                  {student.phone && (
+                    <div className="reg-user-contact-item">
+                      <PhoneIcon width="12" height="12" />
+                      <span>{student.phone}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Row: Date & Actions */}
+                <div className="reg-user-mcard-footer">
+                  <span className="reg-user-mcard-date">{formatDate(student.createdAt)}</span>
+                  <div className="reg-user-actions-wrap">
+                    <button
+                      type="button"
+                      className="reg-user-action-btn edit"
+                      onClick={() => handleOpenEdit(student)}
+                    >
+                      <EditIcon width="13" height="13" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="reg-user-action-btn delete"
+                      onClick={() => handleOpenDelete(student)}
+                    >
+                      <TrashIcon width="13" height="13" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* PAGINATION BAR */}
+      <div className="reg-users-pagination">
+        <div className="reg-users-pag-info">
+          Showing <strong>{students.length}</strong> of <strong>{total}</strong> students
+        </div>
+        <div className="reg-users-pag-controls">
+          <button
+            type="button"
+            className="reg-users-pag-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          >
+            Previous
+          </button>
+          <span className="reg-users-pag-count">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            className="reg-users-pag-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          >
+            Next
+          </button>
         </div>
       </div>
 
       {/* MODAL: EDIT STUDENT */}
       {showEditModal && selectedStudent && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: "10px",
-              maxWidth: "520px",
-              width: "100%",
-              padding: "24px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)"
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+        <div className="reg-users-modal-overlay">
+          <div className="reg-users-modal-box">
+            <div className="reg-users-modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b" }}>Edit Registered Student</h3>
-                <span style={{ fontSize: "0.78rem", color: "#64748b" }}>Student ID: {selectedStudent.id}</span>
+                <h3 className="reg-users-modal-title">Edit Registered Student</h3>
+                <span className="reg-users-modal-subtitle">Student ID: {selectedStudent.id}</span>
               </div>
               <button
+                type="button"
+                className="reg-users-modal-close"
                 onClick={() => setShowEditModal(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}
               >
-                <XIcon width="20" height="20" />
+                <XIcon width="18" height="18" />
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit}>
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                  Full Name *
-                </label>
+            <form onSubmit={handleEditSubmit} className="reg-users-modal-form">
+              <div className="form-group">
+                <label>Full Name *</label>
                 <input
                   type="text"
                   required
                   value={editFormData.fullName}
                   onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                  Email Address *
-                </label>
+              <div className="form-group">
+                <label>Email Address *</label>
                 <input
                   type="email"
                   required
                   value={editFormData.email}
                   onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                  Phone Number
-                </label>
+              <div className="form-group">
+                <label>Phone Number</label>
                 <input
                   type="text"
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                    Program / Course
-                  </label>
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label>Program / Course</label>
                   <input
                     type="text"
                     value={editFormData.program}
                     onChange={(e) => setEditFormData({ ...editFormData, program: e.target.value })}
-                    style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                   />
                 </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                    Student Type
-                  </label>
+                <div className="form-group">
+                  <label>Student Type</label>
                   <input
                     type="text"
                     placeholder="Regular, Lateral, etc."
                     value={editFormData.studentType}
                     onChange={(e) => setEditFormData({ ...editFormData, studentType: e.target.value })}
-                    style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                   />
                 </div>
               </div>
 
               {selectedStudent && (selectedStudent.otpPending || !selectedStudent.isVerified) ? (
-                <div
-                  style={{
-                    background: "#fffbeb",
-                    border: "1px solid #fde68a",
-                    borderRadius: "6px",
-                    padding: "10px 14px",
-                    marginBottom: "16px",
-                    fontSize: "0.82rem",
-                    color: "#92400e",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                  }}
-                >
+                <div className="reg-users-alert pending" style={{ marginBottom: "16px" }}>
                   <AlertCircleIcon width="16" height="16" />
                   <span>
-                    <strong>OTP Pending:</strong> This student has not verified their registration OTP yet. They are not considered a registered student, and cannot be marked as verified until OTP verification is completed.
+                    <strong>OTP Pending:</strong> This student has not verified their registration OTP yet. They cannot be marked as verified until OTP verification is completed.
                   </span>
                 </div>
               ) : (
-                <div style={{ marginBottom: "18px" }}>
-                  <label
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "0.85rem",
-                      color: "#334155",
-                      cursor: "pointer"
-                    }}
-                  >
+                <div className="form-checkbox-group" style={{ marginBottom: "16px" }}>
+                  <label>
                     <input
                       type="checkbox"
                       checked={editFormData.isVerified}
                       onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
-                      style={{ width: "16px", height: "16px", accentColor: "#16a34a" }}
                     />
-                    <span>Registered Account Verified (OTP Completed)</span>
+                    <span>Account Verified (OTP Completed)</span>
                   </label>
                 </div>
               )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <div className="reg-users-modal-actions">
                 <button
                   type="button"
+                  className="reg-users-btn-cancel"
                   onClick={() => setShowEditModal(false)}
-                  style={{
-                    padding: "8px 16px",
-                    background: "#f1f5f9",
-                    color: "#475569",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "0.86rem"
-                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit}
-                  style={{
-                    padding: "8px 18px",
-                    background: "#2563eb",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    fontSize: "0.86rem"
-                  }}
+                  className="reg-users-btn-save"
                 >
                   {savingEdit ? "Saving..." : "Save Changes"}
                 </button>
@@ -815,50 +590,13 @@ function RegisteredStudentsTab() {
 
       {/* MODAL: DELETE CONFIRMATION */}
       {showDeleteModal && studentToDelete && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: "10px",
-              maxWidth: "460px",
-              width: "100%",
-              padding: "24px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15)"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  background: "#fee2e2",
-                  color: "#dc2626",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-              >
-                <TrashIcon width="20" height="20" />
-              </div>
-              <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b" }}>Delete Student Account</h3>
+        <div className="reg-users-modal-overlay">
+          <div className="reg-users-modal-box delete-box">
+            <div className="reg-users-delete-icon">
+              <TrashIcon width="20" height="20" />
             </div>
-
-            <p style={{ fontSize: "0.88rem", color: "#475569", lineHeight: "1.5", margin: "0 0 16px 0" }}>
+            <h3 className="reg-users-modal-title" style={{ marginTop: "12px" }}>Delete Student Account</h3>
+            <p className="reg-users-delete-text">
               Are you sure you want to delete registered student{" "}
               <strong>
                 {studentToDelete.fullName} ({studentToDelete.id})
@@ -866,19 +604,11 @@ function RegisteredStudentsTab() {
               ? This will remove their login account from the portal.
             </p>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <div className="reg-users-modal-actions">
               <button
                 type="button"
+                className="reg-users-btn-cancel"
                 onClick={() => setShowDeleteModal(false)}
-                style={{
-                  padding: "8px 16px",
-                  background: "#f1f5f9",
-                  color: "#475569",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "0.86rem"
-                }}
               >
                 Cancel
               </button>
@@ -886,16 +616,7 @@ function RegisteredStudentsTab() {
                 type="button"
                 disabled={deleting}
                 onClick={handleConfirmDelete}
-                style={{
-                  padding: "8px 18px",
-                  background: "#dc2626",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  fontSize: "0.86rem"
-                }}
+                className="reg-users-btn-danger"
               >
                 {deleting ? "Deleting..." : "Yes, Delete Student"}
               </button>

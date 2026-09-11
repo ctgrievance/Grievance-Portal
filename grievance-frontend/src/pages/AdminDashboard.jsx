@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
-
-import AdminUploadRecords from "../components/AdminUploadRecords";
 import StaffRoleManager from "../components/StaffRoleManager";
 import AdminDepartments from "./AdminDepartments";
 import RegisteredUsersView from "../components/RegisteredUsersView";
@@ -17,7 +15,6 @@ import {
   RerouteIcon,
   SearchIcon,
   ClipboardIcon,
-  ChartBarIcon,
   UsersIcon,
   BuildingIcon,
   UserIcon
@@ -82,12 +79,6 @@ function AdminDashboard() {
       IconComponent: ClipboardIcon,
       description: "Review incoming grievances, status & triage"
     },
-    {
-      id: "upload",
-      label: "Export Records",
-      IconComponent: ChartBarIcon,
-      description: "Filter & export grievance spreadsheets"
-    },
     ...(canManageStaff
       ? [
           {
@@ -110,8 +101,7 @@ function AdminDashboard() {
             id: "registered_users",
             label: "Registered Users",
             IconComponent: UserIcon,
-            description: "Live verified students & staff accounts",
-            isLive: true
+            description: "Verified student and staff accounts"
           }
         ]
       : [])
@@ -281,7 +271,7 @@ function AdminDashboard() {
       {/* HEADER */}
       <header className="dashboard-header admin-dashboard-header">
         <div className="admin-header-brand-wrap">
-          <img src={ctLogo} alt="CT University" className="admin-header-logo" style={{ height: "46px" }} />
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" />
           <div className="header-content">
             <h1>Admin Dashboard</h1>
             <p className="admin-header-user-info">
@@ -408,7 +398,6 @@ function AdminDashboard() {
 
       {/* BODY */}
       <main className="dashboard-body admin-dashboard-body">
-        {activeTab === "upload" && <AdminUploadRecords />}
         {activeTab === "staff" && canManageStaff && <StaffRoleManager />}
         {activeTab === "departments" && isMasterAdmin && <AdminDepartments />}
         {activeTab === "registered_users" && isMasterAdmin && (

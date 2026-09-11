@@ -1,5 +1,15 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { ShieldIcon, LockIcon, AlertCircleIcon, AdminIcon, CheckCircleIcon, XIcon, UserIcon } from "./Icons";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  ShieldIcon,
+  LockIcon,
+  AlertCircleIcon,
+  CheckCircleIcon,
+  XIcon,
+  UserIcon,
+  SearchIcon,
+  EditIcon,
+  StarIcon
+} from "./Icons";
 
 const DEFAULT_DEPARTMENTS = [
   "Accounts",
@@ -24,28 +34,42 @@ function StaffRoleManager() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
+  const [msgType, setMsgType] = useState("info"); // success | error | info
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterDept, setFilterDept] = useState("all");
   const [filterRole, setFilterRole] = useState("all"); // all | admins | team | general
-  const [sortMode, setSortMode] = useState("admins-first"); // admins-first | alpha
+  const [sortMode, setSortMode] = useState("admins-first"); // admins-first | alpha | rating-high | rating-low
 
   // Current logged-in user details
   const requesterId = localStorage.getItem("grievance_id");
   const myDept = localStorage.getItem("admin_department"); // e.g. "Student Welfare"
-  const isMasterAdmin = localStorage.getItem("is_master_admin") === "true"; // ✅ Dynamic Master Check
-  const token = localStorage.getItem("grievance_token");
+  const isMasterAdmin = localStorage.getItem("is_master_admin") === "true";
 
-  // 🔥 Dynamic Departments State
+  // Dynamic Departments State
   const [departmentsList, setDepartmentsList] = useState([]);
 
-  // 🔥 Toggle for Danger Zone
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [processingId, setProcessingId] = useState(null); // Tracks which staff ID is being updated
-  const [selectedReviewsStaff, setSelectedReviewsStaff] = useState(null); // Staff selected for ratings modal
+  // Modal States
+  const [selectedStaffForManage, setSelectedStaffForManage] = useState(null);
+  const [selectedReviewsStaff, setSelectedReviewsStaff] = useState(null);
+  const [processingId, setProcessingId] = useState(null);
+  const [selectedDeptToAssign, setSelectedDeptToAssign] = useState("");
 
+  // Auto-clear message notification
+  useEffect(() => {
+    if (!msg) return;
+    const timer = setTimeout(() => {
+      setMsg("");
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [msg]);
+
+  // Fetch all departments
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`);
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`
+        );
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
@@ -59,642 +83,944 @@ function StaffRoleManager() {
     fetchDepartments();
   }, []);
 
+  // Fetch staff list from backend
   const fetchStaffList = useCallback(async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/all`, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("grievance_token")}` }
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/all`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("grievance_token")}`
+          }
+        }
+      );
       if (res.ok) {
         const data = await res.json();
         setStaffList(data);
+        return data;
       }
     } catch (err) {
-      console.error("Failed to fetch staff list");
+      console.error("Failed to fetch staff list:", err);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+    return null;
+  }, []);
 
   useEffect(() => {
     fetchStaffList();
   }, [fetchStaffList]);
 
+  // Handle Role Promote or Demote
   const handleRoleChange = async (targetStaffId, action, department) => {
-    setMsg("Processing...");
-
-    // Validations
     if (action === "promote" && !department) {
       alert("Please select a department first.");
-      setMsg("");
       return;
     }
 
-    // 🔥 NEW: Confirmation for promotion
     if (action === "promote") {
       const confirmed = window.confirm(
-        `Assign this person as Admin for ${department}?\n\nNote: If another admin exists for this department, they will be automatically removed.`
+        `Appoint as Department Head for "${department}"?\n\nNote: If another admin currently exists for this department, they will be reassigned as General Staff.`
       );
-      if (!confirmed) {
-        setMsg("");
-        return;
-      }
+      if (!confirmed) return;
     }
 
-    setProcessingId(targetStaffId); // ⏳ START LOADING
+    setProcessingId(targetStaffId);
+    setMsg("Updating staff role permissions...");
+    setMsgType("info");
 
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/role`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("grievance_token")}`
-        },
-        body: JSON.stringify({
-          targetStaffId,
-          action,      // "promote" or "demote"
-          department,  // Selected department
-        }),
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/role`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("grievance_token")}`
+          },
+          body: JSON.stringify({
+            targetStaffId,
+            action,
+            department
+          })
+        }
+      );
 
       const data = await res.json();
       if (res.ok) {
-        setMsg(`Success: ${data.message}`);
-        fetchStaffList(); // Refresh list to show new roles
+        setMsg(data.message || "Role updated successfully.");
+        setMsgType("success");
+        const updatedList = await fetchStaffList();
+
+        // If managing modal is open for this user, refresh their data live inside the modal
+        if (updatedList && selectedStaffForManage?.id === targetStaffId) {
+          const fresh = updatedList.find((s) => s.id === targetStaffId);
+          if (fresh) {
+            setSelectedStaffForManage(fresh);
+          }
+        }
+        setSelectedDeptToAssign("");
       } else {
-        setMsg(`Error: ${data.message}`);
+        setMsg(data.message || "Failed to update role.");
+        setMsgType("error");
       }
     } catch (err) {
-      setMsg("❌ Network Error");
+      setMsg("Network connection error. Please try again.");
+      setMsgType("error");
     } finally {
-      setProcessingId(null); // ✅ STOP LOADING
+      setProcessingId(null);
     }
   };
 
-  const handleTransferOwnership = async (newMasterId) => {
-    if (!window.confirm(`⚠️ DANGER: Are you sure you want to transfer MASTER ADMIN rights to ${newMasterId}? You will lose your Master Admin access.`)) return;
+  // Transfer Ownership (Master Admin Only)
+  const handleTransferOwnership = async (newMasterId, staffName) => {
+    const confirmTransfer = window.confirm(
+      `CRITICAL: Transfer MASTER ADMINISTRATOR rights to ${staffName} (${newMasterId})?\n\nYou will forfeit master access and be logged out.`
+    );
+    if (!confirmTransfer) return;
 
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/transfer-ownership`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("grievance_token")}`
-        },
-        body: JSON.stringify({ newMasterId })
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/transfer-ownership`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("grievance_token")}`
+          },
+          body: JSON.stringify({ newMasterId })
+        }
+      );
       const data = await res.json();
       if (res.ok) {
-        alert("Ownership Transferred! Please login again.");
+        alert("Ownership successfully transferred. Please login again.");
         localStorage.clear();
         window.location.href = "/";
       } else {
-        alert("Error: " + data.message);
+        alert("Error: " + (data.message || "Could not transfer ownership"));
       }
     } catch (err) {
-      alert("Server Error");
+      alert("Server error occurred while transferring ownership.");
     }
   };
 
-  // Helper to check if current user can edit target user
+  // Check whether logged-in user can edit target staff
   const canEdit = (staff) => {
-    if (isMasterAdmin) return true; // Master can edit anyone
-
-    // Dept Admin can only edit:
-    // 1. General Staff (Unassigned)
-    // 2. Staff assigned to THEIR own department (Team Members)
-    // Dept Admin CANNOT edit other Admins or staff from other depts
+    if (isMasterAdmin) return true;
     if (!staff.adminDepartment) return true;
     if (staff.adminDepartment === myDept && !staff.isDeptAdmin) return true;
-
     return false;
   };
 
+  // All valid departments list
+  const allDepartments = useMemo(() => {
+    return departmentsList.length > 0 ? departmentsList : DEFAULT_DEPARTMENTS;
+  }, [departmentsList]);
+
+  // Clean staff list (exclude student 8-digit IDs)
+  const validStaffList = useMemo(() => {
+    return staffList.filter((s) => s.id && s.id.length !== 8);
+  }, [staffList]);
+
+  // Summary Metrics
+  const totalStaffCount = validStaffList.length;
+  const adminStaffCount = validStaffList.filter((s) => s.isDeptAdmin).length;
+  const teamStaffCount = validStaffList.filter((s) => s.adminDepartment && !s.isDeptAdmin).length;
+  const generalStaffCount = validStaffList.filter((s) => !s.adminDepartment).length;
+
+  // Filtered & Sorted Staff List
+  const filteredStaffList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = [...validStaffList];
+
+    // Role filter
+    if (filterRole === "admins") {
+      list = list.filter((s) => s.isDeptAdmin);
+    } else if (filterRole === "team") {
+      list = list.filter((s) => s.adminDepartment && !s.isDeptAdmin);
+    } else if (filterRole === "general") {
+      list = list.filter((s) => !s.adminDepartment);
+    }
+
+    // Department filter
+    if (filterDept !== "all") {
+      list = list.filter((s) => {
+        const depts =
+          Array.isArray(s.adminDepartments) && s.adminDepartments.length > 0
+            ? s.adminDepartments
+            : s.adminDepartment
+            ? [s.adminDepartment]
+            : [];
+        return depts.includes(filterDept);
+      });
+    }
+
+    // Search query
+    if (q) {
+      list = list.filter(
+        (s) =>
+          (s.fullName || "").toLowerCase().includes(q) ||
+          (s.id || "").toLowerCase().includes(q) ||
+          (s.adminDepartment || "").toLowerCase().includes(q)
+      );
+    }
+
+    // Sorting
+    if (sortMode === "admins-first") {
+      list.sort((a, b) => {
+        if (a.isDeptAdmin && !b.isDeptAdmin) return -1;
+        if (!a.isDeptAdmin && b.isDeptAdmin) return 1;
+        const aTeam = a.adminDepartment && !a.isDeptAdmin;
+        const bTeam = b.adminDepartment && !b.isDeptAdmin;
+        if (aTeam && !bTeam) return -1;
+        if (!aTeam && bTeam) return 1;
+        return (a.fullName || "").localeCompare(b.fullName || "");
+      });
+    } else if (sortMode === "alpha") {
+      list.sort((a, b) => (a.fullName || "").localeCompare(b.fullName || ""));
+    } else if (sortMode === "rating-high") {
+      list.sort((a, b) => {
+        const aR = a.averageRating !== null && a.averageRating !== undefined ? a.averageRating : -1;
+        const bR = b.averageRating !== null && b.averageRating !== undefined ? b.averageRating : -1;
+        if (bR !== aR) return bR - aR;
+        return (b.totalRatings || 0) - (a.totalRatings || 0);
+      });
+    } else if (sortMode === "rating-low") {
+      list.sort((a, b) => {
+        const aR = a.averageRating !== null && a.averageRating !== undefined ? a.averageRating : 999;
+        const bR = b.averageRating !== null && b.averageRating !== undefined ? b.averageRating : 999;
+        if (aR !== bR) return aR - bR;
+        return (a.totalRatings || 0) - (b.totalRatings || 0);
+      });
+    }
+
+    return list;
+  }, [validStaffList, filterRole, filterDept, searchQuery, sortMode]);
+
+  // Helper to get array of assigned departments for a staff member
+  const getStaffDepartments = (staff) => {
+    if (!staff) return [];
+    if (Array.isArray(staff.adminDepartments) && staff.adminDepartments.length > 0) {
+      return staff.adminDepartments;
+    }
+    if (staff.adminDepartment) {
+      return [staff.adminDepartment];
+    }
+    return [];
+  };
+
+  const hasActiveFilters = searchQuery !== "" || filterRole !== "all" || filterDept !== "all";
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setFilterRole("all");
+    setFilterDept("all");
+    setSortMode("admins-first");
+  };
+
   return (
-    <div className="card" style={{ marginTop: "20px" }}>
-      <h2>Manage Staff Roles</h2>
-      <p style={{ color: "#64748b", marginBottom: "15px" }}>
-        {isMasterAdmin
-          ? "Master Privileges: You can appoint Admins for ANY department."
-          : `Department Admin: You can add team members to ${myDept}.`}
-      </p>
+    <div className="staff-mgr-container">
+      {/* HEADER WITH AUTHORITY BADGE */}
+      <div className="staff-mgr-header">
+        <div className="staff-mgr-title-group">
+          <h2>Staff & Role Management</h2>
+          <p>
+            {isMasterAdmin
+              ? "Appoint department heads, assign team responsibilities, and monitor administrative coverage."
+              : `Manage staff assignments and team roles for ${myDept}.`}
+          </p>
+        </div>
 
-      {msg && <div className="alert-box info" style={{ marginBottom: "15px" }}>{msg}</div>}
-
-      {/* Controls: Search + Filter + Sort */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-        <input
-          placeholder="Search by name or ID..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ padding: '8px 10px', flex: '1 1 200px', minWidth: '160px' }}
-        />
-
-        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ padding: '8px', flex: '1 1 130px' }}>
-          <option value="all">All</option>
-          <option value="admins">Admins (Dept Admin)</option>
-          <option value="team">Admin Staff (Team Members)</option>
-          <option value="general">General Staff</option>
-        </select>
-
-        <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} style={{ padding: '8px', flex: '1 1 130px' }}>
-          <option value="admins-first">Admins First</option>
-          <option value="alpha">Name A → Z</option>
-          <option value="rating-high">Highest Rated</option>
-          <option value="rating-low">Lowest Rated</option>
-        </select>
-
-        {/* 🔥 NEW: Advanced Toggle */}
-        {isMasterAdmin && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', marginLeft: 'auto' }}>
-            <span style={{ fontSize: '0.75rem', color: showAdvanced ? '#ef4444' : '#64748b', fontWeight: '600', transition: 'color 0.3s' }}>
-              Advanced Mode
+        <div className="staff-mgr-meta-badges">
+          {isMasterAdmin ? (
+            <span className="staff-authority-badge master">
+              <ShieldIcon width="14" height="14" />
+              Master Administrator • All Departments
             </span>
-            <label className="toggle-switch-label">
-              <input
-                type="checkbox"
-                className="toggle-switch-input"
-                checked={showAdvanced}
-                onChange={(e) => setShowAdvanced(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        )}
+          ) : (
+            <span className="staff-authority-badge dept">
+              <ShieldIcon width="14" height="14" />
+              Department Admin • {myDept}
+            </span>
+          )}
+        </div>
       </div>
 
-      {loading ? (
-        <p>Loading staff list...</p>
-      ) : (
-        <div className="table-container">
-          <table className="grievance-table">
-            <thead>
-              <tr>
-                <th>Staff ID</th>
-                <th>Name</th>
-                <th>Current Role</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
-                const q = searchQuery.trim().toLowerCase();
-                // ✅ Filter: Exclude Students (8-digit IDs)
-                let list = staffList.filter(s => s.id.length !== 8);
+      {/* KPI METRIC SUMMARY */}
+      <div className="staff-kpi-ribbon">
+        <div className="staff-kpi-item">
+          <span className="label">Total Staff</span>
+          <div className="val">{totalStaffCount}</div>
+        </div>
+        <div className="staff-kpi-item">
+          <span className="label">Department Heads</span>
+          <div className="val">{adminStaffCount}</div>
+        </div>
+        <div className="staff-kpi-item">
+          <span className="label">Team Members</span>
+          <div className="val">{teamStaffCount}</div>
+        </div>
+        <div className="staff-kpi-item">
+          <span className="label">General Staff</span>
+          <div className="val">{generalStaffCount}</div>
+        </div>
+      </div>
 
-                if (filterRole === 'admins') list = list.filter(s => s.isDeptAdmin);
-                else if (filterRole === 'team') list = list.filter(s => s.adminDepartment && !s.isDeptAdmin);
-                else if (filterRole === 'general') list = list.filter(s => !s.adminDepartment);
-
-                if (q) {
-                  list = list.filter(s => (s.fullName || '').toLowerCase().includes(q) || (s.id || '').toLowerCase().includes(q));
-                }
-
-                if (sortMode === 'admins-first') {
-                  list.sort((a, b) => {
-                    if (a.isDeptAdmin && !b.isDeptAdmin) return -1;
-                    if (!a.isDeptAdmin && b.isDeptAdmin) return 1;
-                    const aTeam = a.adminDepartment && !a.isDeptAdmin;
-                    const bTeam = b.adminDepartment && !b.isDeptAdmin;
-                    if (aTeam && !bTeam) return -1;
-                    if (!aTeam && bTeam) return 1;
-                    return (a.fullName || '').localeCompare(b.fullName || '');
-                  });
-                } else if (sortMode === 'alpha') {
-                  list.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
-                } else if (sortMode === 'rating-high') {
-                  list.sort((a, b) => {
-                    const aR = a.averageRating !== null && a.averageRating !== undefined ? a.averageRating : -1;
-                    const bR = b.averageRating !== null && b.averageRating !== undefined ? b.averageRating : -1;
-                    if (bR !== aR) return bR - aR;
-                    return (b.totalRatings || 0) - (a.totalRatings || 0);
-                  });
-                } else if (sortMode === 'rating-low') {
-                  list.sort((a, b) => {
-                    const aR = a.averageRating !== null && a.averageRating !== undefined ? a.averageRating : 999;
-                    const bR = b.averageRating !== null && b.averageRating !== undefined ? b.averageRating : 999;
-                    if (aR !== bR) return aR - bR;
-                    return (a.totalRatings || 0) - (b.totalRatings || 0);
-                  });
-                }
-
-                return list.map((staff) => (
-                  <tr key={staff.id}>
-                    <td>{staff.id}</td>
-                    <td>
-                      <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.95rem" }}>
-                        {staff.fullName}
-                      </div>
-
-                      {/* ⭐ Staff Average Rating in Marked Location */}
-                      {staff.totalRatings > 0 && staff.averageRating !== null ? (
-                        <div
-                          onClick={() => setSelectedReviewsStaff(staff)}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            marginTop: "4px",
-                            background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-                            border: "1px solid #fde68a",
-                            padding: "2px 8px",
-                            borderRadius: "14px",
-                            fontSize: "0.78rem",
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            boxShadow: "0 1px 3px rgba(245, 158, 11, 0.1)"
-                          }}
-                          title={`Click to view ${staff.totalRatings} student reviews for ${staff.fullName}`}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "scale(1.03)";
-                            e.currentTarget.style.boxShadow = "0 3px 8px rgba(245, 158, 11, 0.25)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "scale(1)";
-                            e.currentTarget.style.boxShadow = "0 1px 3px rgba(245, 158, 11, 0.1)";
-                          }}
-                        >
-                          <span style={{ color: "#f59e0b", letterSpacing: "1px", fontSize: "0.85rem" }}>
-                            {"★".repeat(Math.round(staff.averageRating))}
-                            <span style={{ color: "#d1d5db" }}>{"★".repeat(5 - Math.round(staff.averageRating))}</span>
-                          </span>
-                          <span style={{ fontWeight: "700", color: "#b45309" }}>
-                            {Number(staff.averageRating).toFixed(1)}
-                          </span>
-                          <span style={{ color: "#78350f", fontSize: "0.72rem", opacity: 0.85 }}>
-                            ({staff.totalRatings})
-                          </span>
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            marginTop: "4px",
-                            color: "#94a3b8",
-                            fontSize: "0.76rem"
-                          }}
-                          title="No student ratings received yet"
-                        >
-                          <span style={{ color: "#cbd5e1" }}>★</span>
-                          <span>No ratings yet</span>
-                        </div>
-                      )}
-                    </td>
-
-                    <td>
-                      {staff.isDeptAdmin ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                          {(() => {
-                            const depts = (Array.isArray(staff.adminDepartments) && staff.adminDepartments.length > 0)
-                              ? staff.adminDepartments
-                              : (staff.adminDepartment ? [staff.adminDepartment] : []);
-                            return (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                {depts.map(d => (
-                                  <span
-                                    key={d}
-                                    className="status-badge status-resolved"
-                                    style={{ border: '1px solid #16a34a', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
-                                  >
-                                    <AdminIcon width="12" height="12" /> Admin: {d}
-                                    {isMasterAdmin && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (window.confirm(`Remove Admin role for "${d}" from ${staff.fullName}?`)) {
-                                            handleRoleChange(staff.id, "demote", d);
-                                          }
-                                        }}
-                                        style={{
-                                          background: "none",
-                                          border: "none",
-                                          color: "#dc2626",
-                                          cursor: "pointer",
-                                          fontWeight: "bold",
-                                          padding: "0 2px",
-                                          fontSize: "0.85rem",
-                                          lineHeight: 1
-                                        }}
-                                        title={`Revoke ${d} admin role`}
-                                      >
-                                        ✕
-                                      </button>
-                                    )}
-                                  </span>
-                                ))}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      ) : staff.adminDepartment ? (
-                        <span
-                          className="status-badge status-assigned"
-                          style={{ border: '1px solid #2563eb', padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                        >
-                          <ShieldIcon width="14" height="14" /> Team: {staff.adminDepartment}
-                        </span>
-                      ) : (
-                        <span className="status-badge status-pending">General Staff</span>
-                      )}
-                    </td>
-
-                    <td>
-                      {processingId === staff.id ? (
-                        <div className="modern-loadbar"></div>
-                      ) : (
-                        !canEdit(staff) ? (
-                          <span style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                            <LockIcon width="14" height="14" /> Locked
-                          </span>
-                        ) : (
-                          <>
-                            {staff.isDeptAdmin && isMasterAdmin ? (
-                              /* Multi-Dept Admin Action: Add Another Department or Remove */
-                              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                                {(() => {
-                                  const depts = (Array.isArray(staff.adminDepartments) && staff.adminDepartments.length > 0)
-                                    ? staff.adminDepartments
-                                    : (staff.adminDepartment ? [staff.adminDepartment] : []);
-                                  const allDepts = departmentsList.length > 0 ? departmentsList : DEFAULT_DEPARTMENTS;
-                                  const availableToAdd = allDepts.filter(d => !depts.includes(d));
-
-                                  return (
-                                    <>
-                                      {availableToAdd.length > 0 && (
-                                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                          <select
-                                            id={`add-dept-${staff.id}`}
-                                            className="modern-select-dept"
-                                            defaultValue=""
-                                            style={{ minWidth: "140px", padding: "6px 8px", fontSize: "0.82rem" }}
-                                          >
-                                            <option value="" disabled>+ Add Dept Head...</option>
-                                            {availableToAdd.map(d => (
-                                              <option key={d} value={d}>{d}</option>
-                                            ))}
-                                          </select>
-                                          <button
-                                            className="btn-action-modern btn-action-modern-success"
-                                            style={{ minWidth: "95px", padding: "6px 10px", fontSize: "0.82rem" }}
-                                            onClick={() => {
-                                              const selectElem = document.getElementById(`add-dept-${staff.id}`);
-                                              if (!selectElem || !selectElem.value) return alert("Please select a department to add.");
-                                              handleRoleChange(staff.id, "promote", selectElem.value);
-                                            }}
-                                            title="Assign an additional department head role"
-                                          >
-                                            <ShieldIcon width="12" height="12" /> + Add
-                                          </button>
-                                        </div>
-                                      )}
-                                      <button
-                                        className="btn-action-modern btn-action-modern-danger"
-                                        style={{ minWidth: "110px", padding: "6px 10px", fontSize: "0.82rem" }}
-                                        onClick={() => {
-                                          if (window.confirm(`Are you sure you want to remove all admin roles from ${staff.fullName}? They will revert to General Staff.`)) {
-                                            handleRoleChange(staff.id, "demote");
-                                          }
-                                        }}
-                                      >
-                                        <XIcon width="12" height="12" /> Remove All
-                                      </button>
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            ) : staff.adminDepartment ? (
-                              <button
-                                className="btn-action-modern btn-action-modern-danger"
-                                style={{ minWidth: "160px" }}
-                                onClick={() => handleRoleChange(staff.id, "demote")}
-                              >
-                                <XIcon width="14" height="14" /> {staff.isDeptAdmin ? "Remove Admin" : "Remove from Team"}
-                              </button>
-                            ) : (
-                              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                <select
-                                  id={`dept-${staff.id}`}
-                                  className="modern-select-dept"
-                                  disabled={!isMasterAdmin}
-                                  defaultValue={isMasterAdmin ? "" : myDept}
-                                >
-                                  <option value="" disabled>Select Dept...</option>
-                                  {(departmentsList.length > 0 ? departmentsList : DEFAULT_DEPARTMENTS).map(d => (
-                                    <option key={d} value={d}>{d}</option>
-                                  ))}
-                                </select>
-
-                                <button
-                                  className="btn-action-modern btn-action-modern-success"
-                                  style={{ minWidth: "140px" }}
-                                  onClick={() => {
-                                    const deptSelect = document.getElementById(`dept-${staff.id}`);
-                                    handleRoleChange(staff.id, "promote", deptSelect.value);
-                                  }}
-                                >
-                                  <ShieldIcon width="14" height="14" /> {isMasterAdmin ? "Make Admin" : "Add to Team"}
-                                </button>
-                              </div>
-                            )}
-                            {/* 🔥 HIDDEN BY DEFAULT: Transfer Ownership Button */}
-                            {isMasterAdmin && showAdvanced && (
-                              <button
-                                className="btn-action-modern btn-action-modern-purple"
-                                style={{ marginLeft: "10px", minWidth: "140px" }}
-                                onClick={() => handleTransferOwnership(staff.id)}
-                                title="Transfer your Master Admin role to this user"
-                              >
-                                <UserIcon width="14" height="14" /> Transfer Owner
-                              </button>
-                            )}
-                          </>
-                        )
-                      )}
-                    </td>
-                  </tr>
-                ));
-              })()}
-            </tbody>
-          </table>
+      {/* ALERT NOTIFICATION */}
+      {msg && (
+        <div
+          className={`reg-users-alert ${msgType === "error" ? "error" : "success"}`}
+          style={{ marginBottom: "16px" }}
+        >
+          {msgType === "error" ? (
+            <AlertCircleIcon width="16" height="16" />
+          ) : (
+            <CheckCircleIcon width="16" height="16" />
+          )}
+          <span>{msg}</span>
         </div>
       )}
 
-      {/* ⭐ STAFF STUDENT REVIEWS MODAL */}
-      {selectedReviewsStaff && (
+      {/* COMPACT FILTER & SEARCH BAR (DESKTOP INLINE, MOBILE 2x2 GRID) */}
+      <div className="staff-filters-bar">
+        <div className="staff-search-box">
+          <span className="staff-search-icon">
+            <SearchIcon width="15" height="15" />
+          </span>
+          <input
+            type="text"
+            className="staff-search-input"
+            placeholder="Search by name, ID, or department..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="staff-filter-actions">
+          {/* Department Filter */}
+          <select
+            className="staff-filter-select"
+            value={filterDept}
+            onChange={(e) => setFilterDept(e.target.value)}
+          >
+            <option value="all">All Departments</option>
+            {allDepartments.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+
+          {/* Role Filter */}
+          <select
+            className="staff-filter-select"
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+          >
+            <option value="all">All Roles</option>
+            <option value="admins">Department Heads</option>
+            <option value="team">Team Staff</option>
+            <option value="general">General Staff</option>
+          </select>
+
+          {/* Sort Order */}
+          <select
+            className="staff-filter-select"
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value)}
+          >
+            <option value="admins-first">Sort: Admins First</option>
+            <option value="alpha">Sort: Name (A → Z)</option>
+            <option value="rating-high">Sort: Highest Rated</option>
+            <option value="rating-low">Sort: Lowest Rated</option>
+          </select>
+
+          {hasActiveFilters && (
+            <button className="staff-btn-reset" onClick={handleResetFilters}>
+              <XIcon width="13" height="13" /> Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* MAIN CONTENT AREA */}
+      {loading ? (
+        <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
+          Loading staff directory...
+        </div>
+      ) : filteredStaffList.length === 0 ? (
+        <div style={{ padding: "40px 20px", textAlign: "center", color: "#64748b", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
+          <p style={{ margin: 0, fontWeight: "600", fontSize: "0.95rem" }}>No staff members match your criteria</p>
+          <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem" }}>Try adjusting your search query or role filter.</p>
+        </div>
+      ) : (
+        <>
+          {/* DESKTOP TABLE VIEW */}
+          <div className="table-container staff-desktop-table">
+            <table className="staff-desktop-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "38%" }}>Staff Member</th>
+                  <th style={{ width: "42%" }}>Assigned Roles & Departments</th>
+                  <th style={{ width: "20%", textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStaffList.map((staff) => {
+                  const staffDepts = getStaffDepartments(staff);
+                  const isStaffAdmin = staff.isDeptAdmin;
+                  const isStaffTeam = Boolean(staff.adminDepartment && !staff.isDeptAdmin);
+                  const isEditable = canEdit(staff);
+
+                  return (
+                    <tr key={staff.id}>
+                      {/* STAFF MEMBER COLUMN (CLEAN, NO LOGO CIRCLES) */}
+                      <td>
+                        <div className="staff-info-cell">
+                          <div className="staff-name-wrap">
+                            <span className="staff-full-name">{staff.fullName}</span>
+                            <span className="staff-id-pill">#{staff.id}</span>
+
+                            {/* Ratings Pill */}
+                            {staff.totalRatings > 0 && staff.averageRating !== null ? (
+                              <div
+                                className="staff-rating-pill"
+                                onClick={() => setSelectedReviewsStaff(staff)}
+                                title={`Click to view ${staff.totalRatings} student reviews`}
+                              >
+                                <span className="star-icon">
+                                  <StarIcon width="13" height="13" />
+                                </span>
+                                <span>{Number(staff.averageRating).toFixed(1)}</span>
+                                <span className="count">({staff.totalRatings})</span>
+                              </div>
+                            ) : (
+                              <span className="staff-rating-none">
+                                <StarIcon width="11" height="11" /> No ratings yet
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* ASSIGNED ROLES COLUMN */}
+                      <td>
+                        <div className="staff-roles-container">
+                          {isStaffAdmin ? (
+                            staffDepts.length > 0 ? (
+                              staffDepts.map((dept) => (
+                                <span key={dept} className="staff-role-pill head">
+                                  <ShieldIcon width="12" height="12" /> Head: {dept}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="staff-role-pill head">
+                                <ShieldIcon width="12" height="12" /> Department Admin
+                              </span>
+                            )
+                          ) : isStaffTeam ? (
+                            <span className="staff-role-pill team">
+                              <UserIcon width="12" height="12" /> Team: {staff.adminDepartment}
+                            </span>
+                          ) : (
+                            <span className="staff-role-pill general">
+                              General Staff
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* ACTION COLUMN */}
+                      <td style={{ textAlign: "right" }}>
+                        {isEditable ? (
+                          <button
+                            className="staff-manage-btn"
+                            onClick={() => {
+                              setSelectedStaffForManage(staff);
+                              setSelectedDeptToAssign("");
+                            }}
+                          >
+                            <EditIcon width="13" height="13" /> Manage Role
+                          </button>
+                        ) : (
+                          <span className="staff-locked-pill" title="You do not have permission to modify this staff member's role">
+                            <LockIcon width="12" height="12" /> Locked
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* MOBILE CARDS VIEW (CLEAN, NO LOGO CIRCLES) */}
+          <div className="staff-mobile-cards">
+            {filteredStaffList.map((staff) => {
+              const staffDepts = getStaffDepartments(staff);
+              const isStaffAdmin = staff.isDeptAdmin;
+              const isStaffTeam = Boolean(staff.adminDepartment && !staff.isDeptAdmin);
+              const isEditable = canEdit(staff);
+
+              return (
+                <div key={staff.id} className="staff-mobile-card">
+                  <div className="staff-mobile-card-top">
+                    <div className="staff-name-wrap">
+                      <span className="staff-full-name">{staff.fullName}</span>
+                      <span className="staff-id-pill">#{staff.id}</span>
+                    </div>
+
+                    {/* Ratings in top corner */}
+                    {staff.totalRatings > 0 && staff.averageRating !== null ? (
+                      <div
+                        className="staff-rating-pill"
+                        onClick={() => setSelectedReviewsStaff(staff)}
+                      >
+                        <span className="star-icon">
+                          <StarIcon width="13" height="13" />
+                        </span>
+                        <span>{Number(staff.averageRating).toFixed(1)}</span>
+                        <span className="count">({staff.totalRatings})</span>
+                      </div>
+                    ) : (
+                      <span className="staff-rating-none">Unrated</span>
+                    )}
+                  </div>
+
+                  {/* Roles */}
+                  <div className="staff-roles-container">
+                    {isStaffAdmin ? (
+                      staffDepts.length > 0 ? (
+                        staffDepts.map((dept) => (
+                          <span key={dept} className="staff-role-pill head">
+                            <ShieldIcon width="12" height="12" /> Head: {dept}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="staff-role-pill head">
+                          <ShieldIcon width="12" height="12" /> Department Admin
+                        </span>
+                      )
+                    ) : isStaffTeam ? (
+                      <span className="staff-role-pill team">
+                        <UserIcon width="12" height="12" /> Team: {staff.adminDepartment}
+                      </span>
+                    ) : (
+                      <span className="staff-role-pill general">General Staff</span>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="staff-mobile-card-actions">
+                    {isEditable ? (
+                      <button
+                        className="staff-mobile-manage-btn"
+                        onClick={() => {
+                          setSelectedStaffForManage(staff);
+                          setSelectedDeptToAssign("");
+                        }}
+                      >
+                        <EditIcon width="14" height="14" /> Manage Role
+                      </button>
+                    ) : (
+                      <span className="staff-locked-pill" style={{ width: "100%", justifyContent: "center" }}>
+                        <LockIcon width="13" height="13" /> Locked
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ========================================= */}
+      {/* 🪟 SIMPLE MANAGE ROLE POPUP (NON-FLASHY)  */}
+      {/* ========================================= */}
+      {selectedStaffForManage && (
         <div
-          className="modal-overlay"
-          onClick={() => setSelectedReviewsStaff(null)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(15, 23, 42, 0.6)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
+          className="staff-modal-overlay"
+          onClick={() => setSelectedStaffForManage(null)}
         >
           <div
-            className="modal-content"
+            className="staff-modal-card simple"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: "16px",
-              maxWidth: "560px",
-              width: "100%",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-              border: "1px solid #e2e8f0",
-              padding: "24px"
-            }}
           >
             {/* Modal Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+            <div className="staff-modal-header">
               <div>
-                <h3 style={{ margin: 0, color: "#0f172a", fontSize: "1.25rem", fontWeight: "700" }}>
-                  Staff Ratings & Feedback
+                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#0f172a" }}>
+                  Manage Role
                 </h3>
-                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.85rem" }}>
-                  {selectedReviewsStaff.fullName} (ID: {selectedReviewsStaff.id})
+                <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.85rem" }}>
+                  {selectedStaffForManage.fullName} <span className="staff-id-pill">#{selectedStaffForManage.id}</span>
                 </p>
               </div>
               <button
-                onClick={() => setSelectedReviewsStaff(null)}
-                style={{
-                  background: "#f1f5f9",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                  fontSize: "1rem",
-                  color: "#64748b",
-                  fontWeight: "700"
-                }}
+                className="staff-modal-close-btn"
+                onClick={() => setSelectedStaffForManage(null)}
+                title="Close"
               >
-                ✕
+                <XIcon width="16" height="16" />
               </button>
             </div>
 
-            {/* Score Summary Box */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "14px 18px",
-                background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-                borderRadius: "12px",
-                border: "1px solid #fde68a",
-                marginBottom: "20px"
-              }}
-            >
-              <div>
-                <div style={{ fontSize: "2rem", fontWeight: "800", color: "#92400e", lineHeight: 1 }}>
-                  {Number(selectedReviewsStaff.averageRating || 0).toFixed(1)}
-                  <span style={{ fontSize: "1rem", fontWeight: "500", color: "#b45309" }}> / 5.0</span>
+            {/* Modal Body */}
+            <div className="staff-modal-body">
+              {/* SECTION 1: Current Assigned Roles */}
+              <div className="staff-modal-block">
+                <div className="staff-modal-block-label">
+                  <span>Current Roles</span>
+                  {selectedStaffForManage.isDeptAdmin &&
+                    getStaffDepartments(selectedStaffForManage).length > 1 &&
+                    isMasterAdmin && (
+                      <button
+                        className="staff-btn-revoke-all"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Are you sure you want to revoke all admin roles from ${selectedStaffForManage.fullName}?`
+                            )
+                          ) {
+                            handleRoleChange(selectedStaffForManage.id, "demote");
+                          }
+                        }}
+                      >
+                        Remove All
+                      </button>
+                    )}
                 </div>
-                <div style={{ marginTop: "4px", color: "#f59e0b", fontSize: "1.1rem" }}>
-                  {"★".repeat(Math.round(selectedReviewsStaff.averageRating || 0))}
-                  <span style={{ color: "#d1d5db" }}>{"★".repeat(5 - Math.round(selectedReviewsStaff.averageRating || 0))}</span>
+
+                {selectedStaffForManage.isDeptAdmin ? (
+                  <div className="staff-role-list-simple">
+                    {getStaffDepartments(selectedStaffForManage).map((dept) => (
+                      <div key={dept} className="staff-role-row-simple">
+                        <div className="staff-role-row-title">
+                          <ShieldIcon width="14" height="14" style={{ color: "#059669" }} />
+                          <span>Head of <strong>{dept}</strong></span>
+                        </div>
+
+                        {isMasterAdmin && (
+                          <button
+                            className="staff-btn-remove-simple"
+                            disabled={processingId === selectedStaffForManage.id}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Remove Head of "${dept}" role from ${selectedStaffForManage.fullName}?`
+                                )
+                              ) {
+                                handleRoleChange(selectedStaffForManage.id, "demote", dept);
+                              }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : selectedStaffForManage.adminDepartment ? (
+                  <div className="staff-role-row-simple">
+                    <div className="staff-role-row-title">
+                      <UserIcon width="14" height="14" style={{ color: "#2563eb" }} />
+                      <span>Team: <strong>{selectedStaffForManage.adminDepartment}</strong></span>
+                    </div>
+
+                    <button
+                      className="staff-btn-remove-simple"
+                      disabled={processingId === selectedStaffForManage.id}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Remove ${selectedStaffForManage.fullName} from ${selectedStaffForManage.adminDepartment}?`
+                          )
+                        ) {
+                          handleRoleChange(selectedStaffForManage.id, "demote");
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <p className="staff-modal-empty-text">No administrative roles assigned (General Staff)</p>
+                )}
+              </div>
+
+              <div className="staff-modal-divider"></div>
+
+              {/* SECTION 2: Assign Department Head or Team Role */}
+              <div className="staff-modal-block">
+                <div className="staff-modal-block-label">
+                  <span>{isMasterAdmin ? "Appoint as Department Head" : `Add to ${myDept} Team`}</span>
+                </div>
+
+                {isMasterAdmin ? (
+                  (() => {
+                    const currentDepts = getStaffDepartments(selectedStaffForManage);
+                    const availableToAdd = allDepartments.filter((d) => !currentDepts.includes(d));
+
+                    if (availableToAdd.length === 0) {
+                      return (
+                        <p className="staff-modal-empty-text">Already assigned to all departments.</p>
+                      );
+                    }
+
+                    return (
+                      <div className="staff-assign-row-simple">
+                        <select
+                          className="staff-assign-select-simple"
+                          value={selectedDeptToAssign}
+                          onChange={(e) => setSelectedDeptToAssign(e.target.value)}
+                        >
+                          <option value="">Select Department...</option>
+                          {availableToAdd.map((dept) => (
+                            <option key={dept} value={dept}>
+                              {dept}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          className="staff-assign-btn-simple"
+                          disabled={!selectedDeptToAssign || processingId === selectedStaffForManage.id}
+                          onClick={() => {
+                            if (!selectedDeptToAssign) return;
+                            handleRoleChange(
+                              selectedStaffForManage.id,
+                              "promote",
+                              selectedDeptToAssign
+                            );
+                          }}
+                        >
+                          {processingId === selectedStaffForManage.id ? "Assigning..." : "Assign"}
+                        </button>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  !selectedStaffForManage.adminDepartment && (
+                    <button
+                      className="staff-assign-btn-simple"
+                      style={{ width: "100%", justifyContent: "center" }}
+                      disabled={processingId === selectedStaffForManage.id}
+                      onClick={() => {
+                        handleRoleChange(selectedStaffForManage.id, "promote", myDept);
+                      }}
+                    >
+                      {processingId === selectedStaffForManage.id ? "Adding..." : `Add to ${myDept} Team`}
+                    </button>
+                  )
+                )}
+              </div>
+
+              {/* SECTION 3: Danger Zone - Master Admin Transfer */}
+              {isMasterAdmin && selectedStaffForManage.id !== requesterId && (
+                <>
+                  <div className="staff-modal-divider"></div>
+                  <div className="staff-modal-danger-simple">
+                    <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
+                      Master Admin Rights
+                    </span>
+                    <button
+                      className="staff-btn-transfer-simple"
+                      onClick={() =>
+                        handleTransferOwnership(
+                          selectedStaffForManage.id,
+                          selectedStaffForManage.fullName
+                        )
+                      }
+                    >
+                      Transfer Ownership
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="staff-modal-footer">
+              <button
+                className="staff-modal-done-btn"
+                onClick={() => setSelectedStaffForManage(null)}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================= */}
+      {/* ⭐ STUDENT REVIEWS & RATINGS MODAL        */}
+      {/* ========================================= */}
+      {selectedReviewsStaff && (
+        <div
+          className="staff-modal-overlay"
+          onClick={() => setSelectedReviewsStaff(null)}
+        >
+          <div
+            className="staff-modal-card simple"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "520px" }}
+          >
+            {/* Header */}
+            <div className="staff-modal-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#0f172a" }}>
+                  Staff Ratings & Feedback
+                </h3>
+                <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.85rem" }}>
+                  {selectedReviewsStaff.fullName} <span className="staff-id-pill">#{selectedReviewsStaff.id}</span>
+                </p>
+              </div>
+              <button
+                className="staff-modal-close-btn"
+                onClick={() => setSelectedReviewsStaff(null)}
+                title="Close"
+              >
+                <XIcon width="16" height="16" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="staff-modal-body">
+              {/* Score Highlight Box */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 18px",
+                  background: "#fffbeb",
+                  borderRadius: "10px",
+                  border: "1px solid #fde68a"
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "2rem", fontWeight: "800", color: "#92400e", lineHeight: 1 }}>
+                    {Number(selectedReviewsStaff.averageRating || 0).toFixed(1)}
+                    <span style={{ fontSize: "1rem", fontWeight: "500", color: "#b45309" }}> / 5.0</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "3px", color: "#f59e0b", marginTop: "4px" }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        style={{
+                          color:
+                            star <= Math.round(selectedReviewsStaff.averageRating || 0)
+                              ? "#f59e0b"
+                              : "#cbd5e1"
+                        }}
+                      >
+                        <StarIcon width="15" height="15" />
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      background: "#ffffff",
+                      padding: "3px 10px",
+                      borderRadius: "16px",
+                      fontWeight: "700",
+                      color: "#78350f",
+                      fontSize: "0.8rem",
+                      border: "1px solid #fde68a"
+                    }}
+                  >
+                    {selectedReviewsStaff.totalRatings} Total{" "}
+                    {selectedReviewsStaff.totalRatings === 1 ? "Rating" : "Ratings"}
+                  </span>
+                  <div style={{ fontSize: "0.74rem", color: "#92400e", marginTop: "4px" }}>
+                    {selectedReviewsStaff.adminDepartment || "General Staff"}
+                  </div>
                 </div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <span
-                  style={{
-                    display: "inline-block",
-                    background: "#ffffff",
-                    padding: "4px 12px",
-                    borderRadius: "20px",
-                    fontWeight: "600",
-                    color: "#78350f",
-                    fontSize: "0.85rem",
-                    border: "1px solid #fde68a"
-                  }}
-                >
-                  {selectedReviewsStaff.totalRatings} Total {selectedReviewsStaff.totalRatings === 1 ? "Rating" : "Ratings"}
-                </span>
-                <div style={{ fontSize: "0.75rem", color: "#92400e", marginTop: "4px" }}>
-                  Department: {selectedReviewsStaff.adminDepartment || "General"}
-                </div>
+
+              {/* Reviews List */}
+              <div style={{ marginTop: "4px" }}>
+                <h4 style={{ margin: "0 0 10px 0", color: "#1e293b", fontSize: "0.88rem", fontWeight: "700" }}>
+                  Student Reviews ({selectedReviewsStaff.ratingsList?.length || 0})
+                </h4>
+
+                {!selectedReviewsStaff.ratingsList || selectedReviewsStaff.ratingsList.length === 0 ? (
+                  <p style={{ color: "#94a3b8", fontSize: "0.85rem", textAlign: "center", padding: "20px 0", background: "#f8fafc", borderRadius: "6px", border: "1px dashed #e2e8f0" }}>
+                    No written feedback recorded yet.
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "300px", overflowY: "auto" }}>
+                    {selectedReviewsStaff.ratingsList.map((rev, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: "10px 12px",
+                          background: "#f8fafc",
+                          borderRadius: "8px",
+                          border: "1px solid #e2e8f0"
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "2px", color: "#f59e0b" }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span
+                                key={star}
+                                style={{
+                                  color: star <= (rev.stars || 0) ? "#f59e0b" : "#cbd5e1"
+                                }}
+                              >
+                                <StarIcon width="12" height="12" />
+                              </span>
+                            ))}
+                            <span style={{ fontWeight: "700", color: "#334155", fontSize: "0.78rem", marginLeft: "4px" }}>
+                              {rev.stars}.0
+                            </span>
+                          </div>
+
+                          <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                            {rev.ratedAt
+                              ? new Date(rev.ratedAt).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric"
+                                })
+                              : "Recently"}
+                          </span>
+                        </div>
+
+                        {rev.feedback ? (
+                          <p style={{ margin: "2px 0 0 0", color: "#1e293b", fontSize: "0.82rem", fontStyle: "italic" }}>
+                            "{rev.feedback}"
+                          </p>
+                        ) : (
+                          <p style={{ margin: "2px 0 0 0", color: "#94a3b8", fontSize: "0.76rem" }}>
+                            (No written comment provided)
+                          </p>
+                        )}
+
+                        {rev.category && (
+                          <div style={{ marginTop: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                            Category: <span style={{ fontWeight: "600" }}>{rev.category}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Individual Reviews List */}
-            <h4 style={{ margin: "0 0 12px 0", color: "#334155", fontSize: "0.95rem", fontWeight: "600" }}>
-              Student Reviews ({selectedReviewsStaff.ratingsList?.length || 0})
-            </h4>
-
-            {(!selectedReviewsStaff.ratingsList || selectedReviewsStaff.ratingsList.length === 0) ? (
-              <p style={{ color: "#94a3b8", fontSize: "0.9rem", textAlign: "center", padding: "20px 0" }}>
-                No student reviews recorded yet.
-              </p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {selectedReviewsStaff.ratingsList.map((rev, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "14px",
-                      background: "#f8fafc",
-                      borderRadius: "10px",
-                      border: "1px solid #e2e8f0"
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span style={{ color: "#f59e0b", fontSize: "1rem" }}>
-                          {"★".repeat(rev.stars || 0)}
-                          <span style={{ color: "#cbd5e1" }}>{"★".repeat(5 - (rev.stars || 0))}</span>
-                        </span>
-                        <span style={{ fontWeight: "700", color: "#334155", fontSize: "0.85rem" }}>
-                          {rev.stars}.0 / 5
-                        </span>
-                      </div>
-                      <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
-                        {rev.ratedAt ? new Date(rev.ratedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recently"}
-                      </span>
-                    </div>
-
-                    {rev.feedback ? (
-                      <p style={{ margin: "6px 0 0 0", color: "#1e293b", fontSize: "0.88rem", fontStyle: "italic" }}>
-                        “{rev.feedback}”
-                      </p>
-                    ) : (
-                      <p style={{ margin: "6px 0 0 0", color: "#94a3b8", fontSize: "0.8rem" }}>
-                        (No written feedback provided)
-                      </p>
-                    )}
-
-                    <div style={{ marginTop: "6px", fontSize: "0.72rem", color: "#64748b" }}>
-                      Category: {rev.category || "General"}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Modal Footer */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
+            {/* Footer */}
+            <div className="staff-modal-footer">
               <button
+                className="staff-modal-done-btn"
                 onClick={() => setSelectedReviewsStaff(null)}
-                style={{
-                  padding: "8px 20px",
-                  background: "#0f172a",
-                  color: "#ffffff",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  fontSize: "0.85rem"
-                }}
               >
                 Close
               </button>

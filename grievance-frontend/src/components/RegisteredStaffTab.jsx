@@ -5,7 +5,12 @@ import {
   TrashIcon,
   EditIcon,
   XIcon,
-  ShieldIcon
+  ShieldIcon,
+  SearchIcon,
+  RefreshIcon,
+  PhoneIcon,
+  MailIcon,
+  UserIcon
 } from "./Icons";
 
 const formatDate = (dateString) => {
@@ -24,13 +29,11 @@ function RegisteredStaffTab() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalVerified, setTotalVerified] = useState(0);
-  const [totalPending, setTotalPending] = useState(0);
   const [totalAdmins, setTotalAdmins] = useState(0);
   const [totalRegularStaff, setTotalRegularStaff] = useState(0);
+  const [totalPending, setTotalPending] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  // Departments list for dropdown
   const [departments, setDepartments] = useState([]);
 
   // Filters
@@ -43,7 +46,7 @@ function RegisteredStaffTab() {
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("success");
 
-  // Edit Staff Modal
+  // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -57,7 +60,7 @@ function RegisteredStaffTab() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Delete Staff Modal
+  // Delete Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -72,24 +75,6 @@ function RegisteredStaffTab() {
       setMsgType("");
     }, 4500);
   };
-
-  // Fetch departments list
-  useEffect(() => {
-    const fetchDepts = async () => {
-      try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setDepartments(data.map((d) => d.name));
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch departments:", err);
-      }
-    };
-    fetchDepts();
-  }, []);
 
   const fetchStaff = useCallback(async () => {
     setLoading(true);
@@ -110,10 +95,11 @@ function RegisteredStaffTab() {
       setStaffList(data.staff || []);
       setTotal(data.total || 0);
       setTotalVerified(data.totalVerified || 0);
-      setTotalPending(data.totalPending || 0);
       setTotalAdmins(data.totalAdmins || 0);
       setTotalRegularStaff(data.totalRegularStaff || 0);
+      setTotalPending(data.totalPending || 0);
       setTotalPages(data.totalPages || 1);
+      if (data.departments) setDepartments(data.departments);
     } catch (err) {
       console.error(err);
       showNotification(err.message, "error");
@@ -157,7 +143,7 @@ function RegisteredStaffTab() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update staff member");
 
-      showNotification(`✅ Staff member ${selectedStaff.id} updated successfully!`, "success");
+      showNotification(`Staff member ${selectedStaff.id} updated successfully.`, "success");
       setShowEditModal(false);
       setSelectedStaff(null);
       fetchStaff();
@@ -171,7 +157,7 @@ function RegisteredStaffTab() {
   // Open Delete Modal
   const handleOpenDelete = (staff) => {
     if (staff.id === "10001" || staff.isMasterAdmin) {
-      alert("❌ Master Admin account is protected and cannot be deleted.");
+      alert("Master Admin account is protected and cannot be deleted.");
       return;
     }
     setStaffToDelete(staff);
@@ -193,7 +179,7 @@ function RegisteredStaffTab() {
       const grievanceNote = data.resetGrievancesCount > 0
         ? ` (${data.resetGrievancesCount} assigned tickets reset to Pending)`
         : "";
-      showNotification(`✅ Staff member ${staffToDelete.fullName || staffToDelete.id} deleted successfully${grievanceNote}!`, "success");
+      showNotification(`Staff member ${staffToDelete.fullName || staffToDelete.id} deleted successfully${grievanceNote}.`, "success");
       setShowDeleteModal(false);
       setStaffToDelete(null);
       fetchStaff();
@@ -205,679 +191,451 @@ function RegisteredStaffTab() {
   };
 
   return (
-    <div style={{ padding: "8px 0" }}>
-      {/* HEADER BAR */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "12px",
-          padding: "20px 24px",
-          marginBottom: "20px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          border: "1px solid #e2e8f0",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "16px"
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-            <span style={{ fontSize: "1.3rem" }}>👥</span>
-            <h2 style={{ margin: 0, fontSize: "1.35rem", color: "#1e293b", fontWeight: "700" }}>
-              Live Registered Staff & Faculty
-            </h2>
-            <span
-              style={{
-                background: "#faf5ff",
-                color: "#7e22ce",
-                border: "1px solid #e9d5ff",
-                fontSize: "0.75rem",
-                padding: "2px 10px",
-                borderRadius: "20px",
-                fontWeight: "700",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px"
-              }}
-            >
-              <span style={{ width: "7px", height: "7px", background: "#a855f7", borderRadius: "50%" }}></span>
-              LIVE MANAGEMENT
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: "0.86rem", color: "#64748b" }}>
-            Directory of faculty and staff accounts registered on the portal. You can edit details or safely remove staff.
-          </p>
+    <div className="registered-tab-wrapper">
+      {/* EXECUTIVE KPI METRICS */}
+      <div className="reg-users-kpi-grid">
+        <div className="reg-users-kpi-card verified">
+          <span className="reg-users-kpi-label">Verified Staff</span>
+          <div className="reg-users-kpi-val">{totalVerified}</div>
         </div>
-
-        {/* STAT BADGES */}
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <div
-            style={{
-              background: "#ecfdf5",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #a7f3d0",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#065f46", fontWeight: "600", textTransform: "uppercase" }}>
-              Registered Staff (OTP Verified)
-            </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#047857" }}>{totalVerified}</span>
-          </div>
-          <div
-            style={{
-              background: "#f5f3ff",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #ddd6fe",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#6d28d9", fontWeight: "600", textTransform: "uppercase" }}>
-              Admins / Bosses
-            </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#5b21b6" }}>{totalAdmins}</span>
-          </div>
-          <div
-            style={{
-              background: "#f8fafc",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
-              Regular Staff
-            </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1e293b" }}>{totalRegularStaff}</span>
-          </div>
-          <div
-            style={{
-              background: "#fffbeb",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #fde68a",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#92400e", fontWeight: "600", textTransform: "uppercase" }}>
-              Incomplete (Pending OTP)
-            </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#b45309" }}>{totalPending}</span>
-          </div>
+        <div className="reg-users-kpi-card admin">
+          <span className="reg-users-kpi-label">Admins & Heads</span>
+          <div className="reg-users-kpi-val">{totalAdmins}</div>
+        </div>
+        <div className="reg-users-kpi-card regular">
+          <span className="reg-users-kpi-label">Regular Staff</span>
+          <div className="reg-users-kpi-val">{totalRegularStaff}</div>
         </div>
       </div>
 
-      {/* NOTIFICATION */}
+      {/* NOTIFICATION BANNER */}
       {msg && (
-        <div
-          style={{
-            padding: "12px 18px",
-            borderRadius: "8px",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            background: msgType === "error" ? "#fee2e2" : "#dcfce7",
-            color: msgType === "error" ? "#991b1b" : "#166534",
-            border: `1px solid ${msgType === "error" ? "#fca5a5" : "#86efac"}`,
-            fontWeight: "500",
-            fontSize: "0.9rem"
-          }}
-        >
-          {msgType === "error" ? <AlertCircleIcon width="18" height="18" /> : <CheckCircleIcon width="18" height="18" />}
+        <div className={`reg-users-alert ${msgType === "error" ? "error" : "success"}`}>
+          {msgType === "error" ? <AlertCircleIcon width="16" height="16" /> : <CheckCircleIcon width="16" height="16" />}
           <span>{msg}</span>
         </div>
       )}
 
-      {/* FILTER CONTROLS */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "10px",
-          padding: "14px 18px",
-          marginBottom: "18px",
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-          alignItems: "center",
-          border: "1px solid #e2e8f0"
-        }}
-      >
-        <div style={{ flex: "1 1 240px" }}>
+      {/* FILTER & SEARCH CONTROLS */}
+      <div className="reg-users-filters-bar">
+        <div className="reg-users-search-box">
+          <span className="reg-users-search-icon">
+            <SearchIcon width="16" height="16" />
+          </span>
           <input
             type="text"
-            placeholder="🔍 Search by Staff ID, Name, Email, Department..."
+            className="reg-users-search-input"
+            placeholder="Search by ID, name, email, department..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            style={{
-              width: "100%",
-              padding: "9px 14px",
-              borderRadius: "6px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.88rem",
-              outline: "none"
-            }}
           />
         </div>
 
-        <select
-          value={deptFilter}
-          onChange={(e) => {
-            setDeptFilter(e.target.value);
-            setPage(1);
-          }}
-          style={{
-            padding: "9px 14px",
-            borderRadius: "6px",
-            border: "1px solid #cbd5e1",
-            fontSize: "0.88rem",
-            background: "#fff",
-            cursor: "pointer",
-            maxWidth: "200px"
-          }}
-        >
-          <option value="all">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
+        <div className="reg-users-filter-actions">
+          <select
+            className="reg-users-select"
+            value={deptFilter}
+            onChange={(e) => {
+              setDeptFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All Departments</option>
+            {departments.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
 
-        <select
-          value={roleFilter}
-          onChange={(e) => {
-            setRoleFilter(e.target.value);
-            setPage(1);
-          }}
-          style={{
-            padding: "9px 14px",
-            borderRadius: "6px",
-            border: "1px solid #cbd5e1",
-            fontSize: "0.88rem",
-            background: "#fff",
-            cursor: "pointer"
-          }}
-        >
-          <option value="all">All Roles</option>
-          <option value="admin">Admins / Bosses</option>
-          <option value="staff">Regular Staff</option>
-        </select>
+          <select
+            className="reg-users-select"
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All Roles</option>
+            <option value="admin">Admins & Heads</option>
+            <option value="staff">Regular Staff</option>
+          </select>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
-          }}
-          style={{
-            padding: "9px 14px",
-            borderRadius: "6px",
-            border: "1px solid #cbd5e1",
-            fontSize: "0.88rem",
-            background: "#fff",
-            cursor: "pointer",
-            fontWeight: "600",
-            color: "#334155"
-          }}
-        >
-          <option value="registered">👔 Registered Staff (OTP Verified)</option>
-          <option value="pending">⏳ Incomplete Signups (Pending OTP)</option>
-          <option value="all">🌐 All Accounts (Registered + Incomplete)</option>
-        </select>
+          <select
+            className="reg-users-select"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="registered">Verified Only</option>
+            <option value="pending">Pending OTP</option>
+            <option value="all">All Accounts</option>
+          </select>
 
-        <button
-          onClick={() => {
-            setSearch("");
-            setDeptFilter("all");
-            setRoleFilter("all");
-            setStatusFilter("registered");
-            setPage(1);
-          }}
-          style={{
-            padding: "9px 16px",
-            borderRadius: "6px",
-            border: "1px solid #cbd5e1",
-            background: "#f8fafc",
-            color: "#475569",
-            fontWeight: "600",
-            cursor: "pointer",
-            fontSize: "0.85rem"
-          }}
-        >
-          Reset
-        </button>
+          <button
+            type="button"
+            className="reg-users-btn-reset"
+            onClick={() => {
+              setSearch("");
+              setDeptFilter("all");
+              setRoleFilter("all");
+              setStatusFilter("registered");
+              setPage(1);
+            }}
+          >
+            Reset
+          </button>
 
-        <button
-          onClick={fetchStaff}
-          style={{
-            padding: "9px 16px",
-            borderRadius: "6px",
-            border: "none",
-            background: "#7c3aed",
-            color: "#fff",
-            fontWeight: "600",
-            cursor: "pointer",
-            fontSize: "0.85rem",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px"
-          }}
-        >
-          🔄 Refresh
-        </button>
+          <button
+            type="button"
+            className="reg-users-btn-refresh"
+            onClick={fetchStaff}
+          >
+            <RefreshIcon width="14" height="14" />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
-      {/* TABLE SECTION */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "10px",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          overflow: "hidden"
-        }}
-      >
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Staff ID
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Full Name
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Contact Info
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Department
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Role & Authority
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Status
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>
-                  Joined Date
-                </th>
-                <th style={{ padding: "12px 16px", fontSize: "0.78rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase", textAlign: "right" }}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+      {/* VIEW 1: DESKTOP TABLE VIEW */}
+      <div className="reg-users-desktop-table">
+        <div className="reg-users-table-card">
+          <div className="table-responsive">
+            <table className="reg-users-table">
+              <thead>
                 <tr>
-                  <td colSpan="8" style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-                    <div style={{ fontSize: "1.1rem", fontWeight: "500" }}>Loading registered staff members...</div>
-                  </td>
+                  <th>Staff ID</th>
+                  <th>Full Name</th>
+                  <th>Contact Info</th>
+                  <th>Department</th>
+                  <th>Role & Authority</th>
+                  <th>Status</th>
+                  <th>Joined Date</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
-              ) : staffList.length === 0 ? (
-                <tr>
-                  <td colSpan="8" style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-                    <div style={{ fontSize: "1.3rem", marginBottom: "8px" }}>🔍</div>
-                    <div style={{ fontWeight: "600", fontSize: "1rem", color: "#334155" }}>No registered staff found</div>
-                    <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem" }}>
-                      {search || deptFilter !== "all" ? "Try adjusting your filters" : "Staff will appear here once they register on the portal."}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                staffList.map((staff) => {
-                  const isMaster = staff.id === "10001" || staff.isMasterAdmin;
-                  const isDeptBoss = staff.isDeptAdmin || staff.role === "admin";
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="reg-users-empty-cell">
+                      <div className="reg-users-loading-spinner">Loading registered staff members...</div>
+                    </td>
+                  </tr>
+                ) : staffList.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="reg-users-empty-cell">
+                      <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
+                      <div style={{ fontWeight: "600", color: "#334155" }}>No registered staff found</div>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                        {search || deptFilter !== "all" ? "Try adjusting your search criteria" : "Staff accounts will appear here once registered."}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  staffList.map((staff) => {
+                    const isMaster = staff.id === "10001" || staff.isMasterAdmin;
+                    const isDeptBoss = staff.isDeptAdmin || staff.role === "admin";
 
-                  return (
-                    <tr
-                      key={staff._id || staff.id}
-                      style={{
-                        borderBottom: "1px solid #f1f5f9",
-                        transition: "background 0.15s"
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                    >
-                      {/* Staff ID */}
-                      <td style={{ padding: "12px 16px" }}>
-                        <span
-                          style={{
-                            fontWeight: "700",
-                            fontFamily: "monospace",
-                            color: "#1e293b",
-                            background: "#f1f5f9",
-                            padding: "3px 8px",
-                            borderRadius: "4px",
-                            fontSize: "0.82rem"
-                          }}
-                        >
-                          {staff.id}
-                        </span>
-                      </td>
+                    return (
+                      <tr key={staff._id || staff.id}>
+                        {/* ID */}
+                        <td>
+                          <span className="reg-user-id-badge">{staff.id}</span>
+                        </td>
 
-                      {/* Name */}
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.88rem" }}>
-                          {staff.fullName || "Staff Member"}
-                        </div>
-                      </td>
+                        {/* Name */}
+                        <td>
+                          <div className="reg-user-name">{staff.fullName || "Staff Member"}</div>
+                        </td>
 
-                      {/* Contact */}
-                      <td style={{ padding: "12px 16px", fontSize: "0.82rem" }}>
-                        <div style={{ color: "#334155" }}>{staff.email}</div>
-                        {staff.phone && <div style={{ color: "#64748b", fontSize: "0.78rem" }}>📞 {staff.phone}</div>}
-                      </td>
-
-                      {/* Department */}
-                      <td style={{ padding: "12px 16px", fontSize: "0.84rem", color: "#334155" }}>
-                        <span
-                          style={{
-                            background: "#eff6ff",
-                            color: "#1e40af",
-                            padding: "2px 8px",
-                            borderRadius: "6px",
-                            fontWeight: "600",
-                            fontSize: "0.78rem"
-                          }}
-                        >
-                          {staff.staffDepartment || staff.adminDepartment || "General"}
-                        </span>
-                      </td>
-
-                      {/* Role Badge */}
-                      <td style={{ padding: "12px 16px" }}>
-                        {isMaster ? (
-                          <span
-                            style={{
-                              background: "#fee2e2",
-                              color: "#991b1b",
-                              padding: "3px 9px",
-                              borderRadius: "12px",
-                              fontSize: "0.72rem",
-                              fontWeight: "700",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            <ShieldIcon width="12" height="12" /> Master Admin
-                          </span>
-                        ) : isDeptBoss ? (
-                          <span
-                            style={{
-                              background: "#f3e8ff",
-                              color: "#6b21a8",
-                              padding: "3px 9px",
-                              borderRadius: "12px",
-                              fontSize: "0.72rem",
-                              fontWeight: "700",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            <ShieldIcon width="12" height="12" /> Dept Admin
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              background: "#f1f5f9",
-                              color: "#475569",
-                              padding: "3px 9px",
-                              borderRadius: "12px",
-                              fontSize: "0.72rem",
-                              fontWeight: "600"
-                            }}
-                          >
-                            👔 Staff Member
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td style={{ padding: "12px 16px" }}>
-                        {staff.isOtpVerified || (staff.isVerified && !staff.otpPending) ? (
-                          <span
-                            style={{
-                              background: "#dcfce7",
-                              color: "#15803d",
-                              padding: "3px 9px",
-                              borderRadius: "12px",
-                              fontSize: "0.72rem",
-                              fontWeight: "700",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            <CheckCircleIcon width="12" height="12" /> Registered (OTP Verified)
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              background: "#fef3c7",
-                              color: "#b45309",
-                              padding: "3px 9px",
-                              borderRadius: "12px",
-                              fontSize: "0.72rem",
-                              fontWeight: "700",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            <AlertCircleIcon width="12" height="12" /> Incomplete (Pending OTP)
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Joined Date */}
-                      <td style={{ padding: "12px 16px", fontSize: "0.8rem", color: "#64748b" }}>
-                        {formatDate(staff.createdAt)}
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: "6px" }}>
-                          <button
-                            onClick={() => handleOpenEdit(staff)}
-                            title="Edit Staff Member"
-                            style={{
-                              padding: "5px 9px",
-                              borderRadius: "6px",
-                              border: "1px solid #cbd5e1",
-                              background: "#fff",
-                              color: "#7c3aed",
-                              cursor: "pointer",
-                              fontSize: "0.78rem",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                              fontWeight: "600"
-                            }}
-                          >
-                            <EditIcon width="14" height="14" /> Edit
-                          </button>
-                          {!isMaster && (
-                            <button
-                              onClick={() => handleOpenDelete(staff)}
-                              title="Delete Staff Member"
-                              style={{
-                                padding: "5px 9px",
-                                borderRadius: "6px",
-                                border: "1px solid #fecaca",
-                                background: "#fff5f5",
-                                color: "#dc2626",
-                                cursor: "pointer",
-                                fontSize: "0.78rem",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                fontWeight: "600"
-                              }}
-                            >
-                              <TrashIcon width="14" height="14" /> Delete
-                            </button>
+                        {/* Contact */}
+                        <td>
+                          <div className="reg-user-contact-item">
+                            <MailIcon width="12" height="12" />
+                            <span>{staff.email}</span>
+                          </div>
+                          {staff.phone && (
+                            <div className="reg-user-contact-item secondary">
+                              <PhoneIcon width="12" height="12" />
+                              <span>{staff.phone}</span>
+                            </div>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </td>
 
-        {/* PAGINATION */}
-        <div
-          style={{
-            padding: "12px 18px",
-            background: "#f8fafc",
-            borderTop: "1px solid #e2e8f0",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: "0.84rem",
-            color: "#64748b"
-          }}
-        >
-          <div>
-            Showing <strong>{staffList.length}</strong> of <strong>{total}</strong> staff members
+                        {/* Department */}
+                        <td>
+                          <span className="reg-user-dept-badge">
+                            {staff.staffDepartment || staff.adminDepartment || "General"}
+                          </span>
+                        </td>
+
+                        {/* Role & Authority */}
+                        <td>
+                          {isMaster ? (
+                            <span className="reg-role-badge master">
+                              <ShieldIcon width="12" height="12" />
+                              <span>Master Admin</span>
+                            </span>
+                          ) : isDeptBoss ? (
+                            <span className="reg-role-badge dept-admin">
+                              <ShieldIcon width="12" height="12" />
+                              <span>Dept Admin</span>
+                            </span>
+                          ) : (
+                            <span className="reg-role-badge staff">
+                              <UserIcon width="12" height="12" />
+                              <span>Staff Member</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td>
+                          {staff.isOtpVerified || (staff.isVerified && !staff.otpPending) ? (
+                            <span className="reg-status-badge verified">
+                              <CheckCircleIcon width="12" height="12" />
+                              <span>Verified</span>
+                            </span>
+                          ) : (
+                            <span className="reg-status-badge pending">
+                              <AlertCircleIcon width="12" height="12" />
+                              <span>Pending OTP</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Date */}
+                        <td className="reg-user-date">{formatDate(staff.createdAt)}</td>
+
+                        {/* Actions */}
+                        <td style={{ textAlign: "right" }}>
+                          <div className="reg-user-actions-wrap">
+                            <button
+                              type="button"
+                              className="reg-user-action-btn edit"
+                              onClick={() => handleOpenEdit(staff)}
+                              title="Edit Staff Member"
+                            >
+                              <EditIcon width="13" height="13" />
+                              <span>Edit</span>
+                            </button>
+                            {!isMaster && (
+                              <button
+                                type="button"
+                                className="reg-user-action-btn delete"
+                                onClick={() => handleOpenDelete(staff)}
+                                title="Delete Staff Member"
+                              >
+                                <TrashIcon width="13" height="13" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "5px",
-                border: "1px solid #cbd5e1",
-                background: page <= 1 ? "#f1f5f9" : "#fff",
-                color: page <= 1 ? "#94a3b8" : "#334155",
-                cursor: page <= 1 ? "not-allowed" : "pointer"
-              }}
-            >
-              Previous
-            </button>
-            <span style={{ fontWeight: "600", color: "#1e293b" }}>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "5px",
-                border: "1px solid #cbd5e1",
-                background: page >= totalPages ? "#f1f5f9" : "#fff",
-                color: page >= totalPages ? "#94a3b8" : "#334155",
-                cursor: page >= totalPages ? "not-allowed" : "pointer"
-              }}
-            >
-              Next
-            </button>
+        </div>
+      </div>
+
+      {/* VIEW 2: MOBILE COMPACT CARDS VIEW (SLEEK ZERO HORIZONTAL SCROLL) */}
+      <div className="reg-users-mobile-cards">
+        {loading ? (
+          <div className="reg-user-mobile-card empty-card">
+            <span>Loading registered staff members...</span>
           </div>
+        ) : staffList.length === 0 ? (
+          <div className="reg-user-mobile-card empty-card">
+            <SearchIcon width="24" height="24" style={{ color: "#94a3b8" }} />
+            <span style={{ fontWeight: "600", color: "#334155" }}>No staff found</span>
+            <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+              {search || deptFilter !== "all" ? "Adjust your search criteria" : "Staff accounts will appear here once registered."}
+            </p>
+          </div>
+        ) : (
+          staffList.map((staff) => {
+            const isMaster = staff.id === "10001" || staff.isMasterAdmin;
+            const isDeptBoss = staff.isDeptAdmin || staff.role === "admin";
+            const isVerified = staff.isOtpVerified || (staff.isVerified && !staff.otpPending);
+
+            return (
+              <div key={staff._id || staff.id} className="reg-user-mobile-card">
+                {/* Header Row: Name + ID + Role */}
+                <div className="reg-user-mcard-header">
+                  <div className="reg-user-mcard-title-group">
+                    <span className="reg-user-mcard-name">{staff.fullName || "Staff Member"}</span>
+                    <span className="reg-user-id-badge">{staff.id}</span>
+                  </div>
+                  {isMaster ? (
+                    <span className="reg-role-badge master">
+                      <ShieldIcon width="11" height="11" />
+                      <span>Master</span>
+                    </span>
+                  ) : isDeptBoss ? (
+                    <span className="reg-role-badge dept-admin">
+                      <ShieldIcon width="11" height="11" />
+                      <span>Dept Admin</span>
+                    </span>
+                  ) : (
+                    <span className="reg-role-badge staff">
+                      <UserIcon width="11" height="11" />
+                      <span>Staff</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Metadata Row: Department & Status */}
+                <div className="reg-user-mcard-meta">
+                  <span className="reg-user-dept-badge">
+                    {staff.staffDepartment || staff.adminDepartment || "General"}
+                  </span>
+                  {isVerified ? (
+                    <span className="reg-status-badge verified">
+                      <CheckCircleIcon width="11" height="11" />
+                      <span>Verified</span>
+                    </span>
+                  ) : (
+                    <span className="reg-status-badge pending">
+                      <AlertCircleIcon width="11" height="11" />
+                      <span>Pending OTP</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Contact Row */}
+                <div className="reg-user-mcard-contacts">
+                  <div className="reg-user-contact-item">
+                    <MailIcon width="12" height="12" />
+                    <span>{staff.email}</span>
+                  </div>
+                  {staff.phone && (
+                    <div className="reg-user-contact-item">
+                      <PhoneIcon width="12" height="12" />
+                      <span>{staff.phone}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Row: Joined Date & Actions */}
+                <div className="reg-user-mcard-footer">
+                  <span className="reg-user-mcard-date">{formatDate(staff.createdAt)}</span>
+                  <div className="reg-user-actions-wrap">
+                    <button
+                      type="button"
+                      className="reg-user-action-btn edit"
+                      onClick={() => handleOpenEdit(staff)}
+                    >
+                      <EditIcon width="13" height="13" />
+                      <span>Edit</span>
+                    </button>
+                    {!isMaster && (
+                      <button
+                        type="button"
+                        className="reg-user-action-btn delete"
+                        onClick={() => handleOpenDelete(staff)}
+                      >
+                        <TrashIcon width="13" height="13" />
+                        <span>Delete</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* PAGINATION BAR */}
+      <div className="reg-users-pagination">
+        <div className="reg-users-pag-info">
+          Showing <strong>{staffList.length}</strong> of <strong>{total}</strong> staff members
+        </div>
+        <div className="reg-users-pag-controls">
+          <button
+            type="button"
+            className="reg-users-pag-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          >
+            Previous
+          </button>
+          <span className="reg-users-pag-count">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            className="reg-users-pag-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          >
+            Next
+          </button>
         </div>
       </div>
 
       {/* MODAL: EDIT STAFF */}
       {showEditModal && selectedStaff && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: "10px",
-              maxWidth: "520px",
-              width: "100%",
-              padding: "24px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)"
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+        <div className="reg-users-modal-overlay">
+          <div className="reg-users-modal-box">
+            <div className="reg-users-modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b" }}>Edit Staff Member</h3>
-                <span style={{ fontSize: "0.78rem", color: "#64748b" }}>Staff ID: {selectedStaff.id}</span>
+                <h3 className="reg-users-modal-title">Edit Staff Member</h3>
+                <span className="reg-users-modal-subtitle">Staff ID: {selectedStaff.id}</span>
               </div>
               <button
+                type="button"
+                className="reg-users-modal-close"
                 onClick={() => setShowEditModal(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}
               >
-                <XIcon width="20" height="20" />
+                <XIcon width="18" height="18" />
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit}>
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                  Full Name *
-                </label>
+            <form onSubmit={handleEditSubmit} className="reg-users-modal-form">
+              <div className="form-group">
+                <label>Full Name *</label>
                 <input
                   type="text"
                   required
                   value={editFormData.fullName}
                   onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                  Email Address *
-                </label>
+              <div className="form-group">
+                <label>Email Address *</label>
                 <input
                   type="email"
                   required
                   value={editFormData.email}
                   onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                  Phone Number
-                </label>
+              <div className="form-group">
+                <label>Phone Number</label>
                 <input
                   type="text"
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                  Department *
-                </label>
+              <div className="form-group">
+                <label>Department *</label>
                 <select
                   value={editFormData.department}
                   onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem", background: "#fff" }}
                 >
                   <option value="">Select Department...</option>
                   {departments.map((dept) => (
@@ -889,106 +647,62 @@ function RegisteredStaffTab() {
               </div>
 
               {selectedStaff.id !== "10001" && !selectedStaff.isMasterAdmin && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
-                      Role
-                    </label>
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Role</label>
                     <select
                       value={editFormData.role}
                       onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
-                      style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.88rem", background: "#fff" }}
                     >
                       <option value="staff">Staff</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", marginTop: "20px" }}>
-                    <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "#334155", cursor: "pointer" }}>
+                  <div className="form-checkbox-group" style={{ marginTop: "24px" }}>
+                    <label>
                       <input
                         type="checkbox"
                         checked={editFormData.isDeptAdmin}
                         onChange={(e) => setEditFormData({ ...editFormData, isDeptAdmin: e.target.checked })}
-                        style={{ width: "16px", height: "16px", accentColor: "#7c3aed" }}
                       />
-                      Is Department Boss / Admin
+                      <span>Is Department Admin</span>
                     </label>
                   </div>
                 </div>
               )}
 
               {selectedStaff && (selectedStaff.otpPending || !selectedStaff.isVerified) ? (
-                <div
-                  style={{
-                    background: "#fffbeb",
-                    border: "1px solid #fde68a",
-                    borderRadius: "6px",
-                    padding: "10px 14px",
-                    marginBottom: "16px",
-                    fontSize: "0.82rem",
-                    color: "#92400e",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                  }}
-                >
+                <div className="reg-users-alert pending" style={{ marginBottom: "16px" }}>
                   <AlertCircleIcon width="16" height="16" />
                   <span>
-                    <strong>OTP Pending:</strong> This staff member has not completed registration OTP verification. They are not considered registered staff, and cannot be marked as verified until OTP verification is completed.
+                    <strong>OTP Pending:</strong> This staff member has not completed registration OTP verification. They cannot be marked as verified until OTP verification is completed.
                   </span>
                 </div>
               ) : (
-                <div style={{ marginBottom: "18px" }}>
-                  <label
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "0.85rem",
-                      color: "#334155",
-                      cursor: "pointer"
-                    }}
-                  >
+                <div className="form-checkbox-group" style={{ marginBottom: "16px" }}>
+                  <label>
                     <input
                       type="checkbox"
                       checked={editFormData.isVerified}
                       onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
-                      style={{ width: "16px", height: "16px", accentColor: "#16a34a" }}
                     />
-                    <span>Registered Account Verified (OTP Completed)</span>
+                    <span>Account Verified (OTP Completed)</span>
                   </label>
                 </div>
               )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <div className="reg-users-modal-actions">
                 <button
                   type="button"
+                  className="reg-users-btn-cancel"
                   onClick={() => setShowEditModal(false)}
-                  style={{
-                    padding: "8px 16px",
-                    background: "#f1f5f9",
-                    color: "#475569",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "0.86rem"
-                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit}
-                  style={{
-                    padding: "8px 18px",
-                    background: "#7c3aed",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    fontSize: "0.86rem"
-                  }}
+                  className="reg-users-btn-save"
                 >
                   {savingEdit ? "Saving..." : "Save Changes"}
                 </button>
@@ -1000,50 +714,13 @@ function RegisteredStaffTab() {
 
       {/* MODAL: DELETE CONFIRMATION */}
       {showDeleteModal && staffToDelete && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-            padding: "20px"
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: "10px",
-              maxWidth: "480px",
-              width: "100%",
-              padding: "24px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15)"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  background: "#fee2e2",
-                  color: "#dc2626",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-              >
-                <TrashIcon width="20" height="20" />
-              </div>
-              <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b" }}>Delete Staff Member</h3>
+        <div className="reg-users-modal-overlay">
+          <div className="reg-users-modal-box delete-box">
+            <div className="reg-users-delete-icon">
+              <TrashIcon width="20" height="20" />
             </div>
-
-            <p style={{ fontSize: "0.88rem", color: "#475569", lineHeight: "1.5", margin: "0 0 12px 0" }}>
+            <h3 className="reg-users-modal-title" style={{ marginTop: "12px" }}>Delete Staff Member</h3>
+            <p className="reg-users-delete-text">
               Are you sure you want to permanently delete{" "}
               <strong>
                 {staffToDelete.fullName} ({staffToDelete.id})
@@ -1051,28 +728,21 @@ function RegisteredStaffTab() {
               ?
             </p>
 
-            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 14px", marginBottom: "16px" }}>
-              <div style={{ fontWeight: "700", color: "#991b1b", fontSize: "0.82rem", marginBottom: "3px" }}>
-                🛡️ Automatic Ticket Protection:
+            <div className="reg-users-alert pending" style={{ marginBottom: "16px", textAlign: "left" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "700", marginBottom: "4px" }}>
+                <ShieldIcon width="14" height="14" />
+                <span>Automatic Ticket Protection</span>
               </div>
-              <p style={{ margin: 0, fontSize: "0.78rem", color: "#b91c1c", lineHeight: "1.4" }}>
-                Any active grievances currently assigned to this staff member will be automatically reset to <strong>Pending</strong> so that tickets will not be lost.
+              <p style={{ margin: 0, fontSize: "0.8rem", lineHeight: "1.4" }}>
+                Any active grievances currently assigned to this staff member will be automatically reset to <strong>Pending</strong> so tickets will not be lost.
               </p>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <div className="reg-users-modal-actions">
               <button
                 type="button"
+                className="reg-users-btn-cancel"
                 onClick={() => setShowDeleteModal(false)}
-                style={{
-                  padding: "8px 16px",
-                  background: "#f1f5f9",
-                  color: "#475569",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "0.86rem"
-                }}
               >
                 Cancel
               </button>
@@ -1080,16 +750,7 @@ function RegisteredStaffTab() {
                 type="button"
                 disabled={deleting}
                 onClick={handleConfirmDelete}
-                style={{
-                  padding: "8px 18px",
-                  background: "#dc2626",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  fontSize: "0.86rem"
-                }}
+                className="reg-users-btn-danger"
               >
                 {deleting ? "Deleting..." : "Yes, Delete Staff"}
               </button>
