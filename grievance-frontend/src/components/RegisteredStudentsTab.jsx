@@ -30,7 +30,7 @@ function RegisteredStudentsTab() {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("registered");
 
   // Notification state
   const [msg, setMsg] = useState("");
@@ -99,13 +99,14 @@ function RegisteredStudentsTab() {
   // Open Edit Modal
   const handleOpenEdit = (student) => {
     setSelectedStudent(student);
+    const isActuallyVerified = !student.otpPending && student.isVerified === true;
     setEditFormData({
       fullName: student.fullName || "",
       email: student.email || "",
       phone: student.phone || "",
       program: student.program || "",
       studentType: student.studentType || "",
-      isVerified: student.isVerified !== false
+      isVerified: isActuallyVerified
     });
     setShowEditModal(true);
   };
@@ -216,20 +217,6 @@ function RegisteredStudentsTab() {
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
           <div
             style={{
-              background: "#f8fafc",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
-              Total Registered
-            </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1e293b" }}>{total}</span>
-          </div>
-          <div
-            style={{
               background: "#ecfdf5",
               padding: "8px 16px",
               borderRadius: "8px",
@@ -238,7 +225,7 @@ function RegisteredStudentsTab() {
             }}
           >
             <span style={{ display: "block", fontSize: "0.72rem", color: "#065f46", fontWeight: "600", textTransform: "uppercase" }}>
-              Verified (OTP)
+              Registered Students (OTP Verified)
             </span>
             <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#047857" }}>{totalVerified}</span>
           </div>
@@ -252,7 +239,7 @@ function RegisteredStudentsTab() {
             }}
           >
             <span style={{ display: "block", fontSize: "0.72rem", color: "#92400e", fontWeight: "600", textTransform: "uppercase" }}>
-              Pending OTP
+              Incomplete Signups (Pending OTP)
             </span>
             <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#b45309" }}>{totalPending}</span>
           </div>
@@ -327,20 +314,21 @@ function RegisteredStudentsTab() {
             border: "1px solid #cbd5e1",
             fontSize: "0.88rem",
             background: "#fff",
-            cursor: "pointer"
+            cursor: "pointer",
+            fontWeight: "600",
+            color: "#334155"
           }}
         >
-          <option value="all">All Verification Status</option>
-          <option value="verified">Verified Only</option>
-          <option value="pending">Pending OTP Only</option>
+          <option value="registered">🎓 Registered Students (OTP Verified)</option>
+          <option value="pending">⏳ Incomplete Signups (Pending OTP)</option>
+          <option value="all">🌐 All Accounts (Registered + Incomplete)</option>
         </select>
 
         <button
           onClick={() => {
             setSearch("");
-            setStatusFilter("all");
+            setStatusFilter("registered");
             setPage(1);
-            fetchStudents();
           }}
           style={{
             padding: "9px 16px",
@@ -497,12 +485,12 @@ function RegisteredStudentsTab() {
 
                     {/* Verification Status */}
                     <td style={{ padding: "12px 16px" }}>
-                      {student.isVerified ? (
+                      {student.isOtpVerified || (student.isVerified && !student.otpPending) ? (
                         <span
                           style={{
                             background: "#dcfce7",
                             color: "#15803d",
-                            padding: "2px 8px",
+                            padding: "3px 9px",
                             borderRadius: "12px",
                             fontSize: "0.72rem",
                             fontWeight: "700",
@@ -511,14 +499,14 @@ function RegisteredStudentsTab() {
                             gap: "4px"
                           }}
                         >
-                          <CheckCircleIcon width="12" height="12" /> Verified
+                          <CheckCircleIcon width="12" height="12" /> Registered (OTP Verified)
                         </span>
                       ) : (
                         <span
                           style={{
                             background: "#fef3c7",
                             color: "#b45309",
-                            padding: "2px 8px",
+                            padding: "3px 9px",
                             borderRadius: "12px",
                             fontSize: "0.72rem",
                             fontWeight: "700",
@@ -527,7 +515,7 @@ function RegisteredStudentsTab() {
                             gap: "4px"
                           }}
                         >
-                          <AlertCircleIcon width="12" height="12" /> Pending OTP
+                          <AlertCircleIcon width="12" height="12" /> Incomplete (Pending OTP)
                         </span>
                       )}
                     </td>
@@ -744,17 +732,48 @@ function RegisteredStudentsTab() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: "18px" }}>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#334155", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={editFormData.isVerified}
-                    onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
-                    style={{ width: "16px", height: "16px", accentColor: "#16a34a" }}
-                  />
-                  Mark Student as Verified (OTP Cleared)
-                </label>
-              </div>
+              {selectedStudent && (selectedStudent.otpPending || !selectedStudent.isVerified) ? (
+                <div
+                  style={{
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                    borderRadius: "6px",
+                    padding: "10px 14px",
+                    marginBottom: "16px",
+                    fontSize: "0.82rem",
+                    color: "#92400e",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  <AlertCircleIcon width="16" height="16" />
+                  <span>
+                    <strong>OTP Pending:</strong> This student has not verified their registration OTP yet. They are not considered a registered student, and cannot be marked as verified until OTP verification is completed.
+                  </span>
+                </div>
+              ) : (
+                <div style={{ marginBottom: "18px" }}>
+                  <label
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "0.85rem",
+                      color: "#334155",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editFormData.isVerified}
+                      onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
+                      style={{ width: "16px", height: "16px", accentColor: "#16a34a" }}
+                    />
+                    <span>Registered Account Verified (OTP Completed)</span>
+                  </label>
+                </div>
+              )}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                 <button

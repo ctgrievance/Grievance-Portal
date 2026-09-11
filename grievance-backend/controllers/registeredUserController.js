@@ -9,23 +9,37 @@ import Grievance from "../models/GrievanceModel.js";
 // =========================================================================
 export const getLiveStudents = async (req, res) => {
   try {
-    const { search = "", status = "all", page = 1, limit = 50 } = req.query;
+    const { search = "", status = "registered", page = 1, limit = 50 } = req.query;
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 50;
 
-    // Build filter
+    // Strict condition: A user is considered a registered student ONLY IF their OTP has been verified
+    const verifiedCondition = {
+      isVerified: true,
+      $or: [{ otp: { $exists: false } }, { otp: null }, { otp: "" }]
+    };
+    const pendingCondition = {
+      $or: [
+        { isVerified: false },
+        { otp: { $exists: true, $ne: null, $ne: "" } }
+      ]
+    };
+
+    // Build query filter
     const query = {};
 
-    if (status === "verified") {
-      query.isVerified = true;
-    } else if (status === "pending") {
-      query.isVerified = false;
+    // "registered" (default) or "verified" means strictly OTP-verified students
+    if (status === "registered" || status === "verified") {
+      Object.assign(query, verifiedCondition);
+    } else if (status === "pending" || status === "incomplete") {
+      Object.assign(query, pendingCondition);
     }
+    // if status === "all", query both
 
     if (search.trim()) {
       const q = search.trim();
       const regex = new RegExp(q, "i");
-      query.$or = [
+      const searchOr = [
         { id: regex },
         { fullName: regex },
         { email: regex },
@@ -33,24 +47,41 @@ export const getLiveStudents = async (req, res) => {
         { program: regex },
         { studentType: regex }
       ];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchOr }];
+        delete query.$or;
+      } else {
+        query.$or = searchOr;
+      }
     }
 
     const total = await StudentUser.countDocuments(query);
-    const students = await StudentUser.find(query)
-      .select("-password -otp -phoneOtp -resetOtp")
+    const rawStudents = await StudentUser.find(query)
+      .select("-password -phoneOtp -resetOtp") // retain otp presence check
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 
-    // Also get verified and pending count
-    const [totalVerified, totalPending] = await Promise.all([
-      StudentUser.countDocuments({ isVerified: true }),
-      StudentUser.countDocuments({ isVerified: false })
+    // Format output students and compute OTP status flag (without revealing secret OTP code)
+    const students = rawStudents.map(s => {
+      const sObj = s.toObject();
+      const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
+      sObj.otpPending = hasPendingOtp;
+      sObj.isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
+      delete sObj.otp; // never leak secret OTP to frontend
+      return sObj;
+    });
+
+    // Counts: Total truly registered (OTP verified) vs Incomplete/Pending OTP
+    const [totalRegistered, totalPending] = await Promise.all([
+      StudentUser.countDocuments(verifiedCondition),
+      StudentUser.countDocuments(pendingCondition)
     ]);
 
     res.status(200).json({
       total,
-      totalVerified,
+      totalRegistered,
+      totalVerified: totalRegistered,
       totalPending,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
@@ -91,7 +122,17 @@ export const updateLiveStudent = async (req, res) => {
     if (phone !== undefined) student.phone = phone.trim();
     if (program !== undefined) student.program = program.trim();
     if (studentType !== undefined) student.studentType = studentType.trim();
-    if (isVerified !== undefined) student.isVerified = !!isVerified;
+
+    if (isVerified !== undefined) {
+      const isTryingToVerify = !!isVerified;
+      const hasPendingOtp = !!(student.otp && student.otp.trim() !== "") || student.isVerified === false;
+      if (isTryingToVerify && hasPendingOtp && !student.isVerified) {
+        return res.status(400).json({
+          message: "Cannot mark student as verified because registration OTP is still pending. The student must verify the OTP sent to their email/phone."
+        });
+      }
+      student.isVerified = isTryingToVerify;
+    }
 
     await student.save();
 
@@ -149,16 +190,28 @@ export const deleteLiveStudent = async (req, res) => {
 // =========================================================================
 export const getLiveStaff = async (req, res) => {
   try {
-    const { search = "", department = "all", role = "all", status = "all", page = 1, limit = 50 } = req.query;
+    const { search = "", department = "all", role = "all", status = "registered", page = 1, limit = 50 } = req.query;
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 50;
 
+    // Strict condition: A user is considered registered staff ONLY IF their OTP has been verified
+    const verifiedCondition = {
+      isVerified: true,
+      $or: [{ otp: { $exists: false } }, { otp: null }, { otp: "" }]
+    };
+    const pendingCondition = {
+      $or: [
+        { isVerified: false },
+        { otp: { $exists: true, $ne: null, $ne: "" } }
+      ]
+    };
+
     const query = {};
 
-    if (status === "verified") {
-      query.isVerified = true;
-    } else if (status === "pending") {
-      query.isVerified = false;
+    if (status === "registered" || status === "verified") {
+      Object.assign(query, verifiedCondition);
+    } else if (status === "pending" || status === "incomplete") {
+      Object.assign(query, pendingCondition);
     }
 
     if (department !== "all") {
@@ -169,7 +222,13 @@ export const getLiveStaff = async (req, res) => {
     }
 
     if (role === "admin") {
-      query.$or = [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }];
+      const roleFilter = [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: roleFilter }];
+        delete query.$or;
+      } else {
+        query.$or = roleFilter;
+      }
     } else if (role === "staff") {
       query.role = "staff";
       query.isDeptAdmin = { $ne: true };
@@ -190,14 +249,15 @@ export const getLiveStaff = async (req, res) => {
       if (query.$or) {
         query.$and = [{ $or: query.$or }, { $or: searchConditions }];
         delete query.$or;
+      } else if (query.$and) {
+        query.$and.push({ $or: searchConditions });
       } else {
         query.$or = searchConditions;
       }
     }
 
-    // Exclude student accounts if any entered by mistake
     const rawStaff = await StaffUser.find(query)
-      .select("-password -otp -phoneOtp -resetOtp")
+      .select("-password -phoneOtp -resetOtp") // retain otp presence check
       .sort({ createdAt: -1 });
 
     // Also pull admin records from AdminStaffModel to attach live roles
@@ -211,21 +271,29 @@ export const getLiveStaff = async (req, res) => {
         sObj.adminDepartment = adminRec.adminDepartment || sObj.adminDepartment || "";
         sObj.isDeptAdmin = adminRec.isDeptAdmin !== undefined ? adminRec.isDeptAdmin : sObj.isDeptAdmin;
       }
+      const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
+      sObj.otpPending = hasPendingOtp;
+      sObj.isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
+      delete sObj.otp; // never leak secret OTP to frontend
       return sObj;
     });
 
     const total = enriched.length;
     const paginated = enriched.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
-    const [totalVerified, totalAdmins, totalRegularStaff] = await Promise.all([
-      StaffUser.countDocuments({ isVerified: true }),
-      StaffUser.countDocuments({ $or: [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }] }),
-      StaffUser.countDocuments({ role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } })
+    // Count strictly verified staff for totalRegisteredStaff
+    const [totalRegistered, totalPending, totalAdmins, totalRegularStaff] = await Promise.all([
+      StaffUser.countDocuments(verifiedCondition),
+      StaffUser.countDocuments(pendingCondition),
+      StaffUser.countDocuments({ ...verifiedCondition, $or: [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }] }),
+      StaffUser.countDocuments({ ...verifiedCondition, role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } })
     ]);
 
     res.status(200).json({
       total,
-      totalVerified,
+      totalRegistered,
+      totalVerified: totalRegistered,
+      totalPending,
       totalAdmins,
       totalRegularStaff,
       page: pageNum,
@@ -278,7 +346,17 @@ export const updateLiveStaff = async (req, res) => {
     }
     if (role !== undefined) staff.role = role.trim();
     if (isDeptAdmin !== undefined && safeId !== "10001") staff.isDeptAdmin = !!isDeptAdmin;
-    if (isVerified !== undefined) staff.isVerified = !!isVerified;
+
+    if (isVerified !== undefined) {
+      const isTryingToVerify = !!isVerified;
+      const hasPendingOtp = !!(staff.otp && staff.otp.trim() !== "") || staff.isVerified === false;
+      if (isTryingToVerify && hasPendingOtp && !staff.isVerified) {
+        return res.status(400).json({
+          message: "Cannot mark staff member as verified because registration OTP is still pending. The staff member must verify the OTP sent to their email/phone."
+        });
+      }
+      staff.isVerified = isTryingToVerify;
+    }
 
     await staff.save();
 

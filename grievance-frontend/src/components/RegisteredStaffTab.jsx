@@ -24,6 +24,7 @@ function RegisteredStaffTab() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalVerified, setTotalVerified] = useState(0);
+  const [totalPending, setTotalPending] = useState(0);
   const [totalAdmins, setTotalAdmins] = useState(0);
   const [totalRegularStaff, setTotalRegularStaff] = useState(0);
   const [page, setPage] = useState(1);
@@ -36,7 +37,7 @@ function RegisteredStaffTab() {
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("registered");
 
   // Notifications
   const [msg, setMsg] = useState("");
@@ -109,6 +110,7 @@ function RegisteredStaffTab() {
       setStaffList(data.staff || []);
       setTotal(data.total || 0);
       setTotalVerified(data.totalVerified || 0);
+      setTotalPending(data.totalPending || 0);
       setTotalAdmins(data.totalAdmins || 0);
       setTotalRegularStaff(data.totalRegularStaff || 0);
       setTotalPages(data.totalPages || 1);
@@ -127,6 +129,7 @@ function RegisteredStaffTab() {
   // Open Edit Modal
   const handleOpenEdit = (staff) => {
     setSelectedStaff(staff);
+    const isActuallyVerified = !staff.otpPending && staff.isVerified === true;
     setEditFormData({
       fullName: staff.fullName || "",
       email: staff.email || "",
@@ -134,7 +137,7 @@ function RegisteredStaffTab() {
       department: staff.staffDepartment || staff.adminDepartment || "",
       role: staff.role || "staff",
       isDeptAdmin: !!staff.isDeptAdmin,
-      isVerified: staff.isVerified !== false
+      isVerified: isActuallyVerified
     });
     setShowEditModal(true);
   };
@@ -252,17 +255,17 @@ function RegisteredStaffTab() {
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
           <div
             style={{
-              background: "#f8fafc",
+              background: "#ecfdf5",
               padding: "8px 16px",
               borderRadius: "8px",
-              border: "1px solid #e2e8f0",
+              border: "1px solid #a7f3d0",
               textAlign: "center"
             }}
           >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
-              Total Staff
+            <span style={{ display: "block", fontSize: "0.72rem", color: "#065f46", fontWeight: "600", textTransform: "uppercase" }}>
+              Registered Staff (OTP Verified)
             </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1e293b" }}>{total}</span>
+            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#047857" }}>{totalVerified}</span>
           </div>
           <div
             style={{
@@ -280,17 +283,31 @@ function RegisteredStaffTab() {
           </div>
           <div
             style={{
-              background: "#ecfdf5",
+              background: "#f8fafc",
               padding: "8px 16px",
               borderRadius: "8px",
-              border: "1px solid #a7f3d0",
+              border: "1px solid #e2e8f0",
               textAlign: "center"
             }}
           >
-            <span style={{ display: "block", fontSize: "0.72rem", color: "#065f46", fontWeight: "600", textTransform: "uppercase" }}>
+            <span style={{ display: "block", fontSize: "0.72rem", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
               Regular Staff
             </span>
-            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#047857" }}>{totalRegularStaff}</span>
+            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1e293b" }}>{totalRegularStaff}</span>
+          </div>
+          <div
+            style={{
+              background: "#fffbeb",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              border: "1px solid #fde68a",
+              textAlign: "center"
+            }}
+          >
+            <span style={{ display: "block", fontSize: "0.72rem", color: "#92400e", fontWeight: "600", textTransform: "uppercase" }}>
+              Incomplete (Pending OTP)
+            </span>
+            <span style={{ fontSize: "1.25rem", fontWeight: "700", color: "#b45309" }}>{totalPending}</span>
           </div>
         </div>
       </div>
@@ -407,12 +424,14 @@ function RegisteredStaffTab() {
             border: "1px solid #cbd5e1",
             fontSize: "0.88rem",
             background: "#fff",
-            cursor: "pointer"
+            cursor: "pointer",
+            fontWeight: "600",
+            color: "#334155"
           }}
         >
-          <option value="all">All Status</option>
-          <option value="verified">Verified Only</option>
-          <option value="pending">Pending OTP</option>
+          <option value="registered">👔 Registered Staff (OTP Verified)</option>
+          <option value="pending">⏳ Incomplete Signups (Pending OTP)</option>
+          <option value="all">🌐 All Accounts (Registered + Incomplete)</option>
         </select>
 
         <button
@@ -420,9 +439,8 @@ function RegisteredStaffTab() {
             setSearch("");
             setDeptFilter("all");
             setRoleFilter("all");
-            setStatusFilter("all");
+            setStatusFilter("registered");
             setPage(1);
-            fetchStaff();
           }}
           style={{
             padding: "9px 16px",
@@ -628,12 +646,12 @@ function RegisteredStaffTab() {
 
                       {/* Status */}
                       <td style={{ padding: "12px 16px" }}>
-                        {staff.isVerified ? (
+                        {staff.isOtpVerified || (staff.isVerified && !staff.otpPending) ? (
                           <span
                             style={{
                               background: "#dcfce7",
                               color: "#15803d",
-                              padding: "2px 8px",
+                              padding: "3px 9px",
                               borderRadius: "12px",
                               fontSize: "0.72rem",
                               fontWeight: "700",
@@ -642,14 +660,14 @@ function RegisteredStaffTab() {
                               gap: "4px"
                             }}
                           >
-                            <CheckCircleIcon width="12" height="12" /> Verified
+                            <CheckCircleIcon width="12" height="12" /> Registered (OTP Verified)
                           </span>
                         ) : (
                           <span
                             style={{
                               background: "#fef3c7",
                               color: "#b45309",
-                              padding: "2px 8px",
+                              padding: "3px 9px",
                               borderRadius: "12px",
                               fontSize: "0.72rem",
                               fontWeight: "700",
@@ -658,7 +676,7 @@ function RegisteredStaffTab() {
                               gap: "4px"
                             }}
                           >
-                            <AlertCircleIcon width="12" height="12" /> Pending OTP
+                            <AlertCircleIcon width="12" height="12" /> Incomplete (Pending OTP)
                           </span>
                         )}
                       </td>
@@ -899,17 +917,48 @@ function RegisteredStaffTab() {
                 </div>
               )}
 
-              <div style={{ marginBottom: "18px" }}>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#334155", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={editFormData.isVerified}
-                    onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
-                    style={{ width: "16px", height: "16px", accentColor: "#16a34a" }}
-                  />
-                  Mark Staff as Verified (OTP Cleared)
-                </label>
-              </div>
+              {selectedStaff && (selectedStaff.otpPending || !selectedStaff.isVerified) ? (
+                <div
+                  style={{
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                    borderRadius: "6px",
+                    padding: "10px 14px",
+                    marginBottom: "16px",
+                    fontSize: "0.82rem",
+                    color: "#92400e",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  <AlertCircleIcon width="16" height="16" />
+                  <span>
+                    <strong>OTP Pending:</strong> This staff member has not completed registration OTP verification. They are not considered registered staff, and cannot be marked as verified until OTP verification is completed.
+                  </span>
+                </div>
+              ) : (
+                <div style={{ marginBottom: "18px" }}>
+                  <label
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "0.85rem",
+                      color: "#334155",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editFormData.isVerified}
+                      onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
+                      style={{ width: "16px", height: "16px", accentColor: "#16a34a" }}
+                    />
+                    <span>Registered Account Verified (OTP Completed)</span>
+                  </label>
+                </div>
+              )}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                 <button
