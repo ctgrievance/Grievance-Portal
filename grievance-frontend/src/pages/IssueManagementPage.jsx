@@ -5,6 +5,7 @@ import IssueManagementPanel from "../components/IssueManagementPanel";
 import RoutingRuleConfig from "../components/RoutingRuleConfig";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon } from "../components/Icons";
+import ProfileHeaderButton from "../components/ProfileHeaderButton";
 
 function IssueManagementPage() {
   const navigate = useNavigate();
@@ -96,6 +97,7 @@ function IssueManagementPage() {
               </span>
             </div>
           </div>
+          <ProfileHeaderButton />
         </div>
         <button className="logout-btn-header" onClick={handleLogout}>
           Logout

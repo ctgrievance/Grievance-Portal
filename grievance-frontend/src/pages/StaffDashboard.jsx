@@ -4,6 +4,7 @@ import "../styles/Dashboard.css";
 import ctLogo from "../assets/ct-logo.png";
 import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
+import ProfileHeaderButton from "../components/ProfileHeaderButton";
 
 // Helper: format dates for tables
 const formatDate = (dateString) => {
@@ -508,6 +509,7 @@ function StaffDashboard() {
               </span>
             </p>
           </div>
+          <ProfileHeaderButton />
         </div>
         <button className="logout-btn-header" onClick={handleLogout}>
           Logout

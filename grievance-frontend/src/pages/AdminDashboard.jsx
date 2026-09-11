@@ -10,6 +10,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, PaperclipIcon, TrashIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
+import ProfileHeaderButton from "../components/ProfileHeaderButton";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -225,6 +226,7 @@ function AdminDashboard() {
               </span>
             </p>
           </div>
+          <ProfileHeaderButton />
         </div>
         <button className="logout-btn-header" onClick={handleLogout}>
           Logout

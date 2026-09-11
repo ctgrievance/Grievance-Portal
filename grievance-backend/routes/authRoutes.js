@@ -6,8 +6,15 @@ import {
   loginUser,
   verifyLogin,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getUserProfile,
+  updateUserProfile,
+  requestEmailOtp,
+  verifyEmailOtp,
+  requestPhoneOtp,
+  verifyPhoneOtp
 } from "../controllers/authController.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
@@ -24,6 +31,14 @@ router.post("/forgot-password", forgotPassword);
 
 // Reset Password
 router.post("/reset-password", resetPassword);
+
+// User Profile & Contact Update with OTP
+router.get("/profile", verifyToken, getUserProfile);
+router.put("/profile", verifyToken, updateUserProfile);
+router.post("/profile/request-email-otp", verifyToken, requestEmailOtp);
+router.post("/profile/verify-email-otp", verifyToken, verifyEmailOtp);
+router.post("/profile/request-phone-otp", verifyToken, requestPhoneOtp);
+router.post("/profile/verify-phone-otp", verifyToken, verifyPhoneOtp);
 
 // Get User by ID
 router.get("/user/:id", async (req, res) => {

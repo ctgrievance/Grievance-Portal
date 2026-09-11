@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 // Icons
-import { UserIcon, LockIcon, PhoneIcon, MailIcon, UsersIcon, BookIcon, EyeIcon, EyeOffIcon, KeyIcon } from "../components/Icons";
+import { UserIcon, LockIcon, PhoneIcon, MailIcon, UsersIcon, BookIcon, EyeIcon, EyeOffIcon, KeyIcon, ClipboardIcon } from "../components/Icons";
 
 const academicPrograms = {
   "School of Engineering and Technology": ["B.Tech - CSE", "B.Tech - AI", "B.Tech - Civil", "B.Tech - Mech", "BCA", "MCA"],
@@ -15,10 +15,20 @@ const academicPrograms = {
 };
 
 function RegisterPage() {
-  const [formData, setFormData] = useState({ id: "", role: "", studentType: "current", fullName: "", email: "", phone: "", password: "", program: "", });
+  const [formData, setFormData] = useState({ id: "", role: "", studentType: "current", fullName: "", email: "", phone: "", password: "", program: "", department: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [staffDepartments, setStaffDepartments] = useState([]);
+
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setStaffDepartments(data);
+      })
+      .catch(err => console.error("Error fetching departments for staff registration:", err));
+  }, []);
 
   // 🔐 OTP State
   const [otpPhone, setOtpPhone] = useState("");
@@ -84,6 +94,12 @@ function RegisterPage() {
 
     if (formData.password !== confirmPassword) {
       setMsg("Passwords do not match!");
+      setStatusType("error");
+      return;
+    }
+
+    if (formData.role === 'staff' && !formData.department) {
+      setMsg("Please select your department!");
       setStatusType("error");
       return;
     }
@@ -347,6 +363,23 @@ function RegisterPage() {
                         <optgroup key={dept} label={dept}>
                           {courses.map(course => <option key={course} value={course}>{course}</option>)}
                         </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {formData.role === 'staff' && (
+                <div className="input-group">
+                  <label>Department</label>
+                  <div className="input-wrapper program-field">
+                    <span className="icon"><ClipboardIcon /></span>
+                    <select name="department" value={formData.department} onChange={handleChange} required>
+                      <option value="">Select Your Department</option>
+                      {staffDepartments.map(dept => (
+                        <option key={dept._id || dept.name} value={dept.name}>
+                          {dept.name}
+                        </option>
                       ))}
                     </select>
                   </div>

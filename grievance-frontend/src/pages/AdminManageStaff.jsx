@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import ctLogo from "../assets/ct-logo.png";
 import { ShieldIcon, AdminIcon, LockIcon, UserIcon, XIcon } from "../components/Icons";
+import ProfileHeaderButton from "../components/ProfileHeaderButton";
 
 const AdminManageStaff = () => {
   const navigate = useNavigate();
@@ -193,6 +194,7 @@ const AdminManageStaff = () => {
               )}
             </p>
           </div>
+          <ProfileHeaderButton />
         </div>
         <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>
