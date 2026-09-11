@@ -8,7 +8,9 @@ import {
   ShieldIcon,
   CheckCircleIcon,
   AlertCircleIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  GraduationCapIcon,
+  ArrowLeftIcon
 } from "../components/Icons";
 import "../styles/Dashboard.css";
 
@@ -251,17 +253,17 @@ function ProfilePage() {
 
       setEmailStep(2);
       setEmailTimer(60);
-      showToast(`Verification code sent to ${newEmail}`, "info");
+      showToast(data.message || "Verification OTP sent to your new email!", "success");
     } catch (err) {
-      showToast(err.message || "Failed to send email OTP", "error");
+      showToast(err.message || "Error sending email verification code", "error");
     } finally {
       setEmailLoading(false);
     }
   };
 
   const handleVerifyEmailOtp = async () => {
-    if (!emailOtp || emailOtp.length !== 6) {
-      showToast("Please enter the complete 6-digit verification code", "error");
+    if (!emailOtp || emailOtp.trim().length !== 6) {
+      showToast("Please enter the 6-digit verification code", "error");
       return;
     }
 
@@ -275,23 +277,20 @@ function ProfilePage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ newEmail, otp: emailOtp })
+          body: JSON.stringify({ newEmail, otp: emailOtp.trim() })
         }
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Invalid verification code");
-
-      if (data.token) localStorage.setItem("grievance_token", data.token);
+      if (!res.ok) throw new Error(data.message || "Email verification failed");
 
       setProfile(prev => ({ ...prev, email: data.email }));
       setShowEmailEdit(false);
-      setEmailStep(1);
       setEmailOtp("");
-      setNewEmail("");
-      showToast("Email address verified and updated successfully!", "success");
+      setEmailStep(1);
+      showToast("Email address updated and verified successfully!", "success");
     } catch (err) {
-      showToast(err.message || "Failed to verify email code", "error");
+      showToast(err.message || "Failed to verify email OTP", "error");
     } finally {
       setEmailLoading(false);
     }
@@ -299,13 +298,13 @@ function ProfilePage() {
 
   // 3. PHONE OTP FLOW
   const handleSendPhoneOtp = async () => {
-    const clean = newPhone.trim();
-    if (!clean || !/^\d{10}$/.test(clean)) {
-      showToast("Please enter a valid 10-digit phone number", "error");
+    const cleanPhone = newPhone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      showToast("Please enter a valid 10-digit mobile number", "error");
       return;
     }
-    if (clean === profile.phone) {
-      showToast("New phone must be different from current phone", "error");
+    if (cleanPhone === (profile.phone || "").replace(/\D/g, "")) {
+      showToast("New phone number must be different from current phone", "error");
       return;
     }
 
@@ -319,26 +318,26 @@ function ProfilePage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ newPhone: clean })
+          body: JSON.stringify({ newPhone: cleanPhone })
         }
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to send SMS code");
+      if (!res.ok) throw new Error(data.message || "Failed to send phone OTP");
 
       setPhoneStep(2);
       setPhoneTimer(60);
-      showToast(`SMS verification code sent to ${clean}`, "info");
+      showToast(data.message || "Verification code sent to your phone via SMS!", "success");
     } catch (err) {
-      showToast(err.message || "Failed to send phone OTP", "error");
+      showToast(err.message || "Error sending phone verification code", "error");
     } finally {
       setPhoneLoading(false);
     }
   };
 
   const handleVerifyPhoneOtp = async () => {
-    if (!phoneOtp || phoneOtp.length !== 6) {
-      showToast("Please enter the complete 6-digit SMS code", "error");
+    if (!phoneOtp || phoneOtp.trim().length !== 6) {
+      showToast("Please enter the 6-digit SMS verification code", "error");
       return;
     }
 
@@ -352,70 +351,59 @@ function ProfilePage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ newPhone: newPhone.trim(), otp: phoneOtp })
+          body: JSON.stringify({ newPhone: newPhone.replace(/\D/g, ""), otp: phoneOtp.trim() })
         }
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Invalid verification code");
+      if (!res.ok) throw new Error(data.message || "Phone verification failed");
 
       setProfile(prev => ({ ...prev, phone: data.phone }));
       setShowPhoneEdit(false);
-      setPhoneStep(1);
       setPhoneOtp("");
-      setNewPhone("");
-      showToast("Phone number verified and updated successfully!", "success");
+      setPhoneStep(1);
+      showToast("Phone number updated and verified successfully!", "success");
     } catch (err) {
-      showToast(err.message || "Failed to verify SMS code", "error");
+      showToast(err.message || "Failed to verify phone OTP", "error");
     } finally {
       setPhoneLoading(false);
     }
   };
 
-  // Role display label & badge
+  // Role display label & badge (Executive, No Emojis)
   const getRoleBadge = () => {
     if (profile.isMasterAdmin) {
       return {
-        label: "Super Admin",
-        bg: "#fef3c7",
-        color: "#92400e",
-        border: "#fde68a",
-        icon: "👑"
+        label: "Master Admin",
+        className: "master",
+        icon: <ShieldIcon width="12" height="12" />
       };
     }
     if (profile.isDeptAdmin) {
       return {
         label: `Dept Admin - ${profile.adminDepartment || profile.department || "Admin"}`,
-        bg: "#eff6ff",
-        color: "#1e40af",
-        border: "#bfdbfe",
-        icon: "🛡️"
-      };
-    }
-    if (profile.role === "staff" && (profile.adminDepartment || profile.department)) {
-      return {
-        label: `Staff Team - ${profile.department || profile.adminDepartment}`,
-        bg: "#f0fdf4",
-        color: "#166534",
-        border: "#bbf7d0",
-        icon: "👤"
+        className: "dept",
+        icon: <ShieldIcon width="12" height="12" />
       };
     }
     if (profile.role === "staff") {
       return {
-        label: "General Staff (Unassigned)",
-        bg: "#f8fafc",
-        color: "#475569",
-        border: "#e2e8f0",
-        icon: "📋"
+        label: profile.department || profile.adminDepartment ? `Staff - ${profile.department || profile.adminDepartment}` : "General Staff",
+        className: "staff",
+        icon: <UserIcon width="12" height="12" />
+      };
+    }
+    if (profile.role === "student") {
+      return {
+        label: `Student - ${profile.school || profile.department || "Academic"}`,
+        className: "student",
+        icon: <GraduationCapIcon width="12" height="12" />
       };
     }
     return {
       label: profile.role ? profile.role.toUpperCase() : "User",
-      bg: "#f8fafc",
-      color: "#475569",
-      border: "#e2e8f0",
-      icon: "👤"
+      className: "student",
+      icon: <UserIcon width="12" height="12" />
     };
   };
 
@@ -424,684 +412,551 @@ function ProfilePage() {
   return (
     <div className="dashboard-container" style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
       {/* HEADER */}
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "48px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap" style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" style={{ height: "42px" }} />
           <div className="header-content">
             <h1>User Profile</h1>
-            <p>Manage your account settings, department assignment, and verified contacts</p>
+            <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+              Manage your account credentials, department routing, and verified contacts
+            </p>
           </div>
         </div>
-        <button
-          className="logout-btn-header"
-          onClick={handleBackToDashboard}
-          style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-        >
-          ← Back to Dashboard
-        </button>
+        <div className="admin-header-actions">
+          <button
+            className="profile-contact-btn"
+            onClick={handleBackToDashboard}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: "600" }}
+          >
+            <ArrowLeftIcon width="14" height="14" />
+            <span>Back to Dashboard</span>
+          </button>
+        </div>
       </header>
 
       {/* TOAST NOTIFICATION */}
       {msg && (
         <div
-          className={`alert-box ${statusType}`}
           style={{
-            maxWidth: "900px",
-            margin: "20px auto 0",
-            borderRadius: "10px",
+            maxWidth: "1280px",
+            margin: "16px auto 0",
+            padding: "12px 18px",
+            borderRadius: "8px",
             display: "flex",
             alignItems: "center",
-            gap: "10px"
+            gap: "10px",
+            fontWeight: "500",
+            fontSize: "0.88rem",
+            backgroundColor: statusType === "error" ? "#fee2e2" : "#f0fdf4",
+            color: statusType === "error" ? "#991b1b" : "#166534",
+            border: `1px solid ${statusType === "error" ? "#fca5a5" : "#bbf7d0"}`
           }}
         >
-          {statusType === "error" ? <AlertCircleIcon width="20" height="20" /> : <CheckCircleIcon width="20" height="20" />}
+          {statusType === "error" ? <AlertCircleIcon width="18" height="18" /> : <CheckCircleIcon width="18" height="18" />}
           <span>{msg}</span>
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "80px 20px", color: "#6366f1", fontSize: "1.1rem" }}>
-          Loading your profile...
+        <div style={{ textAlign: "center", padding: "80px 20px", color: "#64748b", fontSize: "1rem" }}>
+          Loading profile details...
         </div>
       ) : (
-        <div style={{ maxWidth: "900px", margin: "25px auto", padding: "0 20px 60px" }}>
-          
-          {/* USER HERO CARD */}
-          <div
-            style={{
-              background: "white",
-              borderRadius: "16px",
-              padding: "30px",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
-              border: "1px solid #e2e8f0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "20px",
-              marginBottom: "25px"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-              <div
-                style={{
-                  width: "72px",
-                  height: "72px",
-                  borderRadius: "50%",
-                  background: profile.isMasterAdmin
-                    ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
-                    : "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.8rem",
-                  fontWeight: "700",
-                  boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)"
-                }}
-              >
-                {(profile.fullName || profile.id || "U").charAt(0).toUpperCase()}
-              </div>
+        <div className="profile-page-wrapper">
+          <div className="profile-layout-grid">
 
-              <div>
-                <h2 style={{ margin: "0 0 6px 0", fontSize: "1.4rem", color: "#1e293b" }}>
+            {/* LEFT COLUMN: PROFILE SUMMARY & CREDENTIALS CARD */}
+            <aside className="profile-sidebar-card">
+              <div className="profile-avatar-wrap">
+                <div className="profile-avatar-circle">
+                  {(profile.fullName || profile.id || "U").charAt(0).toUpperCase()}
+                </div>
+                <h2 className="profile-avatar-name">
                   {profile.fullName || "University Member"}
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                  <span style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: "600" }}>
-                    ID: {profile.id || storedId}
-                  </span>
-                  <span
-                    style={{
-                      background: badge.bg,
-                      color: badge.color,
-                      border: `1px solid ${badge.border}`,
-                      padding: "3px 10px",
-                      borderRadius: "12px",
-                      fontSize: "0.8rem",
-                      fontWeight: "600",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px"
-                    }}
-                  >
-                    <span>{badge.icon}</span> {badge.label}
+                <div className="profile-avatar-id">
+                  University ID: {profile.id || storedId}
+                </div>
+                <span className={`profile-role-badge ${badge.className}`}>
+                  {badge.icon}
+                  <span>{badge.label}</span>
+                </span>
+              </div>
+
+              <div className="profile-meta-list">
+                <div className="profile-meta-row">
+                  <span className="profile-meta-label">Account Status</span>
+                  <span className="profile-status-pill">
+                    <CheckCircleIcon width="11" height="11" /> Active
                   </span>
                 </div>
-              </div>
-            </div>
-
-            <button
-              onClick={handleBackToDashboard}
-              style={{
-                background: "#f8fafc",
-                border: "1px solid #cbd5e1",
-                borderRadius: "8px",
-                padding: "8px 16px",
-                color: "#334155",
-                fontWeight: "600",
-                fontSize: "0.9rem",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px"
-              }}
-            >
-              Dashboard <ChevronRightIcon width="16" height="16" />
-            </button>
-          </div>
-
-          {/* MAIN PROFILE FORM */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "25px" }}>
-
-            {/* SECTION 1: PERSONAL & DEPARTMENT DETAILS */}
-            <div
-              style={{
-                background: "white",
-                borderRadius: "16px",
-                padding: "28px",
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
-                border: "1px solid #e2e8f0"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px" }}>
-                <UserIcon width="22" height="22" color="#4f46e5" />
-                <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b" }}>Basic Information & Department</h3>
+                <div className="profile-meta-row">
+                  <span className="profile-meta-label">University ID</span>
+                  <span className="profile-meta-value">{profile.id || storedId}</span>
+                </div>
+                <div className="profile-meta-row">
+                  <span className="profile-meta-label">System Role</span>
+                  <span className="profile-meta-value">
+                    {profile.isMasterAdmin ? "Super Admin" : (profile.isDeptAdmin ? "Dept Admin" : profile.role?.toUpperCase() || "Staff")}
+                  </span>
+                </div>
+                <div className="profile-meta-row">
+                  <span className="profile-meta-label">Department</span>
+                  <span className="profile-meta-value">
+                    {profile.department || profile.school || (profile.isMasterAdmin ? "Super Admin" : "General")}
+                  </span>
+                </div>
+                <div className="profile-meta-row">
+                  <span className="profile-meta-label">Email Verified</span>
+                  <span className="profile-verified-pill">
+                    <CheckCircleIcon width="11" height="11" /> Verified
+                  </span>
+                </div>
+                <div className="profile-meta-row">
+                  <span className="profile-meta-label">Phone Verified</span>
+                  {profile.phone ? (
+                    <span className="profile-verified-pill">
+                      <CheckCircleIcon width="11" height="11" /> Verified
+                    </span>
+                  ) : (
+                    <span style={{ color: "#94a3b8", fontSize: "0.75rem", fontStyle: "italic" }}>Not Set</span>
+                  )}
+                </div>
               </div>
 
-              <form onSubmit={handleSaveBasic}>
-                {(!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) && (
-                  <div
-                    style={{
-                      background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-                      border: "1px solid #fde68a",
-                      borderLeft: "5px solid #f59e0b",
-                      borderRadius: "10px",
-                      padding: "14px 18px",
-                      marginBottom: "20px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      boxShadow: "0 2px 8px rgba(245, 158, 11, 0.1)"
-                    }}
-                  >
-                    <div style={{ background: "#f59e0b", color: "white", padding: "8px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <AlertCircleIcon width="20" height="20" />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: "700", color: "#92400e", fontSize: "0.95rem" }}>
-                        ⚠️ Department Selection Required
-                      </div>
-                      <div style={{ color: "#b45309", fontSize: "0.85rem", marginTop: "2px" }}>
-                        You did not choose your department during registration. Please select your official department from the dropdown below and click <strong>Save Basic Details</strong> to join your department team.
-                      </div>
-                    </div>
+              <button
+                type="button"
+                className="profile-btn-dashboard"
+                onClick={handleBackToDashboard}
+              >
+                <span>Return to Dashboard</span>
+                <ChevronRightIcon width="15" height="15" />
+              </button>
+            </aside>
+
+            {/* RIGHT COLUMN: MAIN SETTINGS & SECURITY CARDS */}
+            <main className="profile-content-area">
+
+              {/* CARD 1: BASIC DETAILS */}
+              <div className="profile-card">
+                <div className="profile-card-header">
+                  <div className="profile-card-icon-box">
+                    <UserIcon width="18" height="18" />
                   </div>
-                )}
+                  <div>
+                    <h3>Personal & Department Details</h3>
+                    <p>Review your official system identification, update display name and department routing.</p>
+                  </div>
+                </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
+                <form onSubmit={handleSaveBasic}>
+                  {(!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) && (
+                    <div
+                      style={{
+                        background: "#fffbeb",
+                        border: "1px solid #fde68a",
+                        borderLeft: "4px solid #f59e0b",
+                        borderRadius: "8px",
+                        padding: "12px 16px",
+                        marginBottom: "18px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        fontSize: "0.85rem",
+                        color: "#92400e"
+                      }}
+                    >
+                      <AlertCircleIcon width="18" height="18" style={{ flexShrink: 0, color: "#f59e0b" }} />
+                      <div>
+                        <strong>Department Selection Required:</strong> Please select your official department from the dropdown below and click Save Basic Details to join your team.
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="profile-form-grid">
                     {/* University ID (Immutable) */}
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>University ID</label>
+                    <div className="profile-field-group">
+                      <label className="profile-field-label">University ID</label>
                       <input
                         type="text"
+                        className="profile-input disabled"
                         value={profile.id || storedId}
                         disabled
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1px solid #e2e8f0",
-                          backgroundColor: "#f1f5f9",
-                          color: "#64748b",
-                          cursor: "not-allowed",
-                          fontWeight: "600"
-                        }}
                       />
                     </div>
 
                     {/* Role (Immutable) */}
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>System Role</label>
+                    <div className="profile-field-group">
+                      <label className="profile-field-label">System Role</label>
                       <input
                         type="text"
+                        className="profile-input disabled"
                         value={profile.isMasterAdmin ? "Super Admin" : (profile.isDeptAdmin ? "Department Admin" : profile.role?.toUpperCase() || "Staff")}
                         disabled
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1px solid #e2e8f0",
-                          backgroundColor: "#f1f5f9",
-                          color: "#64748b",
-                          cursor: "not-allowed",
-                          fontWeight: "600"
-                        }}
                       />
                     </div>
 
                     {/* Full Name (Editable) */}
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <label style={{ fontWeight: "600", color: "#1e293b", marginBottom: "6px", display: "block" }}>Full Name</label>
+                    <div className="profile-field-group">
+                      <label className="profile-field-label">Full Name</label>
                       <input
                         type="text"
+                        className="profile-input"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="Enter your full name"
                         required
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "0.95rem"
-                        }}
                       />
                     </div>
 
-                    {/* Department (Locked once saved at registration) */}
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <label style={{ fontWeight: "600", color: "#475569", marginBottom: "6px", display: "block" }}>
+                    {/* Department */}
+                    <div className="profile-field-group">
+                      <label className="profile-field-label">
                         {profile.role === "student" ? "Academic School / Department" : "Department"}
                       </label>
 
                       {profile.role === "student" ? (
-                        /* 🎓 Student: Strictly read-only, tied to academic school/department saved at registration */
-                        <div>
-                          <input
-                            type="text"
-                            value={profile.department || profile.school || department || "General"}
-                            disabled
-                            style={{
-                              width: "100%",
-                              padding: "10px 14px",
-                              borderRadius: "8px",
-                              border: "1px solid #e2e8f0",
-                              backgroundColor: "#f1f5f9",
-                              color: "#64748b",
-                              cursor: "not-allowed",
-                              fontWeight: "600"
-                            }}
-                          />
-                        </div>
+                        <input
+                          type="text"
+                          className="profile-input disabled"
+                          value={profile.department || profile.school || department || "General"}
+                          disabled
+                        />
                       ) : profile.isMasterAdmin ? (
-                        /* 🛡️ Super Admin */
-                        <div>
-                          <input
-                            type="text"
-                            value={department || "Super Admin"}
-                            onChange={(e) => setDepartment(e.target.value)}
-                            placeholder="Super Admin / Administrative"
-                            style={{
-                              width: "100%",
-                              padding: "10px 14px",
-                              borderRadius: "8px",
-                              border: "1px solid #cbd5e1",
-                              fontSize: "0.95rem",
-                              fontWeight: "500"
-                            }}
-                          />
-                        </div>
-                      ) : (profile.department && profile.department.toLowerCase() !== "general" && profile.department.trim() !== "") ? (
-                        /* 🏢 Staff with registered department: Locked / Read-only */
-                        <div>
-                          <input
-                            type="text"
-                            value={profile.department || department}
-                            disabled
-                            style={{
-                              width: "100%",
-                              padding: "10px 14px",
-                              borderRadius: "8px",
-                              border: "1px solid #e2e8f0",
-                              backgroundColor: "#f1f5f9",
-                              color: "#64748b",
-                              cursor: "not-allowed",
-                              fontWeight: "600"
-                            }}
-                          />
-                        </div>
-                    ) : (
-                      /* ⚠️ Unassigned Staff: Allow initial selection to complete setup */
-                      <div>
-                        <select
-                          value={department}
+                        <input
+                          type="text"
+                          className="profile-input"
+                          value={department || "Super Admin"}
                           onChange={(e) => setDepartment(e.target.value)}
-                          required
-                          style={{
-                            width: "100%",
-                            padding: "10px 14px",
-                            borderRadius: "8px",
-                            border: "2px solid #f59e0b",
-                            fontSize: "0.95rem",
-                            backgroundColor: "#fffbeb",
-                            boxShadow: "0 0 0 3px rgba(245, 158, 11, 0.15)"
-                          }}
-                        >
-                          <option value="">-- Select Department --</option>
-                          {departmentsList.map((dept) => (
-                            <option key={dept._id || dept.name} value={dept.name}>
-                              {dept.name}
-                            </option>
-                          ))}
-                        </select>
-                        <span style={{ fontSize: "0.75rem", color: "#b45309", marginTop: "4px", display: "block", fontWeight: "600" }}>
-                          ⚠️ Please select your department to join your team (locked once saved)
-                        </span>
-                      </div>
-                    )}
+                          placeholder="Super Admin / Administrative"
+                        />
+                      ) : (profile.department && profile.department.toLowerCase() !== "general" && profile.department.trim() !== "") ? (
+                        <input
+                          type="text"
+                          className="profile-input disabled"
+                          value={profile.department || department}
+                          disabled
+                        />
+                      ) : (
+                        <div>
+                          <select
+                            className="profile-input"
+                            value={department}
+                            onChange={(e) => setDepartment(e.target.value)}
+                            required
+                            style={{ borderColor: "#f59e0b", backgroundColor: "#fffbeb" }}
+                          >
+                            <option value="">-- Select Department --</option>
+                            {departmentsList.map((dept) => (
+                              <option key={dept._id || dept.name} value={dept.name}>
+                                {dept.name}
+                              </option>
+                            ))}
+                          </select>
+                          <span style={{ fontSize: "0.74rem", color: "#b45309", marginTop: "4px", display: "block", fontWeight: "600" }}>
+                            Please select your department to join your team (locked once saved)
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    disabled={savingBasic}
-                    style={{ minWidth: "160px", padding: "10px 20px" }}
-                  >
-                    {savingBasic ? "Saving Changes..." : "Save Basic Details"}
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* SECTION 2: VERIFIED CONTACT INFORMATION (WITH OTP) */}
-            <div
-              style={{
-                background: "white",
-                borderRadius: "16px",
-                padding: "28px",
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
-                border: "1px solid #e2e8f0"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px" }}>
-                <ShieldIcon width="22" height="22" color="#4f46e5" />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#1e293b" }}>Contact Security & OTP Verification</h3>
-                  <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
-                    Updating email address or phone number requires OTP verification to protect your account.
-                  </p>
-                </div>
+                  <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="submit"
+                      className="profile-btn-primary"
+                      disabled={savingBasic}
+                    >
+                      {savingBasic ? "Saving..." : "Save Basic Details"}
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              {/* EMAIL ITEM */}
-              <div
-                style={{
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
-                  padding: "18px 20px",
-                  marginBottom: "20px"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ background: "#eff6ff", color: "#2563eb", padding: "10px", borderRadius: "8px" }}>
-                      <MailIcon width="20" height="20" />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600" }}>Email Address</div>
-                      <div style={{ fontSize: "1rem", color: "#1e293b", fontWeight: "600" }}>
-                        {profile.email || "Not Provided"}
-                        <span style={{ marginLeft: "10px", color: "#16a34a", fontSize: "0.8rem", fontWeight: "600" }}>✓ Verified</span>
-                      </div>
-                    </div>
+              {/* CARD 2: SECURITY & OTP VERIFICATION */}
+              <div className="profile-card">
+                <div className="profile-card-header">
+                  <div className="profile-card-icon-box">
+                    <ShieldIcon width="18" height="18" />
                   </div>
-
-                  {!showEmailEdit ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowEmailEdit(true);
-                        setEmailStep(1);
-                        setNewEmail("");
-                        setEmailOtp("");
-                      }}
-                      style={{
-                        background: "white",
-                        border: "1px solid #cbd5e1",
-                        padding: "6px 14px",
-                        borderRadius: "8px",
-                        fontWeight: "600",
-                        fontSize: "0.85rem",
-                        color: "#2563eb",
-                        cursor: "pointer"
-                      }}
-                    >
-                      Change Email
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowEmailEdit(false)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#64748b",
-                        fontSize: "0.85rem",
-                        cursor: "pointer",
-                        textDecoration: "underline"
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  )}
+                  <div>
+                    <h3>Security & Contact Verification</h3>
+                    <p>Two-factor OTP authentication is required to update verified email or phone numbers.</p>
+                  </div>
                 </div>
 
-                {/* Email Edit OTP Drawer */}
-                {showEmailEdit && (
-                  <div style={{ marginTop: "18px", paddingTop: "16px", borderTop: "1px dashed #cbd5e1" }}>
-                    {emailStep === 1 ? (
-                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-end" }}>
-                        <div style={{ flex: 1, minWidth: "240px" }}>
-                          <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#334155", marginBottom: "4px", display: "block" }}>
-                            New Email Address
-                          </label>
-                          <input
-                            type="email"
-                            placeholder="e.g. yourname@ctuniversity.edu"
-                            value={newEmail}
-                            onChange={(e) => setNewEmail(e.target.value)}
-                            style={{
-                              width: "100%",
-                              padding: "9px 12px",
-                              borderRadius: "8px",
-                              border: "1px solid #cbd5e1",
-                              fontSize: "0.9rem"
-                            }}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          disabled={emailLoading}
-                          onClick={handleSendEmailOtp}
-                          style={{ padding: "9px 18px", fontSize: "0.9rem" }}
-                        >
-                          {emailLoading ? "Sending Code..." : "Send Verification OTP"}
-                        </button>
+                {/* EMAIL ITEM */}
+                <div className="profile-contact-item">
+                  <div className="profile-contact-row">
+                    <div className="profile-contact-left">
+                      <div className="profile-contact-icon">
+                        <MailIcon width="18" height="18" />
                       </div>
-                    ) : (
                       <div>
-                        <p style={{ fontSize: "0.85rem", color: "#166534", margin: "0 0 10px 0", fontWeight: "500" }}>
-                          Enter the 6-digit code sent to <strong>{newEmail}</strong>:
-                        </p>
-                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-                          <input
-                            type="text"
-                            maxLength="6"
-                            placeholder="6-Digit OTP"
-                            value={emailOtp}
-                            onChange={(e) => setEmailOtp(e.target.value)}
-                            style={{
-                              letterSpacing: "4px",
-                              fontWeight: "700",
-                              textAlign: "center",
-                              width: "160px",
-                              padding: "9px 12px",
-                              borderRadius: "8px",
-                              border: "1px solid #2563eb",
-                              fontSize: "1rem"
-                            }}
-                          />
+                        <div className="profile-contact-lbl">Email Address</div>
+                        <div className="profile-contact-val">
+                          <span>{profile.email || "Not Provided"}</span>
+                          <span className="profile-verified-pill">
+                            <CheckCircleIcon width="11" height="11" /> Verified
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!showEmailEdit ? (
+                      <button
+                        type="button"
+                        className="profile-contact-btn"
+                        onClick={() => {
+                          setShowEmailEdit(true);
+                          setEmailStep(1);
+                          setNewEmail("");
+                          setEmailOtp("");
+                        }}
+                      >
+                        Change Email
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowEmailEdit(false)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#64748b",
+                          fontSize: "0.84rem",
+                          cursor: "pointer",
+                          fontWeight: "500",
+                          textDecoration: "underline"
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Email Edit OTP Drawer */}
+                  {showEmailEdit && (
+                    <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px dashed #cbd5e1" }}>
+                      {emailStep === 1 ? (
+                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-end" }}>
+                          <div style={{ flex: 1, minWidth: "220px" }}>
+                            <label style={{ fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px", display: "block" }}>
+                              New Email Address
+                            </label>
+                            <input
+                              type="email"
+                              className="profile-input"
+                              placeholder="e.g. yourname@ctuniversity.edu"
+                              value={newEmail}
+                              onChange={(e) => setNewEmail(e.target.value)}
+                            />
+                          </div>
                           <button
                             type="button"
-                            className="btn-primary"
+                            className="profile-btn-primary"
                             disabled={emailLoading}
-                            onClick={handleVerifyEmailOtp}
-                            style={{ padding: "9px 18px", fontSize: "0.9rem" }}
+                            onClick={handleSendEmailOtp}
                           >
-                            {emailLoading ? "Verifying..." : "Verify & Update Email"}
+                            {emailLoading ? "Sending Code..." : "Send Verification OTP"}
                           </button>
-
-                          {emailTimer > 0 ? (
-                            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
-                              Resend in {emailTimer}s
-                            </span>
-                          ) : (
+                        </div>
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: "0.84rem", color: "#166534", margin: "0 0 8px 0", fontWeight: "500" }}>
+                            Enter the 6-digit code sent to <strong>{newEmail}</strong>:
+                          </p>
+                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                            <input
+                              type="text"
+                              maxLength="6"
+                              className="profile-input"
+                              placeholder="6-Digit OTP"
+                              value={emailOtp}
+                              onChange={(e) => setEmailOtp(e.target.value)}
+                              style={{
+                                letterSpacing: "4px",
+                                fontWeight: "700",
+                                textAlign: "center",
+                                width: "150px"
+                              }}
+                            />
                             <button
                               type="button"
-                              onClick={handleSendEmailOtp}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: "#2563eb",
-                                fontSize: "0.85rem",
-                                cursor: "pointer",
-                                textDecoration: "underline"
-                              }}
+                              className="profile-btn-primary"
+                              disabled={emailLoading}
+                              onClick={handleVerifyEmailOtp}
                             >
-                              Resend OTP
+                              {emailLoading ? "Verifying..." : "Verify & Update Email"}
                             </button>
-                          )}
+
+                            {emailTimer > 0 ? (
+                              <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
+                                Resend in {emailTimer}s
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleSendEmailOtp}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "#0f172a",
+                                  fontSize: "0.82rem",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  textDecoration: "underline"
+                                }}
+                              >
+                                Resend OTP
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* PHONE ITEM */}
-              <div
-                style={{
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
-                  padding: "18px 20px"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ background: "#ecfdf5", color: "#059669", padding: "10px", borderRadius: "8px" }}>
-                      <PhoneIcon width="20" height="20" />
+                      )}
                     </div>
-                    <div>
-                      <div style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600" }}>Phone Number</div>
-                      <div style={{ fontSize: "1rem", color: "#1e293b", fontWeight: "600" }}>
-                        {profile.phone || "Not Provided"}
-                        {profile.phone && <span style={{ marginLeft: "10px", color: "#16a34a", fontSize: "0.8rem", fontWeight: "600" }}>✓ Verified</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {!showPhoneEdit ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowPhoneEdit(true);
-                        setPhoneStep(1);
-                        setNewPhone("");
-                        setPhoneOtp("");
-                      }}
-                      style={{
-                        background: "white",
-                        border: "1px solid #cbd5e1",
-                        padding: "6px 14px",
-                        borderRadius: "8px",
-                        fontWeight: "600",
-                        fontSize: "0.85rem",
-                        color: "#2563eb",
-                        cursor: "pointer"
-                      }}
-                    >
-                      {profile.phone ? "Change Phone" : "Add Phone"}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowPhoneEdit(false)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#64748b",
-                        fontSize: "0.85rem",
-                        cursor: "pointer",
-                        textDecoration: "underline"
-                      }}
-                    >
-                      Cancel
-                    </button>
                   )}
                 </div>
 
-                {/* Phone Edit OTP Drawer */}
-                {showPhoneEdit && (
-                  <div style={{ marginTop: "18px", paddingTop: "16px", borderTop: "1px dashed #cbd5e1" }}>
-                    {phoneStep === 1 ? (
-                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-end" }}>
-                        <div style={{ flex: 1, minWidth: "240px" }}>
-                          <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#334155", marginBottom: "4px", display: "block" }}>
-                            New Mobile Number (10 digits)
-                          </label>
-                          <input
-                            type="tel"
-                            maxLength="10"
-                            placeholder="e.g. 9876543210"
-                            value={newPhone}
-                            onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
-                            style={{
-                              width: "100%",
-                              padding: "9px 12px",
-                              borderRadius: "8px",
-                              border: "1px solid #cbd5e1",
-                              fontSize: "0.9rem"
-                            }}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          disabled={phoneLoading}
-                          onClick={handleSendPhoneOtp}
-                          style={{ padding: "9px 18px", fontSize: "0.9rem" }}
-                        >
-                          {phoneLoading ? "Sending SMS..." : "Send Verification OTP"}
-                        </button>
+                {/* PHONE ITEM */}
+                <div className="profile-contact-item">
+                  <div className="profile-contact-row">
+                    <div className="profile-contact-left">
+                      <div className="profile-contact-icon">
+                        <PhoneIcon width="18" height="18" />
                       </div>
-                    ) : (
                       <div>
-                        <p style={{ fontSize: "0.85rem", color: "#166534", margin: "0 0 10px 0", fontWeight: "500" }}>
-                          Enter the 6-digit SMS code sent to <strong>{newPhone}</strong>:
-                        </p>
-                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-                          <input
-                            type="text"
-                            maxLength="6"
-                            placeholder="SMS OTP"
-                            value={phoneOtp}
-                            onChange={(e) => setPhoneOtp(e.target.value)}
-                            style={{
-                              letterSpacing: "4px",
-                              fontWeight: "700",
-                              textAlign: "center",
-                              width: "160px",
-                              padding: "9px 12px",
-                              borderRadius: "8px",
-                              border: "1px solid #059669",
-                              fontSize: "1rem"
-                            }}
-                          />
-                          <button
-                            type="button"
-                            className="btn-primary"
-                            disabled={phoneLoading}
-                            onClick={handleVerifyPhoneOtp}
-                            style={{ padding: "9px 18px", fontSize: "0.9rem", backgroundColor: "#059669" }}
-                          >
-                            {phoneLoading ? "Verifying..." : "Verify & Update Phone"}
-                          </button>
-
-                          {phoneTimer > 0 ? (
-                            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
-                              Resend in {phoneTimer}s
+                        <div className="profile-contact-lbl">Phone Number</div>
+                        <div className="profile-contact-val">
+                          <span>{profile.phone || "Not Provided"}</span>
+                          {profile.phone && (
+                            <span className="profile-verified-pill">
+                              <CheckCircleIcon width="11" height="11" /> Verified
                             </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={handleSendPhoneOtp}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: "#2563eb",
-                                fontSize: "0.85rem",
-                                cursor: "pointer",
-                                textDecoration: "underline"
-                              }}
-                            >
-                              Resend OTP
-                            </button>
                           )}
                         </div>
                       </div>
+                    </div>
+
+                    {!showPhoneEdit ? (
+                      <button
+                        type="button"
+                        className="profile-contact-btn"
+                        onClick={() => {
+                          setShowPhoneEdit(true);
+                          setPhoneStep(1);
+                          setNewPhone("");
+                          setPhoneOtp("");
+                        }}
+                      >
+                        {profile.phone ? "Change Phone" : "Add Phone"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowPhoneEdit(false)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#64748b",
+                          fontSize: "0.84rem",
+                          cursor: "pointer",
+                          fontWeight: "500",
+                          textDecoration: "underline"
+                        }}
+                      >
+                        Cancel
+                      </button>
                     )}
                   </div>
-                )}
+
+                  {/* Phone Edit OTP Drawer */}
+                  {showPhoneEdit && (
+                    <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px dashed #cbd5e1" }}>
+                      {phoneStep === 1 ? (
+                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-end" }}>
+                          <div style={{ flex: 1, minWidth: "220px" }}>
+                            <label style={{ fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px", display: "block" }}>
+                              New Mobile Number (10 digits)
+                            </label>
+                            <input
+                              type="tel"
+                              maxLength="10"
+                              className="profile-input"
+                              placeholder="e.g. 9876543210"
+                              value={newPhone}
+                              onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="profile-btn-primary"
+                            disabled={phoneLoading}
+                            onClick={handleSendPhoneOtp}
+                          >
+                            {phoneLoading ? "Sending SMS..." : "Send Verification OTP"}
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: "0.84rem", color: "#166534", margin: "0 0 8px 0", fontWeight: "500" }}>
+                            Enter the 6-digit SMS code sent to <strong>{newPhone}</strong>:
+                          </p>
+                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                            <input
+                              type="text"
+                              maxLength="6"
+                              className="profile-input"
+                              placeholder="SMS OTP"
+                              value={phoneOtp}
+                              onChange={(e) => setPhoneOtp(e.target.value)}
+                              style={{
+                                letterSpacing: "4px",
+                                fontWeight: "700",
+                                textAlign: "center",
+                                width: "150px"
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="profile-btn-primary"
+                              disabled={phoneLoading}
+                              onClick={handleVerifyPhoneOtp}
+                            >
+                              {phoneLoading ? "Verifying..." : "Verify & Update Phone"}
+                            </button>
+
+                            {phoneTimer > 0 ? (
+                              <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
+                                Resend in {phoneTimer}s
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleSendPhoneOtp}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "#0f172a",
+                                  fontSize: "0.82rem",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  textDecoration: "underline"
+                                }}
+                              >
+                                Resend OTP
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
               </div>
 
-            </div>
-
+            </main>
           </div>
         </div>
       )}

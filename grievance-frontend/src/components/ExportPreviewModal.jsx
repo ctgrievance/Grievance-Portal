@@ -3,28 +3,27 @@ import {
     SearchIcon,
     DownloadIcon,
     XIcon,
-    UserIcon,
     GridIcon,
-    ClockIcon,
     CheckCircleIcon,
     ChartBarIcon,
     FileIcon
 } from "./Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
+// Column definitions
+const allColumns = [
+    { key: "userId", label: "User ID" },
+    { key: "name", label: "User Name" },
+    { key: "category", label: "Department" },
+    { key: "message", label: "Message" },
+    { key: "status", label: "Status" },
+    { key: "assignedTo", label: "Staff" },
+    { key: "createdAt", label: "Created" },
+    { key: "resolvedAt", label: "Resolved" },
+    { key: "rating", label: "Rating" },
+];
+
 const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport }) => {
-    // Column definitions
-    const allColumns = [
-        { key: "userId", label: "User ID" },
-        { key: "name", label: "User Name" },
-        { key: "category", label: "Department" },
-        { key: "message", label: "Message" },
-        { key: "status", label: "Status" },
-        { key: "assignedTo", label: "Staff" },
-        { key: "createdAt", label: "Created" },
-        { key: "resolvedAt", label: "Resolved" },
-        { key: "rating", label: "Rating" },
-    ];
 
     const [selectedColumns, setSelectedColumns] = useState(
         allColumns.map((col) => col.key)
@@ -32,7 +31,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
     const [selectedRows, setSelectedRows] = useState([]);
     const [selectAll, setSelectAll] = useState(true);
 
-    // Filter states (same as dashboard)
+    // Filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("All");
     const [filterDepartment, setFilterDepartment] = useState("All");
@@ -186,18 +185,19 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         setFilterMonth("");
     };
 
-    // Styles
+    // Executive Styles matching Super Admin
     const inputStyle = {
-        padding: "10px 14px",
-        borderRadius: "10px",
+        height: "38px",
+        padding: "0 12px",
+        borderRadius: "6px",
         border: "1px solid #cbd5e1",
-        background: "#f8fafc",
-        fontSize: "0.95rem",
-        fontFamily: "'Outfit', sans-serif",
-        color: "#1e293b",
-        transition: "all 0.25s ease",
-        flex: "1 1 150px",
-        minWidth: "120px",
+        background: "#ffffff",
+        fontSize: "0.85rem",
+        color: "#0f172a",
+        boxSizing: "border-box",
+        outline: "none",
+        flex: "1 1 180px",
+        minWidth: "140px",
     };
 
     const selectStyle = {
@@ -207,7 +207,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
         backgroundRepeat: "no-repeat",
         backgroundPosition: "right 12px center",
-        paddingRight: "36px",
+        paddingRight: "32px",
     };
 
     return (
@@ -219,107 +219,120 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                 left: 0,
                 width: "100%",
                 height: "100%",
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
+                backgroundColor: "rgba(15, 23, 42, 0.55)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
                 zIndex: 9999,
-                animation: "fadeIn 0.3s ease-out",
+                animation: "fadeIn 0.2s ease-out",
+                padding: "16px",
+                boxSizing: "border-box",
             }}
         >
             <div
+                className="export-modal-container"
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                    background: "white",
-                    borderRadius: "16px",
-                    width: "95%",
-                    maxWidth: "1200px",
+                    background: "#ffffff",
+                    borderRadius: "14px",
+                    width: "100%",
+                    maxWidth: "1160px",
                     maxHeight: "90vh",
-                    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                    border: "1px solid #e2e8f0",
                     display: "flex",
                     flexDirection: "column",
                     overflow: "hidden",
-                    animation: "slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-                    fontFamily: "'Outfit', sans-serif",
+                    animation: "slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
             >
                 {/* Header */}
                 <div
+                    className="export-header"
                     style={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        padding: "20px 28px",
-                        borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
-                        background: "white",
+                        padding: "16px 24px",
+                        borderBottom: "1px solid #f1f5f9",
+                        background: "#ffffff",
                     }}
                 >
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <div style={{
-                            width: "42px",
-                            height: "42px",
-                            borderRadius: "12px",
-                            background: "linear-gradient(135deg, #6366f1, #a855f7)",
+                            width: "38px",
+                            height: "38px",
+                            borderRadius: "8px",
+                            background: "#f1f5f9",
+                            border: "1px solid #e2e8f0",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            color: "white",
+                            color: "#0f172a",
+                            flexShrink: 0,
                         }}>
-                            <FileIcon width="20" height="20" />
+                            <FileIcon width="18" height="18" />
                         </div>
                         <div>
                             <h2 style={{
                                 margin: 0,
-                                fontSize: "1.5rem",
+                                fontSize: "1.25rem",
                                 fontWeight: "700",
-                                background: "linear-gradient(to right, #4f46e5, #9333ea)",
-                                WebkitBackgroundClip: "text",
-                                WebkitTextFillColor: "transparent",
-                                backgroundClip: "text",
+                                color: "#0f172a",
+                                letterSpacing: "-0.02em",
                             }}>
                                 Export Preview
                             </h2>
-                            <p style={{ margin: "2px 0 0", fontSize: "0.9rem", color: "#64748b" }}>
-                                Filter and select data to export
+                            <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                                Filter and select grievance data to export
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
                         style={{
-                            background: "#f1f5f9",
-                            border: "none",
-                            width: "40px",
-                            height: "40px",
-                            borderRadius: "50%",
+                            background: "#ffffff",
+                            border: "1px solid #e2e8f0",
+                            width: "34px",
+                            height: "34px",
+                            borderRadius: "6px",
                             cursor: "pointer",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             color: "#64748b",
-                            transition: "all 0.2s",
+                            transition: "all 0.15s ease",
                         }}
-                        onMouseOver={(e) => { e.currentTarget.style.background = "#e2e8f0"; e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.transform = "rotate(90deg)"; }}
-                        onMouseOut={(e) => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = "#64748b"; e.currentTarget.style.transform = "rotate(0)"; }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.background = "#f1f5f9";
+                            e.currentTarget.style.color = "#0f172a";
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.background = "#ffffff";
+                            e.currentTarget.style.color = "#64748b";
+                        }}
                     >
-                        <XIcon width="18" height="18" />
+                        <XIcon width="16" height="16" />
                     </button>
                 </div>
 
-                {/* Filter Bar (Dashboard Style) */}
-                <div style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "10px",
-                    padding: "15px 28px",
-                    background: "#f8fafc",
-                    borderBottom: "1px solid #e2e8f0",
-                    alignItems: "center",
-                }}>
+                {/* Filter Toolbar */}
+                <div
+                    className="export-filter-bar"
+                    style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "10px",
+                        padding: "12px 24px",
+                        background: "#f8fafc",
+                        borderBottom: "1px solid #e2e8f0",
+                        alignItems: "center",
+                    }}
+                >
                     {/* Search Input */}
-                    <div style={{ position: "relative", flex: "1 1 200px" }}>
+                    <div style={{ position: "relative", flex: "1 1 200px", minWidth: "160px" }}>
                         <SearchIcon
                             width="16"
                             height="16"
@@ -328,7 +341,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                 left: "12px",
                                 top: "50%",
                                 transform: "translateY(-50%)",
-                                color: "#64748b",
+                                color: "#94a3b8",
                                 pointerEvents: "none",
                             }}
                         />
@@ -339,7 +352,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{
                                 ...inputStyle,
-                                paddingLeft: "38px",
+                                paddingLeft: "36px",
                                 width: "100%",
                             }}
                         />
@@ -362,7 +375,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                     <select
                         value={filterDepartment}
                         onChange={(e) => setFilterDepartment(e.target.value)}
-                        style={{ ...selectStyle, flex: "1 1 200px" }}
+                        style={{ ...selectStyle, flex: "1 1 180px" }}
                     >
                         <option value="All">All Departments</option>
                         {uniqueDepartments.map(dept => (
@@ -375,112 +388,143 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                         type="month"
                         value={filterMonth}
                         onChange={(e) => setFilterMonth(e.target.value)}
-                        style={{ ...inputStyle, cursor: "pointer" }}
+                        style={{ ...inputStyle, cursor: "pointer", flex: "0 0 auto", width: "auto" }}
                     />
 
                     {/* Reset Button */}
                     <button
                         onClick={resetFilters}
                         style={{
-                            padding: "10px 20px",
-                            borderRadius: "10px",
-                            border: "none",
-                            background: "#64748b",
-                            color: "white",
+                            height: "38px",
+                            padding: "0 14px",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
+                            background: "#ffffff",
+                            color: "#475569",
                             fontWeight: "600",
+                            fontSize: "0.82rem",
                             cursor: "pointer",
-                            transition: "all 0.2s",
-                            display: "flex",
+                            transition: "all 0.15s ease",
+                            display: "inline-flex",
                             alignItems: "center",
                             gap: "6px",
                         }}
-                        onMouseOver={(e) => { e.currentTarget.style.background = "#475569"; }}
-                        onMouseOut={(e) => { e.currentTarget.style.background = "#64748b"; }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.background = "#f1f5f9";
+                            e.currentTarget.style.color = "#0f172a";
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.background = "#ffffff";
+                            e.currentTarget.style.color = "#475569";
+                        }}
                     >
                         Reset
                     </button>
                 </div>
 
                 {/* Column Selection */}
-                <div style={{
-                    padding: "14px 28px",
-                    borderBottom: "1px solid #e2e8f0",
-                    background: "white",
-                }}>
-                    <p style={{ margin: "0 0 10px", fontWeight: "600", color: "#334155", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <GridIcon width="14" height="14" /> Select Columns
+                <div
+                    className="export-column-section"
+                    style={{
+                        padding: "12px 24px",
+                        borderBottom: "1px solid #e2e8f0",
+                        background: "#ffffff",
+                    }}
+                >
+                    <p style={{
+                        margin: "0 0 8px",
+                        fontWeight: "700",
+                        color: "#64748b",
+                        fontSize: "0.76rem",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                    }}>
+                        <GridIcon width="13" height="13" /> Select Columns
                     </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                        {allColumns.map((col) => (
-                            <label
-                                key={col.key}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    padding: "8px 14px",
-                                    borderRadius: "999px",
-                                    cursor: "pointer",
-                                    background: selectedColumns.includes(col.key) ? "#6366f1" : "#f1f5f9",
-                                    color: selectedColumns.includes(col.key) ? "white" : "#475569",
-                                    fontWeight: "500",
-                                    fontSize: "0.85rem",
-                                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                                    boxShadow: selectedColumns.includes(col.key) ? "0 4px 12px rgba(99, 102, 241, 0.35)" : "none",
-                                    transform: selectedColumns.includes(col.key) ? "translateY(-1px)" : "none",
-                                }}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedColumns.includes(col.key)}
-                                    onChange={() => toggleColumn(col.key)}
-                                    style={{ display: "none" }}
-                                />
-                                {selectedColumns.includes(col.key) && <CheckCircleIcon width="14" height="14" />}
-                                {col.label}
-                            </label>
-                        ))}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {allColumns.map((col) => {
+                            const isSelected = selectedColumns.includes(col.key);
+                            return (
+                                <label
+                                    key={col.key}
+                                    style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "5px",
+                                        padding: "5px 12px",
+                                        borderRadius: "6px",
+                                        cursor: "pointer",
+                                        background: isSelected ? "#0f172a" : "#ffffff",
+                                        color: isSelected ? "#ffffff" : "#475569",
+                                        border: isSelected ? "1px solid #0f172a" : "1px solid #e2e8f0",
+                                        fontWeight: isSelected ? "600" : "500",
+                                        fontSize: "0.8rem",
+                                        transition: "all 0.15s ease",
+                                        userSelect: "none",
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleColumn(col.key)}
+                                        style={{ display: "none" }}
+                                    />
+                                    {isSelected && <CheckCircleIcon width="12" height="12" />}
+                                    {col.label}
+                                </label>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Stats Bar */}
-                <div style={{
-                    padding: "12px 28px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    background: "#fffbeb",
-                    borderBottom: "1px solid #fde047",
-                }}>
-                    <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "center" }}>
-                        <span style={{ color: "#854d0e", fontWeight: "600", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                            <ChartBarIcon width="14" height="14" /> Filtered: <strong style={{ color: "#1e293b" }}>{filteredData.length}</strong>
+                {/* Stats Ribbon */}
+                <div
+                    className="export-stats-bar"
+                    style={{
+                        padding: "10px 24px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#f8fafc",
+                        borderBottom: "1px solid #e2e8f0",
+                    }}
+                >
+                    <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
+                        <span style={{ color: "#64748b", fontWeight: "500", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <ChartBarIcon width="14" height="14" style={{ color: "#94a3b8" }} />
+                            Filtered: <strong style={{ color: "#0f172a", fontWeight: "700" }}>{filteredData.length}</strong>
                         </span>
-                        <span style={{ color: "#166534", fontWeight: "600", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                            <CheckCircleIcon width="14" height="14" /> Selected: <strong style={{ color: "#1e293b" }}>{selectedRows.length}</strong>
+                        <span style={{ color: "#64748b", fontWeight: "500", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <CheckCircleIcon width="14" height="14" style={{ color: "#16a34a" }} />
+                            Selected: <strong style={{ color: "#16a34a", fontWeight: "700" }}>{selectedRows.length}</strong>
                         </span>
-                        <span style={{ color: "#1e40af", fontWeight: "600", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                            <GridIcon width="14" height="14" /> Columns: <strong style={{ color: "#1e293b" }}>{selectedColumns.length}</strong>
+                        <span style={{ color: "#64748b", fontWeight: "500", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <GridIcon width="14" height="14" style={{ color: "#94a3b8" }} />
+                            Columns: <strong style={{ color: "#0f172a", fontWeight: "700" }}>{selectedColumns.length}</strong>
                         </span>
                     </div>
                     <label style={{
-                        display: "flex",
+                        display: "inline-flex",
                         alignItems: "center",
-                        gap: "8px",
+                        gap: "6px",
                         cursor: "pointer",
                         fontWeight: "600",
                         color: "#334155",
-                        fontSize: "0.9rem",
+                        fontSize: "0.82rem",
+                        userSelect: "none",
                     }}>
                         <input
                             type="checkbox"
                             checked={selectAll}
                             onChange={toggleSelectAll}
                             style={{
-                                width: "18px",
-                                height: "18px",
+                                width: "16px",
+                                height: "16px",
                                 cursor: "pointer",
-                                accentColor: "#6366f1",
+                                accentColor: "#0f172a",
                             }}
                         />
                         Select All
@@ -488,14 +532,18 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                 </div>
 
                 {/* Table Preview */}
-                <div style={{
-                    flex: 1,
-                    overflow: "auto",
-                }}>
+                <div
+                    className="export-table-container"
+                    style={{
+                        flex: 1,
+                        overflow: "auto",
+                        background: "#ffffff",
+                    }}
+                >
                     <table style={{
                         width: "100%",
                         borderCollapse: "collapse",
-                        fontSize: "0.9rem",
+                        fontSize: "0.84rem",
                     }}>
                         <thead>
                             <tr>
@@ -503,21 +551,22 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                     position: "sticky",
                                     top: 0,
                                     background: "#f8fafc",
-                                    color: "#64748b",
-                                    padding: "14px 16px",
+                                    color: "#475569",
+                                    padding: "10px 14px",
                                     textAlign: "left",
-                                    fontWeight: "600",
+                                    fontWeight: "700",
                                     textTransform: "uppercase",
-                                    fontSize: "0.75rem",
-                                    letterSpacing: "0.05em",
-                                    borderBottom: "1px solid #e2e8f0",
+                                    fontSize: "0.72rem",
+                                    letterSpacing: "0.06em",
+                                    borderBottom: "2px solid #e2e8f0",
                                     zIndex: 10,
+                                    width: "40px",
                                 }}>
                                     <input
                                         type="checkbox"
                                         checked={selectAll}
                                         onChange={toggleSelectAll}
-                                        style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#6366f1" }}
+                                        style={{ width: "15px", height: "15px", cursor: "pointer", accentColor: "#0f172a" }}
                                     />
                                 </th>
                                 {allColumns
@@ -529,15 +578,16 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                                 position: "sticky",
                                                 top: 0,
                                                 background: "#f8fafc",
-                                                color: "#64748b",
-                                                padding: "14px 12px",
+                                                color: "#475569",
+                                                padding: "10px 12px",
                                                 textAlign: "left",
-                                                fontWeight: "600",
+                                                fontWeight: "700",
                                                 textTransform: "uppercase",
-                                                fontSize: "0.75rem",
-                                                letterSpacing: "0.05em",
-                                                borderBottom: "1px solid #e2e8f0",
+                                                fontSize: "0.72rem",
+                                                letterSpacing: "0.06em",
+                                                borderBottom: "2px solid #e2e8f0",
                                                 zIndex: 10,
+                                                whiteSpace: "nowrap",
                                             }}
                                         >
                                             {col.label}
@@ -552,113 +602,127 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                         colSpan={selectedColumns.length + 1}
                                         style={{
                                             textAlign: "center",
-                                            padding: "60px 20px",
+                                            padding: "48px 20px",
                                             color: "#64748b",
                                         }}
                                     >
-                                        <FileIcon width="48" height="48" style={{ opacity: 0.3, marginBottom: "12px" }} />
-                                        <p style={{ fontSize: "1.1rem", fontWeight: "600", margin: "0 0 6px" }}>No matching records</p>
-                                        <p style={{ fontSize: "0.9rem", margin: 0 }}>Try adjusting your filters</p>
+                                        <FileIcon width="40" height="40" style={{ opacity: 0.3, marginBottom: "8px" }} />
+                                        <p style={{ fontSize: "1rem", fontWeight: "600", margin: "0 0 4px", color: "#0f172a" }}>No matching records</p>
+                                        <p style={{ fontSize: "0.82rem", margin: 0, color: "#64748b" }}>Try adjusting your search or filters</p>
                                     </td>
                                 </tr>
                             ) : (
-                                filteredData.map((g) => (
-                                    <tr
-                                        key={g._id}
-                                        onClick={() => toggleRow(g._id)}
-                                        style={{
-                                            cursor: "pointer",
-                                            background: selectedRows.includes(g._id) ? "#eff6ff" : "white",
-                                            transition: "all 0.15s ease",
-                                            borderLeft: selectedRows.includes(g._id) ? "3px solid #6366f1" : "3px solid transparent",
-                                        }}
-                                        onMouseOver={(e) => {
-                                            if (!selectedRows.includes(g._id)) {
-                                                e.currentTarget.style.background = "#f8fafc";
-                                            }
-                                        }}
-                                        onMouseOut={(e) => {
-                                            if (!selectedRows.includes(g._id)) {
-                                                e.currentTarget.style.background = "white";
-                                            }
-                                        }}
-                                    >
-                                        <td style={{
-                                            padding: "14px 16px",
-                                            borderBottom: "1px solid #f1f5f9",
-                                        }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedRows.includes(g._id)}
-                                                onChange={() => toggleRow(g._id)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#6366f1" }}
-                                            />
-                                        </td>
-                                        {allColumns
-                                            .filter((col) => selectedColumns.includes(col.key))
-                                            .map((col) => (
-                                                <td
-                                                    key={col.key}
-                                                    style={{
-                                                        padding: "14px 12px",
-                                                        borderBottom: "1px solid #f1f5f9",
-                                                        color: "#1e293b",
-                                                        maxWidth: col.key === "message" ? "200px" : "auto",
-                                                        overflow: "hidden",
-                                                        textOverflow: "ellipsis",
-                                                        whiteSpace: "nowrap",
-                                                    }}
-                                                >
-                                                    {col.key === "status" ? (
-                                                        <span className={getStatusClass(g.status)}>
-                                                            {g.status}
-                                                        </span>
-                                                    ) : col.key === "name" ? (
-                                                        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                                                            <span>{g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}</span>
-                                                            <UserRoleBadge grievance={g} />
-                                                        </div>
-                                                    ) : (
-                                                        getCellValue(g, col.key)
-                                                    )}
-                                                </td>
-                                            ))}
-                                    </tr>
-                                ))
+                                filteredData.map((g) => {
+                                    const isRowSelected = selectedRows.includes(g._id);
+                                    return (
+                                        <tr
+                                            key={g._id}
+                                            onClick={() => toggleRow(g._id)}
+                                            style={{
+                                                cursor: "pointer",
+                                                background: isRowSelected ? "#f8fafc" : "white",
+                                                transition: "background 0.1s ease",
+                                                borderLeft: isRowSelected ? "3px solid #0f172a" : "3px solid transparent",
+                                            }}
+                                            onMouseOver={(e) => {
+                                                if (!isRowSelected) {
+                                                    e.currentTarget.style.background = "#f1f5f9";
+                                                }
+                                            }}
+                                            onMouseOut={(e) => {
+                                                if (!isRowSelected) {
+                                                    e.currentTarget.style.background = "white";
+                                                }
+                                            }}
+                                        >
+                                            <td style={{
+                                                padding: "10px 14px",
+                                                borderBottom: "1px solid #f1f5f9",
+                                                width: "40px",
+                                            }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isRowSelected}
+                                                    onChange={() => toggleRow(g._id)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ width: "15px", height: "15px", cursor: "pointer", accentColor: "#0f172a" }}
+                                                />
+                                            </td>
+                                            {allColumns
+                                                .filter((col) => selectedColumns.includes(col.key))
+                                                .map((col) => (
+                                                    <td
+                                                        key={col.key}
+                                                        style={{
+                                                            padding: "10px 12px",
+                                                            borderBottom: "1px solid #f1f5f9",
+                                                            color: "#0f172a",
+                                                            maxWidth: col.key === "message" ? "240px" : "auto",
+                                                            overflow: "hidden",
+                                                            textOverflow: "ellipsis",
+                                                            whiteSpace: "nowrap",
+                                                            fontSize: "0.82rem",
+                                                        }}
+                                                    >
+                                                        {col.key === "status" ? (
+                                                            <span className={getStatusClass(g.status)}>
+                                                                {g.status}
+                                                            </span>
+                                                        ) : col.key === "name" ? (
+                                                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                                                <span style={{ fontWeight: "500" }}>{g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}</span>
+                                                                <UserRoleBadge grievance={g} />
+                                                            </div>
+                                                        ) : (
+                                                            getCellValue(g, col.key)
+                                                        )}
+                                                    </td>
+                                                ))}
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
                 </div>
 
                 {/* Footer */}
-                <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "20px 28px",
-                    borderTop: "1px solid #e2e8f0",
-                    background: "#f8fafc",
-                }}>
-                    <p style={{ margin: 0, color: "#64748b", fontSize: "0.85rem" }}>
-                        Click rows to select/deselect
+                <div
+                    className="export-footer"
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "14px 24px",
+                        borderTop: "1px solid #f1f5f9",
+                        background: "#ffffff",
+                    }}
+                >
+                    <p style={{ margin: 0, color: "#64748b", fontSize: "0.8rem" }}>
+                        Click rows or use checkboxes to select records
                     </p>
-                    <div style={{ display: "flex", gap: "12px" }}>
+                    <div style={{ display: "flex", gap: "10px" }}>
                         <button
                             onClick={onClose}
                             style={{
-                                padding: "12px 24px",
-                                borderRadius: "10px",
-                                border: "none",
-                                background: "#eff6ff",
-                                color: "#4f46e5",
+                                padding: "8px 18px",
+                                borderRadius: "6px",
+                                border: "1px solid #e2e8f0",
+                                background: "#f1f5f9",
+                                color: "#475569",
                                 fontWeight: "600",
-                                fontSize: "0.95rem",
+                                fontSize: "0.84rem",
                                 cursor: "pointer",
-                                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                transition: "all 0.15s ease",
                             }}
-                            onMouseOver={(e) => { e.currentTarget.style.background = "#4f46e5"; e.currentTarget.style.color = "white"; }}
-                            onMouseOut={(e) => { e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#4f46e5"; }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.background = "#e2e8f0";
+                                e.currentTarget.style.color = "#0f172a";
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.background = "#f1f5f9";
+                                e.currentTarget.style.color = "#475569";
+                            }}
                         >
                             Cancel
                         </button>
@@ -666,40 +730,35 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                             onClick={handleExport}
                             disabled={selectedRows.length === 0 || selectedColumns.length === 0}
                             style={{
-                                padding: "12px 28px",
-                                borderRadius: "10px",
+                                padding: "8px 22px",
+                                borderRadius: "6px",
                                 border: "none",
                                 background: selectedRows.length === 0 || selectedColumns.length === 0
+                                    ? "#cbd5e1"
+                                    : "#0f172a",
+                                color: selectedRows.length === 0 || selectedColumns.length === 0
                                     ? "#94a3b8"
-                                    : "#6366f1",
-                                color: "white",
-                                fontWeight: "700",
-                                fontSize: "0.95rem",
+                                    : "#ffffff",
+                                fontWeight: "600",
+                                fontSize: "0.84rem",
                                 cursor: selectedRows.length === 0 || selectedColumns.length === 0 ? "not-allowed" : "pointer",
-                                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                                boxShadow: selectedRows.length > 0 && selectedColumns.length > 0
-                                    ? "0 4px 12px rgba(99, 102, 241, 0.35)"
-                                    : "none",
-                                display: "flex",
+                                transition: "all 0.15s ease",
+                                display: "inline-flex",
                                 alignItems: "center",
-                                gap: "8px",
+                                gap: "6px",
                             }}
                             onMouseOver={(e) => {
                                 if (selectedRows.length > 0 && selectedColumns.length > 0) {
-                                    e.currentTarget.style.background = "#4f46e5";
-                                    e.currentTarget.style.transform = "translateY(-2px)";
-                                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(79, 70, 229, 0.4)";
+                                    e.currentTarget.style.background = "#1e293b";
                                 }
                             }}
                             onMouseOut={(e) => {
                                 if (selectedRows.length > 0 && selectedColumns.length > 0) {
-                                    e.currentTarget.style.background = "#6366f1";
-                                    e.currentTarget.style.transform = "translateY(0)";
-                                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.35)";
+                                    e.currentTarget.style.background = "#0f172a";
                                 }
                             }}
                         >
-                            <DownloadIcon width="16" height="16" />
+                            <DownloadIcon width="15" height="15" />
                             Export {selectedRows.length} Records
                         </button>
                     </div>
@@ -712,7 +771,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
           to { opacity: 1; }
         }
         @keyframes slideUp {
-          from { transform: translateY(20px) scale(0.95); opacity: 0; }
+          from { transform: translateY(16px) scale(0.98); opacity: 0; }
           to { transform: translateY(0) scale(1); opacity: 1; }
         }
         
@@ -720,23 +779,24 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         @media (max-width: 768px) {
           .export-modal-container {
             max-height: 95vh !important;
-            border-radius: 16px 16px 0 0 !important;
+            border-radius: 14px !important;
             margin: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
           }
           
           .export-header {
-            padding: 16px 16px !important;
+            padding: 14px 16px !important;
           }
           
           .export-header h2 {
-            font-size: 1.2rem !important;
+            font-size: 1.1rem !important;
           }
           
           .export-filter-bar {
             flex-direction: column !important;
-            padding: 12px 16px !important;
+            padding: 10px 14px !important;
+            align-items: stretch !important;
           }
           
           .export-filter-bar > * {
@@ -745,31 +805,24 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
           }
           
           .export-column-section {
-            padding: 12px 16px !important;
+            padding: 10px 14px !important;
           }
           
           .export-column-section > div {
-            gap: 6px !important;
-          }
-          
-          .export-column-section label {
-            padding: 6px 10px !important;
-            font-size: 0.75rem !important;
+            gap: 5px !important;
           }
           
           .export-stats-bar {
-            padding: 10px 16px !important;
+            padding: 10px 14px !important;
             flex-direction: column !important;
-            gap: 10px !important;
+            gap: 8px !important;
+            align-items: flex-start !important;
           }
           
           .export-stats-bar > div {
             gap: 12px !important;
-            justify-content: center !important;
-          }
-          
-          .export-stats-bar span {
-            font-size: 0.8rem !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
           }
           
           .export-table-container {
@@ -777,38 +830,22 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
           }
           
           .export-footer {
-            padding: 16px !important;
+            padding: 14px 16px !important;
             flex-direction: column !important;
-            gap: 12px !important;
+            gap: 10px !important;
           }
           
           .export-footer > div {
             width: 100% !important;
-            flex-direction: column !important;
           }
           
           .export-footer button {
-            width: 100% !important;
+            flex: 1 !important;
             justify-content: center !important;
           }
           
           .export-footer p {
             text-align: center !important;
-          }
-        }
-        
-        @media (max-width: 480px) {
-          .export-header h2 {
-            font-size: 1rem !important;
-          }
-          
-          .export-header p {
-            font-size: 0.75rem !important;
-          }
-          
-          .export-column-section label {
-            padding: 5px 8px !important;
-            font-size: 0.7rem !important;
           }
         }
       `}</style>

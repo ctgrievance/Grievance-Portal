@@ -10,7 +10,9 @@ import {
   SearchIcon,
   UserIcon,
   UsersIcon,
-  FileIcon
+  FileIcon,
+  ShieldIcon,
+  ChevronDownIcon
 } from "../components/Icons";
 
 function AdminDepartments() {
@@ -18,6 +20,7 @@ function AdminDepartments() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
+  const [openPermDropdownId, setOpenPermDropdownId] = useState(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,6 +72,65 @@ function AdminDepartments() {
   useEffect(() => {
     fetchDepartments();
   }, [fetchDepartments]);
+
+  // Close active permissions dropdown when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest(".dept-perm-dropdown-wrap")) {
+        setOpenPermDropdownId(null);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+    };
+  }, []);
+
+  // Helper to extract granted permissions with clean metadata
+  const getDepartmentPermissions = (dept) => {
+    const perms = [];
+    if (dept.allowRegisteredStudents) {
+      perms.push({
+        id: "students",
+        label: "Live Students Access",
+        badge: "Students",
+        desc: "Allowed to manage live student accounts",
+        type: "students",
+        icon: <UserIcon width="11" height="11" />
+      });
+    }
+    if (dept.allowRegisteredStaff) {
+      perms.push({
+        id: "staff",
+        label: "Live Staff Access",
+        badge: "Staff",
+        desc: "Allowed to manage live staff accounts",
+        type: "staff",
+        icon: <UsersIcon width="11" height="11" />
+      });
+    }
+    if (dept.allowStudentRecords || dept.name === "Student Section") {
+      perms.push({
+        id: "student-records",
+        label: "Student Records Access",
+        badge: "Student Records",
+        desc: "Allowed to manage student verification database",
+        type: "records",
+        icon: <FileIcon width="11" height="11" />
+      });
+    }
+    if (dept.allowStaffRecords || dept.name === "HR") {
+      perms.push({
+        id: "staff-records",
+        label: "Staff Records Access",
+        badge: "Staff Records",
+        desc: "Allowed to manage staff verification database",
+        type: "records",
+        icon: <FileIcon width="11" height="11" />
+      });
+    }
+    return perms;
+  };
 
   const showNotification = (message, type = "success") => {
     setMsg(message);
@@ -390,37 +452,32 @@ function AdminDepartments() {
               <table className="dept-table">
                 <thead>
                   <tr>
-                    <th>Department Name</th>
-                    <th>Code</th>
-                    <th>Category</th>
-                    <th>Audience</th>
-                    <th>Permissions</th>
-                    <th>Dept Admin</th>
-                    <th>Assigned Staff</th>
-                    <th>Pending / Total</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
+                    <th style={{ width: "28%", minWidth: "220px" }}>Department Name</th>
+                    <th style={{ width: "130px", minWidth: "130px" }}>Category</th>
+                    <th style={{ width: "140px", minWidth: "140px" }}>Audience</th>
+                    <th style={{ width: "160px", minWidth: "160px" }}>Permissions</th>
+                    <th style={{ width: "160px", minWidth: "160px" }}>Dept Admin</th>
+                    <th style={{ width: "120px", minWidth: "120px" }}>Assigned Staff</th>
+                    <th style={{ width: "130px", minWidth: "130px", textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDepartments.map((dept) => (
+                  {filteredDepartments.map((dept, index) => (
                     <tr
                       key={dept._id}
                       style={{ opacity: dept.isActive ? 1 : 0.65 }}
                     >
                       <td>
                         <div className="dept-name-cell">
-                          <span className="dept-name-title">{dept.name}</span>
-                          {dept.description && (
+                          <span className="dept-name-title" title={dept.name}>{dept.name}</span>
+                          {dept.description ? (
                             <span className="dept-desc-text" title={dept.description}>
                               {dept.description}
                             </span>
+                          ) : (
+                            <span className="dept-desc-text dept-desc-empty">—</span>
                           )}
                         </div>
-                      </td>
-
-                      <td>
-                        <span className="dept-code-badge">{dept.code || "-"}</span>
                       </td>
 
                       <td>
@@ -435,7 +492,7 @@ function AdminDepartments() {
                         )}
                       </td>
 
-                      <td style={{ color: "#475569", fontSize: "0.82rem" }}>
+                      <td style={{ color: "#475569", fontSize: "0.82rem", whiteSpace: "nowrap" }}>
                         {dept.targetAudience === "both"
                           ? "Student & Staff"
                           : dept.targetAudience === "student"
@@ -444,72 +501,82 @@ function AdminDepartments() {
                       </td>
 
                       <td>
-                        <div className="dept-perm-pills">
-                          {dept.allowRegisteredStudents && (
-                            <span className="dept-perm-pill students" title="Allowed to manage live student accounts">
-                              <UserIcon width="11" height="11" /> Students
-                            </span>
-                          )}
-                          {dept.allowRegisteredStaff && (
-                            <span className="dept-perm-pill staff" title="Allowed to manage live staff accounts">
-                              <UsersIcon width="11" height="11" /> Staff
-                            </span>
-                          )}
-                          {(dept.allowStudentRecords || dept.name === "Student Section") && (
-                            <span className="dept-perm-pill records" title="Allowed to manage student verification records">
-                              <FileIcon width="11" height="11" /> Student Records
-                            </span>
-                          )}
-                          {(dept.allowStaffRecords || dept.name === "HR") && (
-                            <span className="dept-perm-pill records" title="Allowed to manage staff verification records">
-                              <FileIcon width="11" height="11" /> Staff Records
-                            </span>
-                          )}
-                          {!dept.allowStudentRecords &&
-                            !dept.allowStaffRecords &&
-                            !dept.allowRegisteredStudents &&
-                            !dept.allowRegisteredStaff &&
-                            dept.name !== "Student Section" &&
-                            dept.name !== "HR" && (
-                              <span style={{ color: "#94a3b8", fontSize: "0.75rem", fontStyle: "italic" }}>
-                                None
-                              </span>
-                            )}
-                        </div>
+                        {(() => {
+                          const perms = getDepartmentPermissions(dept);
+                          if (perms.length === 0) {
+                            return <span className="dept-perm-empty">None</span>;
+                          }
+                          const isOpen = openPermDropdownId === dept._id;
+                          const isNearBottom = index >= filteredDepartments.length - 2 && filteredDepartments.length > 2;
+
+                          return (
+                            <div className="dept-perm-dropdown-wrap">
+                              <button
+                                type="button"
+                                className={`dept-perm-badge-btn ${isOpen ? "active" : ""}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenPermDropdownId(isOpen ? null : dept._id);
+                                }}
+                                title="Click to view granted permissions"
+                              >
+                                <ShieldIcon width="12" height="12" />
+                                <span>{perms.length} {perms.length === 1 ? "Permission" : "Permissions"}</span>
+                                <ChevronDownIcon
+                                  width="11"
+                                  height="11"
+                                  className={`dept-perm-chevron ${isOpen ? "open" : ""}`}
+                                />
+                              </button>
+
+                              {isOpen && (
+                                <div
+                                  className={`dept-perm-menu ${isNearBottom ? "dropup" : ""}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="dept-perm-menu-header">
+                                    <span className="dept-perm-menu-title">
+                                      Active Permissions ({perms.length})
+                                    </span>
+                                  </div>
+                                  <div className="dept-perm-menu-list">
+                                    {perms.map((p) => (
+                                      <div key={p.id} className="dept-perm-menu-item">
+                                        <span className={`dept-perm-pill ${p.type}`}>
+                                          {p.icon}
+                                          <span>{p.badge}</span>
+                                        </span>
+                                        <div className="dept-perm-item-info">
+                                          <div className="dept-perm-item-label">{p.label}</div>
+                                          <div className="dept-perm-item-desc">{p.desc}</div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td style={{ fontSize: "0.84rem" }}>
                         {dept.currentAdmin ? (
-                          <span style={{ color: "#0f172a", fontWeight: "600" }}>
+                          <span
+                            className="dept-admin-name"
+                            title={dept.currentAdmin.fullName || dept.currentAdmin.id}
+                          >
                             {dept.currentAdmin.fullName || dept.currentAdmin.id}
                           </span>
                         ) : (
-                          <span style={{ color: "#94a3b8", fontStyle: "italic", fontSize: "0.8rem" }}>
+                          <span className="dept-admin-unassigned">
                             Unassigned
                           </span>
                         )}
                       </td>
 
-                      <td style={{ fontWeight: "500", color: "#334155" }}>
+                      <td style={{ fontWeight: "500", color: "#334155", whiteSpace: "nowrap" }}>
                         {dept.stats?.assignedStaffCount || 0} staff
-                      </td>
-
-                      <td>
-                        <span
-                          style={{
-                            fontWeight: "700",
-                            color: (dept.stats?.pendingGrievances || 0) > 0 ? "#dc2626" : "#16a34a"
-                          }}
-                        >
-                          {dept.stats?.pendingGrievances || 0}
-                        </span>{" "}
-                        <span style={{ color: "#94a3b8" }}>/ {dept.stats?.totalGrievances || 0}</span>
-                      </td>
-
-                      <td>
-                        <span className={`dept-status-badge ${dept.isActive ? "active" : "inactive"}`}>
-                          {dept.isActive ? "ACTIVE" : "INACTIVE"}
-                        </span>
                       </td>
 
                       <td style={{ textAlign: "right" }}>
@@ -562,13 +629,9 @@ function AdminDepartments() {
                         </div>
                       )}
                     </div>
-                    <span className={`dept-status-badge ${dept.isActive ? "active" : "inactive"}`}>
-                      {dept.isActive ? "ACTIVE" : "INACTIVE"}
-                    </span>
                   </div>
 
                   <div className="dept-mcard-meta-row">
-                    <span className="dept-code-badge">{dept.code || "-"}</span>
                     {dept.isAcademic ? (
                       <span className="dept-type-badge academic">
                         <GraduationCapIcon width="12" height="12" /> Academic
@@ -585,35 +648,56 @@ function AdminDepartments() {
                     </span>
                   </div>
 
-                  {(dept.allowRegisteredStudents ||
-                    dept.allowRegisteredStaff ||
-                    dept.allowStudentRecords ||
-                    dept.allowStaffRecords ||
-                    dept.name === "Student Section" ||
-                    dept.name === "HR") && (
-                    <div className="dept-perm-pills">
-                      {dept.allowRegisteredStudents && (
-                        <span className="dept-perm-pill students">
-                          <UserIcon width="11" height="11" /> Students
-                        </span>
-                      )}
-                      {dept.allowRegisteredStaff && (
-                        <span className="dept-perm-pill staff">
-                          <UsersIcon width="11" height="11" /> Staff
-                        </span>
-                      )}
-                      {(dept.allowStudentRecords || dept.name === "Student Section") && (
-                        <span className="dept-perm-pill records">
-                          <FileIcon width="11" height="11" /> Student Records
-                        </span>
-                      )}
-                      {(dept.allowStaffRecords || dept.name === "HR") && (
-                        <span className="dept-perm-pill records">
-                          <FileIcon width="11" height="11" /> Staff Records
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    const perms = getDepartmentPermissions(dept);
+                    if (perms.length === 0) return null;
+                    const isOpen = openPermDropdownId === `m_${dept._id}`;
+                    return (
+                      <div className="dept-mcard-perm-row">
+                        <div className="dept-perm-dropdown-wrap">
+                          <button
+                            type="button"
+                            className={`dept-perm-badge-btn ${isOpen ? "active" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenPermDropdownId(isOpen ? null : `m_${dept._id}`);
+                            }}
+                          >
+                            <ShieldIcon width="12" height="12" />
+                            <span>{perms.length} {perms.length === 1 ? "Permission" : "Permissions"}</span>
+                            <ChevronDownIcon
+                              width="11"
+                              height="11"
+                              className={`dept-perm-chevron ${isOpen ? "open" : ""}`}
+                            />
+                          </button>
+                          {isOpen && (
+                            <div className="dept-perm-menu" onClick={(e) => e.stopPropagation()}>
+                              <div className="dept-perm-menu-header">
+                                <span className="dept-perm-menu-title">
+                                  Active Permissions ({perms.length})
+                                </span>
+                              </div>
+                              <div className="dept-perm-menu-list">
+                                {perms.map((p) => (
+                                  <div key={p.id} className="dept-perm-menu-item">
+                                    <span className={`dept-perm-pill ${p.type}`}>
+                                      {p.icon}
+                                      <span>{p.badge}</span>
+                                    </span>
+                                    <div className="dept-perm-item-info">
+                                      <div className="dept-perm-item-label">{p.label}</div>
+                                      <div className="dept-perm-item-desc">{p.desc}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="dept-mcard-details">
                     <div className="dept-mcard-detail-item">
@@ -625,17 +709,6 @@ function AdminDepartments() {
                     <div className="dept-mcard-detail-item">
                       <span className="lbl">Staff Count</span>
                       <span className="val">{dept.stats?.assignedStaffCount || 0}</span>
-                    </div>
-                    <div className="dept-mcard-detail-item">
-                      <span className="lbl">Pending / Total</span>
-                      <span
-                        className="val"
-                        style={{
-                          color: (dept.stats?.pendingGrievances || 0) > 0 ? "#dc2626" : "#16a34a"
-                        }}
-                      >
-                        {dept.stats?.pendingGrievances || 0} / {dept.stats?.totalGrievances || 0}
-                      </span>
                     </div>
                   </div>
 
@@ -740,18 +813,6 @@ function AdminDepartments() {
                       )}
                     </div>
 
-                    <div className="dept-form-group">
-                      <label className="dept-form-label">
-                        Short Code (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        className="dept-form-input"
-                        placeholder="e.g. SPO, HST"
-                        value={formData.code}
-                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                      />
-                    </div>
 
                     <div className="dept-form-group">
                       <label className="dept-form-label">
