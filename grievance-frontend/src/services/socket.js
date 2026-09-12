@@ -4,7 +4,7 @@ let socket = null;
 
 export const getSocket = () => {
   if (!socket) {
-    const serverUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
+    const serverUrl = process.env.REACT_APP_API_URL || (typeof window !== "undefined" && window.location.port !== "3000" ? window.location.origin : "http://localhost:5000");
     socket = io(serverUrl, {
       transports: ["websocket", "polling"],
       withCredentials: true,

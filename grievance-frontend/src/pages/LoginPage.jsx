@@ -101,30 +101,62 @@ function LoginPage() {
     }, 1000);
   };
 
+  const getApiBaseUrl = () => {
+    if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
+    if (typeof window !== "undefined" && window.location.origin) {
+      if (window.location.port === "3000") return "http://localhost:5000";
+      return window.location.origin;
+    }
+    return "http://localhost:5000";
+  };
+
   // ✅ Step 1: Verify Password & Trigger 2FA
   const handleLoginStep1 = async (e) => {
     e.preventDefault();
 
+    const cleanId = userId.trim().toUpperCase();
+    const cleanPassword = password;
+
+    if (!cleanId || !cleanPassword) {
+      setMessage("Please enter both ID and password.");
+      setStatusType("error");
+      return;
+    }
+
+    setLoading(true);
     setMessage("Verifying credentials...");
     setStatusType("info");
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second mobile/network timeout
+
     try {
-      // 🔥 Update Endpoint
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/login`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: userId.toUpperCase(),
-          password,
+          id: cleanId,
+          password: cleanPassword,
+          role: selectedRole, // 🔥 Send role so backend only queries 1 collection instantly
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      // Handle HTML error responses from reverse proxy (e.g. 502/504)
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error(`Server temporarily unavailable (${res.status}). Please try again in a moment.`);
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Login failed");
 
       if (data.requires2FA) {
         setOtpSent(true);
-      setLoading(false);
+        setLoading(false);
         setMaskedEmail(data.maskedEmail);
         setMessage(`Success! OTP sent to ${data.maskedEmail}`);
         setStatusType("success");
@@ -132,7 +164,15 @@ function LoginPage() {
         handleDirectLogin(data);
       }
     } catch (err) {
-      setMessage(err.message);
+      clearTimeout(timeoutId);
+      setLoading(false);
+      if (err.name === "AbortError") {
+        setMessage("Connection timed out. The server took too long to respond, please check your connection and try again.");
+      } else if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+        setMessage("Network connection error. Please check your internet connection.");
+      } else {
+        setMessage(err.message || "Login failed. Please verify your credentials.");
+      }
       setStatusType("error");
     }
   };
@@ -140,19 +180,42 @@ function LoginPage() {
   // ✅ Step 2: Verify OTP
   const handleVerifyLoginOtp = async (e) => {
     e.preventDefault();
+
+    const cleanId = userId.trim().toUpperCase();
+    const cleanOtp = otp.trim();
+
+    if (!cleanOtp) {
+      setMessage("Please enter the OTP.");
+      setStatusType("error");
+      return;
+    }
+
+    setLoading(true);
     setMessage("Verifying OTP...");
     setStatusType("info");
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
-      // 🔥 Update Endpoint
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/verify-login`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth/verify-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: userId.toUpperCase(),
-          otp,
+          id: cleanId,
+          otp: cleanOtp,
+          role: selectedRole,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error(`Server temporarily unavailable (${res.status}). Please try again.`);
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Invalid OTP");
@@ -160,7 +223,13 @@ function LoginPage() {
       handleDirectLogin(data);
 
     } catch (err) {
-      setMessage(err.message);
+      clearTimeout(timeoutId);
+      setLoading(false);
+      if (err.name === "AbortError") {
+        setMessage("Verification timed out. Please try again.");
+      } else {
+        setMessage(err.message || "Invalid OTP. Please try again.");
+      }
       setStatusType("error");
     }
   };
@@ -224,6 +293,10 @@ function LoginPage() {
                         onChange={(e) => setUserId(e.target.value.toUpperCase())}
                         required
                         autoFocus
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck="false"
+                        inputMode="text"
                       />
                     </div>
                   </div>
@@ -239,6 +312,9 @@ function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck="false"
                       />
                       
                       <button
