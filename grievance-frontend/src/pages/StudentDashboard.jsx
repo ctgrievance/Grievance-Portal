@@ -1161,7 +1161,7 @@ function StudentDashboard() {
       </main>
 
       {/* ✅ Chat Popup Component */}
-      < ChatPopup
+      <ChatPopup
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         grievanceId={chatGrievanceId}

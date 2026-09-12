@@ -12,3 +12,4 @@ grievance-frontend/.env
 build/
 dist/
 *.log
+scratch/

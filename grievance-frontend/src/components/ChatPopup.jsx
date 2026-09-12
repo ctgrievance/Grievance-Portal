@@ -1,18 +1,93 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../styles/Dashboard.css"; // Ensure this has basic modal styles
 
-// ✅ Advanced Icons
+// ✅ Icons with bulletproof inline fallbacks (cannot ever be undefined)
 import {
   PaperclipIcon,
   CameraIcon,
   FileIcon,
-  XIcon as CloseIcon,
+  XIcon,
+  CloseIcon,
   MessageCircleIcon,
-  SwitchCameraIcon
+  DownloadIcon
 } from "./Icons";
 import { getSocket, joinChatRoom, leaveChatRoom } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
 import { jsPDF } from "jspdf";
+import PdfChatCard from "./PdfChatCard";
+
+const SafePaperclipIcon = (props) => (
+  typeof PaperclipIcon === "function" ? (
+    <PaperclipIcon {...props} />
+  ) : (
+    <svg width={props.width || "20"} height={props.height || "20"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  )
+);
+
+const SafeDownloadIcon = (props) => (
+  typeof DownloadIcon === "function" ? (
+    <DownloadIcon {...props} />
+  ) : (
+    <svg width={props.width || "16"} height={props.height || "16"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  )
+);
+
+const SafeCameraIcon = (props) => (
+  typeof CameraIcon === "function" ? (
+    <CameraIcon {...props} />
+  ) : (
+    <svg width={props.width || "22"} height={props.height || "22"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+      <circle cx="12" cy="13" r="3" />
+    </svg>
+  )
+);
+
+const SafeFileIcon = (props) => (
+  typeof FileIcon === "function" ? (
+    <FileIcon {...props} />
+  ) : (
+    <svg width={props.width || "20"} height={props.height || "20"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  )
+);
+
+const SafeCloseIcon = (props) => {
+  const IconComponent = typeof CloseIcon === "function" ? CloseIcon : typeof XIcon === "function" ? XIcon : null;
+  return IconComponent ? (
+    <IconComponent {...props} />
+  ) : (
+    <svg width={props.width || "20"} height={props.height || "20"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+};
+
+const SafeMessageCircleIcon = (props) => (
+  typeof MessageCircleIcon === "function" ? (
+    <MessageCircleIcon {...props} />
+  ) : (
+    <svg width={props.width || "48"} height={props.height || "48"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  )
+);
+
+const SafeReplyIcon = (props) => (
+  <svg width={props.width || "14"} height={props.height || "14"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <polyline points="9 17 4 12 9 7" />
+    <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+  </svg>
+);
 
 function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRole }) {
   const [messages, setMessages] = useState([]);
@@ -21,21 +96,23 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
   const [isUploading, setIsUploading] = useState(false);  // Loading state for upload
   const [grievanceData, setGrievanceData] = useState(null); // Store grievance details
 
+  // 💬 Active Quoted Reply State
+  const [replyingTo, setReplyingTo] = useState(null);
 
-  // 📷 Camera & Capture states
-  const [showCamera, setShowCamera] = useState(false);
-  const [cameraFacing, setCameraFacing] = useState("environment"); // Default to rear/back camera on mobile
+  // 📷 Captured / Selected photo for Photo vs PDF chooser
   const [capturedPhoto, setCapturedPhoto] = useState(null); // { blob, dataUrl, width, height }
   const [isConvertingPdf, setIsConvertingPdf] = useState(false);
 
+  // 🖼️ In-App Fullscreen Media Viewer (Image / PDF inside same window)
+  const [activeMediaViewer, setActiveMediaViewer] = useState(null); // { type: 'image' | 'pdf', url, filename }
+
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null); // Fallback native camera input
+  const textInputRef = useRef(null);
   const chatBodyRef = useRef(null);
+  const touchStateRef = useRef({});
   const hasScrolledRef = useRef(false);
   const prevMessagesLength = useRef(0);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
 
   // ⚡ Real-Time Socket.io Connection & Messages
   useEffect(() => {
@@ -129,7 +206,6 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     }
     // 2. Only scroll if a NEW message arrived
     else if (isNewMessage) {
-      // Scroll if I sent it OR if I was already reading at the bottom
       if (isMyMessage || isNearBottom) {
         messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
       }
@@ -139,129 +215,57 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     prevMessagesLength.current = currentLength;
   }, [messages, currentUserId]);
 
-  // 📷 CAMERA STREAM MANAGEMENT WITH FACING MODE
-  useEffect(() => {
-    let activeStream = null;
-    let isCancelled = false;
-
-    if (showCamera) {
-      const initCamera = async () => {
-        try {
-          // Stop any leftover tracks
-          if (videoRef.current && videoRef.current.srcObject) {
-            videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
-          }
-
-          const isPortrait = window.innerHeight > window.innerWidth;
-          const constraints = {
-            video: {
-              facingMode: { ideal: cameraFacing },
-              width: { ideal: isPortrait ? 1080 : 1920 },
-              height: { ideal: isPortrait ? 1920 : 1080 }
-            },
-            audio: false
-          };
-
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          if (isCancelled) {
-            stream.getTracks().forEach((t) => t.stop());
-            return;
-          }
-          activeStream = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        } catch (err) {
-          console.warn("Camera with facingMode failed, trying fallback:", err);
-          try {
-            const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            if (isCancelled) {
-              fallbackStream.getTracks().forEach((t) => t.stop());
-              return;
-            }
-            activeStream = fallbackStream;
-            if (videoRef.current) {
-              videoRef.current.srcObject = fallbackStream;
-            }
-          } catch (fallbackErr) {
-            console.error("Camera access failed:", fallbackErr);
-            alert("Could not access camera. Please ensure camera permissions are allowed in your browser.");
-            setShowCamera(false);
-          }
-        }
-      };
-
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        initCamera();
-      } else {
-        alert("Camera viewfinder is not supported directly in this browser. Opening native camera...");
-        setShowCamera(false);
-        if (cameraInputRef.current) cameraInputRef.current.click();
-      }
-    }
-
-    return () => {
-      isCancelled = true;
-      if (activeStream) {
-        activeStream.getTracks().forEach((track) => track.stop());
-      }
-      if (videoRef.current && videoRef.current.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
-        videoRef.current.srcObject = null;
-      }
-    };
-  }, [showCamera, cameraFacing]);
-
-  const toggleCameraFacing = () => {
-    setCameraFacing((prev) => (prev === "environment" ? "user" : "environment"));
-  };
-
-  const handleCapture = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const width = video.videoWidth || 1280;
-      const height = video.videoHeight || 720;
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, width, height);
-
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          setCapturedPhoto({
-            blob,
-            dataUrl,
-            width,
-            height
-          });
-          setShowCamera(false); // Close camera overlay and open format chooser
-        }
-      }, "image/jpeg", 0.92);
+  // 📥 Universal File Downloader
+  const downloadFile = async (url, filename) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename || "attachment";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "attachment";
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
-  // Fallback for native mobile camera picker
-  const handleNativeCameraFallback = (e) => {
+  // 📎 Handle File Selection (Both from Camera or Files)
+  const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const dataUrl = evt.target.result;
-        const img = new Image();
-        img.onload = () => {
-          setCapturedPhoto({
-            blob: file,
-            dataUrl,
-            width: img.width || 1280,
-            height: img.height || 720
-          });
+
+      // If an image was chosen (either clicked via Camera or picked from Gallery)
+      if (file.type && file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const dataUrl = evt.target.result;
+          const img = new Image();
+          img.onload = () => {
+            setCapturedPhoto({
+              blob: file,
+              dataUrl,
+              width: img.width || 1280,
+              height: img.height || 720
+            });
+          };
+          img.src = dataUrl;
         };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
-      e.target.value = "";
+        reader.readAsDataURL(file);
+      } else {
+        // Non-image file (e.g. PDF, doc, etc.) attaches directly
+        setSelectedFile(file);
+      }
+      e.target.value = ""; // Reset so same file can be re-selected if needed
     }
   };
 
@@ -277,7 +281,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     setCapturedPhoto(null);
   };
 
-  // Format Chooser Option 2: Convert & Send as PDF
+  // Format Chooser Option 2: Convert & Send as PDF (Exact Portrait / Landscape Dimensions)
   const handleSendAsPdf = () => {
     if (!capturedPhoto) return;
     setIsConvertingPdf(true);
@@ -312,12 +316,106 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     }
   };
 
-
-  // Handle Standard File Selection
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+  const handleRetakePhoto = () => {
+    setCapturedPhoto(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
+  };
+
+  // 💬 WhatsApp-style Reply Handler
+  const handleInitiateReply = (msg) => {
+    setReplyingTo(msg);
+    setTimeout(() => {
+      if (textInputRef.current) {
+        textInputRef.current.focus();
+      }
+    }, 60);
+  };
+
+  const getQuotedSnippet = (target) => {
+    if (!target) return "";
+    const hasText = target.message && !target.message.toLowerCase().startsWith("sent an attachment:");
+    if (hasText) return target.message;
+    if (target.fileData) {
+      const isImg = target.fileData.contentType?.startsWith("image/");
+      const isPdfDoc = target.fileData.contentType === "application/pdf" || (target.fileData.originalName || "").toLowerCase().endsWith(".pdf");
+      if (isImg) return "📷 Photo";
+      if (isPdfDoc) return `📄 PDF: ${target.fileData.originalName || "Document"}`;
+      return `📁 ${target.fileData.originalName || "Attachment"}`;
+    }
+    return "Message";
+  };
+
+  const scrollToMessage = (targetMsgId) => {
+    if (!targetMsgId) return;
+    const el = document.getElementById(`chat-msg-${targetMsgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("chat-message-highlight");
+      setTimeout(() => {
+        el.classList.remove("chat-message-highlight");
+      }, 1600);
+    }
+  };
+
+  // 📱 Horizontal Swipe / Slide-to-reply gesture handlers
+  const handleTouchStart = (e, msgId) => {
+    const touch = e.touches[0];
+    touchStateRef.current[msgId] = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      currentX: touch.clientX,
+      isSwiping: false
+    };
+  };
+
+  const handleTouchMove = (e, msgId, isMine) => {
+    const state = touchStateRef.current[msgId];
+    if (!state) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - state.startX;
+    const deltaY = touch.clientY - state.startY;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      state.isSwiping = true;
+      state.currentX = touch.clientX;
+      const rowEl = document.getElementById(`chat-msg-${msgId}`);
+      const bubbleEl = rowEl?.querySelector(".chat-bubble");
+      if (bubbleEl) {
+        let offset = 0;
+        if (isMine && deltaX < 0) {
+          offset = Math.max(deltaX, -45);
+        } else if (!isMine && deltaX > 0) {
+          offset = Math.min(deltaX, 45);
+        }
+        bubbleEl.style.transform = `translateX(${offset}px)`;
+        bubbleEl.style.transition = "none";
+      }
+    }
+  };
+
+  const handleTouchEnd = (e, msg, isMine) => {
+    const state = touchStateRef.current[msg._id];
+    if (!state) return;
+    const deltaX = state.currentX - state.startX;
+    
+    const rowEl = document.getElementById(`chat-msg-${msg._id}`);
+    const bubbleEl = rowEl?.querySelector(".chat-bubble");
+    if (bubbleEl) {
+      bubbleEl.style.transform = "";
+      bubbleEl.style.transition = "transform 0.2s ease";
+    }
+
+    if (state.isSwiping) {
+      if ((isMine && deltaX < -32) || (!isMine && deltaX > 32)) {
+        handleInitiateReply(msg);
+        if (navigator.vibrate) {
+          try { navigator.vibrate(20); } catch (vErr) {}
+        }
+      }
+    }
+    delete touchStateRef.current[msg._id];
   };
 
   const handleSend = async (e) => {
@@ -343,7 +441,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         uploadedFileData = await uploadRes.json();
       }
 
-      // Step 2: Send Message with File Data
+      // Step 2: Send Message with File Data and Quoted Reply
       const savedFullName = localStorage.getItem("grievance_user_name");
       const payload = {
         grievanceId,
@@ -351,7 +449,19 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         senderRole: currentUserRole,
         sender: savedFullName || (currentUserRole === "student" ? "Student" : "Staff"),
         message: newMessage,
-        fileData: uploadedFileData
+        fileData: uploadedFileData,
+        replyTo: replyingTo ? {
+          messageId: replyingTo._id,
+          sender: replyingTo.sender,
+          senderId: replyingTo.senderId,
+          senderRole: replyingTo.senderRole,
+          message: replyingTo.message,
+          fileData: replyingTo.fileData ? {
+            filename: replyingTo.fileData.filename,
+            originalName: replyingTo.fileData.originalName || replyingTo.fileData.originalname,
+            contentType: replyingTo.fileData.contentType
+          } : null
+        } : null
       };
 
       const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/chat/send`, {
@@ -369,6 +479,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
           return [...prev, sentMsg];
         });
         setNewMessage("");
+        setReplyingTo(null); // Clear reply preview on successful send
         setSelectedFile(null); // Reset file
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
@@ -390,66 +501,60 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     <div className="chat-modal-overlay">
       <div className="chat-modal">
 
-        {/* 📷 LIVE CAMERA OVERLAY WITH SWITCH CAMERA */}
-        {showCamera && (
-          <div className="chat-camera-overlay">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="chat-camera-video"
-            />
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
+        {/* 🖼️ IN-APP FULLSCREEN MEDIA VIEWER (No new tab!) */}
+        {activeMediaViewer && (
+          <div className="chat-fullscreen-viewer-overlay">
+            <div className="chat-viewer-header">
+              <div className="chat-viewer-info">
+                <span className="chat-viewer-type-badge">
+                  {activeMediaViewer.type === "pdf" ? "PDF" : "IMG"}
+                </span>
+                <span className="chat-viewer-filename" title={activeMediaViewer.filename}>
+                  {activeMediaViewer.filename}
+                </span>
+              </div>
 
-            {/* Top Bar with Camera Status / Facing Indicator & Close */}
-            <div className="chat-camera-top-bar">
-              <span className="chat-camera-badge">
-                <span className="chat-camera-dot" />
-                {cameraFacing === "environment" ? "Back Camera" : "Front Camera"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowCamera(false)}
-                className="chat-camera-close-icon"
-                title="Close Camera"
-              >
-                ✕
-              </button>
+              <div className="chat-viewer-actions">
+                <button
+                  type="button"
+                  onClick={() => downloadFile(activeMediaViewer.url, activeMediaViewer.filename)}
+                  className="chat-viewer-action-btn download"
+                  title="Download File"
+                >
+                  <SafeDownloadIcon width="16" height="16" />
+                  <span>Download</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveMediaViewer(null)}
+                  className="chat-viewer-action-btn close"
+                  title="Close Viewer"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            {/* Bottom Controls: Cancel, Capture Shutter, Switch Camera */}
-            <div className="chat-camera-controls">
-              <button
-                type="button"
-                onClick={() => setShowCamera(false)}
-                className="chat-camera-action-btn"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCapture}
-                className="chat-camera-shutter-btn"
-                title="Take Photo"
-              >
-                <div className="chat-shutter-inner" />
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleCameraFacing}
-                className="chat-camera-action-btn switch-btn"
-                title="Switch Front / Back Camera"
-              >
-                <SwitchCameraIcon width="24" height="24" />
-              </button>
+            <div className="chat-viewer-body">
+              {activeMediaViewer.type === "image" ? (
+                <img
+                  src={activeMediaViewer.url}
+                  alt={activeMediaViewer.filename}
+                  className="chat-viewer-img"
+                />
+              ) : (
+                <iframe
+                  src={`${activeMediaViewer.url}#toolbar=1`}
+                  title={activeMediaViewer.filename}
+                  className="chat-viewer-iframe"
+                />
+              )}
             </div>
           </div>
         )}
 
-        {/* 📄 CAPTURED PHOTO FORMAT CHOOSER MODAL (Photo vs PDF) */}
+        {/* 📄 CAPTURED / CHOSEN PHOTO FORMAT CHOOSER MODAL (Photo vs PDF) */}
         {capturedPhoto && (
           <div className="chat-capture-modal-overlay">
             <div className="chat-capture-modal">
@@ -483,7 +588,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                   disabled={isConvertingPdf}
                 >
                   <div className="chat-opt-icon">
-                    <CameraIcon width="22" height="22" />
+                    <SafeCameraIcon width="22" height="22" />
                   </div>
                   <div className="chat-opt-text">
                     <strong>Send as Photo</strong>
@@ -498,7 +603,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                   disabled={isConvertingPdf}
                 >
                   <div className="chat-opt-icon">
-                    <FileIcon width="22" height="22" />
+                    <SafeFileIcon width="22" height="22" />
                   </div>
                   <div className="chat-opt-text">
                     <strong>{isConvertingPdf ? "Converting to PDF..." : "Send as PDF"}</strong>
@@ -511,13 +616,10 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                 <button
                   type="button"
                   className="chat-retake-btn"
-                  onClick={() => {
-                    setCapturedPhoto(null);
-                    setShowCamera(true);
-                  }}
+                  onClick={handleRetakePhoto}
                   disabled={isConvertingPdf}
                 >
-                  🔄 Retake Photo
+                  🔄 Retake / Choose Other
                 </button>
               </div>
             </div>
@@ -540,7 +642,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
             </div>
           </div>
           <button onClick={onClose} className="chat-close-btn">
-            <CloseIcon width="20" height="20" />
+            <SafeCloseIcon width="20" height="20" />
           </button>
         </div>
 
@@ -562,7 +664,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
           {messages.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', textAlign: 'center', position: 'relative', zIndex: 1 }}>
               <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
-                <MessageCircleIcon width="48" height="48" style={{ color: "#94a3b8" }} />
+                <SafeMessageCircleIcon width="48" height="48" style={{ color: "#94a3b8" }} />
               </div>
               <p>No messages yet.<br />Start the conversation!</p>
             </div>
@@ -571,8 +673,18 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
               const isMine = msg.senderId === currentUserId;
               const showAvatar = !isMine && (index === 0 || messages[index - 1].senderId !== msg.senderId);
 
+              // Check if message is a system generated attachment notice to suppress it
+              const hasUserText = msg.message && !msg.message.toLowerCase().startsWith("sent an attachment:");
+
               return (
-                <div key={msg._id} className={`chat-message-row ${isMine ? 'sent' : 'received'}`}>
+                <div
+                  key={msg._id}
+                  id={`chat-msg-${msg._id}`}
+                  className={`chat-message-row ${isMine ? 'sent' : 'received'}`}
+                  onTouchStart={(e) => handleTouchStart(e, msg._id)}
+                  onTouchMove={(e) => handleTouchMove(e, msg._id, isMine)}
+                  onTouchEnd={(e) => handleTouchEnd(e, msg, isMine)}
+                >
                   {/* Avatar for received messages */}
                   {!isMine && (
                     <div style={{ width: '28px', height: '28px', flexShrink: 0 }}>
@@ -584,46 +696,138 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                     </div>
                   )}
 
-                  <div className={`chat-bubble ${isMine ? 'sent' : 'received'}`}>
+                  {/* 💬 OUR MESSAGE (SENT): Reply button appears on the LEFT of the bubble */}
+                  {isMine && (
+                    <button
+                      type="button"
+                      className="chat-msg-reply-trigger sent-side"
+                      onClick={() => handleInitiateReply(msg)}
+                      title="Reply"
+                    >
+                      <SafeReplyIcon width="13" height="13" />
+                    </button>
+                  )}
 
-                    {/* ✅ DISPLAY FILE */}
-                    {msg.fileData && (
-                      <div style={{ marginBottom: msg.message ? '8px' : '0' }}>
-                        {msg.fileData.contentType?.startsWith("image/") ? (
-                          <img
-                            src={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`}
-                            alt="attachment"
-                            style={{ maxWidth: "100%", borderRadius: "12px", cursor: "pointer", display: 'block' }}
-                            onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`, "_blank")}
-                          />
-                        ) : (
-                          <a
-                            href={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px",
-                              background: isMine ? 'rgba(255,255,255,0.18)' : '#f1f5f9',
-                              borderRadius: "10px", textDecoration: "none", color: 'inherit', fontWeight: '500'
-                            }}
-                          >
-                            <FileIcon width="18" height="18" style={{ color: isMine ? '#ffffff' : '#ef4444', flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>
-                              {msg.fileData.originalname || "Download Document"}
-                            </span>
-                          </a>
-                        )}
+                  <div
+                    className={`chat-bubble ${isMine ? 'sent' : 'received'}`}
+                    onDoubleClick={() => handleInitiateReply(msg)}
+                    title="Double-click or swipe to reply"
+                  >
+                    {/* 💬 QUOTED REPLY BLOCK (If this message is a reply) */}
+                    {msg.replyTo && (
+                      <div
+                        className="chat-bubble-quoted-reply"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          scrollToMessage(msg.replyTo.messageId);
+                        }}
+                        title="Click to view original message"
+                      >
+                        <div className="chat-quoted-accent" />
+                        <div className="chat-quoted-body">
+                          <div className="chat-quoted-sender">
+                            {msg.replyTo.senderId === currentUserId ? "You" : (msg.replyTo.sender || "User")}
+                          </div>
+                          <div className="chat-quoted-text">
+                            {getQuotedSnippet(msg.replyTo)}
+                          </div>
+                        </div>
                       </div>
                     )}
 
-                    {/* TEXT */}
-                    {msg.message}
+                    {/* ✅ DISPLAY ATTACHMENT */}
+                    {msg.fileData && (() => {
+                      const fileUrl = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`;
+                      const docName = msg.fileData.originalName || msg.fileData.originalname || "attachment";
+                      const isImage = msg.fileData.contentType?.startsWith("image/");
+                      const isPdf = msg.fileData.contentType === "application/pdf" || docName.toLowerCase().endsWith(".pdf");
+
+                      return (
+                        <div style={{ marginBottom: hasUserText ? '8px' : '0' }}>
+                          {isImage ? (
+                            /* 🖼️ IMAGE CARD */
+                            <div
+                              className="chat-image-card"
+                              onClick={() => setActiveMediaViewer({ type: 'image', url: fileUrl, filename: docName })}
+                              title="Click to view full screen"
+                            >
+                              <img
+                                src={fileUrl}
+                                alt={docName}
+                                className="chat-message-image"
+                              />
+                              <button
+                                type="button"
+                                className="chat-img-download-btn"
+                                title="Download Image"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadFile(fileUrl, docName);
+                                }}
+                              >
+                                <SafeDownloadIcon width="16" height="16" />
+                              </button>
+                            </div>
+                          ) : isPdf ? (
+                            /* 📄 WHATSAPP-STYLE PDF CARD (Real Page 1 Preview) */
+                            <PdfChatCard
+                              fileUrl={fileUrl}
+                              docName={docName}
+                              fileSize={msg.fileData?.size || msg.fileData?.length}
+                              onView={() => setActiveMediaViewer({ type: 'pdf', url: fileUrl, filename: docName })}
+                              onDownload={() => downloadFile(fileUrl, docName)}
+                            />
+                          ) : (
+                            /* 📁 Other Generic Documents */
+                            <div
+                              style={{
+                                display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 14px",
+                                background: isMine ? 'rgba(255,255,255,0.18)' : '#f1f5f9',
+                                borderRadius: "12px", color: 'inherit', fontWeight: '500', cursor: "pointer"
+                              }}
+                              onClick={() => downloadFile(fileUrl, docName)}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                <SafeFileIcon width="18" height="18" style={{ color: isMine ? '#ffffff' : '#3b82f6', flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>{docName}</span>
+                              </div>
+                              <button
+                                type="button"
+                                style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", display: "flex" }}
+                                title="Download"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadFile(fileUrl, docName);
+                                }}
+                              >
+                                <SafeDownloadIcon width="16" height="16" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* TEXT (Only render if user actually typed a message) */}
+                    {hasUserText && <div className="chat-msg-text">{msg.message}</div>}
 
                     {/* TIME */}
                     <div className="chat-timestamp">
                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
+
+                  {/* 💬 OTHER'S MESSAGE (RECEIVED): Reply button appears on the RIGHT of the bubble */}
+                  {!isMine && (
+                    <button
+                      type="button"
+                      className="chat-msg-reply-trigger received-side"
+                      onClick={() => handleInitiateReply(msg)}
+                      title="Reply"
+                    >
+                      <SafeReplyIcon width="13" height="13" />
+                    </button>
+                  )}
                 </div>
               );
             })
@@ -633,14 +837,40 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
         {/* ✅ FOOTER INPUT AREA */}
         <div className="chat-footer">
+          {/* 💬 WhatsApp-style Active Reply Preview Banner */}
+          {replyingTo && (
+            <div className="chat-reply-preview-bar">
+              <div className="chat-reply-preview-accent" />
+              <div className="chat-reply-preview-content">
+                <div className="chat-reply-to-header">
+                  <SafeReplyIcon width="12" height="12" style={{ color: "#6366f1", flexShrink: 0 }} />
+                  <span className="chat-reply-to-name">
+                    {replyingTo.senderId === currentUserId ? "Replying to yourself" : `Replying to ${replyingTo.sender}`}
+                  </span>
+                </div>
+                <div className="chat-reply-preview-snippet">
+                  {getQuotedSnippet(replyingTo)}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="chat-reply-preview-close"
+                onClick={() => setReplyingTo(null)}
+                title="Cancel reply"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* File Preview */}
           {selectedFile && (
             <div className="chat-selected-file-pill">
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                 {selectedFile.type === "application/pdf" ? (
-                  <FileIcon width="16" height="16" style={{ color: "#ef4444", flexShrink: 0 }} />
+                  <SafeFileIcon width="16" height="16" style={{ color: "#ef4444", flexShrink: 0 }} />
                 ) : (
-                  <PaperclipIcon width="16" height="16" style={{ color: "#3b82f6", flexShrink: 0 }} />
+                  <SafePaperclipIcon width="16" height="16" style={{ color: "#3b82f6", flexShrink: 0 }} />
                 )}
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                   {selectedFile.name}
@@ -667,14 +897,14 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
           <form onSubmit={handleSend}>
             <div className="chat-input-wrapper">
-              {/* Attach File Button */}
+              {/* Attach File Button (Single unified button for Camera, Camcorder, Files) */}
               <button
                 type="button"
                 className="chat-icon-btn"
-                onClick={() => fileInputRef.current.click()}
-                title="Attach File"
+                onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                title="Attach File or Take Photo"
               >
-                <PaperclipIcon width="20" height="20" />
+                <SafePaperclipIcon width="20" height="20" />
               </button>
               <input
                 type="file"
@@ -683,38 +913,12 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                 style={{ display: "none" }}
               />
 
-              {/* Camera Button */}
-              <button
-                type="button"
-                className="chat-icon-btn"
-                onClick={() => {
-                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    setShowCamera(true);
-                  } else if (cameraInputRef.current) {
-                    cameraInputRef.current.click();
-                  } else {
-                    setShowCamera(true);
-                  }
-                }}
-                title="Camera"
-              >
-                <CameraIcon width="20" height="20" />
-              </button>
-              {/* Native Camera fallback input for devices/browsers blocking getUserMedia */}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                ref={cameraInputRef}
-                onChange={handleNativeCameraFallback}
-                style={{ display: "none" }}
-              />
-
               {/* Text Input (Middle) */}
               <input
                 type="text"
+                ref={textInputRef}
                 className="chat-input-field"
-                placeholder="Message..."
+                placeholder={replyingTo ? "Type your reply..." : "Message..."}
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 disabled={isUploading}
@@ -738,4 +942,5 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
   );
 }
 
+export { ChatPopup };
 export default ChatPopup;

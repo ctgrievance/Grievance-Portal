@@ -414,3 +414,7 @@ export const CopyIcon = (props) => (
     </svg>
 );
 
+export const CloseIcon = XIcon;
+
+
+

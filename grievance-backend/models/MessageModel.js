@@ -73,6 +73,20 @@ const messageSchema = new mongoose.Schema({
   },
 
   createdAt: { type: Date, default: Date.now },
+
+  // 💬 WhatsApp-style Reply / Quote Reference
+  replyTo: {
+    messageId: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+    sender: String,
+    senderId: String,
+    senderRole: String,
+    message: String,
+    fileData: {
+      filename: String,
+      originalName: String,
+      contentType: String
+    }
+  },
 }, {
   toJSON: { getters: true }, // Ensure decrypted value is sent in JSON responses
   toObject: { getters: true }

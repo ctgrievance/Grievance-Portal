@@ -6,7 +6,7 @@ import { sendChatMessageEmail } from "../utils/emailService.js";
 export const sendMessage = async (req, res) => {
   try {
     // fileData comes from frontend after uploading to /api/upload
-    const { grievanceId, senderId, senderRole, sender, message, fileData } = req.body;
+    const { grievanceId, senderId, senderRole, sender, message, fileData, replyTo } = req.body;
 
     if (!grievanceId || !senderId || !senderRole) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -15,8 +15,8 @@ export const sendMessage = async (req, res) => {
     // Determine type
     const msgType = fileData ? "file" : "text";
     
-    // Auto-text if message is empty but file exists
-    const finalMessage = message || (fileData ? `Sent an attachment: ${fileData.originalName}` : "");
+    // Use message text if provided by user, otherwise keep empty
+    const finalMessage = message || "";
 
     const newMessage = new Message({
       grievanceId,
@@ -25,7 +25,8 @@ export const sendMessage = async (req, res) => {
       sender,
       message: finalMessage,
       messageType: msgType,
-      fileData: fileData || null
+      fileData: fileData || null,
+      replyTo: replyTo || null
     });
 
     const savedMessage = await newMessage.save();
