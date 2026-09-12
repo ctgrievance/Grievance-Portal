@@ -160,7 +160,8 @@ function ProfilePage() {
     }
 
     if (userRole === "staff") {
-      if (dept) {
+      const hasTeamDept = Boolean((profile.adminDepartment || localStorage.getItem("admin_department") || "").trim());
+      if (hasTeamDept) {
         navigate("/staff/admin");
       } else {
         navigate("/staff/general");

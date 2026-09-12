@@ -111,7 +111,8 @@ export const registerRequest = async (req, res) => {
         role: validRecord.role || userRole,
         staffDepartment: staffDept,
         isDeptAdmin: false,
-        adminDepartment: staffDept,
+        adminDepartment: "",
+        adminDepartments: [],
         isMasterAdmin: false,
       };
       await StaffUser.findOneAndUpdate({ id: safeId }, staffData, { upsert: true, new: true });
@@ -126,7 +127,7 @@ export const registerRequest = async (req, res) => {
     const staffDeptBackup = req.body.department || validRecord.department || "";
     await User.findOneAndUpdate(
       { id: safeId },
-      { ...baseUserData, role: userRole, school: validRecord.school || "", department: validRecord.school || "", program: validRecord.program || "", staffDepartment: staffDeptBackup, adminDepartment: staffDeptBackup },
+      { ...baseUserData, role: userRole, school: validRecord.school || "", department: validRecord.school || "", program: validRecord.program || "", staffDepartment: staffDeptBackup, adminDepartment: "", adminDepartments: [] },
       { upsert: true, new: true }
     );
 
@@ -292,7 +293,7 @@ export const loginUser = async (req, res) => {
 
     const isMaster = (actualRole === "admin") && (user.isMasterAdmin || legacyUser?.isMasterAdmin || safeId === "10001");
     const isDept = (actualRole === "admin") && (user.isDeptAdmin || legacyUser?.isDeptAdmin || false);
-    const adminDept = (actualRole === "admin") ? (user.adminDepartment || legacyUser?.adminDepartment || "") : "";
+    const adminDept = user.adminDepartment || legacyUser?.adminDepartment || "";
     const rawAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
       ? user.adminDepartments
       : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (adminDept ? [adminDept] : []));
@@ -395,7 +396,7 @@ export const verifyLogin = async (req, res) => {
 
     const isMaster = (actualRole === "admin") && (user.isMasterAdmin || legacyUser?.isMasterAdmin || safeId === "10001");
     const isDept = (actualRole === "admin") && (user.isDeptAdmin || legacyUser?.isDeptAdmin || false);
-    const adminDept = (actualRole === "admin") ? (user.adminDepartment || legacyUser?.adminDepartment || "") : "";
+    const adminDept = user.adminDepartment || legacyUser?.adminDepartment || "";
     const rawAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
       ? user.adminDepartments
       : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (adminDept ? [adminDept] : []));
@@ -724,7 +725,9 @@ export const updateUserProfile = async (req, res) => {
       if (!existingDept || existingDept.toLowerCase() === "general") {
         newDept = department.trim();
         user.staffDepartment = newDept;
-        user.adminDepartment = newDept;
+        if (user.isDeptAdmin) {
+          user.adminDepartment = newDept;
+        }
       } else {
         // Keep existing registered department intact
         newDept = existingDept;
@@ -738,7 +741,9 @@ export const updateUserProfile = async (req, res) => {
     if (fullName && fullName.trim()) userUpdate.fullName = fullName.trim();
     if (newDept) {
       userUpdate.staffDepartment = newDept;
-      userUpdate.adminDepartment = newDept;
+      if (user.isDeptAdmin || user.isMasterAdmin) {
+        userUpdate.adminDepartment = newDept;
+      }
     }
     await User.findOneAndUpdate({ id: userId }, { $set: userUpdate });
 
@@ -755,7 +760,7 @@ export const updateUserProfile = async (req, res) => {
       id: user.id,
       role: user.role || (isStudent ? "student" : "staff"),
       isDeptAdmin: user.isDeptAdmin || false,
-      adminDepartment: user.adminDepartment || newDept || "",
+      adminDepartment: user.adminDepartment || "",
       isMasterAdmin: user.isMasterAdmin || false,
     };
 

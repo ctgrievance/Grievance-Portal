@@ -404,11 +404,8 @@ export const updateLiveStaff = async (req, res) => {
         { upsert: true, new: true }
       );
     } else {
-      // If demoted to regular staff, update AdminStaffModel
-      await AdminStaffModel.findOneAndUpdate(
-        { id: safeId },
-        { isDeptAdmin: false, adminDepartment: staff.staffDepartment }
-      );
+      // If regular staff, remove from AdminStaffModel so they are strictly general staff
+      await AdminStaffModel.deleteOne({ id: safeId });
     }
 
     res.status(200).json({
