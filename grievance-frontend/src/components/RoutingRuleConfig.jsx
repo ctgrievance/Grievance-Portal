@@ -172,338 +172,256 @@ function RoutingRuleConfig({ department }) {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      {message && (
-        <div className={`alert-box ${messageType}`} style={{ marginBottom: "20px" }}>
-          {message}
-        </div>
-      )}
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
-        <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.3rem" }}>
-          Routing Rules for {department}
-        </h2>
-
-        {/* 🔄 Student / Staff Segmented Switch Toggle */}
-        <div style={{
-          display: "inline-flex",
-          background: "#e2e8f0",
-          padding: "4px",
-          borderRadius: "10px",
-          gap: "4px"
-        }}>
-          <button
-            type="button"
-            onClick={() => setTargetAudience("student")}
-            style={{
-              padding: "8px 22px",
-              borderRadius: "8px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              background: targetAudience === "student" ? "#2563eb" : "transparent",
-              color: targetAudience === "student" ? "#ffffff" : "#475569",
-              boxShadow: targetAudience === "student" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}
-          >
-            🎓 Student
-          </button>
-          <button
-            type="button"
-            onClick={() => setTargetAudience("staff")}
-            style={{
-              padding: "8px 22px",
-              borderRadius: "8px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              background: targetAudience === "staff" ? "#2563eb" : "transparent",
-              color: targetAudience === "staff" ? "#ffffff" : "#475569",
-              boxShadow: targetAudience === "staff" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}
-          >
-            👔 Staff
-          </button>
-        </div>
-
-        {!showAddForm && (
-          <button
-            onClick={() => setShowAddForm(true)}
-            style={{
-              padding: "10px 20px",
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}
-          >
-            <PlusIcon width="16" height="16" /> Create {targetAudience === "staff" ? "Staff" : "Student"} Routing Rule
-          </button>
+    <div className="dashboard-content" style={{ padding: 0 }}>
+      <div className="card" style={{ padding: "20px" }}>
+        {message && (
+          <div className={`alert-box ${messageType}`} style={{ marginBottom: "20px" }}>
+            {message}
+          </div>
         )}
-      </div>
 
-      {showAddForm && (
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            background: "#f8fafc",
-            padding: "20px",
-            borderRadius: "12px",
-            marginBottom: "20px",
-            border: "1px solid #e2e8f0"
-          }}
-        >
-          <h3 style={{ margin: "0 0 15px 0", color: "#334155" }}>
-            Create New Routing Rule
-          </h3>
-          
-          <div style={{ marginBottom: "15px" }}>
-            <label style={{ display: "block", marginBottom: "5px", fontWeight: "600", color: "#475569" }}>
-              Issue Type
-            </label>
-            <select
-              value={formData.issueTypeId}
-              onChange={(e) => setFormData({ ...formData, issueTypeId: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontSize: "1rem",
-                zIndex: 1000,
-                position: "relative"
-              }}
-              required
-            >
-              <option value="">Select an issue type...</option>
-              {issues.map((issue) => (
-                <option key={issue._id} value={issue._id}>
-                  {issue.issueName}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
+          <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", fontWeight: "700" }}>
+            Routing Rules for {department}
+          </h2>
 
-          <div style={{ marginBottom: "15px" }}>
-            <label style={{ display: "block", marginBottom: "5px", fontWeight: "600", color: "#475569" }}>
-              Assignment Mode
-            </label>
-            <select
-              value={formData.assignmentMode}
-              onChange={(e) => setFormData({ ...formData, assignmentMode: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontSize: "1rem",
-                zIndex: 1000,
-                position: "relative"
-              }}
-            >
-              <option value="single">Single Assign (First Available)</option>
-              <option value="round_robin">Round Robin (Load Balance)</option>
-              <option value="pool_accept">Pool Accept (First to Accept)</option>
-            </select>
-            <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "5px" }}>
-              {formData.assignmentMode === "single" && "Grievances will always be assigned to the first available staff in the list."}
-              {formData.assignmentMode === "round_robin" && "Grievances will be distributed evenly among all selected staff."}
-              {formData.assignmentMode === "pool_accept" && "All selected staff will see the grievance, and the first to accept gets assigned."}
-            </p>
-          </div>
-
-          <div style={{ marginBottom: "15px" }}>
-            <label style={{ display: "block", marginBottom: "10px", fontWeight: "600", color: "#475569" }}>
-              Assign Staff ({formData.assignedStaff.length} selected)
-            </label>
-            {departmentStaff.length === 0 ? (
-              <p style={{ color: "#64748b" }}>No staff available in this department</p>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px" }}>
-                {departmentStaff.map((staff) => (
-                  <div
-                    key={staff.id}
-                    onClick={() => handleStaffToggle(staff.id, staff.fullName, staff.email)}
-                    style={{
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: formData.assignedStaff.find(s => s.staffId === staff.id)
-                        ? "2px solid #2563eb"
-                        : "1px solid #cbd5e1",
-                      background: formData.assignedStaff.find(s => s.staffId === staff.id)
-                        ? "#eff6ff"
-                        : "white",
-                      cursor: "pointer",
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.9rem" }}>
-                      {staff.fullName}
-                    </div>
-                    <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                      {staff.id}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              type="submit"
-              style={{
-                padding: "10px 20px",
-                background: "#2563eb",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: "600"
-              }}
-            >
-              <SaveIcon width="16" height="16" style={{ marginRight: "5px" }} />
-              Save Routing Rule
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddForm(false);
-                setFormData({
-                  issueTypeId: "",
-                  assignedStaff: [],
-                  assignmentMode: "single"
-                });
-              }}
-              style={{
-                padding: "10px 20px",
-                background: "#64748b",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: "600"
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {routingRules.length === 0 ? (
-        <div style={{
-          textAlign: "center",
-          padding: "40px",
-          background: "white",
-          borderRadius: "12px",
-          border: "1px dashed #cbd5e1"
-        }}>
-          <p style={{ color: "#64748b", margin: 0 }}>
-            No {targetAudience} routing rules configured yet. Click "+ Create {targetAudience === "staff" ? "Staff" : "Student"} Routing Rule" to set up automation.
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "15px" }}>
-          {routingRules.map((rule) => (
-            <div
-              key={rule._id}
-              style={{
-                background: "white",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-              }}
-            >
-              <div style={{ marginBottom: "15px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                <span style={{
-                  padding: "4px 8px",
-                  borderRadius: "12px",
-                  fontSize: "0.75rem",
-                  fontWeight: "600",
-                  background: "#dbeafe",
-                  color: "#1e40af"
-                }}>
-                  {getAssignmentModeLabel(rule.assignmentMode)}
-                </span>
-                <span style={{
-                  padding: "4px 8px",
-                  borderRadius: "12px",
-                  fontSize: "0.75rem",
-                  fontWeight: "700",
-                  background: rule.targetAudience === "staff" ? "#fef3c7" : "#e0e7ff",
-                  color: rule.targetAudience === "staff" ? "#92400e" : "#3730a3"
-                }}>
-                  {rule.targetAudience === "staff" ? "👔 Staff Rule" : "🎓 Student Rule"}
-                </span>
-              </div>
-              
-              <h3 style={{ margin: "0 0 5px 0", color: "#1e293b", fontSize: "1.1rem" }}>
-                {rule.issueTypeId?.issueName || "Unknown Issue"}
-              </h3>
-              <p style={{ color: "#64748b", fontSize: "0.85rem", marginBottom: "15px" }}>
-                {rule.issueTypeId?.description || "No description"}
-              </p>
-
-              <div style={{ marginBottom: "15px" }}>
-                <div style={{ fontSize: "0.85rem", fontWeight: "600", color: "#475569", marginBottom: "8px" }}>
-                  Assigned Staff ({rule.assignedStaff.length}):
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                  {rule.assignedStaff.map((staff, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        padding: "4px 8px",
-                        background: "#f1f5f9",
-                        borderRadius: "6px",
-                        fontSize: "0.8rem",
-                        color: "#334155"
-                      }}
-                    >
-                      {staff.staffName}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
+          <div style={{ display: "flex", gap: "15px", alignItems: "center", flexWrap: "wrap" }}>
+            <div className="admin-filter-bar" style={{ padding: "4px", margin: 0, width: "auto" }}>
               <button
-                onClick={() => handleDelete(rule._id)}
+                type="button"
+                onClick={() => setTargetAudience("student")}
                 style={{
-                  width: "100%",
-                  padding: "8px",
-                  background: "#fef2f2",
-                  color: "#dc2626",
-                  border: "1px solid #dc2626",
-                  borderRadius: "6px",
-                  cursor: "pointer",
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  background: targetAudience === "student" ? "#2563eb" : "transparent",
+                  color: targetAudience === "student" ? "#fff" : "#475569",
+                  border: "none",
                   fontWeight: "600",
-                  fontSize: "0.85rem"
+                  fontSize: "0.85rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
                 }}
               >
-                <TrashIcon width="12" height="12" style={{ marginRight: "5px" }} />
-                Delete Rule
+                Student
+              </button>
+              <button
+                type="button"
+                onClick={() => setTargetAudience("staff")}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  background: targetAudience === "staff" ? "#2563eb" : "transparent",
+                  color: targetAudience === "staff" ? "#fff" : "#475569",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "0.85rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                Staff
               </button>
             </div>
-          ))}
+
+            {!showAddForm && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="admin-btn-primary"
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <PlusIcon width="16" height="16" /> Create {targetAudience === "staff" ? "Staff" : "Student"} Rule
+              </button>
+            )}
+          </div>
         </div>
-      )}
+
+        {showAddForm && (
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              background: "#f8fafc",
+              padding: "20px",
+              borderRadius: "12px",
+              marginBottom: "20px",
+              border: "1px solid #e2e8f0"
+            }}
+          >
+            <h3 style={{ margin: "0 0 15px 0", color: "#334155", fontSize: "1.1rem" }}>
+              Create New Routing Rule
+            </h3>
+            
+            <div style={{ marginBottom: "15px" }}>
+              <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
+                Issue Type
+              </label>
+              <select
+                value={formData.issueTypeId}
+                onChange={(e) => setFormData({ ...formData, issueTypeId: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: "20px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "0.9rem",
+                  zIndex: 1000,
+                  position: "relative"
+                }}
+                required
+              >
+                <option value="">Select an issue type...</option>
+                {issues.map((issue) => (
+                  <option key={issue._id} value={issue._id}>
+                    {issue.issueName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: "15px" }}>
+              <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
+                Assignment Mode
+              </label>
+              <select
+                value={formData.assignmentMode}
+                onChange={(e) => setFormData({ ...formData, assignmentMode: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: "20px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "0.9rem",
+                  zIndex: 1000,
+                  position: "relative"
+                }}
+              >
+                <option value="single">Single Assign (First Available)</option>
+                <option value="round_robin">Round Robin (Load Balance)</option>
+                <option value="pool_accept">Pool Accept (First to Accept)</option>
+              </select>
+              <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "8px 0 0 8px" }}>
+                {formData.assignmentMode === "single" && "Grievances will always be assigned to the first available staff in the list."}
+                {formData.assignmentMode === "round_robin" && "Grievances will be distributed evenly among all selected staff."}
+                {formData.assignmentMode === "pool_accept" && "All selected staff will see the grievance, and the first to accept gets assigned."}
+              </p>
+            </div>
+
+            <div style={{ marginBottom: "15px" }}>
+              <label style={{ display: "block", marginBottom: "10px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
+                Assign Staff ({formData.assignedStaff.length} selected)
+              </label>
+              {departmentStaff.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: "0.9rem" }}>No staff available in this department</p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px" }}>
+                  {departmentStaff.map((staff) => (
+                    <div
+                      key={staff.id}
+                      onClick={() => handleStaffToggle(staff.id, staff.fullName, staff.email)}
+                      style={{
+                        padding: "10px 15px",
+                        borderRadius: "12px",
+                        border: formData.assignedStaff.find(s => s.staffId === staff.id)
+                          ? "2px solid #2563eb"
+                          : "1px solid #cbd5e1",
+                        background: formData.assignedStaff.find(s => s.staffId === staff.id)
+                          ? "#eff6ff"
+                          : "white",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.9rem" }}>
+                        {staff.fullName}
+                      </div>
+                      <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                        {staff.id}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+              <button type="submit" className="admin-btn-primary">
+                <SaveIcon width="16" height="16" style={{ marginRight: "5px" }} />
+                Save Routing Rule
+              </button>
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setFormData({
+                    issueTypeId: "",
+                    assignedStaff: [],
+                    assignmentMode: "single"
+                  });
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {routingRules.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+            No {targetAudience} routing rules configured yet.
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="grievance-table">
+              <thead>
+                <tr>
+                  <th>Issue Type</th>
+                  <th>Assignment Mode</th>
+                  <th>Assigned Staff</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {routingRules.map((rule) => (
+                  <tr key={rule._id}>
+                    <td style={{ fontWeight: "600", color: "#1e293b" }}>
+                      {rule.issueTypeId?.issueName || "Unknown Issue"}
+                      <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px", fontWeight: "400" }}>
+                        {rule.targetAudience === "staff" ? "👔 Staff Rule" : "🎓 Student Rule"}
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ padding: "4px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "600", background: "#dbeafe", color: "#1e40af", whiteSpace: "nowrap" }}>
+                        {getAssignmentModeLabel(rule.assignmentMode)}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                        {rule.assignedStaff.map((staff, idx) => (
+                          <span
+                            key={idx}
+                            style={{ padding: "4px 8px", background: "#f1f5f9", borderRadius: "12px", fontSize: "0.75rem", color: "#334155", fontWeight: "500", whiteSpace: "nowrap" }}
+                          >
+                            {staff.staffName}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleDelete(rule._id)}
+                        style={{ background: "transparent", border: "none", cursor: "pointer", color: "#ef4444" }}
+                        title="Delete Rule"
+                      >
+                        <TrashIcon width="18" height="18" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

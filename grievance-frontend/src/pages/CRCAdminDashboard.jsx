@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
-import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
+
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
@@ -15,6 +15,7 @@ import { ShieldIcon, DownloadIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import DepartmentSwitcher from "../components/DepartmentSwitcher";
+import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -245,61 +246,35 @@ function CRCAdminDashboard() {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" />
           <div className="header-content">
             <h1>Placement Department (CRC)</h1>
-            <p>
+            <p className="admin-header-user-info">
               Welcome, <strong>{userId}</strong>
-              <span className="status-badge status-assigned" style={{ marginLeft: '10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                <ShieldIcon width="14" height="14" /> CRC
+              <span className="admin-master-badge">
+                <ShieldIcon width="12" height="12" /> CRC
               </span>
             </p>
           </div>
+        </div>
+        <div className="admin-header-actions">
           <ProfileHeaderButton />
           <DepartmentSwitcher currentDepartment="CRC (Placement)" />
+          <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
         </div>
-        <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>
 
-      <nav className="navbar">
-        <ul>
-          <li className="admin-nav-title"><span>CRC</span></li>
-          <li className={activeTab === "grievances" ? "active" : ""}>
-            <span className="tab-link-button" onClick={() => setActiveTab("grievances")}>
-              CRC Grievances
-            </span>
-          </li>
-          {allowStudentRecords && (
-            <li className={activeTab === "student_records" ? "active" : ""}>
-              <span className="tab-link-button" onClick={() => setActiveTab("student_records")}>
-                Student Records
-              </span>
-            </li>
-          )}
-          {allowStaffRecords && (
-            <li className={activeTab === "staff_records" ? "active" : ""}>
-              <span className="tab-link-button" onClick={() => setActiveTab("staff_records")}>
-                Staff Records
-              </span>
-            </li>
-          )}
-          {(allowRegisteredStudents || allowRegisteredStaff) && (
-            <li className={activeTab === "registered_users" ? "active" : ""}>
-              <span className="tab-link-button" onClick={() => setActiveTab("registered_users")}>
-                Registered Users
-              </span>
-            </li>
-          )}
-          <li className={activeTab === "manage_staff" ? "active" : ""}>
-            <span className="tab-link-button" onClick={() => setActiveTab("manage_staff")}>
-              Manage Staff
-            </span>
-          </li>
-          <li><SmartAssignmentNavLink department="CRC" /></li>
-        </ul>
-      </nav>
+      <DepartmentAdminNavbar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        allowStudentRecords={false}
+        allowStaffRecords={false}
+        allowRegisteredStudents={false}
+        allowRegisteredStaff={false}
+        departmentName="CRC"
+      />
 
       <main className="dashboard-body">
         {activeTab === "student_records" && <AdminStudentRecords />}
@@ -317,7 +292,7 @@ function CRCAdminDashboard() {
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
           {/* ✅ FILTER BAR */}
-          <div className="filter-bar" style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px", padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+          <div className="admin-filter-bar">
             <input
               type="text" placeholder="Search Student ID..."
               value={searchId} onChange={(e) => setSearchId(e.target.value)}

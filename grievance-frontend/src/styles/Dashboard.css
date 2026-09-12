@@ -1602,6 +1602,47 @@ textarea:focus {
 }
 
 /* Modern Action Buttons */
+.admin-btn-primary {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.admin-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.admin-btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.admin-btn-secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
 .btn-modern {
   display: inline-flex;
   align-items: center;
@@ -3719,7 +3760,9 @@ textarea:focus {
   padding: 12px 14px;
   margin-bottom: 18px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
@@ -3730,6 +3773,7 @@ textarea:focus {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .admin-filter-search-box {
@@ -3857,6 +3901,7 @@ textarea:focus {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  width: 100%;
   padding-top: 8px;
   border-top: 1px solid #f1f5f9;
 }
@@ -4004,7 +4049,7 @@ textarea:focus {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .admin-header-brand-wrap,
@@ -4035,21 +4080,16 @@ textarea:focus {
   .admin-dashboard-header .header-content h1 {
     font-size: 0.92rem !important;
     margin: 0 !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
     overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    line-height: 1.2 !important;
   }
 
   .admin-header-user-info {
-    font-size: 0.68rem !important;
-    margin-top: 1px !important;
-    min-width: 0 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 3px !important;
+    display: none !important;
   }
 
   .admin-master-badge {
@@ -4075,6 +4115,20 @@ textarea:focus {
     font-size: 0.72rem !important;
     min-height: 28px !important;
     height: 28px !important;
+  }
+
+  .admin-header-actions .header-profile-btn > span {
+    display: none !important;
+  }
+  
+  .department-switcher-wrapper button {
+    padding: 2px 6px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+  }
+
+  .department-switcher-wrapper button span:first-of-type {
+    display: none !important;
   }
 
   .admin-header-actions .logout-btn-header {

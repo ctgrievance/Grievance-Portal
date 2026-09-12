@@ -4,17 +4,18 @@ import "../styles/Dashboard.css"; // Existing CSS for table structure
 import AssignStaffPopup from "../components/AssignStaffPopup";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
-import SmartAssignmentNavLink from "../components/SmartAssignmentNavLink";
+
 import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
 import RegisteredUsersView from "../components/RegisteredUsersView";
 import StaffRoleManager from "../components/StaffRoleManager";
 import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
-import { SearchIcon, UserIcon, HomeIcon, DownloadIcon } from "../components/Icons";
+import { SearchIcon, UserIcon, HomeIcon, DownloadIcon, ShieldIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import DepartmentSwitcher from "../components/DepartmentSwitcher";
+import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -285,61 +286,35 @@ function SchoolAdminDashboard() {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" />
           <div className="header-content">
-            <h1 style={{ marginLeft: '15px' }}>{mySchoolName || "School"} Dashboard</h1>
-            <p>
-              Admin: <strong>{localStorage.getItem('grievance_user_name') || userId}</strong>
-              {mySchoolName && <span className="status-badge status-assigned" style={{ marginLeft: '10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                <HomeIcon width="14" height="14" /> {mySchoolName}
-              </span>}
+            <h1>{mySchoolName} Department</h1>
+            <p className="admin-header-user-info">
+              Welcome, <strong>{userId}</strong>
+              <span className="admin-master-badge">
+                <ShieldIcon width="12" height="12" /> {mySchoolName}
+              </span>
             </p>
           </div>
+        </div>
+        <div className="admin-header-actions">
           <ProfileHeaderButton />
           <DepartmentSwitcher currentDepartment={mySchoolName} />
+          <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
         </div>
-        <button className="logout-btn-header" onClick={handleLogout}>Logout</button>
       </header>
 
-      <nav className="navbar">
-        <ul>
-          <li className="admin-nav-title" style={{ marginLeft: '20px' }}><span>{mySchoolName || "Department"}</span></li>
-          <li className={activeTab === "grievances" ? "active" : ""}>
-            <span className="tab-link-button" onClick={() => setActiveTab("grievances")}>
-              Department Issues
-            </span>
-          </li>
-          {allowStudentRecords && (
-            <li className={activeTab === "student_records" ? "active" : ""}>
-              <span className="tab-link-button" onClick={() => setActiveTab("student_records")}>
-                Student Records
-              </span>
-            </li>
-          )}
-          {allowStaffRecords && (
-            <li className={activeTab === "staff_records" ? "active" : ""}>
-              <span className="tab-link-button" onClick={() => setActiveTab("staff_records")}>
-                Staff Records
-              </span>
-            </li>
-          )}
-          {(allowRegisteredStudents || allowRegisteredStaff) && (
-            <li className={activeTab === "registered_users" ? "active" : ""}>
-              <span className="tab-link-button" onClick={() => setActiveTab("registered_users")}>
-                Registered Users
-              </span>
-            </li>
-          )}
-          <li className={activeTab === "manage_staff" ? "active" : ""}>
-            <span className="tab-link-button" onClick={() => setActiveTab("manage_staff")}>
-              Manage Staff
-            </span>
-          </li>
-          <li><SmartAssignmentNavLink department={mySchoolName} /></li>
-        </ul>
-      </nav>
+      <DepartmentAdminNavbar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        allowStudentRecords={false}
+        allowStaffRecords={false}
+        allowRegisteredStudents={false}
+        allowRegisteredStaff={false}
+        departmentName={mySchoolName}
+      />
 
       <main className="dashboard-body">
         {activeTab === "student_records" && <AdminStudentRecords />}

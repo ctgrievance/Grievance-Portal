@@ -129,7 +129,7 @@ function DepartmentSwitcher({ currentDepartment, onDepartmentChange }) {
           style={{
             position: "absolute",
             top: "calc(100% + 8px)",
-            left: "0",
+            right: "0",
             minWidth: "280px",
             width: "max-content",
             maxWidth: "340px",

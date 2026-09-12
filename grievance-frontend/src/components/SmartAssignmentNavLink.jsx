@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { SparklesIcon } from "./Icons";
 
-function SmartAssignmentNavLink({ department }) {
+function SmartAssignmentNavLink({ department, isMobileDropdownItem = false }) {
   const [hasWarning, setHasWarning] = useState(false);
 
   useEffect(() => {
@@ -39,9 +40,50 @@ function SmartAssignmentNavLink({ department }) {
     checkWarnings();
   }, [department]);
 
+  const WarningBadge = () => hasWarning ? (
+    <span
+      title="Warning: One or more categories are missing a Routing Rule!"
+      style={{
+        width: "8px",
+        height: "8px",
+        backgroundColor: "#ef4444",
+        borderRadius: "50%",
+        display: "inline-block",
+        boxShadow: "0 0 8px rgba(239, 68, 68, 0.9)",
+        border: "1.5px solid white",
+        marginLeft: "4px"
+      }}
+    />
+  ) : null;
+
+  if (isMobileDropdownItem) {
+    return (
+      <Link 
+        to="/admin/smart-assignment" 
+        className="admin-mobile-dropdown-item"
+        style={{ textDecoration: 'none' }}
+      >
+        <span className="admin-mitem-icon">
+          <SparklesIcon width="18" height="18" />
+        </span>
+        <div className="admin-mitem-content">
+          <div className="admin-mitem-label-wrap">
+            <span className="admin-mitem-label">
+              Smart Assignment <WarningBadge />
+            </span>
+          </div>
+          <span className="admin-mitem-desc">Configure routing rules</span>
+        </div>
+        <span className="admin-mitem-arrow" aria-hidden="true">›</span>
+      </Link>
+    );
+  }
+
+  // Desktop View
   return (
     <Link
       to="/admin/smart-assignment"
+      className="tab-link-button"
       style={{
         position: "relative",
         display: "inline-flex",
@@ -49,21 +91,7 @@ function SmartAssignmentNavLink({ department }) {
         gap: "6px"
       }}
     >
-      Smart Assignment
-      {hasWarning && (
-        <span
-          title="Warning: One or more categories are missing a Routing Rule!"
-          style={{
-            width: "10px",
-            height: "10px",
-            backgroundColor: "#ef4444",
-            borderRadius: "50%",
-            display: "inline-block",
-            boxShadow: "0 0 8px rgba(239, 68, 68, 0.9)",
-            border: "1.5px solid white"
-          }}
-        />
-      )}
+      Smart Assignment <WarningBadge />
     </Link>
   );
 }

@@ -4,8 +4,9 @@ import "../styles/Dashboard.css";
 import IssueManagementPanel from "../components/IssueManagementPanel";
 import RoutingRuleConfig from "../components/RoutingRuleConfig";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon } from "../components/Icons";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
+import GenericAdminNavbar from "../components/GenericAdminNavbar";
+import { ShieldIcon, ArrowLeftIcon, RerouteIcon, ClipboardIcon } from "../components/Icons";
 
 function IssueManagementPage() {
   const navigate = useNavigate();
@@ -58,12 +59,12 @@ function IssueManagementPage() {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" />
           <div className="header-content">
             <h1>Smart Assignment Configuration</h1>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
+            <div className="admin-header-user-info" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
               {isMasterAdmin ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: "600" }}>Department:</span>
@@ -88,41 +89,34 @@ function IssueManagementPage() {
                   </select>
                 </div>
               ) : (
-                <p style={{ margin: 0 }}>
+                <span>
                   Department: <strong>{adminDept}</strong>
-                </p>
+                </span>
               )}
-              <span className="status-badge status-resolved" style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                <ShieldIcon width="14" height="14" /> {isMasterAdmin ? "Master Admin" : "Department Admin"}
+              <span className="admin-master-badge">
+                <ShieldIcon width="12" height="12" /> {isMasterAdmin ? "Master Admin" : "Department Admin"}
               </span>
             </div>
           </div>
-          <ProfileHeaderButton />
         </div>
-        <button className="logout-btn-header" onClick={handleLogout}>
-          Logout
-        </button>
+        <div className="admin-header-actions">
+          <ProfileHeaderButton />
+          <button className="logout-btn-header" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
-      <nav className="navbar">
-        <ul>
-          <li className={activeTab === "issues" ? "active" : ""}>
-            <button onClick={() => setActiveTab("issues")} className="tab-link-button">
-              Issue Types
-            </button>
-          </li>
-          <li className={activeTab === "routing" ? "active" : ""}>
-            <button onClick={() => setActiveTab("routing")} className="tab-link-button">
-              Routing Rules
-            </button>
-          </li>
-          <li style={{ marginLeft: 'auto' }}>
-            <button onClick={() => navigate(-1)} className="tab-link-button">
-              ⬅ Back
-            </button>
-          </li>
-        </ul>
-      </nav>
+      <GenericAdminNavbar
+        tabs={[
+          { id: "issues", label: "Issue Types", IconComponent: ClipboardIcon },
+          { id: "routing", label: "Routing Rules", IconComponent: RerouteIcon },
+          { id: "back", label: "Back", IconComponent: ArrowLeftIcon, onClick: () => navigate(-1) },
+        ]}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        mobileTitle="Smart Config"
+      />
 
       <main className="dashboard-body">
         {activeTab === "issues" && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PlusIcon, TrashIcon, EditIcon, CheckIcon } from "./Icons";
+import { PlusIcon, TrashIcon, EditIcon, CheckCircleIcon, RefreshIcon } from "./Icons";
 
 function IssueManagementPanel({ department }) {
   const [issues, setIssues] = useState([]);
@@ -171,332 +171,185 @@ function IssueManagementPanel({ department }) {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      {message && (
-        <div className={`alert-box ${messageType}`} style={{ marginBottom: "20px" }}>
-          {message}
-        </div>
-      )}
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
-        <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.3rem" }}>
-          Issue Types for {department}
-        </h2>
-
-        {/* 🔄 Student / Staff Segmented Switch Toggle */}
-        <div style={{
-          display: "inline-flex",
-          background: "#e2e8f0",
-          padding: "4px",
-          borderRadius: "10px",
-          gap: "4px"
-        }}>
-          <button
-            type="button"
-            onClick={() => setTargetAudience("student")}
-            style={{
-              padding: "8px 22px",
-              borderRadius: "8px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              background: targetAudience === "student" ? "#2563eb" : "transparent",
-              color: targetAudience === "student" ? "#ffffff" : "#475569",
-              boxShadow: targetAudience === "student" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}
-          >
-            🎓 Student
-          </button>
-          <button
-            type="button"
-            onClick={() => setTargetAudience("staff")}
-            style={{
-              padding: "8px 22px",
-              borderRadius: "8px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              background: targetAudience === "staff" ? "#2563eb" : "transparent",
-              color: targetAudience === "staff" ? "#ffffff" : "#475569",
-              boxShadow: targetAudience === "staff" ? "0 2px 6px rgba(37,99,235,0.3)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}
-          >
-            👔 Staff
-          </button>
-        </div>
-
-        {!showAddForm && !editingIssue && (
-          <button
-            onClick={() => setShowAddForm(true)}
-            style={{
-              padding: "10px 20px",
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}
-          >
-            <PlusIcon width="16" height="16" /> Add {targetAudience === "staff" ? "Staff" : "Student"} Issue Type
-          </button>
+    <div className="dashboard-content" style={{ padding: 0 }}>
+      <div className="card" style={{ padding: "20px" }}>
+        {message && (
+          <div className={`alert-box ${messageType}`} style={{ marginBottom: "20px" }}>
+            {message}
+          </div>
         )}
-      </div>
 
-      {(showAddForm || editingIssue) && (
-        <form
-          onSubmit={editingIssue ? handleUpdate : handleSubmit}
-          style={{
-            background: "#f8fafc",
-            padding: "20px",
-            borderRadius: "12px",
-            marginBottom: "20px",
-            border: "1px solid #e2e8f0"
-          }}
-        >
-          <h3 style={{ margin: "0 0 15px 0", color: "#334155" }}>
-            {editingIssue ? "Edit Issue Type" : "Create New Issue Type"}
-          </h3>
-          <div style={{ marginBottom: "15px" }}>
-            <label style={{ display: "block", marginBottom: "5px", fontWeight: "600", color: "#475569" }}>
-              Issue Name
-            </label>
-            <input
-              type="text"
-              value={formData.issueName}
-              onChange={(e) => setFormData({ ...formData, issueName: e.target.value })}
-              disabled={!!editingIssue}
-              placeholder="e.g., Grade Dispute, Fee Issue, Hostel Problem"
-              style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontSize: "1rem"
-              }}
-              required
-            />
-          </div>
-          <div style={{ marginBottom: "15px" }}>
-            <label style={{ display: "block", marginBottom: "5px", fontWeight: "600", color: "#475569" }}>
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe this issue type..."
-              style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontSize: "1rem",
-                minHeight: "80px",
-                resize: "vertical"
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              type="submit"
-              style={{
-                padding: "10px 20px",
-                background: "#2563eb",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: "600"
-              }}
-            >
-              {editingIssue ? "Update" : "Create"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddForm(false);
-                setEditingIssue(null);
-                setFormData({ issueName: "", description: "" });
-              }}
-              style={{
-                padding: "10px 20px",
-                background: "#64748b",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: "600"
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
+          <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", fontWeight: "700" }}>
+            Issue Types for {department}
+          </h2>
 
-      {issues.length === 0 ? (
-        <div style={{
-          textAlign: "center",
-          padding: "40px",
-          background: "white",
-          borderRadius: "12px",
-          border: "1px dashed #cbd5e1"
-        }}>
-          <p style={{ color: "#64748b", margin: 0 }}>
-            No {targetAudience} issue types defined yet. Click "+ Add {targetAudience === "staff" ? "Staff" : "Student"} Issue Type" to create one.
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "15px" }}>
-          {issues.map((issue) => {
-            const hasRoute = routingRules.some(r => r.isActive && (r.issueTypeId?._id === issue._id || r.issueTypeId === issue._id));
-            const isProtected = issue.isSystemReserved || issue.issueName === "Others";
-
-            return (
-              <div
-                key={issue._id}
-                style={{
-                  background: "white",
-                  padding: "20px",
-                  borderRadius: "12px",
-                  border: isProtected ? "2px solid #c084fc" : "1px solid #e2e8f0",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  opacity: issue.isActive ? 1 : 0.6
+          <div style={{ display: "flex", gap: "15px", alignItems: "center", flexWrap: "wrap" }}>
+            <div className="admin-filter-bar" style={{ padding: "4px", margin: 0, width: "auto" }}>
+              <button
+                type="button"
+                onClick={() => setTargetAudience("student")}
+                style={{ 
+                  padding: "6px 14px", 
+                  borderRadius: "20px", 
+                  background: targetAudience === "student" ? "#2563eb" : "transparent", 
+                  color: targetAudience === "student" ? "#fff" : "#475569",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "0.85rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "10px", flexWrap: "wrap", gap: "5px" }}>
-                  <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.1rem" }}>
-                    {issue.issueName}
-                  </h3>
-                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-                    <span
-                      style={{
-                        padding: "3px 8px",
-                        borderRadius: "12px",
-                        fontSize: "0.7rem",
-                        fontWeight: "700",
-                        background: issue.targetAudience === "staff" ? "#fef3c7" : "#e0e7ff",
-                        color: issue.targetAudience === "staff" ? "#92400e" : "#3730a3"
-                      }}
-                    >
-                      {issue.targetAudience === "staff" ? "👔 Staff" : "🎓 Student"}
-                    </span>
-                    {isProtected && (
-                      <span style={{ padding: "3px 8px", borderRadius: "12px", fontSize: "0.7rem", fontWeight: "700", background: "#f3e8ff", color: "#7e22ce" }}>
-                        🔒 Permanent
-                      </span>
-                    )}
-                    <span
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "12px",
-                        fontSize: "0.75rem",
-                        fontWeight: "600",
-                        background: issue.isActive ? "#f0fdf4" : "#f1f5f9",
-                        color: issue.isActive ? "#16a34a" : "#64748b"
-                      }}
-                    >
-                      {issue.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                </div>
+                Student
+              </button>
+              <button
+                type="button"
+                onClick={() => setTargetAudience("staff")}
+                style={{ 
+                  padding: "6px 14px", 
+                  borderRadius: "20px", 
+                  background: targetAudience === "staff" ? "#2563eb" : "transparent", 
+                  color: targetAudience === "staff" ? "#fff" : "#475569",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "0.85rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                Staff
+              </button>
+            </div>
 
-                <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "12px", minHeight: "36px" }}>
-                  {issue.description || "No description"}
-                </p>
-
-                {/* ⚠️ Warning Badge if no routing rule exists */}
-                {!hasRoute && (
-                  <div style={{
-                    background: "#fffbeb",
-                    color: "#b45309",
-                    border: "1px solid #fde68a",
-                    padding: "6px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.78rem",
-                    fontWeight: "600",
-                    marginBottom: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}>
-                    <span>⚠️</span> No Routing Rule Set (Complaints will require Manual Assign)
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: "8px" }}>
-                  {!isProtected && (
-                    <button
-                      onClick={() => handleToggleActive(issue)}
-                      style={{
-                        flex: 1,
-                        padding: "8px",
-                        background: issue.isActive ? "#f0fdf4" : "#f8fafc",
-                        color: issue.isActive ? "#16a34a" : "#64748b",
-                        border: `1px solid ${issue.isActive ? "#16a34a" : "#cbd5e1"}`,
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "0.85rem",
-                        fontWeight: "600"
-                      }}
-                    >
-                      {issue.isActive ? "Deactivate" : "Activate"}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => startEdit(issue)}
-                    style={{
-                      flex: isProtected ? 1 : "initial",
-                      padding: "8px",
-                      background: "#eff6ff",
-                      color: "#2563eb",
-                      border: "1px solid #2563eb",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      gap: "5px"
-                    }}
-                    title="Edit"
-                  >
-                    <EditIcon width="14" height="14" /> {isProtected && "Edit Description"}
-                  </button>
-                  {!isProtected && (
-                    <button
-                      onClick={() => handleDelete(issue._id)}
-                      style={{
-                        padding: "8px",
-                        background: "#fef2f2",
-                        color: "#dc2626",
-                        border: "1px solid #dc2626",
-                        borderRadius: "6px",
-                        cursor: "pointer"
-                      }}
-                      title="Delete"
-                    >
-                      <TrashIcon width="14" height="14" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+            {!showAddForm && !editingIssue && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="admin-btn-primary"
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <PlusIcon width="16" height="16" /> Add {targetAudience === "staff" ? "Staff" : "Student"} Issue
+              </button>
+            )}
+          </div>
         </div>
-      )}
+
+        {(showAddForm || editingIssue) && (
+          <form
+            onSubmit={editingIssue ? handleUpdate : handleSubmit}
+            style={{
+              background: "#f8fafc",
+              padding: "20px",
+              borderRadius: "12px",
+              marginBottom: "20px",
+              border: "1px solid #e2e8f0"
+            }}
+          >
+            <h3 style={{ margin: "0 0 15px 0", color: "#334155", fontSize: "1.1rem" }}>
+              {editingIssue ? "Edit Issue Type" : "Create New Issue Type"}
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>Issue Name</label>
+                <input
+                  type="text"
+                  value={formData.issueName}
+                  onChange={(e) => setFormData({ ...formData, issueName: e.target.value })}
+                  disabled={!!editingIssue}
+                  placeholder="e.g., Grade Dispute"
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: "20px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>Description</label>
+                <input
+                  type="text"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description..."
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: "20px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+              <button type="submit" className="admin-btn-primary">{editingIssue ? "Update" : "Create"}</button>
+              <button type="button" className="admin-btn-secondary" onClick={() => { setShowAddForm(false); setEditingIssue(null); setFormData({ issueName: "", description: "" }); }}>Cancel</button>
+            </div>
+          </form>
+        )}
+
+        {issues.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+            No {targetAudience} issue types defined yet.
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="grievance-table">
+              <thead>
+                <tr>
+                  <th>Issue Name</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Routing Rule</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {issues.map((issue) => {
+                  const hasRoute = routingRules.some(r => r.isActive && (r.issueTypeId?._id === issue._id || r.issueTypeId === issue._id));
+                  const isProtected = issue.isSystemReserved || issue.issueName === "Others";
+
+                  return (
+                    <tr key={issue._id}>
+                      <td style={{ fontWeight: "600", color: "#1e293b" }}>
+                        {issue.issueName}
+                        {isProtected && <span style={{ marginLeft: "8px", fontSize: "0.7rem", background: "#f3e8ff", color: "#7e22ce", padding: "3px 8px", borderRadius: "12px", fontWeight: "600" }}>Protected</span>}
+                      </td>
+                      <td style={{ color: "#64748b", maxWidth: "250px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {issue.description || "-"}
+                      </td>
+                      <td>
+                        <span className={`status-badge status-${issue.isActive ? "resolved" : "pending"}`}>
+                          {issue.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td>
+                        {hasRoute ? (
+                          <span style={{ color: "#16a34a", fontSize: "0.85rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <CheckCircleIcon width="14" height="14" /> Configured
+                          </span>
+                        ) : (
+                          <span style={{ color: "#d97706", fontSize: "0.85rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                            ⚠️ Manual Only
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                          <button onClick={() => startEdit(issue)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#2563eb" }} title="Edit">
+                            <EditIcon width="18" height="18" />
+                          </button>
+                          {!isProtected && (
+                            <button onClick={() => handleToggleActive(issue)} style={{ background: "transparent", border: "none", cursor: "pointer", color: issue.isActive ? "#16a34a" : "#64748b" }} title={issue.isActive ? "Deactivate" : "Activate"}>
+                              <RefreshIcon width="18" height="18" />
+                            </button>
+                          )}
+                          {!isProtected && (
+                            <button onClick={() => handleDelete(issue._id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#ef4444" }} title="Delete">
+                              <TrashIcon width="18" height="18" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

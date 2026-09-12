@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { TrashIcon } from "./Icons";
+import { DownloadIcon, XIcon, SearchIcon, TrashIcon } from "./Icons";
 
 const AdminStudentRecords = () => {
   const [records, setRecords]     = useState([]);
@@ -220,29 +220,49 @@ const AdminStudentRecords = () => {
 
       {msg && <div className={`alert-box ${msgType}`}>{msg}</div>}
 
-      <div style={{ display: "flex", alignItems: "center", marginBottom: "20px", gap: "15px", justifyContent: "space-between", flexWrap: "wrap" }}>
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); fetchRecords(); }} style={{ display: "flex", flexDirection: "row", alignItems: "center", flex: 1, gap: "10px", maxWidth: "800px", margin: 0 }}>
+      <div className="admin-filter-bar">
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); fetchRecords(); }} className="admin-search-form">
+          <span className="admin-search-icon">
+            <SearchIcon width="16" height="16" />
+          </span>
           <input 
             type="text" 
+            className="admin-search-input"
             placeholder="Search by ID, Name, Email, Phone, School..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ padding: "10px 15px", borderRadius: "8px", border: "1px solid #cbd5e1", flex: 1, margin: 0 }}
           />
-          <button type="submit" style={{ padding: "10px 20px", background: "#6366f1", color: "white", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "600", whiteSpace: "nowrap" }}>Search</button>
-          <button type="button" onClick={() => { setSearch(""); setPage(1); fetchRecords(); }} style={{ padding: "10px 20px", background: "#f1f5f9", color: "#475569", borderRadius: "8px", border: "1px solid #e2e8f0", cursor: "pointer", fontWeight: "600", whiteSpace: "nowrap" }}>Clear</button>
+          {search && (
+            <button
+              type="button"
+              className="admin-search-clear"
+              onClick={() => { setSearch(""); setPage(1); fetchRecords(); }}
+            >
+              <XIcon width="14" height="14" />
+            </button>
+          )}
+          <button type="submit" style={{ display: "none" }}>Search</button>
         </form>
 
-        {total > 0 && (
-          <button onClick={handleClearAll} disabled={clearing} style={{
-            padding: "10px 20px", background: "#fee2e2", color: "#ef4444",
-            borderRadius: "8px", border: "1px solid #fca5a5",
-            cursor: clearing ? "not-allowed" : "pointer", fontWeight: "bold",
-            whiteSpace: "nowrap"
-          }}>
-            {clearing ? "Clearing..." : "🗑️ Clear All Records"}
-          </button>
-        )}
+        <div className="admin-filter-group">
+          {total > 0 && (
+            <button 
+              className="admin-filter-select"
+              onClick={handleClearAll} 
+              disabled={clearing} 
+              style={{
+                color: "#ef4444",
+                cursor: clearing ? "not-allowed" : "pointer",
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+            >
+              {clearing ? "Clearing..." : <><TrashIcon width="14" height="14"/> Clear All Records</>}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── UPLOAD ZONE ── */}

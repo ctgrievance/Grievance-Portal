@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import ctLogo from "../assets/ct-logo.png";
-import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon } from "../components/Icons";
+import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
+import GenericAdminNavbar from "../components/GenericAdminNavbar";
 
 // Helper: format dates for tables
 const formatDate = (dateString) => {
@@ -465,40 +467,17 @@ function StaffDashboard() {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" />
           <div className="header-content">
             <h1>Staff Dashboard</h1>
-            <p style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              {loadingProfile
-                ? "Loading your profile..."
-                : <>Welcome, <strong>{staffName || userId}</strong> {(!staffDept || staffDept.toLowerCase() === "general" || staffDept.trim() === "") ? (
-                  <span
-                    style={{
-                      background: "#fffbeb",
-                      color: "#b45309",
-                      border: "1px solid #fde68a",
-                      fontSize: "0.8rem",
-                      padding: "3px 10px",
-                      borderRadius: "20px",
-                      fontWeight: "600",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      cursor: "pointer"
-                    }}
-                    onClick={() => navigate("/profile")}
-                    title="Click to select your department in profile"
-                  >
-                    ⚠️ Department Unassigned - Click to Update
-                  </span>
-                ) : (
-                  <span className="status-badge status-assigned" style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                    <ClipboardIcon width="14" height="14" /> {staffDept}
-                  </span>
-                )}</>}
-
+            <p className="admin-header-user-info">
+              Welcome, <strong>{staffName || userId}</strong>
+              <span className="admin-master-badge">
+                <ShieldIcon width="12" height="12" /> {staffDept}
+              </span>
+              
               {/* ⭐ Staff Rating Element in Header */}
               <span
                 onClick={() => setActiveTab("ratings")}
@@ -507,14 +486,15 @@ function StaffDashboard() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
-                  padding: "4px 12px",
-                  borderRadius: "20px",
-                  background: ratingData.totalRatings > 0 ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" : "#f1f5f9",
-                  border: ratingData.totalRatings > 0 ? "1px solid #fde68a" : "1px solid #e2e8f0",
-                  fontSize: "0.8rem",
+                  padding: "2px 8px",
+                  borderRadius: "12px",
+                  background: ratingData.totalRatings > 0 ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" : "transparent",
+                  border: ratingData.totalRatings > 0 ? "1px solid #fde68a" : "1px solid transparent",
+                  fontSize: "0.75rem",
                   fontWeight: "600",
                   color: ratingData.totalRatings > 0 ? "#92400e" : "#64748b",
-                  transition: "all 0.2s ease"
+                  transition: "all 0.2s ease",
+                  marginLeft: "4px"
                 }}
                 title="Click to view your ratings & student feedback"
                 onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.04)"}
@@ -523,17 +503,19 @@ function StaffDashboard() {
                 <span style={{ color: ratingData.totalRatings > 0 ? "#f59e0b" : "#94a3b8" }}>★</span>
                 <span>
                   {ratingData.totalRatings > 0
-                    ? `${Number(ratingData.averageRating).toFixed(1)} / 5 (${ratingData.totalRatings} ${ratingData.totalRatings === 1 ? 'Review' : 'Reviews'})`
+                    ? `${Number(ratingData.averageRating).toFixed(1)} / 5`
                     : "No ratings yet"}
                 </span>
               </span>
             </p>
           </div>
-          <ProfileHeaderButton />
         </div>
-        <button className="logout-btn-header" onClick={handleLogout}>
-          Logout
-        </button>
+        <div className="admin-header-actions">
+          <ProfileHeaderButton />
+          <button className="logout-btn-header" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* ⚠️ WARNING BANNER FOR UNASSIGNED STAFF */}
@@ -563,42 +545,17 @@ function StaffDashboard() {
       )}
 
       {/* ✅ FIXED NAVBAR TABS (Glass Pill Style) */}
-      <nav className="navbar">
-        <ul>
-          <li className={activeTab === "ratings" ? "active" : ""}>
-            <button
-              className="tab-link-button"
-              onClick={() => setActiveTab("ratings")}
-            >
-              ⭐ My Ratings ({ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})
-            </button>
-          </li>
-          <li className={activeTab === "submit" ? "active" : ""}>
-            <button
-              className="tab-link-button"
-              onClick={() => setActiveTab("submit")}
-            >
-              Submit Grievance
-            </button>
-          </li>
-          <li className={activeTab === "mine" ? "active" : ""}>
-            <button
-              className="tab-link-button"
-              onClick={() => setActiveTab("mine")}
-            >
-              My Submissions
-            </button>
-          </li>
-          <li className={activeTab === "transferred" ? "active" : ""}>
-            <button
-              className="tab-link-button"
-              onClick={() => setActiveTab("transferred")}
-            >
-              🔁 Transferred Out ({transferredGrievances.length})
-            </button>
-          </li>
-        </ul>
-      </nav>
+      <GenericAdminNavbar 
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        mobileTitle="Staff Dashboard"
+        tabs={[
+          { id: "ratings", label: `⭐ My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
+          { id: "submit", label: "Submit Grievance", IconComponent: EditIcon, isVisible: true },
+          { id: "mine", label: "My Submissions", IconComponent: ClipboardIcon, isVisible: true },
+          { id: "transferred", label: `🔁 Transferred Out (${transferredGrievances.length})`, IconComponent: CheckCircleIcon, isVisible: true }
+        ]}
+      />
 
       <main className="dashboard-body">
         <div className="card">

@@ -29,66 +29,44 @@ const AdminManageStaff = () => {
 
   return (
     <div className="dashboard-container">
-      <header className="dashboard-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <img src={ctLogo} alt="CT University" style={{ height: "50px" }} />
+      <header className="dashboard-header admin-dashboard-header">
+        <div className="admin-header-brand-wrap">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo" />
           <div className="header-content">
             <h1>Staff & Role Management</h1>
-            <p>
+            <p className="admin-header-user-info">
               Logged in as: <strong>{userId}</strong>
               {myDepartment ? (
-                <span
-                  className="status-badge status-assigned"
-                  style={{
-                    marginLeft: "10px",
-                    fontSize: "0.8rem",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px"
-                  }}
-                >
-                  <ShieldIcon width="14" height="14" /> {myDepartment}
+                <span className="admin-master-badge">
+                  <ShieldIcon width="12" height="12" /> {myDepartment}
                 </span>
               ) : (
-                <span
-                  className="status-badge status-resolved"
-                  style={{
-                    marginLeft: "10px",
-                    fontSize: "0.8rem",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px"
-                  }}
-                >
-                  <AdminIcon width="14" height="14" /> Master Admin
+                <span className="admin-master-badge">
+                  <AdminIcon width="12" height="12" /> Master Admin
                 </span>
               )}
             </p>
           </div>
-          <ProfileHeaderButton />
         </div>
-        <button className="logout-btn-header" onClick={handleLogout}>
-          Logout
-        </button>
+        <div className="admin-header-actions">
+          <ProfileHeaderButton />
+          <button className="logout-btn-header" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* Navigation bar */}
-      <nav className="navbar">
-        <ul>
-          <li className="admin-nav-title">
-            <span>{isMaster ? "Master Admin Panel" : `${myDepartment} Admin`}</span>
-          </li>
-          <li>
-            <button
-              type="button"
-              className="tab-link-button"
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", background: "none", border: "none" }}
-              onClick={() => navigate(isMaster ? "/admin/dashboard" : getDeptAdminRoute(myDepartment))}
-            >
-              <ArrowLeftIcon width="14" height="14" /> Back to Dashboard
-            </button>
-          </li>
-        </ul>
+      <nav className="navbar admin-navbar">
+        <div className="admin-nav-container">
+          <ul className="admin-nav-tabs">
+            <li className="active" style={{ cursor: "pointer" }} onClick={() => navigate(isMaster ? "/admin/dashboard" : getDeptAdminRoute(myDepartment))}>
+              <span className="tab-link-button">
+                <ArrowLeftIcon width="16" height="16" /> Back to Dashboard
+              </span>
+            </li>
+          </ul>
+        </div>
       </nav>
 
       <main className="dashboard-body">
