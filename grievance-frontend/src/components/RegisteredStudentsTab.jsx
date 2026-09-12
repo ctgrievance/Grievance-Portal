@@ -203,42 +203,61 @@ function RegisteredStudentsTab() {
               setPage(1);
             }}
           />
+          {search && (
+            <button
+              type="button"
+              className="reg-users-search-clear"
+              onClick={() => {
+                setSearch("");
+                setPage(1);
+              }}
+              title="Clear search"
+            >
+              <XIcon width="14" height="14" />
+            </button>
+          )}
         </div>
 
-        <div className="reg-users-filter-actions">
-          <select
-            className="reg-users-select"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="registered">Verified Only</option>
-            <option value="pending">Pending OTP</option>
-            <option value="all">All Accounts</option>
-          </select>
+        <div className="reg-users-filter-controls">
+          <div className="reg-users-select-wrap status">
+            <select
+              className="reg-users-select"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="registered">Verified Only</option>
+              <option value="pending">Pending OTP</option>
+              <option value="all">All Accounts</option>
+            </select>
+          </div>
 
-          <button
-            type="button"
-            className="reg-users-btn-reset"
-            onClick={() => {
-              setSearch("");
-              setStatusFilter("registered");
-              setPage(1);
-            }}
-          >
-            Reset
-          </button>
+          <div className="reg-users-btn-group">
+            <button
+              type="button"
+              className="reg-users-btn-reset"
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("registered");
+                setPage(1);
+              }}
+              title="Reset all filters"
+            >
+              Reset
+            </button>
 
-          <button
-            type="button"
-            className="reg-users-btn-refresh"
-            onClick={fetchStudents}
-          >
-            <RefreshIcon width="14" height="14" />
-            <span>Refresh</span>
-          </button>
+            <button
+              type="button"
+              className="reg-users-btn-refresh"
+              onClick={fetchStudents}
+              title="Refresh student list"
+            >
+              <RefreshIcon width="14" height="14" />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
       </div>
 

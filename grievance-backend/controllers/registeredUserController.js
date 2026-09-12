@@ -3,6 +3,7 @@ import StaffUser from "../models/StaffUser.js";
 import User from "../models/UserModel.js";
 import AdminStaffModel from "../models/AdminStaffModel.js";
 import Grievance from "../models/GrievanceModel.js";
+import Department from "../models/Department.js";
 
 // =========================================================================
 // 1️⃣ GET LIVE REGISTERED STUDENTS
@@ -281,13 +282,29 @@ export const getLiveStaff = async (req, res) => {
     const total = enriched.length;
     const paginated = enriched.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
-    // Count strictly verified staff for totalRegisteredStaff
-    const [totalRegistered, totalPending, totalAdmins, totalRegularStaff] = await Promise.all([
+    // Count strictly verified staff and fetch all unique departments
+    const [totalRegistered, totalPending, totalAdmins, totalRegularStaff, deptDocs, staffDepts, adminDepts] = await Promise.all([
       StaffUser.countDocuments(verifiedCondition),
       StaffUser.countDocuments(pendingCondition),
       StaffUser.countDocuments({ ...verifiedCondition, $or: [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }] }),
-      StaffUser.countDocuments({ ...verifiedCondition, role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } })
+      StaffUser.countDocuments({ ...verifiedCondition, role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } }),
+      Department.find({ isActive: true }).select("name").sort({ name: 1 }),
+      StaffUser.distinct("staffDepartment"),
+      StaffUser.distinct("adminDepartment")
     ]);
+
+    const allDeptsSet = new Set();
+    if (Array.isArray(deptDocs)) {
+      deptDocs.forEach(d => { if (d.name && d.name.trim()) allDeptsSet.add(d.name.trim()); });
+    }
+    if (Array.isArray(staffDepts)) {
+      staffDepts.forEach(d => { if (d && d.trim()) allDeptsSet.add(d.trim()); });
+    }
+    if (Array.isArray(adminDepts)) {
+      adminDepts.forEach(d => { if (d && d.trim()) allDeptsSet.add(d.trim()); });
+    }
+
+    const departments = Array.from(allDeptsSet).sort((a, b) => a.localeCompare(b));
 
     res.status(200).json({
       total,
@@ -298,6 +315,7 @@ export const getLiveStaff = async (req, res) => {
       totalRegularStaff,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
+      departments,
       staff: paginated
     });
   } catch (err) {

@@ -32,9 +32,28 @@ function RegisteredStaffTab() {
   const [totalAdmins, setTotalAdmins] = useState(0);
   const [totalRegularStaff, setTotalRegularStaff] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
+  const DEFAULT_DEPARTMENTS = [
+    "Accounts",
+    "Admission",
+    "CRC (Placement)",
+    "Examination",
+    "HR",
+    "School of Allied Health Sciences",
+    "School of Design and innovation",
+    "School of Engineering and Technology",
+    "School of Hotel Management",
+    "School of Law",
+    "School of Management Studies",
+    "School of Pharmaceutical Sciences",
+    "School of Social Sciences and Liberal Arts",
+    "Student Section",
+    "Student Welfare",
+    "Transport"
+  ];
+
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [departments, setDepartments] = useState([]);
+  const [departments, setDepartments] = useState(DEFAULT_DEPARTMENTS);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -99,7 +118,12 @@ function RegisteredStaffTab() {
       setTotalRegularStaff(data.totalRegularStaff || 0);
       setTotalPending(data.totalPending || 0);
       setTotalPages(data.totalPages || 1);
-      if (data.departments) setDepartments(data.departments);
+      if (data.departments && Array.isArray(data.departments) && data.departments.length > 0) {
+        setDepartments(prev => {
+          const set = new Set([...prev, ...data.departments]);
+          return Array.from(set).sort((a, b) => a.localeCompare(b));
+        });
+      }
     } catch (err) {
       console.error(err);
       showNotification(err.message, "error");
@@ -111,6 +135,28 @@ function RegisteredStaffTab() {
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
+
+  // Dynamic fetch of active departments
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const names = data.map(d => (typeof d === "string" ? d : d.name)).filter(Boolean);
+            setDepartments(prev => {
+              const set = new Set([...prev, ...names]);
+              return Array.from(set).sort((a, b) => a.localeCompare(b));
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load departments list:", err);
+      }
+    };
+    fetchDepts();
+  }, []);
 
   // Open Edit Modal
   const handleOpenEdit = (staff) => {
@@ -232,73 +278,97 @@ function RegisteredStaffTab() {
               setPage(1);
             }}
           />
+          {search && (
+            <button
+              type="button"
+              className="reg-users-search-clear"
+              onClick={() => {
+                setSearch("");
+                setPage(1);
+              }}
+              title="Clear search"
+            >
+              <XIcon width="14" height="14" />
+            </button>
+          )}
         </div>
 
-        <div className="reg-users-filter-actions">
-          <select
-            className="reg-users-select"
-            value={deptFilter}
-            onChange={(e) => {
-              setDeptFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="all">All Departments</option>
-            {departments.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+        <div className="reg-users-filter-controls">
+          <div className="reg-users-select-wrap dept">
+            <select
+              className="reg-users-select"
+              value={deptFilter}
+              onChange={(e) => {
+                setDeptFilter(e.target.value);
+                setPage(1);
+              }}
+              title={deptFilter !== "all" ? deptFilter : "Filter by department"}
+            >
+              <option value="all">All Departments</option>
+              {departments.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            className="reg-users-select"
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Admins & Heads</option>
-            <option value="staff">Regular Staff</option>
-          </select>
+          <div className="reg-users-select-wrap role">
+            <select
+              className="reg-users-select"
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="all">All Roles</option>
+              <option value="admin">Admins & Heads</option>
+              <option value="staff">Regular Staff</option>
+            </select>
+          </div>
 
-          <select
-            className="reg-users-select"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="registered">Verified Only</option>
-            <option value="pending">Pending OTP</option>
-            <option value="all">All Accounts</option>
-          </select>
+          <div className="reg-users-select-wrap status">
+            <select
+              className="reg-users-select"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="registered">Verified Only</option>
+              <option value="pending">Pending OTP</option>
+              <option value="all">All Accounts</option>
+            </select>
+          </div>
 
-          <button
-            type="button"
-            className="reg-users-btn-reset"
-            onClick={() => {
-              setSearch("");
-              setDeptFilter("all");
-              setRoleFilter("all");
-              setStatusFilter("registered");
-              setPage(1);
-            }}
-          >
-            Reset
-          </button>
+          <div className="reg-users-btn-group">
+            <button
+              type="button"
+              className="reg-users-btn-reset"
+              onClick={() => {
+                setSearch("");
+                setDeptFilter("all");
+                setRoleFilter("all");
+                setStatusFilter("registered");
+                setPage(1);
+              }}
+              title="Reset all filters"
+            >
+              Reset
+            </button>
 
-          <button
-            type="button"
-            className="reg-users-btn-refresh"
-            onClick={fetchStaff}
-          >
-            <RefreshIcon width="14" height="14" />
-            <span>Refresh</span>
-          </button>
+            <button
+              type="button"
+              className="reg-users-btn-refresh"
+              onClick={fetchStaff}
+              title="Refresh staff list"
+            >
+              <RefreshIcon width="14" height="14" />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -636,8 +706,12 @@ function RegisteredStaffTab() {
                 <select
                   value={editFormData.department}
                   onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
+                  required
                 >
                   <option value="">Select Department...</option>
+                  {editFormData.department && !departments.includes(editFormData.department) && (
+                    <option value={editFormData.department}>{editFormData.department}</option>
+                  )}
                   {departments.map((dept) => (
                     <option key={dept} value={dept}>
                       {dept}
