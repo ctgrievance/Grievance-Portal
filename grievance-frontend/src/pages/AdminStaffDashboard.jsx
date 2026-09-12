@@ -1,3 +1,5 @@
+import ActionDropdown from "../components/ActionDropdown";
+import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
@@ -900,48 +902,22 @@ function AdminStaffDashboard() {
               <h2>Assigned Grievances</h2>
               <p style={{ marginBottom: "1rem", color: "#64748b" }}>These grievances have been specifically assigned to you.</p>
 
-              {/* ✅ FILTER BAR */}
-              <div className="filter-bar" style={{
-                display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
-                padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
-              }}>
-                <input
-                  type="text" placeholder="Search Student ID..."
-                  value={searchId} onChange={(e) => setSearchId(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
-                />
-                <select
-                  value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 120px", cursor: "pointer" }}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-                <select
-                  value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
-                >
-                  <option value="All">All Departments</option>
-                  {uniqueDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-                </select>
-                <input
-                  type="month"
-                  value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
-                />
-                <button
-                  onClick={() => {
-                    setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
-                  }}
-                  style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}
-                >
-                  Reset
-                </button>
-                <button onClick={handleOpenExportModal} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", color: "white", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 6px rgba(22, 163, 74, 0.2)" }} onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}><DownloadIcon width="16" height="16" /> Export</button>
-              </div>
+              {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+              <DepartmentFilterBar
+                searchId={searchId}
+                setSearchId={setSearchId}
+                statusFilter={filterStatus}
+                setStatusFilter={setFilterStatus}
+                filterDepartment={filterDepartment}
+                setFilterDepartment={setFilterDepartment}
+                departments={uniqueDepartments}
+                filterMonth={filterMonth}
+                setFilterMonth={setFilterMonth}
+                onReset={() => {
+                  setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
+                }}
+                onExport={handleOpenExportModal}
+              />
 
               {loading ? (
                 <div className="table-container">
@@ -1039,7 +1015,7 @@ function AdminStaffDashboard() {
                             )}
                           </td>
                           <td>
-                            <div className="action-buttons">
+                            <ActionDropdown>
                               <button className="action-btn resolve-btn" onClick={(e) => { e.stopPropagation(); updateStatus(g._id, "Resolved"); }} disabled={g.status === "Resolved" || g.status === "Rejected"} style={{ opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1, cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer" }}>Resolve</button>
                               <button
                                 className="action-btn reject-btn"
@@ -1070,8 +1046,8 @@ function AdminStaffDashboard() {
                                 Chat
                                 {unreadMap[g._id] && <span className="notification-dot"></span>}
                               </button>
-                            </div>
-                          </td>
+                            </ActionDropdown>
+                      </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1291,47 +1267,22 @@ function AdminStaffDashboard() {
             <>
               <h2>My Submitted Grievances</h2>
 
-              {/* ✅ FILTER BAR (For My Submissions) */}
-              <div className="filter-bar" style={{
-                display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px",
-                padding: "15px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
-              }}>
-                <input
-                  type="text" placeholder="Search Assigned Staff ID..."
-                  value={searchId} onChange={(e) => setSearchId(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
-                />
-                <select
-                  value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 120px", cursor: "pointer" }}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-                <select
-                  value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
-                >
-                  <option value="All">All Departments</option>
-                  {uniqueDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-                </select>
-                <input
-                  type="month"
-                  value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
-                  style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
-                />
-                <button
-                  onClick={() => {
-                    setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
-                  }}
-                  style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}
-                >
-                  Reset
-                </button>
-              </div>
+              {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+              <DepartmentFilterBar
+                searchId={searchId}
+                setSearchId={setSearchId}
+                searchIdPlaceholder="Search Assigned Staff ID..."
+                statusFilter={filterStatus}
+                setStatusFilter={setFilterStatus}
+                filterDepartment={filterDepartment}
+                setFilterDepartment={setFilterDepartment}
+                departments={uniqueDepartments}
+                filterMonth={filterMonth}
+                setFilterMonth={setFilterMonth}
+                onReset={() => {
+                  setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
+                }}
+              />
 
               {loadingMine ? <p>Loading...</p> : getFilteredData(myGrievances, "mine").length === 0 ? <p>No submissions match your filters.</p> : (
                 <div className="table-container">

@@ -16,6 +16,8 @@ import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import DepartmentSwitcher from "../components/DepartmentSwitcher";
 import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
+import ActionDropdown from "../components/ActionDropdown";
+import DepartmentFilterBar from "../components/DepartmentFilterBar";
 
 const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -290,36 +292,19 @@ function TransportAdminDashboard() {
                     <h2>Incoming Grievances</h2>
                     {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
-                    {/* Filter Bar */}
-                    <div className="admin-filter-bar">
-                        <input
-                            type="text" placeholder="Search Student ID..."
-                            value={searchId} onChange={(e) => setSearchId(e.target.value)}
-                            style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
-                        />
-                        <input
-                            type="text" placeholder="Search Staff ID..."
-                            value={searchStaffId} onChange={(e) => setSearchStaffId(e.target.value)}
-                            style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px" }}
-                        />
-                        <select
-                            value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                            style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 120px", cursor: "pointer" }}
-                        >
-                            <option value="All">All Status</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Assigned">Assigned</option>
-                            <option value="Resolved">Resolved</option>
-                            <option value="Rejected">Rejected</option>
-                        </select>
-                        <input
-                            type="month"
-                            value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
-                            style={{ padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", cursor: "pointer" }}
-                        />
-                        <button onClick={resetFilters} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}>Reset</button>
-                        <button onClick={handleOpenExportModal} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", color: "white", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 6px rgba(22, 163, 74, 0.2)" }} onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}><DownloadIcon width="16" height="16" /> Export</button>
-                    </div>
+                    {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+                    <DepartmentFilterBar
+                        searchId={searchId}
+                        setSearchId={setSearchId}
+                        searchStaffId={searchStaffId}
+                        setSearchStaffId={setSearchStaffId}
+                        statusFilter={statusFilter}
+                        setStatusFilter={setStatusFilter}
+                        filterMonth={filterMonth}
+                        setFilterMonth={setFilterMonth}
+                        onReset={resetFilters}
+                        onExport={handleOpenExportModal}
+                    />
 
                     {loading ? (
                         <p>Loading...</p>
@@ -392,7 +377,7 @@ function TransportAdminDashboard() {
                                             </span>
                                         </td>
                                         <td>
-                                            <div className="action-buttons">
+                                            <ActionDropdown>
                                                 <button
                                                     className="action-btn assign-btn"
                                                     onClick={(e) => { e.stopPropagation(); openAssignPopup(g._id); }}
@@ -417,7 +402,7 @@ function TransportAdminDashboard() {
                                                 >
                                                     Reject
                                                 </button>
-                                            </div>
+                                            </ActionDropdown>
                                         </td>
                                     </tr>
                                 ))}

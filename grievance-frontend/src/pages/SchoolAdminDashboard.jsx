@@ -16,6 +16,8 @@ import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import DepartmentSwitcher from "../components/DepartmentSwitcher";
 import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
+import ActionDropdown from "../components/ActionDropdown";
+import DepartmentFilterBar from "../components/DepartmentFilterBar";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -207,68 +209,6 @@ function SchoolAdminDashboard() {
       }).catch(() => alert("Excel export failed"));
   };
 
-  // ✅ INLINE STYLES FOR MODERN UI (No separate CSS needed)
-  const styles = {
-    filterBar: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      backgroundColor: "#ffffff",
-      padding: "15px 20px",
-      borderRadius: "12px",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.05)",
-      marginBottom: "25px",
-      border: "1px solid #eaecf0",
-      gap: "20px",
-      flexWrap: "wrap",
-    },
-    searchGroup: {
-      display: "flex",
-      gap: "15px",
-      flex: "2",
-      minWidth: "300px",
-    },
-    inputWrapper: {
-      position: "relative",
-      flex: "1",
-      display: "flex",
-      alignItems: "center",
-    },
-    icon: {
-      position: "absolute",
-      left: "12px",
-      fontSize: "16px",
-      opacity: "0.6",
-      pointerEvents: "none",
-    },
-    input: {
-      width: "100%",
-      padding: "12px 12px 12px 40px", // Left padding for icon
-      border: "1px solid #d0d5dd",
-      borderRadius: "8px",
-      fontSize: "14px",
-      backgroundColor: "#fff",
-      color: "#333",
-      outline: "none",
-      transition: "border 0.3s ease",
-    },
-    selectWrapper: {
-      flex: "1",
-      minWidth: "150px",
-    },
-    select: {
-      width: "100%",
-      padding: "12px 16px",
-      border: "1px solid #d0d5dd",
-      borderRadius: "8px",
-      fontSize: "14px",
-      fontWeight: "600",
-      color: "#344054",
-      backgroundColor: "#f9fafb",
-      cursor: "pointer",
-      outline: "none",
-    }
-  };
   const handleResolveExtension = async (grievanceId, action) => {
     try {
       const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/extension/resolve/${grievanceId}`, {
@@ -335,63 +275,19 @@ function SchoolAdminDashboard() {
           {/* ✅ Feedback Message Alert Box */}
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
-          {/* ✅ MODERN FILTER BAR (Inline Styles) */}
-          <div className="filter-bar" style={styles.filterBar}>
-
-            {/* Search Inputs */}
-            <div style={styles.searchGroup}>
-              {/* Student ID */}
-              <div style={styles.inputWrapper}>
-                <span style={styles.icon}><SearchIcon width="16" height="16" /></span>
-                <input
-                  type="text"
-                  placeholder="Search Student ID..."
-                  value={searchId}
-                  onChange={(e) => setSearchId(e.target.value)}
-                  style={styles.input}
-                />
-              </div>
-
-              {/* Staff ID */}
-              <div style={styles.inputWrapper}>
-                <span style={styles.icon}><UserIcon width="16" height="16" /></span>
-                <input
-                  type="text"
-                  placeholder="Search Staff ID..."
-                  value={searchStaffId}
-                  onChange={(e) => setSearchStaffId(e.target.value)}
-                  style={styles.input}
-                />
-              </div>
-            </div>
-
-            {/* Status Dropdown */}
-            <div style={styles.selectWrapper}>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={styles.select}
-              >
-                <option value="All">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-            </div>
-
-            {/* Month Picker */}
-            <div style={styles.selectWrapper}>
-              <input
-                type="month"
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
-                style={styles.input}
-              />
-            </div>
-            <button onClick={resetFilters} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "#64748b", color: "white", cursor: "pointer", fontWeight: "600" }}>Reset</button>
-            <button onClick={handleOpenExportModal} style={{ padding: "10px 20px", borderRadius: "6px", border: "none", background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", color: "white", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 6px rgba(22, 163, 74, 0.2)" }} onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}><DownloadIcon width="16" height="16" /> Export</button>
-          </div>
+          {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+          <DepartmentFilterBar
+            searchId={searchId}
+            setSearchId={setSearchId}
+            searchStaffId={searchStaffId}
+            setSearchStaffId={setSearchStaffId}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            filterMonth={filterMonth}
+            setFilterMonth={setFilterMonth}
+            onReset={resetFilters}
+            onExport={handleOpenExportModal}
+          />
 
           {/* TABLE */}
           {filteredGrievances.length === 0 ? (
@@ -471,7 +367,7 @@ function SchoolAdminDashboard() {
                         </td>
                         <td><span className={`status-badge status-${g.status.toLowerCase()}`}>{g.status}</span></td>
                         <td className="action-cell">
-                          <div className="action-buttons">
+                          <ActionDropdown>
                             <button
                               className="action-btn assign-btn"
                               onClick={(e) => { e.stopPropagation(); openAssignPopup(g._id); }}
@@ -496,7 +392,7 @@ function SchoolAdminDashboard() {
                             >
                               Reject
                             </button>
-                          </div>
+                          </ActionDropdown>
                         </td>
                       </tr>
                     );
