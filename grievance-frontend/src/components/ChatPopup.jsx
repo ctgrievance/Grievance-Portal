@@ -2,62 +2,40 @@ import React, { useState, useEffect, useRef } from "react";
 import "../styles/Dashboard.css"; // Ensure this has basic modal styles
 
 // ✅ Advanced Icons
-import { PaperclipIcon, CameraIcon, FileIcon, XIcon as CloseIcon, MessageCircleIcon, ShieldIcon } from "./Icons";
+import {
+  PaperclipIcon,
+  CameraIcon,
+  FileIcon,
+  XIcon as CloseIcon,
+  MessageCircleIcon,
+  SwitchCameraIcon
+} from "./Icons";
 import { getSocket, joinChatRoom, leaveChatRoom } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
+import { jsPDF } from "jspdf";
 
 function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRole }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null); // ✅ NEW: Track selected file
-  const [isUploading, setIsUploading] = useState(false);  // ✅ NEW: Loading state for upload
-  const [grievanceData, setGrievanceData] = useState(null); // ✅ Store grievance details
-  const [screenshotAlert, setScreenshotAlert] = useState(false); // 📸 Screenshot detection notice
+  const [selectedFile, setSelectedFile] = useState(null); // Track selected file
+  const [isUploading, setIsUploading] = useState(false);  // Loading state for upload
+  const [grievanceData, setGrievanceData] = useState(null); // Store grievance details
+
+
+  // 📷 Camera & Capture states
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState("environment"); // Default to rear/back camera on mobile
+  const [capturedPhoto, setCapturedPhoto] = useState(null); // { blob, dataUrl, width, height }
+  const [isConvertingPdf, setIsConvertingPdf] = useState(false);
 
   const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null); // ✅ NEW: Ref for hidden file input
-  const chatBodyRef = useRef(null); // ✅ NEW: Ref for scroll container
-  const hasScrolledRef = useRef(false); // ✅ NEW: Track initial scroll
-  const prevMessagesLength = useRef(0); // ✅ NEW: Track message count to detect new messages
-
-  const [showCamera, setShowCamera] = useState(false); // ✅ Camera State
-  const videoRef = useRef(null); // ✅ Video Ref
-  const canvasRef = useRef(null); // ✅ Canvas Ref
-
-  // 🔒 Desktop Screenshot Interception & Alert
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let timer = null;
-    const triggerNotice = () => {
-      setScreenshotAlert(true);
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        setScreenshotAlert(false);
-      }, 4000);
-    };
-
-    const handleKeyUp = (e) => {
-      // PrintScreen key
-      if (e.key === "PrintScreen" || e.keyCode === 44) {
-        triggerNotice();
-      }
-      // Windows Shift+S detection
-      if (e.shiftKey && (e.key === "S" || e.key === "s")) {
-        triggerNotice();
-      }
-      // Mac Cmd+Shift+3,4,5
-      if (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(e.key)) {
-        triggerNotice();
-      }
-    };
-
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keyup", handleKeyUp);
-      if (timer) clearTimeout(timer);
-    };
-  }, [isOpen]);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null); // Fallback native camera input
+  const chatBodyRef = useRef(null);
+  const hasScrolledRef = useRef(false);
+  const prevMessagesLength = useRef(0);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   // ⚡ Real-Time Socket.io Connection & Messages
   useEffect(() => {
@@ -161,7 +139,193 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     prevMessagesLength.current = currentLength;
   }, [messages, currentUserId]);
 
-  // ✅ Handle File Selection
+  // 📷 CAMERA STREAM MANAGEMENT WITH FACING MODE
+  useEffect(() => {
+    let activeStream = null;
+    let isCancelled = false;
+
+    if (showCamera) {
+      const initCamera = async () => {
+        try {
+          // Stop any leftover tracks
+          if (videoRef.current && videoRef.current.srcObject) {
+            videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+          }
+
+          const constraints = {
+            video: {
+              facingMode: { ideal: cameraFacing },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+            },
+            audio: false
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (isCancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          activeStream = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (err) {
+          console.warn("Camera with facingMode failed, trying fallback:", err);
+          try {
+            const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            if (isCancelled) {
+              fallbackStream.getTracks().forEach((t) => t.stop());
+              return;
+            }
+            activeStream = fallbackStream;
+            if (videoRef.current) {
+              videoRef.current.srcObject = fallbackStream;
+            }
+          } catch (fallbackErr) {
+            console.error("Camera access failed:", fallbackErr);
+            alert("Could not access camera. Please ensure camera permissions are allowed in your browser.");
+            setShowCamera(false);
+          }
+        }
+      };
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        initCamera();
+      } else {
+        alert("Camera viewfinder is not supported directly in this browser. Opening native camera...");
+        setShowCamera(false);
+        if (cameraInputRef.current) cameraInputRef.current.click();
+      }
+    }
+
+    return () => {
+      isCancelled = true;
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+      }
+      if (videoRef.current && videoRef.current.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [showCamera, cameraFacing]);
+
+  const toggleCameraFacing = () => {
+    setCameraFacing((prev) => (prev === "environment" ? "user" : "environment"));
+  };
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const width = video.videoWidth || 1280;
+      const height = video.videoHeight || 720;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, width, height);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          setCapturedPhoto({
+            blob,
+            dataUrl,
+            width,
+            height
+          });
+          setShowCamera(false); // Close camera overlay and open format chooser
+        }
+      }, "image/jpeg", 0.92);
+    }
+  };
+
+  // Fallback for native mobile camera picker
+  const handleNativeCameraFallback = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const dataUrl = evt.target.result;
+        const img = new Image();
+        img.onload = () => {
+          setCapturedPhoto({
+            blob: file,
+            dataUrl,
+            width: img.width || 1280,
+            height: img.height || 720
+          });
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    }
+  };
+
+  // Format Chooser Option 1: Send as Photo
+  const handleSendAsPhoto = () => {
+    if (!capturedPhoto) return;
+    const file = new File(
+      [capturedPhoto.blob],
+      `photo_${Date.now()}.jpg`,
+      { type: "image/jpeg" }
+    );
+    setSelectedFile(file);
+    setCapturedPhoto(null);
+  };
+
+  // Format Chooser Option 2: Convert & Send as PDF
+  const handleSendAsPdf = () => {
+    if (!capturedPhoto) return;
+    setIsConvertingPdf(true);
+    try {
+      const isLandscape = capturedPhoto.width > capturedPhoto.height;
+      const pdf = new jsPDF({
+        orientation: isLandscape ? "landscape" : "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const availWidth = pageWidth - (margin * 2);
+      const availHeight = pageHeight - (margin * 2);
+
+      const imgRatio = capturedPhoto.width / capturedPhoto.height;
+      let renderWidth = availWidth;
+      let renderHeight = availWidth / imgRatio;
+
+      if (renderHeight > availHeight) {
+        renderHeight = availHeight;
+        renderWidth = availHeight * imgRatio;
+      }
+
+      const x = (pageWidth - renderWidth) / 2;
+      const y = (pageHeight - renderHeight) / 2;
+
+      pdf.addImage(capturedPhoto.dataUrl, "JPEG", x, y, renderWidth, renderHeight);
+      const pdfBlob = pdf.output("blob");
+      const pdfFile = new File(
+        [pdfBlob],
+        `document_${Date.now()}.pdf`,
+        { type: "application/pdf" }
+      );
+      setSelectedFile(pdfFile);
+      setCapturedPhoto(null);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      alert("Failed to convert image to PDF. Attaching as direct photo instead.");
+      handleSendAsPhoto();
+    } finally {
+      setIsConvertingPdf(false);
+    }
+  };
+
+
+  // Handle Standard File Selection
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
@@ -177,7 +341,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     try {
       let uploadedFileData = null;
 
-      // ✅ Step 1: Upload File if selected
+      // Step 1: Upload File if selected
       if (selectedFile) {
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -191,7 +355,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         uploadedFileData = await uploadRes.json();
       }
 
-      // ✅ Step 2: Send Message with File Data
+      // Step 2: Send Message with File Data
       const savedFullName = localStorage.getItem("grievance_user_name");
       const payload = {
         grievanceId,
@@ -218,56 +382,13 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         });
         setNewMessage("");
         setSelectedFile(null); // Reset file
-        if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     } catch (err) {
       console.error("Error sending message:", err);
       alert("Failed to send message. Please try again.");
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  // ✅ CAMERA LOGIC
-  useEffect(() => {
-    let stream = null;
-    if (showCamera) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then((s) => {
-          stream = s;
-          if (videoRef.current) {
-            videoRef.current.srcObject = s;
-          }
-        })
-        .catch((err) => {
-          console.error("Camera Error:", err);
-          alert("Could not access camera. Please check permissions.");
-          setShowCamera(false);
-        });
-    }
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [showCamera]);
-
-  const handleCapture = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], `camera_capture_${Date.now()}.png`, { type: "image/png" });
-          setSelectedFile(file);
-          setShowCamera(false);
-        }
-      }, "image/png");
     }
   };
 
@@ -281,26 +402,135 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     <div className="chat-modal-overlay">
       <div className="chat-modal">
 
-        {/* ✅ CAMERA OVERLAY */}
+        {/* 📷 LIVE CAMERA OVERLAY WITH SWITCH CAMERA */}
         {showCamera && (
-          <div style={{
-            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-            backgroundColor: '#000', zIndex: 50, display: 'flex', flexDirection: 'column'
-          }}>
-            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div className="chat-camera-overlay">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="chat-camera-video"
+            />
             <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-            <div style={{ position: 'absolute', bottom: '30px', width: '100%', display: 'flex', justifyContent: 'center', gap: '20px', zIndex: 60 }}>
+            {/* Top Bar with Camera Status / Facing Indicator & Close */}
+            <div className="chat-camera-top-bar">
+              <span className="chat-camera-badge">
+                📷 {cameraFacing === "environment" ? "Back Camera" : "Front Camera"}
+              </span>
               <button
+                type="button"
                 onClick={() => setShowCamera(false)}
-                style={{ padding: '12px 24px', borderRadius: '30px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white', backdropFilter: 'blur(10px)', cursor: 'pointer', fontWeight: '600' }}
+                className="chat-camera-close-icon"
+                title="Close Camera"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Bottom Controls: Cancel, Capture Shutter, Switch Camera */}
+            <div className="chat-camera-controls">
+              <button
+                type="button"
+                onClick={() => setShowCamera(false)}
+                className="chat-camera-action-btn"
               >
                 Cancel
               </button>
+
               <button
+                type="button"
                 onClick={handleCapture}
-                style={{ width: '60px', height: '60px', borderRadius: '50%', border: '4px solid white', background: 'transparent', cursor: 'pointer' }}
-              />
+                className="chat-camera-shutter-btn"
+                title="Take Photo"
+              >
+                <div className="chat-shutter-inner" />
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleCameraFacing}
+                className="chat-camera-action-btn switch-btn"
+                title="Switch Front / Back Camera"
+              >
+                <SwitchCameraIcon width="24" height="24" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 📄 CAPTURED PHOTO FORMAT CHOOSER MODAL (Photo vs PDF) */}
+        {capturedPhoto && (
+          <div className="chat-capture-modal-overlay">
+            <div className="chat-capture-modal">
+              <div className="chat-capture-header">
+                <h4>Attach Photo</h4>
+                <button
+                  type="button"
+                  className="chat-capture-close-btn"
+                  onClick={() => setCapturedPhoto(null)}
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="chat-capture-preview-container">
+                <img
+                  src={capturedPhoto.dataUrl}
+                  alt="Captured Preview"
+                  className="chat-capture-preview-img"
+                />
+              </div>
+
+              <p className="chat-capture-prompt">Choose how you want to send this photo:</p>
+
+              <div className="chat-capture-options">
+                <button
+                  type="button"
+                  className="chat-capture-opt-btn photo-opt"
+                  onClick={handleSendAsPhoto}
+                  disabled={isConvertingPdf}
+                >
+                  <div className="chat-opt-icon">
+                    <CameraIcon width="22" height="22" />
+                  </div>
+                  <div className="chat-opt-text">
+                    <strong>Send as Photo</strong>
+                    <span>Direct image attachment (JPG)</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="chat-capture-opt-btn pdf-opt"
+                  onClick={handleSendAsPdf}
+                  disabled={isConvertingPdf}
+                >
+                  <div className="chat-opt-icon">
+                    <FileIcon width="22" height="22" />
+                  </div>
+                  <div className="chat-opt-text">
+                    <strong>{isConvertingPdf ? "Converting to PDF..." : "Send as PDF"}</strong>
+                    <span>Convert into standard PDF document</span>
+                  </div>
+                </button>
+              </div>
+
+              <div className="chat-capture-footer-actions">
+                <button
+                  type="button"
+                  className="chat-retake-btn"
+                  onClick={() => {
+                    setCapturedPhoto(null);
+                    setShowCamera(true);
+                  }}
+                  disabled={isConvertingPdf}
+                >
+                  🔄 Retake Photo
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -325,23 +555,12 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
           </button>
         </div>
 
-        {/* 📸 Screenshot Alert Toast */}
-        {screenshotAlert && (
-          <div className="chat-screenshot-toast">
-            <span>📸</span>
-            <span>
-              <strong>Screenshot Notice:</strong> This conversation is confidential and watermarked with your user ID ({viewerId}).
-            </span>
-          </div>
-        )}
-
-        {/* ✅ CHAT BODY */}
+        {/* ✅ CHAT BODY (Text Selection Fully Enabled) */}
         <div
           className="chat-body"
           ref={chatBodyRef}
-          onContextMenu={(e) => e.preventDefault()}
         >
-          {/* 🔒 Dynamic Security Watermark */}
+          {/* 🔒 Dynamic Security Watermark (Selection-free background) */}
           <div className="chat-watermark-overlay" aria-hidden="true">
             {Array.from({ length: 14 }).map((_, i) => (
               <div key={i} className="chat-watermark-row">
@@ -353,7 +572,9 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
           {messages.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', textAlign: 'center', position: 'relative', zIndex: 1 }}>
-              <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}><MessageCircleIcon width="48" height="48" style={{ color: "#94a3b8" }} /></div>
+              <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                <MessageCircleIcon width="48" height="48" style={{ color: "#94a3b8" }} />
+              </div>
               <p>No messages yet.<br />Start the conversation!</p>
             </div>
           ) : (
@@ -375,10 +596,11 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                   )}
 
                   <div className={`chat-bubble ${isMine ? 'sent' : 'received'}`}>
+
                     {/* ✅ DISPLAY FILE */}
                     {msg.fileData && (
                       <div style={{ marginBottom: msg.message ? '8px' : '0' }}>
-                        {msg.fileData.contentType.startsWith("image/") ? (
+                        {msg.fileData.contentType?.startsWith("image/") ? (
                           <img
                             src={`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/file/${msg.fileData.filename}`}
                             alt="attachment"
@@ -392,12 +614,14 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                             rel="noopener noreferrer"
                             style={{
                               display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px",
-                              background: isMine ? 'rgba(255,255,255,0.1)' : '#f1f5f9',
+                              background: isMine ? 'rgba(255,255,255,0.18)' : '#f1f5f9',
                               borderRadius: "10px", textDecoration: "none", color: 'inherit', fontWeight: '500'
                             }}
                           >
-                            <FileIcon width="16" height="16" />
-                            <span style={{ fontSize: '0.85rem' }}>Download File</span>
+                            <FileIcon width="18" height="18" style={{ color: isMine ? '#ffffff' : '#ef4444', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>
+                              {msg.fileData.originalname || "Download Document"}
+                            </span>
                           </a>
                         )}
                       </div>
@@ -422,15 +646,30 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         <div className="chat-footer">
           {/* File Preview */}
           {selectedFile && (
-            <div style={{
-              marginBottom: '10px', padding: '8px 12px', background: '#eff6ff',
-              borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              fontSize: '0.85rem', color: '#1e40af'
-            }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><PaperclipIcon width="16" height="16" /> {selectedFile.name}</span>
+            <div className="chat-selected-file-pill">
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                {selectedFile.type === "application/pdf" ? (
+                  <FileIcon width="16" height="16" style={{ color: "#ef4444", flexShrink: 0 }} />
+                ) : (
+                  <PaperclipIcon width="16" height="16" style={{ color: "#3b82f6", flexShrink: 0 }} />
+                )}
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {selectedFile.name}
+                </span>
+                {selectedFile.type === "application/pdf" && (
+                  <span style={{ fontSize: '0.7rem', background: '#fee2e2', color: '#b91c1c', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                    PDF
+                  </span>
+                )}
+              </span>
               <button
-                onClick={() => setSelectedFile(null)}
-                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}
+                type="button"
+                onClick={() => {
+                  setSelectedFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="chat-remove-file-btn"
+                title="Remove attachment"
               >
                 ✕
               </button>
@@ -439,7 +678,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
           <form onSubmit={handleSend}>
             <div className="chat-input-wrapper">
-              {/* Icons container (Left) */}
+              {/* Attach File Button */}
               <button
                 type="button"
                 className="chat-icon-btn"
@@ -448,16 +687,39 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
               >
                 <PaperclipIcon width="20" height="20" />
               </button>
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
 
+              {/* Camera Button */}
               <button
                 type="button"
                 className="chat-icon-btn"
-                onClick={() => setShowCamera(true)}
+                onClick={() => {
+                  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    setShowCamera(true);
+                  } else if (cameraInputRef.current) {
+                    cameraInputRef.current.click();
+                  } else {
+                    setShowCamera(true);
+                  }
+                }}
                 title="Camera"
               >
                 <CameraIcon width="20" height="20" />
               </button>
+              {/* Native Camera fallback input for devices/browsers blocking getUserMedia */}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                ref={cameraInputRef}
+                onChange={handleNativeCameraFallback}
+                style={{ display: "none" }}
+              />
 
               {/* Text Input (Middle) */}
               <input
@@ -476,7 +738,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                   disabled={isUploading}
                   className="chat-send-btn"
                 >
-                  Send
+                  {isUploading ? "..." : "Send"}
                 </button>
               )}
             </div>

@@ -385,3 +385,20 @@ export const RepeatIcon = (props) => (
         <path d="M21 13v2a4 4 0 0 1-4 4H3" />
     </svg>
 );
+
+export const SwitchCameraIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 2.21.896 4.21 2.343 5.657" />
+        <path d="M4 14c0 4.418 3.582 8 8 8s8-3.582 8-8c0-2.21-.896-4.21-2.343-5.657" />
+        <polyline points="1 10 4 10 4 7" />
+        <polyline points="23 14 20 14 20 17" />
+    </svg>
+);
+
+export const CopyIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+);
+
