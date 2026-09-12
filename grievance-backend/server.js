@@ -830,32 +830,86 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
 
 // ✅ C. Get All Staff List (ROUTE NAME FIXED) with Staff Average Ratings
 // New Route Name: /api/admin-staff/all (Matches Frontend)
+// MERGED: Queries both User and StaffUser collections so dept admins see ALL
+// staff who registered with their department, not just team members.
 app.get("/api/admin-staff/all", async (req, res) => {
   try {
-    // Fetch: 
-    // 1. All staff (role = "staff")
-    // 2. All admins (role = "admin")
-    // 3. Exclude Master Admin (id = 10001)
-    const staffList = await User.find({
-      isMasterAdmin: { $ne: true }, // Exclude Master Admin
-      role: { $in: ["staff", "admin"] } // Include both staff and admin roles
-    }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment department school");
+    // 1. Fetch from BOTH collections
+    const [userList, staffUserList, staffRecords] = await Promise.all([
+      User.find({
+        isMasterAdmin: { $ne: true },
+        role: { $in: ["staff", "admin"] }
+      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment department school").lean(),
 
-    // Also fetch staff records to fill in department for anyone whose staffDepartment is missing
-    const staffRecords = await StaffRecord.find({}).select("id department").lean();
+      StaffUser.find({
+        isMasterAdmin: { $ne: true },
+        role: { $in: ["staff", "admin"] }
+      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment").lean(),
+
+      StaffRecord.find({}).select("id department").lean()
+    ]);
+
+    // 2. Build lookup maps for fallback department resolution
     const staffRecordDeptMap = {};
     staffRecords.forEach(r => {
       if (r.id) staffRecordDeptMap[String(r.id).trim().toUpperCase()] = r.department;
     });
 
-    // Also fetch StaffUser records to fill in staffDepartment if missing
-    const staffUsers = await StaffUser.find({}).select("id staffDepartment adminDepartment").lean();
-    const staffUserDeptMap = {};
-    staffUsers.forEach(su => {
-      if (su.id) staffUserDeptMap[String(su.id).trim().toUpperCase()] = su.staffDepartment || su.adminDepartment;
+    // 3. Merge User + StaffUser into a single map keyed by uppercase ID
+    //    StaffUser has the most accurate staffDepartment (set during registration),
+    //    User has legacy fields like school/department. We combine both.
+    const mergedMap = {};
+
+    // First, add all User records
+    userList.forEach(u => {
+      const key = String(u.id || "").trim().toUpperCase();
+      if (!key) return;
+      mergedMap[key] = { ...u };
     });
 
-    // Fetch all grievances with ratings
+    // Then, merge StaffUser records (overwrite department fields if they have values)
+    staffUserList.forEach(su => {
+      const key = String(su.id || "").trim().toUpperCase();
+      if (!key) return;
+
+      if (mergedMap[key]) {
+        // Merge: prefer StaffUser's staffDepartment if it has a value
+        const existing = mergedMap[key];
+        if (su.staffDepartment && !existing.staffDepartment) {
+          existing.staffDepartment = su.staffDepartment;
+        }
+        if (su.adminDepartment && !existing.adminDepartment) {
+          existing.adminDepartment = su.adminDepartment;
+        }
+        if (su.isDeptAdmin !== undefined) {
+          existing.isDeptAdmin = su.isDeptAdmin;
+        }
+        if (Array.isArray(su.adminDepartments) && su.adminDepartments.length > 0) {
+          existing.adminDepartments = su.adminDepartments;
+        }
+        if (su.role) existing.role = su.role;
+        if (su.fullName && !existing.fullName) existing.fullName = su.fullName;
+        if (su.email && !existing.email) existing.email = su.email;
+      } else {
+        // Staff exists in StaffUser but NOT in User (legacy) — add them!
+        mergedMap[key] = {
+          id: su.id,
+          fullName: su.fullName || "",
+          email: su.email || "",
+          isDeptAdmin: su.isDeptAdmin || false,
+          adminDepartment: su.adminDepartment || "",
+          adminDepartments: su.adminDepartments || [],
+          role: su.role || "staff",
+          staffDepartment: su.staffDepartment || "",
+          department: su.staffDepartment || "",
+          school: ""
+        };
+      }
+    });
+
+    const mergedStaffList = Object.values(mergedMap);
+
+    // 4. Fetch all grievances with ratings
     const ratedGrievances = await Grievance.find({
       $or: [
         { isRated: true },
@@ -863,24 +917,23 @@ app.get("/api/admin-staff/all", async (req, res) => {
       ]
     }).select("_id category message assignedTo resolvedBy rating isRated");
 
-    const staffWithRatings = staffList.map(staff => {
+    // 5. Enrich each staff with resolved department and ratings
+    const staffWithRatings = mergedStaffList.map(staff => {
       const sId = String(staff.id || "").trim().toLowerCase();
       const sCleanId = String(staff.id || "").trim().toUpperCase();
       const sName = String(staff.fullName || "").trim().toLowerCase();
 
       // Resolved registered / profile department
-      const registeredDept = staff.staffDepartment || staff.department || staff.school || staffUserDeptMap[sCleanId] || staffRecordDeptMap[sCleanId] || staff.adminDepartment || "";
+      const registeredDept = staff.staffDepartment || staff.department || staff.school || staffRecordDeptMap[sCleanId] || staff.adminDepartment || "";
 
       // Find all rated grievances matching this staff member by ID or by Name
       const matched = ratedGrievances.filter(g => {
         const aTo = g.assignedTo ? String(g.assignedTo).trim().toLowerCase() : "";
         const rBy = g.resolvedBy ? String(g.resolvedBy).trim().toLowerCase() : "";
 
-        // Check if assignedTo matches ID or Name
         if (aTo && (aTo === sId || (sName && aTo === sName) || (sId && aTo.includes(sId)) || (sName && aTo.includes(sName)))) {
           return true;
         }
-        // Check if resolvedBy matches ID or Name
         if (rBy && (rBy === sId || (sName && rBy === sName) || (sId && rBy.includes(sId)) || (sName && rBy.includes(sName)))) {
           return true;
         }
@@ -899,10 +952,8 @@ app.get("/api/admin-staff/all", async (req, res) => {
         ratedAt: g.rating?.ratedAt || null
       }));
 
-      const staffObj = staff.toObject ? staff.toObject() : { ...staff };
-
       return {
-        ...staffObj,
+        ...staff,
         staffDepartment: registeredDept,
         department: registeredDept,
         averageRating,

@@ -224,12 +224,18 @@ function StaffRoleManager() {
       const d = deptStr.toLowerCase();
       if (d === target) return true;
 
+      // Normalize '&' to 'and' for robust matching
+      const normD = d.replace(/&/g, 'and');
+      const normTarget = target.replace(/&/g, 'and');
+
+      if (normD === normTarget) return true;
+
       // Special match for CRC / Placement variations
-      const isCrcTarget = target.includes("crc") || target.includes("placement");
-      if (isCrcTarget && (d.includes("crc") || d.includes("placement"))) return true;
+      const isCrcTarget = normTarget.includes("crc") || normTarget.includes("placement");
+      if (isCrcTarget && (normD.includes("crc") || normD.includes("placement"))) return true;
 
       // Substring match for lengthy titles (e.g. "School of Engineering and Technology")
-      if (d.length > 4 && (target.includes(d) || d.includes(target))) return true;
+      if (normD.length > 4 && (normTarget.includes(normD) || normD.includes(normTarget))) return true;
 
       return false;
     };
