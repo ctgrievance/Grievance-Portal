@@ -363,8 +363,8 @@ function StaffRecordsTab() {
       </div>
 
       <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "8px", padding: "10px 16px", marginBottom: "16px", fontSize: "0.8rem", color: "#0369a1" }}>
-        <strong>📋 Expected Excel Columns:</strong>
-        <span style={{ marginLeft: "8px" }}>ID / Staff ID · Name · Email · Phone number · Role · Department</span>
+        <strong>📋 Supported Excel Columns:</strong>
+        <span style={{ marginLeft: "8px" }}>ID / Staff ID / Emp Code · Name / Faculty Name · Email · Mobile / Phone · Department · Role</span>
       </div>
 
       <div className="table-container" style={{ overflowX: "auto" }}>

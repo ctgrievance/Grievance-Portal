@@ -47,7 +47,13 @@ const processUpload = async (jobId, rows) => {
       const docs = [];
 
       for (const row of batch) {
-        let id = findField(row, "ID", "Staff ID", "StaffID", "Emp ID", "Employee ID", "EmpID").toUpperCase();
+        let id = findField(
+          row,
+          "ID", "Staff ID", "StaffID", "Emp ID", "Employee ID", "EmpID",
+          "Emp. Code", "Emp Code", "EmpCode", "Employee Code", "EmployeeCode",
+          "Faculty ID", "FacultyID", "Faculty Code", "FacultyCode",
+          "Staff Code", "StaffCode", "Teacher ID", "Code"
+        ).toUpperCase();
 
         if (!id) {
           skipped++;
@@ -55,16 +61,16 @@ const processUpload = async (jobId, rows) => {
           continue;
         }
 
-        let roleRaw = findField(row, "Role", "Type", "Staff Type");
+        let roleRaw = findField(row, "Role", "Type", "Staff Type", "Designation");
         let role = roleRaw ? roleRaw.toLowerCase() : "staff";
         if (role !== "admin") role = "staff";
 
         docs.push({
           id,
-          fullName: findField(row, "Name", "Full Name", "FullName", "Staff Name", "Employee Name"),
+          fullName: findField(row, "Name", "Full Name", "FullName", "Staff Name", "Employee Name", "Emp Name", "Emp. Name", "Faculty Name", "Teacher Name"),
           email: findField(row, "Email", "Email ID", "EmailID", "E-mail", "email", "Mail").toLowerCase(),
-          phone: findField(row, "Phone number", "Phone Number", "PhoneNumber", "Phone No", "Mobile", "Contact", "Contact No"),
-          department: findField(row, "Department", "Dept", "Faculty", "School"),
+          phone: findField(row, "Phone number", "Phone Number", "PhoneNumber", "Phone No", "Mobile", "Mobile No", "Mobile Number", "Contact", "Contact No"),
+          department: findField(row, "Department", "Dept", "Faculty", "School", "Deaprtment", "Depart", "Branch"),
           role: role,
         });
       }
@@ -76,7 +82,14 @@ const processUpload = async (jobId, rows) => {
       }
 
       try {
-        const ops = docs.map((doc) => ({
+        // Deduplicate within the batch by ID to avoid duplicate key issues on upsert
+        const uniqueDocsMap = new Map();
+        for (const doc of docs) {
+          uniqueDocsMap.set(doc.id, doc);
+        }
+        const uniqueDocs = Array.from(uniqueDocsMap.values());
+
+        const ops = uniqueDocs.map((doc) => ({
           updateOne: {
             filter: { id: doc.id },
             update: { $set: doc },
@@ -87,7 +100,7 @@ const processUpload = async (jobId, rows) => {
         inserted += (result.upsertedCount || 0) + (result.modifiedCount || 0);
 
         // 🔥 Sync updated name/contact details to registered accounts while strictly protecting Admin roles
-        for (const doc of docs) {
+        for (const doc of uniqueDocs) {
           try {
             const existingUser = await User.findOne({ id: doc.id });
             if (existingUser) {
