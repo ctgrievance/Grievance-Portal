@@ -516,16 +516,62 @@ function StaffRecordsTab() {
                       <>
                         {/* Editable Row */}
                         <td><span className="records-id-badge">{record.id}</span></td>
-                        <td><input type="text" name="fullName" value={editFormData.fullName || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td><input type="email" name="email" value={editFormData.email || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td><input type="text" name="phone" value={editFormData.phone || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
                         <td>
-                          <select name="role" value={editFormData.role || "staff"} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }}>
+                          <input 
+                            type="text" 
+                            name="fullName" 
+                            value={editFormData.fullName || ""} 
+                            onChange={handleEditChange} 
+                            placeholder="Full Name"
+                            className="records-form-input" 
+                            style={{ height: "32px", fontSize: "0.84rem" }} 
+                          />
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <input 
+                              type="email" 
+                              name="email" 
+                              value={editFormData.email || ""} 
+                              onChange={handleEditChange} 
+                              placeholder="Email address"
+                              className="records-form-input" 
+                              style={{ height: "28px", fontSize: "0.8rem" }} 
+                            />
+                            <input 
+                              type="text" 
+                              name="phone" 
+                              value={editFormData.phone || ""} 
+                              onChange={handleEditChange} 
+                              placeholder="Phone number"
+                              className="records-form-input" 
+                              style={{ height: "28px", fontSize: "0.8rem" }} 
+                            />
+                          </div>
+                        </td>
+                        <td>
+                          <select 
+                            name="role" 
+                            value={editFormData.role || "staff"} 
+                            onChange={handleEditChange} 
+                            className="records-form-input" 
+                            style={{ height: "32px", fontSize: "0.84rem" }}
+                          >
                             <option value="staff">Staff</option>
                             <option value="admin">Admin</option>
                           </select>
                         </td>
-                        <td><input type="text" name="department" value={editFormData.department || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td>
+                          <input 
+                            type="text" 
+                            name="department" 
+                            value={editFormData.department || ""} 
+                            onChange={handleEditChange} 
+                            placeholder="Department"
+                            className="records-form-input" 
+                            style={{ height: "32px", fontSize: "0.84rem" }} 
+                          />
+                        </td>
                         <td style={{ textAlign: "right" }}>
                           <div className="records-action-group" style={{ justifyContent: "flex-end" }}>
                             <button type="button" onClick={() => handleSaveEdit(record.id)} className="records-action-btn edit" title="Save changes">

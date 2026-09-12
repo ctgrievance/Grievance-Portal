@@ -508,7 +508,28 @@ const AdminStudentRecords = () => {
                         <td><span className="records-id-badge">{record.id}</span></td>
                         <td><input type="text" name="ctuId" value={editFormData.ctuId || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
                         <td><input type="text" name="fullName" value={editFormData.fullName || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td><input type="email" name="email" value={editFormData.email || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <input 
+                              type="email" 
+                              name="email" 
+                              value={editFormData.email || ""} 
+                              onChange={handleEditChange} 
+                              placeholder="Email address"
+                              className="records-form-input" 
+                              style={{ height: "28px", fontSize: "0.8rem" }} 
+                            />
+                            <input 
+                              type="text" 
+                              name="phone" 
+                              value={editFormData.phone || ""} 
+                              onChange={handleEditChange} 
+                              placeholder="Phone number"
+                              className="records-form-input" 
+                              style={{ height: "28px", fontSize: "0.8rem" }} 
+                            />
+                          </div>
+                        </td>
                         <td><input type="text" name="school" value={editFormData.school || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
                         <td><input type="text" name="program" value={editFormData.program || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
                         <td><input type="text" name="batch" value={editFormData.batch || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
