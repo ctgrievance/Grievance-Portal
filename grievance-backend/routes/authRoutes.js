@@ -10,6 +10,7 @@ import {
   loginUser,
   verifyLogin,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
   getUserProfile,
   updateUserProfile,
@@ -32,6 +33,7 @@ router.post("/verify-login", verifyLogin);
 
 // Forgot Password (ID + Email -> Email OTP)
 router.post("/forgot-password", forgotPassword);
+router.post("/verify-reset-otp", verifyResetOtp);
 
 // Reset Password
 router.post("/reset-password", resetPassword);

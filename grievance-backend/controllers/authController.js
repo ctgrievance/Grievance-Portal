@@ -208,6 +208,47 @@ export const verifyRegistration = async (req, res) => {
 };
 
 // =================================================
+// 🛡️ AUTHORITATIVE ROLE DETERMINATION HELPER
+// =================================================
+export const getAuthoritativeUserRole = (staffUser, studentUser, legacyUser) => {
+  const safeId = String(staffUser?.id || studentUser?.id || legacyUser?.id || "").trim().toUpperCase();
+
+  // 1. Super / Master Admin check
+  if (
+    staffUser?.isMasterAdmin ||
+    legacyUser?.isMasterAdmin ||
+    safeId === "10001"
+  ) {
+    return "admin";
+  }
+
+  // 2. Department Admin check
+  if (
+    staffUser?.isDeptAdmin ||
+    staffUser?.role === "admin" ||
+    legacyUser?.isDeptAdmin ||
+    legacyUser?.role === "admin"
+  ) {
+    return "admin";
+  }
+
+  // 3. Student Check
+  if (studentUser || legacyUser?.role === "student" || legacyUser?.school || legacyUser?.program) {
+    return "student";
+  }
+
+  // 4. Staff Check
+  if (staffUser || legacyUser?.role === "staff" || legacyUser?.staffDepartment) {
+    return "staff";
+  }
+
+  // 5. Fallback based on ID format: 5 digits = staff, 8+ digits = student
+  if (safeId.length === 5) return "staff";
+
+  return "student";
+};
+
+// =================================================
 // 3️⃣ LOGIN USER - STEP 1 (Credentials -> 2FA) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const loginUser = async (req, res) => {
@@ -219,56 +260,52 @@ export const loginUser = async (req, res) => {
     const safeId = id.toString().trim().toUpperCase();
     const userRole = role ? role.toLowerCase().trim() : null;
 
-    // Find user based on role or search collections in parallel
-    let user = null;
-    let isStudent = false;
+    // Search across collections in parallel to authoritatively locate user record
+    const [studentUser, staffUser, legacyUser] = await Promise.all([
+      StudentUser.findOne({ id: safeId }),
+      StaffUser.findOne({ id: safeId }),
+      User.findOne({ id: safeId })
+    ]);
 
-    if (userRole === "student") {
-      user = await StudentUser.findOne({ id: safeId });
-      isStudent = true;
-    } else if (userRole === "staff" || userRole === "admin") {
-      user = await StaffUser.findOne({ id: safeId });
-      isStudent = false;
-    } else {
-      // Role not specified: query Student and Staff collections in parallel for speed
-      const [studentUser, staffUser] = await Promise.all([
-        StudentUser.findOne({ id: safeId }),
-        StaffUser.findOne({ id: safeId })
-      ]);
-      if (studentUser) {
-        user = studentUser;
-        isStudent = true;
-      } else if (staffUser) {
-        user = staffUser;
-        isStudent = false;
-      }
-    }
-
-    // Fallback to legacy User collection
-    if (!user) {
-      user = await User.findOne({ id: safeId });
-      if (user && user.role === "student") isStudent = true;
-    }
-
+    const user = staffUser || studentUser || legacyUser;
     if (!user) return res.status(400).json({ message: "User not found" });
 
     if (!user.isVerified) return res.status(403).json({ message: "Account not verified" });
 
+    // Authoritatively determine user's actual role from database records
+    const actualRole = getAuthoritativeUserRole(staffUser, studentUser, legacyUser);
+
+    // 🛡️ Strict Role Check: If user selected a role tab that mismatches their actual role, reject with 403
+    if (userRole && userRole !== actualRole) {
+      const correctOption = actualRole === "admin" ? "Admin" : (actualRole === "staff" ? "Staff" : "Student");
+      const roleName = actualRole === "admin" ? "an Administrator" : (actualRole === "staff" ? "University Staff" : "a Student");
+
+      return res.status(403).json({
+        message: `❌ Access Denied: This account is registered as ${roleName}. Please select the '${correctOption}' option on the left to log in.`,
+        actualRole,
+        selectedRole: userRole
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
-    const userAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
+    const isMaster = (actualRole === "admin") && (user.isMasterAdmin || legacyUser?.isMasterAdmin || safeId === "10001");
+    const isDept = (actualRole === "admin") && (user.isDeptAdmin || legacyUser?.isDeptAdmin || false);
+    const adminDept = (actualRole === "admin") ? (user.adminDepartment || legacyUser?.adminDepartment || "") : "";
+    const rawAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
       ? user.adminDepartments
-      : (user.adminDepartment ? [user.adminDepartment] : []);
+      : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (adminDept ? [adminDept] : []));
+    const userAdminDepts = (actualRole === "admin") ? rawAdminDepts : [];
 
-    // Generate Token with appropriate role info
+    // Generate Token with strictly authoritative role info
     const tokenPayload = {
       id: user.id,
-      role: isStudent ? "student" : (user.role || "staff"),
-      isDeptAdmin: user.isDeptAdmin || false,
-      adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+      role: actualRole,
+      isDeptAdmin: isDept,
+      adminDepartment: adminDept || userAdminDepts[0] || "",
       adminDepartments: userAdminDepts,
-      isMasterAdmin: user.isMasterAdmin || false
+      isMasterAdmin: isMaster
     };
 
     const token = jwt.sign(
@@ -283,15 +320,15 @@ export const loginUser = async (req, res) => {
       token,
       user: {
         id: user.id,
-        role: isStudent ? "student" : (user.role || "staff"),
-        fullName: user.fullName,
-        isDeptAdmin: user.isDeptAdmin || false,
-        adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+        role: actualRole,
+        fullName: user.fullName || legacyUser?.fullName || "",
+        isDeptAdmin: isDept,
+        adminDepartment: adminDept || userAdminDepts[0] || "",
         adminDepartments: userAdminDepts,
-        isMasterAdmin: user.isMasterAdmin || false,
-        school: user.school || "",
-        program: user.program || "",
-        department: (isStudent ? (user.school || user.department || user.program) : (user.staffDepartment || user.adminDepartment)) || ""
+        isMasterAdmin: isMaster,
+        school: user.school || legacyUser?.school || "",
+        program: user.program || legacyUser?.program || "",
+        department: (actualRole === "student" ? (user.school || user.department || user.program || legacyUser?.school || "") : (user.staffDepartment || legacyUser?.staffDepartment || adminDept)) || ""
       },
     });
 
@@ -313,36 +350,13 @@ export const verifyLogin = async (req, res) => {
     const safeId = id.toString().trim().toUpperCase();
     const userRole = role ? role.toLowerCase().trim() : null;
 
-    // Find user based on role or search collections in parallel
-    let user = null;
-    let isStudent = false;
+    const [studentUser, staffUser, legacyUser] = await Promise.all([
+      StudentUser.findOne({ id: safeId }),
+      StaffUser.findOne({ id: safeId }),
+      User.findOne({ id: safeId })
+    ]);
 
-    if (userRole === "student") {
-      user = await StudentUser.findOne({ id: safeId });
-      isStudent = true;
-    } else if (userRole === "staff" || userRole === "admin") {
-      user = await StaffUser.findOne({ id: safeId });
-      isStudent = false;
-    } else {
-      const [studentUser, staffUser] = await Promise.all([
-        StudentUser.findOne({ id: safeId }),
-        StaffUser.findOne({ id: safeId })
-      ]);
-      if (studentUser) {
-        user = studentUser;
-        isStudent = true;
-      } else if (staffUser) {
-        user = staffUser;
-        isStudent = false;
-      }
-    }
-
-    // Fallback to legacy User collection
-    if (!user) {
-      user = await User.findOne({ id: safeId });
-      if (user && user.role === "student") isStudent = true;
-    }
-
+    const user = staffUser || studentUser || legacyUser;
     if (!user) return res.status(400).json({ message: "User not found" });
 
     if (user.otp !== otp || user.otpExpires < Date.now()) {
@@ -353,19 +367,48 @@ export const verifyLogin = async (req, res) => {
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
+    if (staffUser && user !== staffUser) {
+      staffUser.otp = undefined;
+      staffUser.otpExpires = undefined;
+      await staffUser.save().catch(() => {});
+    }
+    if (studentUser && user !== studentUser) {
+      studentUser.otp = undefined;
+      studentUser.otpExpires = undefined;
+      await studentUser.save().catch(() => {});
+    }
 
-    const userAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
+    // Authoritatively determine user's actual role from database records
+    const actualRole = getAuthoritativeUserRole(staffUser, studentUser, legacyUser);
+
+    // 🛡️ Strict Role Check: If user selected a role tab that mismatches their actual role, reject with 403
+    if (userRole && userRole !== actualRole) {
+      const correctOption = actualRole === "admin" ? "Admin" : (actualRole === "staff" ? "Staff" : "Student");
+      const roleName = actualRole === "admin" ? "an Administrator" : (actualRole === "staff" ? "University Staff" : "a Student");
+
+      return res.status(403).json({
+        message: `❌ Access Denied: This account is registered as ${roleName}. Please select the '${correctOption}' option on the left to log in.`,
+        actualRole,
+        selectedRole: userRole
+      });
+    }
+
+    const isMaster = (actualRole === "admin") && (user.isMasterAdmin || legacyUser?.isMasterAdmin || safeId === "10001");
+    const isDept = (actualRole === "admin") && (user.isDeptAdmin || legacyUser?.isDeptAdmin || false);
+    const adminDept = (actualRole === "admin") ? (user.adminDepartment || legacyUser?.adminDepartment || "") : "";
+    const rawAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
       ? user.adminDepartments
-      : (user.adminDepartment ? [user.adminDepartment] : []);
+      : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (adminDept ? [adminDept] : []));
+    const userAdminDepts = (actualRole === "admin") ? rawAdminDepts : [];
 
-    // Generate Token with appropriate role info
+    // Generate Token with strictly authoritative role info
     const tokenPayload = {
       id: user.id,
-      role: isStudent ? "student" : (user.role || "staff"),
-      isDeptAdmin: user.isDeptAdmin || false,
-      adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+      role: actualRole,
+      isDeptAdmin: isDept,
+      adminDepartment: adminDept || userAdminDepts[0] || "",
       adminDepartments: userAdminDepts,
-      isMasterAdmin: user.isMasterAdmin || false
+      isMasterAdmin: isMaster
     };
 
     const token = jwt.sign(
@@ -380,15 +423,15 @@ export const verifyLogin = async (req, res) => {
       token,
       user: {
         id: user.id,
-        role: isStudent ? "student" : (user.role || "staff"),
-        fullName: user.fullName,
-        isDeptAdmin: user.isDeptAdmin || false,
-        adminDepartment: user.adminDepartment || userAdminDepts[0] || "",
+        role: actualRole,
+        fullName: user.fullName || legacyUser?.fullName || "",
+        isDeptAdmin: isDept,
+        adminDepartment: adminDept || userAdminDepts[0] || "",
         adminDepartments: userAdminDepts,
-        isMasterAdmin: user.isMasterAdmin || false,
-        school: user.school || "",
-        program: user.program || "",
-        department: (isStudent ? (user.school || user.department || user.program) : (user.staffDepartment || user.adminDepartment)) || ""
+        isMasterAdmin: isMaster,
+        school: user.school || legacyUser?.school || "",
+        program: user.program || legacyUser?.program || "",
+        department: (actualRole === "student" ? (user.school || user.department || user.program || legacyUser?.school || "") : (user.staffDepartment || legacyUser?.staffDepartment || adminDept)) || ""
       },
     });
 
@@ -398,26 +441,63 @@ export const verifyLogin = async (req, res) => {
 };
 
 // =================================================
-// 5️⃣ FORGOT PASSWORD (ID + Phone -> SMS OTP) - UPDATED FOR SEPARATED DATA
+// 🛡️ CONTACT MASKING HELPERS (Half-Masked)
+// =================================================
+export const maskPhone = (phone) => {
+  if (!phone) return "";
+  const cleaned = phone.toString().trim();
+  const digits = cleaned.replace(/\D/g, "");
+  if (digits.length <= 4) return digits;
+
+  // For 10-digit Indian numbers: show first 2 and last 3, mask middle 5 (e.g. +91 83•••••144)
+  const last10 = digits.slice(-10);
+  const start = last10.slice(0, 2);
+  const end = last10.slice(-3);
+  const maskedCount = Math.max(3, last10.length - start.length - end.length);
+  return `+91 ${start}${"•".repeat(maskedCount)}${end}`;
+};
+
+export const maskEmail = (email) => {
+  if (!email || !email.includes("@")) return "";
+  const [local, domain] = email.trim().toLowerCase().split("@");
+  if (local.length <= 2) {
+    return `${local[0]}•@${domain}`;
+  }
+  const visibleStart = Math.min(3, Math.ceil(local.length / 3));
+  const visibleEnd = local.length > 5 ? 2 : 1;
+  const start = local.slice(0, visibleStart);
+  const end = local.slice(-visibleEnd);
+  const maskedCount = Math.max(3, local.length - visibleStart - visibleEnd);
+  return `${start}${"•".repeat(maskedCount)}${end}@${domain}`;
+};
+
+// =================================================
+// 5️⃣ FORGOT PASSWORD (ID -> Send OTP strictly via Email)
 // =================================================
 export const forgotPassword = async (req, res) => {
   try {
-    const { id, phone } = req.body;
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ message: "University ID is required." });
+    }
     const safeId = id.toString().trim().toUpperCase();
-    const safePhone = phone.toString().trim();
 
-    // Find user in StudentUser or StaffUser
-    let user = await StudentUser.findOne({ id: safeId, phone: safePhone });
+    // Find user across collections in parallel
+    const [studentUser, staffUser, legacyUser] = await Promise.all([
+      StudentUser.findOne({ id: safeId }),
+      StaffUser.findOne({ id: safeId }),
+      User.findOne({ id: safeId })
+    ]);
+
+    const user = staffUser || studentUser || legacyUser;
     if (!user) {
-      user = await StaffUser.findOne({ id: safeId, phone: safePhone });
-    }
-    // Fallback to legacy User
-    if (!user) {
-      user = await User.findOne({ id: safeId, phone: safePhone });
+      return res.status(404).json({ message: "No registered user found with this University ID." });
     }
 
-    if (!user) {
-      return res.status(404).json({ message: "No user found with this ID and Phone combination." });
+    const email = user.email || staffUser?.email || studentUser?.email || legacyUser?.email || "";
+
+    if (!email) {
+      return res.status(400).json({ message: "No registered email address found for this account. Please contact Administrator." });
     }
 
     // Generate 6-digit OTP
@@ -425,81 +505,123 @@ export const forgotPassword = async (req, res) => {
 
     // Hash OTP before storing
     const hashedOtp = await bcrypt.hash(otp, 10);
+    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    user.resetOtp = hashedOtp;
-    user.resetOtpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-    await user.save();
+    const updatePayload = { resetOtp: hashedOtp, resetOtpExpires: expires };
+    await Promise.all([
+      StudentUser.updateOne({ id: safeId }, updatePayload),
+      StaffUser.updateOne({ id: safeId }, updatePayload),
+      User.updateOne({ id: safeId }, updatePayload)
+    ]);
 
-    // 🔐 Log OTP prominently in terminal
-    if (global.logOTP) global.logOTP("PASSWORD RESET", safePhone, otp);
+    const maskedEmail = maskEmail(email);
 
-    // Send SMS
-    await sendSms(safePhone, otp);
+    // Send OTP strictly via Email (saves SMS API cost)
+    if (global.logOTP) global.logOTP("PASSWORD RESET (EMAIL)", email, otp);
+    console.log(`🔑 [PASSWORD RESET OTP] ID: ${safeId} | Email: ${email} | OTP: ${otp}`);
+    await sendEmailOtp(email, otp, "🔐 Your Password Reset OTP - Grievance Portal", "to reset your password");
 
-    res.json({ message: `Password reset OTP sent to ${safePhone}` });
+    return res.status(200).json({
+      message: `Password reset OTP has been sent to your registered email (${maskedEmail}).`,
+      id: safeId,
+      maskedEmail
+    });
 
   } catch (err) {
     console.error("Forgot Password Error:", err);
-    res.status(500).json({ message: "Failed to send OTP" });
+    res.status(500).json({ message: "Failed to process forgot password request." });
   }
 };
 
 // =================================================
-// 6️⃣ RESET PASSWORD (Verify OTP -> New Password) - UPDATED FOR SEPARATED DATA
+// 5️⃣b VERIFY RESET OTP (Validates OTP before password fields are shown)
+// =================================================
+export const verifyResetOtp = async (req, res) => {
+  try {
+    const { id, otp } = req.body;
+    if (!id || !otp) {
+      return res.status(400).json({ message: "University ID and OTP are required." });
+    }
+    const safeId = id.toString().trim().toUpperCase();
+
+    const [studentUser, staffUser, legacyUser] = await Promise.all([
+      StudentUser.findOne({ id: safeId, resetOtpExpires: { $gt: Date.now() } }),
+      StaffUser.findOne({ id: safeId, resetOtpExpires: { $gt: Date.now() } }),
+      User.findOne({ id: safeId, resetOtpExpires: { $gt: Date.now() } })
+    ]);
+
+    const user = staffUser || studentUser || legacyUser;
+    if (!user || !user.resetOtp) {
+      return res.status(400).json({ message: "Invalid or expired OTP. Please request a new OTP code." });
+    }
+
+    const isOtpValid = await bcrypt.compare(otp.toString().trim(), user.resetOtp);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: "Incorrect OTP code. Please check your email and try again." });
+    }
+
+    return res.status(200).json({
+      message: "✅ OTP verified successfully! Now set your new password.",
+      valid: true
+    });
+  } catch (err) {
+    console.error("Verify Reset OTP Error:", err);
+    res.status(500).json({ message: "Failed to verify OTP. Please try again." });
+  }
+};
+
+// =================================================
+// 6️⃣ RESET PASSWORD (Verify OTP -> New Password)
 // =================================================
 export const resetPassword = async (req, res) => {
   try {
     const { id, otp, newPassword } = req.body;
+    if (!id || !otp || !newPassword) {
+      return res.status(400).json({ message: "University ID, OTP, and new password are required." });
+    }
     const safeId = id.toString().trim().toUpperCase();
 
-    // Find user in StudentUser or StaffUser with valid OTP
-    let user = await StudentUser.findOne({
-      id: safeId,
-      resetOtpExpires: { $gt: Date.now() }
-    });
+    // Find user across collections with valid OTP
+    const [studentUser, staffUser, legacyUser] = await Promise.all([
+      StudentUser.findOne({ id: safeId, resetOtpExpires: { $gt: Date.now() } }),
+      StaffUser.findOne({ id: safeId, resetOtpExpires: { $gt: Date.now() } }),
+      User.findOne({ id: safeId, resetOtpExpires: { $gt: Date.now() } })
+    ]);
 
-    if (!user) {
-      user = await StaffUser.findOne({
-        id: safeId,
-        resetOtpExpires: { $gt: Date.now() }
-      });
+    const user = staffUser || studentUser || legacyUser;
+    if (!user || !user.resetOtp) {
+      return res.status(400).json({ message: "Invalid or expired OTP. Please request a new OTP code." });
     }
 
-    // Fallback to legacy User
-    if (!user) {
-      user = await User.findOne({
-        id: safeId,
-        resetOtpExpires: { $gt: Date.now() }
-      });
-    }
-
-    if (!user) {
-      return res.status(400).json({ message: "OTP expired or invalid user." });
-    }
-
-    const isOtpValid = await bcrypt.compare(otp, user.resetOtp);
+    const isOtpValid = await bcrypt.compare(otp.toString().trim(), user.resetOtp);
     if (!isOtpValid) {
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ message: "Incorrect OTP code. Please check and try again." });
     }
 
-    // Update password
+    if (newPassword.length < 3) {
+      return res.status(400).json({ message: "Password must be at least 3 characters." });
+    }
+
+    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    user.resetOtp = undefined;
-    user.resetOtpExpires = undefined;
-    await user.save();
+    const clearPayload = {
+      password: hashedPassword,
+      resetOtp: undefined,
+      resetOtpExpires: undefined
+    };
 
-    // Also update in legacy User collection
-    await User.findOneAndUpdate(
-      { id: safeId },
-      { password: hashedPassword, resetOtp: undefined, resetOtpExpires: undefined }
-    );
+    // Update across all collections to stay in sync
+    await Promise.all([
+      StudentUser.updateOne({ id: safeId }, clearPayload),
+      StaffUser.updateOne({ id: safeId }, clearPayload),
+      User.updateOne({ id: safeId }, clearPayload)
+    ]);
 
-    res.json({ message: "✅ Password reset successfully. You can now login." });
+    res.status(200).json({ message: "✅ Password reset successfully. You can now login with your new password." });
 
   } catch (err) {
     console.error("Reset Password Error:", err);
-    res.status(500).json({ message: "Password reset failed" });
+    res.status(500).json({ message: "Password reset failed. Please try again." });
   }
 };
 

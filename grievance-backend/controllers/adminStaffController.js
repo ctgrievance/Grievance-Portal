@@ -123,14 +123,20 @@ exports.manageRole = async (req, res) => {
 
       await staffRecord.save();
 
-      // 🔥 Sync the adminDepartment to StaffUser and User so they log into the correct dashboard
+      // 🔥 Sync the adminDepartment & role to StaffUser and User so they log into the correct dashboard
       try {
-        console.log(`🔄 Syncing promote for ${targetStaffId} to Dept: ${staffRecord.adminDepartment}`);
+        console.log(`🔄 Syncing promote for ${targetStaffId} to Dept: ${staffRecord.adminDepartment} (isDeptAdmin: ${staffRecord.isDeptAdmin})`);
         const UserModule = await import("../models/UserModel.js");
         const UserModelToUse = UserModule.default || UserModule;
+        const targetRole = staffRecord.isDeptAdmin ? "admin" : "staff";
+        
         const uRes = await UserModelToUse.findOneAndUpdate(
           { id: targetStaffId },
-          { adminDepartment: staffRecord.adminDepartment, isDeptAdmin: staffRecord.isDeptAdmin },
+          { 
+            adminDepartment: staffRecord.adminDepartment, 
+            isDeptAdmin: staffRecord.isDeptAdmin,
+            role: targetRole
+          },
           { new: true }
         );
         console.log(`✅ UserModel update result:`, uRes ? uRes.adminDepartment : "Not found");
@@ -139,12 +145,62 @@ exports.manageRole = async (req, res) => {
         const StaffUserModelToUse = StaffUserModule.default || StaffUserModule;
         const suRes = await StaffUserModelToUse.findOneAndUpdate(
           { id: targetStaffId },
-          { adminDepartment: staffRecord.adminDepartment, isDeptAdmin: staffRecord.isDeptAdmin },
+          { 
+            adminDepartment: staffRecord.adminDepartment, 
+            isDeptAdmin: staffRecord.isDeptAdmin,
+            role: targetRole
+          },
           { new: true }
         );
         console.log(`✅ StaffUser update result:`, suRes ? suRes.adminDepartment : "Not found");
+
+        // 🔥 ROUTING RULES PURGE:
+        // If promoted to Dept Admin, remove from ALL routing rules across entire system (Admins don't handle staff ticket pools).
+        // If assigned to a specific department team, remove from routing rules of OTHER departments.
+        const RoutingRuleModule = await import("../models/RoutingRule.js");
+        const RoutingRule = RoutingRuleModule.default || RoutingRuleModule;
+        
+        const routingRuleQuery = staffRecord.isDeptAdmin 
+          ? {} 
+          : { department: { $ne: department } };
+
+        const rulePullRes = await RoutingRule.updateMany(
+          routingRuleQuery,
+          { $pull: { assignedStaff: { staffId: targetStaffId } } }
+        );
+        console.log(`🧹 Purged staff ${targetStaffId} from routing rules:`, rulePullRes.modifiedCount);
+
+        // 🔥 RESET OPEN GRIEVANCES:
+        // Move active grievances belonging to other departments (or all open if Dept Admin) back to Pending.
+        const GrievanceModule = await import("../models/GrievanceModel.js");
+        const Grievance = GrievanceModule.default || GrievanceModule;
+
+        const grievanceResetQuery = {
+          $or: [
+            { assignedTo: targetStaffId },
+            { assignedTo: String(targetStaffId) },
+            { assignedTo: staffRecord?.fullName },
+          ],
+          status: { $in: ["Pending", "Assigned", "In Progress"] },
+          ...(staffRecord.isDeptAdmin ? {} : { category: { $ne: department } })
+        };
+
+        const gResetRes = await Grievance.updateMany(
+          grievanceResetQuery,
+          {
+            $set: {
+              status: "Pending",
+              assignedTo: null,
+              assignedRole: null,
+              assignedBy: null,
+              deadlineDate: null
+            }
+          }
+        );
+        console.log(`🔄 Reset open grievances for ${targetStaffId}:`, gResetRes.modifiedCount);
+
       } catch (err) {
-        console.error("❌ Error syncing role to user models during promote", err);
+        console.error("❌ Error syncing role/cleaning routing rules during promote", err);
       }
 
       return res.json({
@@ -170,14 +226,22 @@ exports.manageRole = async (req, res) => {
         const UserModelToUse = UserModule.default || UserModule;
         await UserModelToUse.findOneAndUpdate(
           { id: targetStaffId },
-          { adminDepartment: "", isDeptAdmin: false }
+          { adminDepartment: "", isDeptAdmin: false, role: "staff" }
         );
 
         const StaffUserModule = await import("../models/StaffUser.js");
         const StaffUserModelToUse = StaffUserModule.default || StaffUserModule;
         await StaffUserModelToUse.findOneAndUpdate(
           { id: targetStaffId },
-          { adminDepartment: "", isDeptAdmin: false }
+          { adminDepartment: "", isDeptAdmin: false, role: "staff" }
+        );
+
+        // 🔥 Remove from ALL routing rules
+        const RoutingRuleModule = await import("../models/RoutingRule.js");
+        const RoutingRule = RoutingRuleModule.default || RoutingRuleModule;
+        await RoutingRule.updateMany(
+          {},
+          { $pull: { assignedStaff: { staffId: targetStaffId } } }
         );
       } catch (err) {
         console.error("Error syncing role to user models during demote", err);
@@ -196,6 +260,9 @@ exports.manageRole = async (req, res) => {
           $set: {
             status: "Pending",
             assignedTo: null,
+            assignedRole: null,
+            assignedBy: null,
+            deadlineDate: null
           },
         }
       );

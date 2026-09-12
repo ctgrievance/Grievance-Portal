@@ -181,24 +181,73 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
 
     console.log(`✅ Found routing rule: ${routingRule._id}, mode=${routingRule.assignmentMode}`);
 
-    const availableStaff = routingRule.assignedStaff.filter(s => s.isAvailable);
+    const rawAvailableStaff = routingRule.assignedStaff.filter(s => s.isAvailable);
     
-    if (availableStaff.length === 0) {
+    if (rawAvailableStaff.length === 0) {
       console.log(`❌ No available staff in routing rule`);
       return null; // No available staff, will use manual assignment
     }
 
-    console.log(`✅ Available staff: ${availableStaff.length}`);
+    // 🛡️ RUNTIME VALIDATION & SELF-HEALING:
+    // Ensure candidates are active staff members in this department, and NOT Department Admins or Super Admins
+    const validStaffCandidates = [];
+    const staleStaffIds = [];
+
+    for (const candidate of rawAvailableStaff) {
+      if (!candidate.staffId) continue;
+
+      const userRecord = await User.findOne({ id: candidate.staffId }).lean()
+        || await StaffUser.findOne({ id: candidate.staffId }).lean();
+
+      if (!userRecord) {
+        console.log(`⚠️ Staff ${candidate.staffId} (${candidate.staffName}) not found in User/StaffUser database.`);
+        staleStaffIds.push(candidate.staffId);
+        continue;
+      }
+
+      // Department Admins and Master Admin must NEVER be auto-assigned staff tickets
+      if (userRecord.isDeptAdmin || userRecord.isMasterAdmin || userRecord.role === "admin") {
+        console.log(`⚠️ Excluding ${candidate.staffName} (${candidate.staffId}) from auto-assignment because they are an Administrator.`);
+        staleStaffIds.push(candidate.staffId);
+        continue;
+      }
+
+      // Department mismatch check
+      const userDept = (userRecord.adminDepartment || userRecord.staffDepartment || "").trim().toLowerCase();
+      const ruleDept = (department || "").trim().toLowerCase();
+      if (userDept && userDept !== ruleDept) {
+        console.log(`⚠️ Excluding ${candidate.staffName} (${candidate.staffId}) from auto-assignment because their department (${userDept}) does not match rule department (${ruleDept}).`);
+        staleStaffIds.push(candidate.staffId);
+        continue;
+      }
+
+      validStaffCandidates.push(candidate);
+    }
+
+    // Self-heal: Clean stale staff IDs from this routing rule in the background
+    if (staleStaffIds.length > 0) {
+      RoutingRule.updateOne(
+        { _id: routingRule._id },
+        { $pull: { assignedStaff: { staffId: { $in: staleStaffIds } } } }
+      ).catch(cleanErr => console.error("Self-healing routing rule error:", cleanErr));
+    }
+
+    if (validStaffCandidates.length === 0) {
+      console.log(`❌ No eligible staff candidates remaining after validation in routing rule for ${department}`);
+      return null;
+    }
+
+    console.log(`✅ Eligible available staff: ${validStaffCandidates.length}`);
 
     let assignedStaff;
     const mode = routingRule.assignmentMode;
 
     if (mode === "single") {
-      // Assign to first available staff
-      assignedStaff = availableStaff[0];
+      // Assign to first eligible available staff
+      assignedStaff = validStaffCandidates[0];
     } else if (mode === "round_robin") {
       // Find staff with lowest roundRobinIndex
-      assignedStaff = availableStaff.reduce((min, staff) => 
+      assignedStaff = validStaffCandidates.reduce((min, staff) => 
         staff.roundRobinIndex < min.roundRobinIndex ? staff : min
       );
       

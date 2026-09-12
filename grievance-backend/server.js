@@ -40,6 +40,7 @@ import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
 import StudentUser from "./models/StudentUser.js"; // NEW: Student Users
 import StaffUser from "./models/StaffUser.js"; // NEW: Staff/Admin Users
 import Grievance from "./models/GrievanceModel.js"; // Import Grievance Model
+import RoutingRule from "./models/RoutingRule.js"; // Import RoutingRule Model
 import { hideGrievance } from "./controllers/grievanceController.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -619,6 +620,23 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
             { adminDepartment: "", adminDepartments: [], isDeptAdmin: false, role: "staff" }
           );
 
+          // 🔥 Purge displaced admin from ALL routing rules
+          await RoutingRule.updateMany(
+            {},
+            { $pull: { assignedStaff: { staffId: existingAdmin.id } } }
+          );
+
+          // 🔥 Reset open grievances assigned to displaced admin
+          await Grievance.updateMany(
+            {
+              assignedTo: existingAdmin.id,
+              status: { $in: ["Pending", "Assigned", "In Progress"] }
+            },
+            {
+              $set: { status: "Pending", assignedTo: null, assignedRole: null, assignedBy: null, deadlineDate: null }
+            }
+          );
+
           console.log(`🔄 Removed ${existingAdmin.fullName} from Admin role for ${department}`);
 
           // SEND DEMOTION EMAIL TO DISPLACED ADMIN
@@ -682,6 +700,46 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
           role: targetMember.role
         }
       );
+
+      // 🔥 ROUTING RULES PURGE & GRIEVANCE RESET ON PROMOTE:
+      if (targetMember.isDeptAdmin) {
+        // Promoted to Department Admin: Purge from ALL routing rules across entire system
+        await RoutingRule.updateMany(
+          {},
+          { $pull: { assignedStaff: { staffId: safeTargetId } } }
+        );
+        // Reset active grievances belonging to other departments assigned to this user back to Pending
+        const deptsToKeep = targetMember.adminDepartments && targetMember.adminDepartments.length > 0
+          ? targetMember.adminDepartments
+          : [targetMember.adminDepartment];
+        await Grievance.updateMany(
+          {
+            assignedTo: safeTargetId,
+            category: { $nin: deptsToKeep },
+            status: { $in: ["Pending", "Assigned", "In Progress"] }
+          },
+          {
+            $set: { status: "Pending", assignedTo: null, assignedRole: null, assignedBy: null, deadlineDate: null }
+          }
+        );
+      } else {
+        // Assigned as Staff Team Member: Purge from other departments' routing rules
+        await RoutingRule.updateMany(
+          { department: { $ne: department } },
+          { $pull: { assignedStaff: { staffId: safeTargetId } } }
+        );
+        // Reset active grievances from other departments assigned to this user back to Pending
+        await Grievance.updateMany(
+          {
+            assignedTo: safeTargetId,
+            category: { $ne: department },
+            status: { $in: ["Pending", "Assigned", "In Progress"] }
+          },
+          {
+            $set: { status: "Pending", assignedTo: null, assignedRole: null, assignedBy: null, deadlineDate: null }
+          }
+        );
+      }
 
       // SEND PROMOTION EMAIL
       const promotionDate = new Date().toLocaleString("en-IN", {
@@ -762,10 +820,17 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         }
       );
 
+      // 🔥 PURGE FROM ROUTING RULES
+      const ruleQuery = (isStillAdmin && deptToRemove) ? { department: deptToRemove } : {};
+      await RoutingRule.updateMany(
+        ruleQuery,
+        { $pull: { assignedStaff: { staffId: safeTargetId } } }
+      );
+
       // 🔥 RESET ASSIGNED GRIEVANCES TO PENDING
       const grievanceQuery = {
         assignedTo: safeTargetId,
-        ...(isStillAdmin && deptToRemove ? { department: deptToRemove } : {}),
+        ...(isStillAdmin && deptToRemove ? { $or: [{ category: deptToRemove }, { department: deptToRemove }] } : {}),
         status: { $nin: ["Resolved", "Rejected"] }
       };
 
@@ -969,15 +1034,19 @@ app.get("/api/admin-staff/all", async (req, res) => {
   }
 });
 
-// D. Get Department Specific Staff
+// D. Get Department Specific Staff (Only Team Member Staff, NOT Department Admins)
 app.get("/api/admin/staff/:department", verifyToken, async (req, res) => {
   try {
     const { department } = req.params;
-    // Fetch ANYONE in that department (Boss or Team Member)
+    const cleanDept = decodeURIComponent(department).trim();
+    
+    // Fetch only worker staff in that department (exclude Dept Admins and Master Admin)
     const staff = await User.find({
       role: "staff",
-      adminDepartment: department
-    }).select("id fullName");
+      adminDepartment: cleanDept,
+      isDeptAdmin: { $ne: true },
+      isMasterAdmin: { $ne: true }
+    }).select("id fullName email");
 
     res.json(staff);
   } catch (err) {

@@ -4,6 +4,7 @@ import User from "../models/UserModel.js";
 import StaffUser from "../models/StaffUser.js";
 import IssueType from "../models/IssueType.js";
 import RoutingRule from "../models/RoutingRule.js";
+import AdminStaffModel from "../models/AdminStaffModel.js";
 
 let initializedDefaults = false;
 const ensureDefaultPermissions = async () => {
@@ -61,24 +62,66 @@ export const getAllDepartmentsAdmin = async (req, res) => {
     await ensureDefaultPermissions();
     const departments = await Department.find({}).sort({ createdAt: -1 });
 
-    // Enrich with live counts
+    // Enrich with live counts and multi-department admin resolution
     const enriched = await Promise.all(
       departments.map(async (dept) => {
         const deptObj = dept.toObject();
+        const deptName = dept.name ? dept.name.trim() : "";
+        const deptEscaped = deptName.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+        const deptRegex = new RegExp("^" + deptEscaped + "$", "i");
 
-        const [totalGrievances, pendingGrievances, assignedStaffCount, deptAdmin, issueTypesCount] =
+        const adminQuery = {
+          $or: [
+            { adminDepartment: deptRegex },
+            { adminDepartments: deptRegex }
+          ],
+          isDeptAdmin: true
+        };
+
+        const staffCountQuery = {
+          $or: [
+            { adminDepartment: deptRegex },
+            { adminDepartments: deptRegex },
+            { staffDepartment: deptRegex }
+          ]
+        };
+
+        const [totalGrievances, pendingGrievances, staffMembers, userMembers, staffAdmins, userAdmins, adminStaffRecs, issueTypesCount] =
           await Promise.all([
-            Grievance.countDocuments({ category: dept.name }),
+            Grievance.countDocuments({ category: deptRegex }),
             Grievance.countDocuments({
-              category: dept.name,
+              category: deptRegex,
               status: { $in: ["Pending", "In Progress", "Assigned"] }
             }),
-            StaffUser.countDocuments({ adminDepartment: dept.name }),
-            StaffUser.findOne({ adminDepartment: dept.name, isDeptAdmin: true }).select(
-              "id fullName email"
-            ),
-            IssueType.countDocuments({ department: dept.name, isActive: true })
+            StaffUser.find(staffCountQuery).select("id").lean(),
+            User.find(staffCountQuery).select("id").lean(),
+            StaffUser.find(adminQuery).select("id fullName email isDeptAdmin").lean(),
+            User.find(adminQuery).select("id fullName email isDeptAdmin").lean(),
+            AdminStaffModel.find(adminQuery).select("id fullName isDeptAdmin").lean(),
+            IssueType.countDocuments({ department: deptRegex, isActive: true })
           ]);
+
+        // Merge assigned staff to count distinct staff
+        const uniqueStaffIds = new Set();
+        (staffMembers || []).forEach(s => s && s.id && uniqueStaffIds.add(String(s.id).trim().toUpperCase()));
+        (userMembers || []).forEach(u => u && u.id && uniqueStaffIds.add(String(u.id).trim().toUpperCase()));
+        const assignedStaffCount = uniqueStaffIds.size;
+
+        // Merge admins across StaffUser, User, and AdminStaffModel
+        const adminMap = new Map();
+        [...(staffAdmins || []), ...(userAdmins || []), ...(adminStaffRecs || [])].forEach(a => {
+          if (a && a.id) {
+            const key = String(a.id).trim().toUpperCase();
+            if (!adminMap.has(key)) {
+              adminMap.set(key, { ...a });
+            } else {
+              const existing = adminMap.get(key);
+              if (!existing.fullName && a.fullName) existing.fullName = a.fullName;
+              if (!existing.email && a.email) existing.email = a.email;
+            }
+          }
+        });
+        const deptAdminsList = Array.from(adminMap.values());
 
         deptObj.stats = {
           totalGrievances,
@@ -86,7 +129,18 @@ export const getAllDepartmentsAdmin = async (req, res) => {
           assignedStaffCount,
           issueTypesCount
         };
-        deptObj.currentAdmin = deptAdmin || null;
+
+        if (deptAdminsList.length > 0) {
+          deptObj.currentAdmin = {
+            id: deptAdminsList.map(a => a.id).join(", "),
+            fullName: deptAdminsList.map(a => a.fullName || a.id).join(", "),
+            email: deptAdminsList[0].email || ""
+          };
+          deptObj.currentAdmins = deptAdminsList;
+        } else {
+          deptObj.currentAdmin = null;
+          deptObj.currentAdmins = [];
+        }
 
         return deptObj;
       })
@@ -196,7 +250,11 @@ export const updateDepartment = async (req, res) => {
       await Promise.all([
         Grievance.updateMany({ category: oldName }, { $set: { category: newName } }),
         User.updateMany({ adminDepartment: oldName }, { $set: { adminDepartment: newName } }),
+        User.updateMany({ adminDepartments: oldName }, { $set: { "adminDepartments.$": newName } }),
         StaffUser.updateMany({ adminDepartment: oldName }, { $set: { adminDepartment: newName } }),
+        StaffUser.updateMany({ adminDepartments: oldName }, { $set: { "adminDepartments.$": newName } }),
+        AdminStaffModel.updateMany({ adminDepartment: oldName }, { $set: { adminDepartment: newName } }),
+        AdminStaffModel.updateMany({ adminDepartments: oldName }, { $set: { "adminDepartments.$": newName } }),
         IssueType.updateMany({ department: oldName }, { $set: { department: newName } }),
         RoutingRule.updateMany({ department: oldName }, { $set: { department: newName } })
       ]);
@@ -275,8 +333,7 @@ export const deleteDepartment = async (req, res) => {
 
     if (grievanceCount > 0 || totalStaff > 0) {
       return res.status(400).json({
-        message: `❌ Cannot delete "${dept.name}". There are currently ${grievanceCount} grievance(s) and ${totalStaff} staff member(s) linked to this department. Please DEACTIVATE it instead to preserve audit history and prevent broken accounts.`,
-        canDeactivateInstead: true,
+        message: `❌ Cannot delete "${dept.name}". There are currently ${grievanceCount} grievance(s) and ${totalStaff} staff member(s) linked to this department. Please reassign or clear linked records before deleting to preserve audit history and prevent broken accounts.`,
         stats: {
           grievances: grievanceCount,
           staff: totalStaff

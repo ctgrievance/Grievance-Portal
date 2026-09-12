@@ -293,8 +293,8 @@ function AdminDepartments() {
     return true;
   });
 
-  const totalActive = departments.filter((d) => d.isActive).length;
-  const totalInactive = departments.filter((d) => !d.isActive).length;
+  const totalAcademic = departments.filter((d) => d.isAcademic).length;
+  const totalAdministrative = departments.filter((d) => !d.isAcademic).length;
   const totalGrievancesAll = departments.reduce(
     (sum, d) => sum + (d.stats?.totalGrievances || 0),
     0
@@ -334,20 +334,20 @@ function AdminDepartments() {
         </div>
       )}
 
-      {/* Sleek Top KPI Ribbon */}
-      <div className="dept-kpi-ribbon">
-        <div className="dept-kpi-item">
+      {/* KPI Cards Row */}
+      <div className="dept-kpis-grid">
+        <div className="dept-kpi-item total">
           <span className="label">Total Departments</span>
           <div className="val">{departments.length}</div>
         </div>
         <div className="dept-kpi-item active">
-          <span className="label">Active</span>
-          <div className="val">{totalActive}</div>
+          <span className="label">Academic Schools</span>
+          <div className="val">{totalAcademic}</div>
         </div>
         <div className="dept-kpi-item">
-          <span className="label">Deactivated</span>
-          <div className="val" style={{ color: "#94a3b8" }}>
-            {totalInactive}
+          <span className="label">Administrative</span>
+          <div className="val" style={{ color: "#0284c7" }}>
+            {totalAdministrative}
           </div>
         </div>
         <div className="dept-kpi-item grievances">
@@ -363,7 +363,7 @@ function AdminDepartments() {
           <div className="dept-card-title-group">
             <h2>University Departments Directory</h2>
             <p>
-              Add, edit, or deactivate departments dynamically. Changes reflect instantly across student forms, staff routing, and triage.
+              Add, edit, and manage departments dynamically. Changes reflect instantly across student forms, staff routing, and triage.
             </p>
           </div>
           <button className="dept-add-btn" onClick={handleOpenAdd}>
@@ -458,7 +458,7 @@ function AdminDepartments() {
                     <th style={{ width: "160px", minWidth: "160px" }}>Permissions</th>
                     <th style={{ width: "160px", minWidth: "160px" }}>Dept Admin</th>
                     <th style={{ width: "120px", minWidth: "120px" }}>Assigned Staff</th>
-                    <th style={{ width: "130px", minWidth: "130px", textAlign: "right" }}>Actions</th>
+                    <th style={{ width: "90px", minWidth: "90px", textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -581,13 +581,6 @@ function AdminDepartments() {
 
                       <td style={{ textAlign: "right" }}>
                         <div className="dept-action-group">
-                          <button
-                            className="dept-toggle-btn"
-                            onClick={() => handleToggleStatus(dept)}
-                            title={dept.isActive ? "Deactivate department" : "Activate department"}
-                          >
-                            {dept.isActive ? "Deactivate" : "Activate"}
-                          </button>
                           <button
                             className="dept-icon-btn edit"
                             onClick={() => handleOpenEdit(dept)}
@@ -713,12 +706,6 @@ function AdminDepartments() {
                   </div>
 
                   <div className="dept-mcard-actions">
-                    <button
-                      className="dept-toggle-btn"
-                      onClick={() => handleToggleStatus(dept)}
-                    >
-                      {dept.isActive ? "Deactivate" : "Activate"}
-                    </button>
                     <button
                       className="dept-icon-btn edit"
                       onClick={() => handleOpenEdit(dept)}

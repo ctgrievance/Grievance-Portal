@@ -75,28 +75,32 @@ function LoginPage() {
     setMessage("Login successful! Redirecting...");
     setStatusType("success");
 
-    const role = data.user.role.toLowerCase();
+    const role = (data.user.role || "").toLowerCase();
     const isDeptAdmin = data.user.isDeptAdmin;
+    const isMasterAdmin = data.user.isMasterAdmin;
 
     setTimeout(() => {
-      if (role === "student") {
-        navigate("/student/dashboard");
-      }
-      else if (role === "staff") {
-        if (isDeptAdmin) {
+      // 1. Admin Routing (Master Admin or Dept Admin) - Highest priority
+      if (role === "admin" || isMasterAdmin || isDeptAdmin) {
+        if (isMasterAdmin) {
+          navigate("/admin/dashboard");
+        } else {
           navigate(getDeptAdminRoute(activeDept));
-        } else if (data.user.adminDepartment) {
+        }
+      }
+      // 2. Staff Routing
+      else if (role === "staff") {
+        if (data.user.adminDepartment) {
           navigate("/staff/admin");
         } else {
           navigate("/staff/general");
         }
       }
-      else if (role === "admin") {
-        if (data.user.isMasterAdmin) {
-          navigate("/admin/dashboard");
-        } else {
-          navigate(getDeptAdminRoute(activeDept));
-        }
+      // 3. Student Routing
+      else if (role === "student") {
+        navigate("/student/dashboard");
+      } else {
+        navigate("/");
       }
     }, 1000);
   };
@@ -152,7 +156,12 @@ function LoginPage() {
       }
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      if (!res.ok) {
+        if (data.actualRole) {
+          setSelectedRole(data.actualRole);
+        }
+        throw new Error(data.message || "Login failed");
+      }
 
       if (data.requires2FA) {
         setOtpSent(true);
@@ -218,7 +227,12 @@ function LoginPage() {
       }
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Invalid OTP");
+      if (!res.ok) {
+        if (data.actualRole) {
+          setSelectedRole(data.actualRole);
+        }
+        throw new Error(data.message || "Invalid OTP");
+      }
 
       handleDirectLogin(data);
 

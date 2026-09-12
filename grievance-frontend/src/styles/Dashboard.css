@@ -6036,6 +6036,17 @@ textarea:focus {
   margin: 0;
 }
 
+.staff-team-active-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  margin-top: 2px;
+}
+
 .staff-assign-row-simple {
   display: flex;
   gap: 8px;
@@ -7338,15 +7349,7 @@ textarea:focus {
     gap: 8px;
     padding-top: 8px;
     border-top: 1px solid #f1f5f9;
-  }
-
-  .dept-mcard-actions .dept-toggle-btn {
-    flex: 1;
-    text-align: center;
-    justify-content: center;
-    height: 32px;
-    display: flex;
-    align-items: center;
+    justify-content: flex-end;
   }
 }
 

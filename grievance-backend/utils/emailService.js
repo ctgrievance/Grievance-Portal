@@ -94,9 +94,10 @@ export const sendPromotionEmail = async (staffEmail, staffName, newRole, departm
 };
 
 // Send OTP Email
-export const sendEmailOtp = async (email, otp) => {
+export const sendEmailOtp = async (email, otp, customSubject = null, customPurpose = null) => {
   try {
-    const emailSubject = `🔐 Your Registration OTP - Grievance Portal`;
+    const emailSubject = customSubject || `🔐 Your Registration OTP - Grievance Portal`;
+    const purposeText = customPurpose || "for registration";
     const emailBody = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
         <div style="background-color: #2563eb; padding: 20px; text-align: center;">
@@ -104,7 +105,7 @@ export const sendEmailOtp = async (email, otp) => {
         </div>
         <div style="padding: 20px;">
           <p>Dear User,</p>
-          <p>Your One-Time Password (OTP) for registration is:</p>
+          <p>Your One-Time Password (OTP) ${purposeText} is:</p>
           <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
             <h1 style="color: #1e40af; letter-spacing: 5px; margin: 0;">${otp}</h1>
           </div>

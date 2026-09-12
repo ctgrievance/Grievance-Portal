@@ -331,11 +331,6 @@ function IssueManagementPanel({ department }) {
                             <EditIcon width="18" height="18" />
                           </button>
                           {!isProtected && (
-                            <button onClick={() => handleToggleActive(issue)} style={{ background: "transparent", border: "none", cursor: "pointer", color: issue.isActive ? "#16a34a" : "#64748b" }} title={issue.isActive ? "Deactivate" : "Activate"}>
-                              <RefreshIcon width="18" height="18" />
-                            </button>
-                          )}
-                          {!isProtected && (
                             <button onClick={() => handleDelete(issue._id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#ef4444" }} title="Delete">
                               <TrashIcon width="18" height="18" />
                             </button>

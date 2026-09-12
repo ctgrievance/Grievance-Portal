@@ -79,7 +79,10 @@ function ProtectedRoute({ children, allowedRoles }) {
 
   // 1. Master Admin Logic
   if (isMasterAdmin) {
-    // Master can go anywhere provided the route allows admins
+    // Master admin must never be routed to student portal or unassigned staff portal
+    if (window.location.pathname.startsWith("/student/") || window.location.pathname === "/staff/general") {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
     return children;
   }
 
@@ -92,10 +95,11 @@ function ProtectedRoute({ children, allowedRoles }) {
       localStorage.setItem("admin_department", matchedDept);
     }
 
-    // If trying to go to root, generic staff page, or master admin dashboard, redirect to active department dashboard
+    // If trying to go to root, generic staff page, student pages, or master admin dashboard, redirect to active department dashboard
     if (
       window.location.pathname === "/" ||
       window.location.pathname === "/staff/general" ||
+      window.location.pathname.startsWith("/student/") ||
       (!isMasterAdmin && window.location.pathname.toLowerCase() === "/admin/dashboard")
     ) {
       return <Navigate to={getDeptAdminRoute(adminDept || adminDepts[0])} replace />;

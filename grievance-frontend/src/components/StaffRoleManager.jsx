@@ -119,10 +119,17 @@ function StaffRoleManager() {
     }
 
     if (action === "promote") {
-      const confirmed = window.confirm(
-        `Appoint as Department Head for "${department}"?\n\nNote: If another admin currently exists for this department, they will be reassigned as General Staff.`
-      );
-      if (!confirmed) return;
+      if (isMasterAdmin) {
+        const confirmed = window.confirm(
+          `Appoint as Department Head for "${department}"?\n\nNote: If another admin currently exists for this department, they will be reassigned as General Staff.`
+        );
+        if (!confirmed) return;
+      } else {
+        const confirmed = window.confirm(
+          `Add ${selectedStaffForManage?.fullName || "this staff member"} to the "${department}" team?`
+        );
+        if (!confirmed) return;
+      }
     }
 
     setProcessingId(targetStaffId);
@@ -139,6 +146,7 @@ function StaffRoleManager() {
             Authorization: `Bearer ${localStorage.getItem("grievance_token")}`
           },
           body: JSON.stringify({
+            requesterId: requesterId || localStorage.getItem("grievance_id"),
             targetStaffId,
             action,
             department
@@ -703,220 +711,271 @@ function StaffRoleManager() {
       {/* ========================================= */}
       {/* 🪟 SIMPLE MANAGE ROLE POPUP (NON-FLASHY)  */}
       {/* ========================================= */}
-      {selectedStaffForManage && (
-        <div
-          className="staff-modal-overlay"
-          onClick={() => setSelectedStaffForManage(null)}
-        >
+      {selectedStaffForManage && (() => {
+        const effectiveDept = myDept || (filterDept !== "all" ? filterDept : "");
+        const isMemberOfMyDept = Boolean(
+          effectiveDept &&
+          selectedStaffForManage.adminDepartment &&
+          selectedStaffForManage.adminDepartment.toLowerCase().trim() === effectiveDept.toLowerCase().trim()
+        );
+
+        return (
           <div
-            className="staff-modal-card simple"
-            onClick={(e) => e.stopPropagation()}
+            className="staff-modal-overlay"
+            onClick={() => setSelectedStaffForManage(null)}
           >
-            {/* Modal Header */}
-            <div className="staff-modal-header">
-              <div>
-                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#0f172a" }}>
-                  Manage Role
-                </h3>
-                <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.85rem" }}>
-                  {selectedStaffForManage.fullName} <span className="staff-id-pill">#{selectedStaffForManage.id}</span>
-                </p>
-              </div>
-              <button
-                className="staff-modal-close-btn"
-                onClick={() => setSelectedStaffForManage(null)}
-                title="Close"
-              >
-                <XIcon width="16" height="16" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="staff-modal-body">
-              {/* SECTION 1: Current Assigned Roles */}
-              <div className="staff-modal-block">
-                <div className="staff-modal-block-label">
-                  <span>Current Roles</span>
-                  {selectedStaffForManage.isDeptAdmin &&
-                    getStaffDepartments(selectedStaffForManage).length > 1 &&
-                    isMasterAdmin && (
-                      <button
-                        className="staff-btn-revoke-all"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Are you sure you want to revoke all admin roles from ${selectedStaffForManage.fullName}?`
-                            )
-                          ) {
-                            handleRoleChange(selectedStaffForManage.id, "demote");
-                          }
-                        }}
-                      >
-                        Remove All
-                      </button>
+            <div
+              className="staff-modal-card simple"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="staff-modal-header">
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#0f172a" }}>
+                    Manage Role
+                  </h3>
+                  <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>{selectedStaffForManage.fullName}</span>
+                    <span className="staff-id-pill">#{selectedStaffForManage.id}</span>
+                    {selectedStaffForManage.isDeptAdmin ? (
+                      <span style={{ fontSize: "0.72rem", background: "#dcfce7", color: "#166534", padding: "1px 6px", borderRadius: "4px", fontWeight: "600" }}>Dept Head</span>
+                    ) : selectedStaffForManage.adminDepartment ? (
+                      <span style={{ fontSize: "0.72rem", background: "#dbeafe", color: "#1e40af", padding: "1px 6px", borderRadius: "4px", fontWeight: "600" }}>Team Member</span>
+                    ) : (
+                      <span style={{ fontSize: "0.72rem", background: "#f1f5f9", color: "#64748b", padding: "1px 6px", borderRadius: "4px", fontWeight: "600" }}>General Staff</span>
                     )}
+                  </div>
                 </div>
+                <button
+                  className="staff-modal-close-btn"
+                  onClick={() => setSelectedStaffForManage(null)}
+                  title="Close"
+                >
+                  <XIcon width="16" height="16" />
+                </button>
+              </div>
 
-                {selectedStaffForManage.isDeptAdmin ? (
-                  <div className="staff-role-list-simple">
-                    {getStaffDepartments(selectedStaffForManage).map((dept) => (
-                      <div key={dept} className="staff-role-row-simple">
+              {/* Modal Body */}
+              <div className="staff-modal-body">
+                {/* SECTION 1: Current Assigned Roles */}
+                <div className="staff-modal-block">
+                  <div className="staff-modal-block-label">
+                    <span>Current Roles</span>
+                    {selectedStaffForManage.isDeptAdmin &&
+                      getStaffDepartments(selectedStaffForManage).length > 1 &&
+                      isMasterAdmin && (
+                        <button
+                          className="staff-btn-revoke-all"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Are you sure you want to revoke all admin roles from ${selectedStaffForManage.fullName}?`
+                              )
+                            ) {
+                              handleRoleChange(selectedStaffForManage.id, "demote");
+                            }
+                          }}
+                        >
+                          Remove All
+                        </button>
+                      )}
+                  </div>
+
+                  {selectedStaffForManage.isDeptAdmin ? (
+                    <div className="staff-role-list-simple">
+                      {getStaffDepartments(selectedStaffForManage).map((dept) => (
+                        <div key={dept} className="staff-role-row-simple">
+                          <div className="staff-role-row-title">
+                            <ShieldIcon width="14" height="14" style={{ color: "#059669" }} />
+                            <span>Head of <strong>{dept}</strong></span>
+                          </div>
+
+                          {isMasterAdmin && (
+                            <button
+                              className="staff-btn-remove-simple"
+                              disabled={processingId === selectedStaffForManage.id}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Remove Head of "${dept}" role from ${selectedStaffForManage.fullName}?`
+                                  )
+                                ) {
+                                  handleRoleChange(selectedStaffForManage.id, "demote", dept);
+                                }
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : selectedStaffForManage.adminDepartment ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div className="staff-role-row-simple">
                         <div className="staff-role-row-title">
-                          <ShieldIcon width="14" height="14" style={{ color: "#059669" }} />
-                          <span>Head of <strong>{dept}</strong></span>
+                          <UserIcon width="14" height="14" style={{ color: "#2563eb" }} />
+                          <span>Team Member: <strong>{selectedStaffForManage.adminDepartment}</strong></span>
                         </div>
 
-                        {isMasterAdmin && (
+                        {(isMasterAdmin || isMemberOfMyDept) && (
                           <button
                             className="staff-btn-remove-simple"
                             disabled={processingId === selectedStaffForManage.id}
                             onClick={() => {
                               if (
                                 window.confirm(
-                                  `Remove Head of "${dept}" role from ${selectedStaffForManage.fullName}?`
+                                  `Remove ${selectedStaffForManage.fullName} from ${selectedStaffForManage.adminDepartment} team?\n\nThey will be reassigned as General Staff.`
                                 )
                               ) {
-                                handleRoleChange(selectedStaffForManage.id, "demote", dept);
+                                handleRoleChange(selectedStaffForManage.id, "demote");
                               }
                             }}
                           >
-                            Remove
+                            Remove from Team
                           </button>
                         )}
                       </div>
-                    ))}
-                  </div>
-                ) : selectedStaffForManage.adminDepartment ? (
-                  <div className="staff-role-row-simple">
-                    <div className="staff-role-row-title">
-                      <UserIcon width="14" height="14" style={{ color: "#2563eb" }} />
-                      <span>Team: <strong>{selectedStaffForManage.adminDepartment}</strong></span>
+
+                      {isMemberOfMyDept && (
+                        <div className="staff-team-active-card">
+                          <CheckCircleIcon width="16" height="16" style={{ color: "#16a34a", flexShrink: 0, marginTop: "2px" }} />
+                          <div>
+                            <div style={{ fontWeight: 600, color: "#166534", fontSize: "0.85rem" }}>
+                              Active Team Member
+                            </div>
+                            <div style={{ color: "#475569", fontSize: "0.8rem", marginTop: "2px" }}>
+                              Currently assigned to the <strong>{selectedStaffForManage.adminDepartment}</strong> team. Can view and resolve grievances routed to this department.
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-
-                    <button
-                      className="staff-btn-remove-simple"
-                      disabled={processingId === selectedStaffForManage.id}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Remove ${selectedStaffForManage.fullName} from ${selectedStaffForManage.adminDepartment}?`
-                          )
-                        ) {
-                          handleRoleChange(selectedStaffForManage.id, "demote");
-                        }
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <p className="staff-modal-empty-text">No administrative roles assigned (General Staff)</p>
-                )}
-              </div>
-
-              <div className="staff-modal-divider"></div>
-
-              {/* SECTION 2: Assign Department Head or Team Role */}
-              <div className="staff-modal-block">
-                <div className="staff-modal-block-label">
-                  <span>{isMasterAdmin ? "Appoint as Department Head" : `Add to ${myDept} Team`}</span>
+                  ) : (
+                    <p className="staff-modal-empty-text">No administrative roles assigned (General Staff)</p>
+                  )}
                 </div>
 
+                {/* SECTION 2: Assign Department Head or Team Role */}
                 {isMasterAdmin ? (
-                  (() => {
-                    const currentDepts = getStaffDepartments(selectedStaffForManage);
-                    const availableToAdd = allDepartments.filter((d) => !currentDepts.includes(d));
-
-                    if (availableToAdd.length === 0) {
-                      return (
-                        <p className="staff-modal-empty-text">Already assigned to all departments.</p>
-                      );
-                    }
-
-                    return (
-                      <div className="staff-assign-row-simple">
-                        <select
-                          className="staff-assign-select-simple"
-                          value={selectedDeptToAssign}
-                          onChange={(e) => setSelectedDeptToAssign(e.target.value)}
-                        >
-                          <option value="">Select Department...</option>
-                          {availableToAdd.map((dept) => (
-                            <option key={dept} value={dept}>
-                              {dept}
-                            </option>
-                          ))}
-                        </select>
-
-                        <button
-                          className="staff-assign-btn-simple"
-                          disabled={!selectedDeptToAssign || processingId === selectedStaffForManage.id}
-                          onClick={() => {
-                            if (!selectedDeptToAssign) return;
-                            handleRoleChange(
-                              selectedStaffForManage.id,
-                              "promote",
-                              selectedDeptToAssign
-                            );
-                          }}
-                        >
-                          {processingId === selectedStaffForManage.id ? "Assigning..." : "Assign"}
-                        </button>
+                  <>
+                    <div className="staff-modal-divider"></div>
+                    <div className="staff-modal-block">
+                      <div className="staff-modal-block-label">
+                        <span>Appoint as Department Head</span>
                       </div>
-                    );
-                  })()
-                ) : (
-                  !selectedStaffForManage.adminDepartment && (
-                    <button
-                      className="staff-assign-btn-simple"
-                      style={{ width: "100%", justifyContent: "center" }}
-                      disabled={processingId === selectedStaffForManage.id}
-                      onClick={() => {
-                        handleRoleChange(selectedStaffForManage.id, "promote", myDept);
-                      }}
-                    >
-                      {processingId === selectedStaffForManage.id ? "Adding..." : `Add to ${myDept} Team`}
-                    </button>
-                  )
+
+                      {(() => {
+                        const currentDepts = getStaffDepartments(selectedStaffForManage);
+                        const availableToAdd = allDepartments.filter((d) => !currentDepts.includes(d));
+
+                        if (availableToAdd.length === 0) {
+                          return (
+                            <p className="staff-modal-empty-text">Already assigned to all departments.</p>
+                          );
+                        }
+
+                        return (
+                          <div className="staff-assign-row-simple">
+                            <select
+                              className="staff-assign-select-simple"
+                              value={selectedDeptToAssign}
+                              onChange={(e) => setSelectedDeptToAssign(e.target.value)}
+                            >
+                              <option value="">Select Department...</option>
+                              {availableToAdd.map((dept) => (
+                                <option key={dept} value={dept}>
+                                  {dept}
+                                </option>
+                              ))}
+                            </select>
+
+                            <button
+                              className="staff-assign-btn-simple"
+                              disabled={!selectedDeptToAssign || processingId === selectedStaffForManage.id}
+                              onClick={() => {
+                                if (!selectedDeptToAssign) return;
+                                handleRoleChange(
+                                  selectedStaffForManage.id,
+                                  "promote",
+                                  selectedDeptToAssign
+                                );
+                              }}
+                            >
+                              {processingId === selectedStaffForManage.id ? "Assigning..." : "Assign"}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </>
+                ) : !isMemberOfMyDept && effectiveDept && !selectedStaffForManage.isDeptAdmin ? (
+                  <>
+                    <div className="staff-modal-divider"></div>
+                    <div className="staff-modal-block">
+                      <div className="staff-modal-block-label">
+                        <span>
+                          {selectedStaffForManage.adminDepartment
+                            ? `Transfer to ${effectiveDept} Team`
+                            : `Add to ${effectiveDept} Team`}
+                        </span>
+                      </div>
+
+                      <button
+                        className="staff-assign-btn-simple"
+                        style={{ width: "100%", justifyContent: "center" }}
+                        disabled={processingId === selectedStaffForManage.id}
+                        onClick={() => {
+                          handleRoleChange(selectedStaffForManage.id, "promote", effectiveDept);
+                        }}
+                      >
+                        {processingId === selectedStaffForManage.id
+                          ? "Updating..."
+                          : selectedStaffForManage.adminDepartment
+                          ? `Transfer to ${effectiveDept} Team`
+                          : `+ Add to ${effectiveDept} Team`}
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+
+                {/* SECTION 3: Danger Zone - Master Admin Transfer */}
+                {isMasterAdmin && selectedStaffForManage.id !== requesterId && (
+                  <>
+                    <div className="staff-modal-divider"></div>
+                    <div className="staff-modal-danger-simple">
+                      <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
+                        Master Admin Rights
+                      </span>
+                      <button
+                        className="staff-btn-transfer-simple"
+                        onClick={() =>
+                          handleTransferOwnership(
+                            selectedStaffForManage.id,
+                            selectedStaffForManage.fullName
+                          )
+                        }
+                      >
+                        Transfer Ownership
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* SECTION 3: Danger Zone - Master Admin Transfer */}
-              {isMasterAdmin && selectedStaffForManage.id !== requesterId && (
-                <>
-                  <div className="staff-modal-divider"></div>
-                  <div className="staff-modal-danger-simple">
-                    <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                      Master Admin Rights
-                    </span>
-                    <button
-                      className="staff-btn-transfer-simple"
-                      onClick={() =>
-                        handleTransferOwnership(
-                          selectedStaffForManage.id,
-                          selectedStaffForManage.fullName
-                        )
-                      }
-                    >
-                      Transfer Ownership
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="staff-modal-footer">
-              <button
-                className="staff-modal-done-btn"
-                onClick={() => setSelectedStaffForManage(null)}
-              >
-                Done
-              </button>
+              {/* Modal Footer */}
+              <div className="staff-modal-footer">
+                <button
+                  className="staff-modal-done-btn"
+                  onClick={() => setSelectedStaffForManage(null)}
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================= */}
       {/* ⭐ STUDENT REVIEWS & RATINGS MODAL        */}
