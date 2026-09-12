@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import ctLogo from "../assets/ct-logo.png";
-import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon } from "../components/Icons";
+import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import GenericAdminNavbar from "../components/GenericAdminNavbar";
@@ -59,7 +59,7 @@ function StaffDashboard() {
   const [staffIssueTypes, setStaffIssueTypes] = useState([]);
   const [selectedIssueType, setSelectedIssueType] = useState("");
   const [customIssueTitle, setCustomIssueTitle] = useState("");
-  const [attachment, setAttachment] = useState(null); // ✅ Added Attachment State
+  const [attachment, setAttachment] = useState(null); //  Added Attachment State
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,21 +72,21 @@ function StaffDashboard() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingMine, setLoadingMine] = useState(true);
 
-  // ✅ FILTER STATES
+  //  FILTER STATES
   const [searchStaffId, setSearchStaffId] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDepartment, setFilterDepartment] = useState("All");
   const [filterMonth, setFilterMonth] = useState("");
 
-  // ✅ State for "See More" Details Popup
+  //  State for "See More" Details Popup
   const [selectedGrievance, setSelectedGrievance] = useState(null);
 
-  // ❌ STAFF REJECTION POPUP STATE
+  //  STAFF REJECTION POPUP STATE
   const [rejectPopup, setRejectPopup] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
 
-  // ⭐ STAFF RATINGS STATE
+  //  STAFF RATINGS STATE
   const [ratingData, setRatingData] = useState({
     averageRating: null,
     totalRatings: 0,
@@ -291,7 +291,7 @@ function StaffDashboard() {
       if (res.ok) {
         setMyGrievances(prev => prev.filter(g => g._id !== id));
         setSelectedGrievance(null);
-        setMsg("✅ Grievance removed from view.");
+        setMsg("Grievance removed from view.");
         setStatusType("success");
         setTimeout(() => setMsg(""), 3000);
       } else {
@@ -322,7 +322,7 @@ function StaffDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to reject grievance");
 
-      setMsg("✅ Grievance rejected. Department Admin has been notified via email.");
+      setMsg("Grievance rejected. Department Admin has been notified via email.");
       setStatusType("success");
 
       setMyGrievances((prev) =>
@@ -366,7 +366,7 @@ function StaffDashboard() {
         const uploadJson = await uploadRes.json();
         attachmentUrl = uploadJson.filename;
       } catch (err) {
-        setMsg(`❌ Upload Error: ${err.message}`); setStatusType("error"); setIsSubmitting(false); return;
+        setMsg(`Upload Error: ${err.message}`); setStatusType("error"); setIsSubmitting(false); return;
       }
     }
 
@@ -385,15 +385,15 @@ function StaffDashboard() {
           message: customIssueTitle ? `[Topic: ${customIssueTitle}]\n\n${formData.message}` : formData.message,
           studentProgram: "Staff Member", // Required by backend
           userType: "staff",
-          attachment: attachmentUrl || "", // ✅ Send filename
-          issueTypeId: selectedIssueType || null // ✅ Include staff issue type for auto-assignment
+          attachment: attachmentUrl || "", //  Send filename
+          issueTypeId: selectedIssueType || null //  Include staff issue type for auto-assignment
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Submission failed");
 
-      setMsg("✅ Grievance submitted successfully!");
+      setMsg("Grievance submitted successfully!");
       setStatusType("success");
       setIsSubmitted(true);
       setTimeout(() => setIsSubmitted(false), 5000);
@@ -446,7 +446,7 @@ function StaffDashboard() {
     }
   };
 
-  // ✅ FILTER LOGIC
+  //  FILTER LOGIC
   const filteredMyGrievances = myGrievances.filter((g) => {
     const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
     const matchStatus = filterStatus === "All" || g.status === filterStatus;
@@ -462,7 +462,7 @@ function StaffDashboard() {
     return matchStaff && matchStatus && matchDept && matchMonth;
   });
 
-  // ✅ Unique Departments for Dropdown
+  //  Unique Departments for Dropdown
   const uniqueDepartments = [...new Set(myGrievances.map(g => g.category || g.school).filter(Boolean))];
 
 
@@ -480,7 +480,7 @@ function StaffDashboard() {
                 <ShieldIcon width="12" height="12" /> {staffDept}
               </span>
               
-              {/* ⭐ Staff Rating Element in Header */}
+              {/*  Staff Rating Element in Header */}
               <span
                 onClick={() => setActiveTab("ratings")}
                 style={{
@@ -520,7 +520,7 @@ function StaffDashboard() {
         </div>
       </header>
 
-      {/* ⚠️ WARNING BANNER FOR UNASSIGNED STAFF */}
+      {/*  WARNING BANNER FOR UNASSIGNED STAFF */}
       {!loadingProfile && (!staffDept || staffDept.toLowerCase() === "general" || staffDept.trim() === "") && (
         <div style={{ padding: "10px 24px 0" }}>
           <div className="unassigned-dept-warning-banner">
@@ -546,16 +546,16 @@ function StaffDashboard() {
         </div>
       )}
 
-      {/* ✅ FIXED NAVBAR TABS (Glass Pill Style) */}
+      {/*  FIXED NAVBAR TABS (Glass Pill Style) */}
       <GenericAdminNavbar 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         mobileTitle="Staff Dashboard"
         tabs={[
-          { id: "ratings", label: `⭐ My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
+          { id: "ratings", label: `My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
           { id: "submit", label: "Submit Grievance", IconComponent: EditIcon, isVisible: true },
           { id: "mine", label: "My Submissions", IconComponent: ClipboardIcon, isVisible: true },
-          { id: "transferred", label: `🔁 Transferred Out (${transferredGrievances.length})`, IconComponent: CheckCircleIcon, isVisible: true }
+          { id: "transferred", label: `Transferred Out (${transferredGrievances.length})`, IconComponent: RerouteIcon, isVisible: true }
         ]}
       />
 
@@ -589,7 +589,7 @@ function StaffDashboard() {
                   </div>
                 </div>
 
-                {/* ✅ SCHOOL SELECTION DROPDOWN */}
+                {/*  SCHOOL SELECTION DROPDOWN */}
                 <div className="input-group">
                   <label>Select School / Department</label>
                   <select name="department" value={formData.department} onChange={handleChange} required>
@@ -604,7 +604,7 @@ function StaffDashboard() {
                     <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>Grievance / Issue Type</span>
                       <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: "600", background: "#eff6ff", padding: "2px 8px", borderRadius: "10px" }}>
-                        ⚡ Linked to Smart Assignment
+                        <ZapIcon width="12" height="12" style={{ verticalAlign: "middle", marginRight: "4px" }} />Linked to Smart Assignment
                       </span>
                     </label>
                     <select
@@ -682,7 +682,7 @@ function StaffDashboard() {
                         : {}
                     }
                   >
-                    {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
+                    {isSubmitted ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircleIcon width="16" height="16" /> Submitted!</span> : isSubmitting ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><ClockIcon width="16" height="16" /> Submitting...</span> : "Submit Grievance"}
                   </button>
                 </div>
 
@@ -704,7 +704,7 @@ function StaffDashboard() {
               <h2>My Submitted Grievances</h2>
               <p>These are grievances you have submitted as staff.</p>
 
-              {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+              {/*  MODERN RESPONSIVE FILTER BAR */}
               <DepartmentFilterBar
                 searchId={searchStaffId}
                 setSearchId={setSearchStaffId}
@@ -777,7 +777,7 @@ function StaffDashboard() {
                                   }}
                                   title={`Re-routed ${g.transferHistory?.length || 1} time(s)`}
                                 >
-                                  🔁 Re-routed
+                                  <RerouteIcon width="12" height="12" style={{ marginRight: "3px" }} /> Re-routed
                                 </span>
                               )}
                             </div>
@@ -819,7 +819,7 @@ function StaffDashboard() {
                     gap: "6px"
                   }}
                 >
-                  🔄 Refresh Ratings
+                  <RefreshIcon width="14" height="14" style={{ marginRight: "4px" }} /> Refresh Ratings
                 </button>
               </div>
 
@@ -968,7 +968,7 @@ function StaffDashboard() {
                   textAlign: "center",
                   color: "#64748b"
                 }}>
-                  <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>⭐</div>
+                  <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><StarIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
                   <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Ratings Yet</h4>
                   <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
                     When students rate the grievances you resolve, their star ratings and feedback will appear right here.
@@ -983,7 +983,7 @@ function StaffDashboard() {
             <div className="transferred-tab-content">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
                 <div>
-                  <h2 style={{ margin: 0, color: "#0f172a" }}>🔁 Forwarded / Transferred Grievances</h2>
+                  <h2 style={{ margin: 0, color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}><RerouteIcon width="22" height="22" style={{ color: "#6366f1" }} /> Forwarded / Transferred Grievances</h2>
                   <p style={{ margin: "4px 0 0 0", color: "#64748b" }}>
                     Grievances you forwarded to other departments because they were misrouted. Track their live resolution status here.
                   </p>
@@ -1003,7 +1003,7 @@ function StaffDashboard() {
                     gap: "6px"
                   }}
                 >
-                  🔄 Refresh
+                  <RefreshIcon width="14" height="14" style={{ marginRight: "4px", verticalAlign: "middle" }} /> Refresh
                 </button>
               </div>
 
@@ -1018,7 +1018,7 @@ function StaffDashboard() {
                   textAlign: "center",
                   color: "#64748b"
                 }}>
-                  <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>🔁</div>
+                  <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><RerouteIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
                   <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Grievances Transferred Yet</h4>
                   <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
                     When you receive a grievance that belongs to another department, you can forward it using the "Forward to Department" button in the grievance details.
@@ -1053,7 +1053,7 @@ function StaffDashboard() {
                                 padding: "3px 8px",
                                 borderRadius: "6px"
                               }}>
-                                🏢 {myTransfer?.toDepartment || g.category || g.school}
+                                <BuildingIcon width="14" height="14" style={{ verticalAlign: "middle", marginRight: "4px" }} />{myTransfer?.toDepartment || g.category || g.school}
                               </span>
                             </td>
                             <td data-label="Target Handler">
@@ -1155,7 +1155,7 @@ function StaffDashboard() {
               background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px",
               padding: "10px 14px", marginBottom: "16px", fontSize: "0.82rem", color: "#1e40af", lineHeight: "1.45"
             }}>
-              <strong>📌 Notice to Department Administrator:</strong> When you reject, your Department Administrator will be automatically notified via email with your explanation (just to inform, not a permission).
+              <strong style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><AlertCircleIcon width="14" height="14" style={{ verticalAlign: "middle" }} /> Notice to Department Administrator:</strong> When you reject, your Department Administrator will be automatically notified via email with your explanation (just to inform, not a permission).
             </div>
 
             <p style={{ margin: "0 0 8px 0", fontSize: "0.85rem", color: "#334155", fontWeight: "600" }}>
@@ -1211,7 +1211,7 @@ function StaffDashboard() {
         </div>
       )}
 
-      {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
+      {/*  SUPER SMOOTH INTERACTIONS (Makhan UI) */}
       <style>{`
         .dashboard-container { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

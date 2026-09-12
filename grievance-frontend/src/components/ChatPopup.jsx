@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import "../styles/Dashboard.css"; // Ensure this has basic modal styles
 
 // ✅ Advanced Icons
-import { PaperclipIcon, CameraIcon, FileIcon, XIcon as CloseIcon } from "./Icons";
+import { PaperclipIcon, CameraIcon, FileIcon, XIcon as CloseIcon, MessageCircleIcon } from "./Icons";
 import { getSocket, joinChatRoom, leaveChatRoom } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
 
@@ -289,7 +289,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         <div className="chat-body" ref={chatBodyRef}>
           {messages.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>💬</div>
+              <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}><MessageCircleIcon width="48" height="48" style={{ color: "#94a3b8" }} /></div>
               <p>No messages yet.<br />Start the conversation!</p>
             </div>
           ) : (

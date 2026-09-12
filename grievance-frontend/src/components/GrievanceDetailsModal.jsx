@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import TransferDepartmentModal from "./TransferDepartmentModal";
-import {
+import { ZapIcon, RerouteIcon, ClipboardIcon,
   XIcon,
   TrashIcon,
   ClockIcon,
@@ -252,7 +252,7 @@ const GrievanceDetailsModal = ({
             >
               #{grievance._id}
               <span style={{ fontSize: "0.7rem", color: copied ? "#16a34a" : "#94a3b8" }}>
-                {copied ? "✓ Copied" : "📋"}
+                {copied ? "Copied" : <ClipboardIcon width="14" height="14" />}
               </span>
             </button>
 
@@ -334,7 +334,7 @@ const GrievanceDetailsModal = ({
                     boxShadow: "0 4px 10px rgba(34, 197, 94, 0.3)",
                   }}
                 >
-                  ⚡
+                  <ZapIcon width="20" height="20" />
                 </div>
                 <div>
                   <div style={{ fontSize: "0.78rem", fontWeight: "700", textTransform: "uppercase", color: "#15803d", letterSpacing: "0.5px" }}>
@@ -720,7 +720,7 @@ const GrievanceDetailsModal = ({
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "1.2rem" }}>🔁</span>
+                  <RerouteIcon width="20" height="20" style={{ color: "#6366f1" }} />
                   <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#1e293b", fontWeight: "700" }}>
                     Department Re-routing & Transfer Trail ({grievance.transferHistory?.length || 1})
                   </h4>
@@ -765,7 +765,7 @@ const GrievanceDetailsModal = ({
 
                       {(item.assignedToNameInNewDept || item.assignedToInNewDept) && (
                         <div style={{ marginTop: "6px", fontSize: "0.8rem", color: "#15803d", fontWeight: "600" }}>
-                          👤 Assigned in {item.toDepartment}: {item.assignedToNameInNewDept || item.assignedToInNewDept}
+                          <UserIcon width="14" height="14" style={{ verticalAlign: "middle", marginRight: "4px" }} /> Assigned in {item.toDepartment}: {item.assignedToNameInNewDept || item.assignedToInNewDept}
                         </div>
                       )}
                     </div>
@@ -1136,7 +1136,7 @@ const GrievanceDetailsModal = ({
                 onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#dbeafe")}
                 onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
               >
-                <span>🔁</span> Forward to Department
+                <RerouteIcon width="16" height="16" style={{ verticalAlign: "middle", marginRight: "6px" }} /> Forward to Department
               </button>
             )}
 
@@ -1161,7 +1161,7 @@ const GrievanceDetailsModal = ({
                 onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#fee2e2")}
                 onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#fef2f2")}
               >
-                <span>❌</span> Reject Grievance
+                <XIcon width="16" height="16" style={{ verticalAlign: "middle", marginRight: "6px" }} /> Reject Grievance
               </button>
             )}
           </div>

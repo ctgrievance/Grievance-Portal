@@ -11,7 +11,7 @@ import RegisteredUsersView from "../components/RegisteredUsersView";
 import StaffRoleManager from "../components/StaffRoleManager";
 import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
-import { SearchIcon, UserIcon, HomeIcon, DownloadIcon, ShieldIcon } from "../components/Icons";
+import { SearchIcon, UserIcon, HomeIcon, DownloadIcon, ShieldIcon, AlertCircleIcon } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import DepartmentSwitcher from "../components/DepartmentSwitcher";
@@ -129,11 +129,11 @@ function SchoolAdminDashboard() {
       });
       if (!res.ok) throw new Error("Update failed");
 
-      setMsg("✅ Status updated successfully!");
+      setMsg("Status updated successfully!");
       setStatusType("success");
       fetchMySchoolGrievances();
     } catch (err) {
-      setMsg(`❌ Error: ${err.message}`);
+      setMsg(`Error: ${err.message}`);
       setStatusType("error");
     }
   };
@@ -165,7 +165,7 @@ function SchoolAdminDashboard() {
       if (res.ok) {
         setGrievances(prev => prev.filter(g => g._id !== id));
         setSelectedGrievance(null);
-        setMsg("✅ Grievance removed from view.");
+        setMsg("Grievance removed from view.");
         setStatusType("success");
         setTimeout(() => setMsg(""), 3000);
       } else {
@@ -361,7 +361,7 @@ function SchoolAdminDashboard() {
                           })()}
                           {g.extensionRequest?.status === "Pending" && (
                             <div style={{ fontSize: "0.7rem", color: "#d97706", fontWeight: "bold", marginTop: "4px", display: "flex", alignItems: "center", gap: "3px" }}>
-                              <span style={{ fontSize: "10px" }}>⚠️</span> EXT REQ
+                              <AlertCircleIcon width="12" height="12" style={{ color: "#d97706" }} /> EXT REQ
                             </div>
                           )}
                         </td>

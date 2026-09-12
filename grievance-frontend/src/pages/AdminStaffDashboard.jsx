@@ -13,7 +13,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { 
   ClipboardIcon, PaperclipIcon, TrashIcon, CheckCircleIcon, XIcon, UserIcon, AlertCircleIcon, ShieldIcon,
-  StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon
+  StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon
 } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
@@ -64,7 +64,7 @@ const schools = [
 function AdminStaffDashboard() {
   const navigate = useNavigate();
 
-  // ✅ Get Details from LocalStorage (Faster & Error Free)
+  //  Get Details from LocalStorage (Faster & Error Free)
   const role = localStorage.getItem("grievance_role")?.toLowerCase();
   const staffId = localStorage.getItem("grievance_id")?.toUpperCase();
   const myDepartment = localStorage.getItem("admin_department"); // From Login Response
@@ -88,7 +88,7 @@ function AdminStaffDashboard() {
   const [chatNotification, setChatNotification] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "" });
 
-  // ✅ State for "See More" Details Popup
+  //  State for "See More" Details Popup
   const [selectedGrievance, setSelectedGrievance] = useState(null);
 
   // --- SUBMISSION STATE ---
@@ -106,11 +106,11 @@ function AdminStaffDashboard() {
   const [myGrievances, setMyGrievances] = useState([]);
   const [loadingMine, setLoadingMine] = useState(false);
 
-  // ✅ POOL ACCEPT STATE
+  //  POOL ACCEPT STATE
   const [poolGrievances, setPoolGrievances] = useState([]);
   const [loadingPool, setLoadingPool] = useState(false);
 
-  // ✅ FILTER STATES
+  //  FILTER STATES
   const [searchId, setSearchId] = useState(""); // Acts as Student ID or Staff ID based on tab
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDepartment, setFilterDepartment] = useState("All");
@@ -124,12 +124,12 @@ function AdminStaffDashboard() {
   // EXPORT MODAL STATE
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // ❌ STAFF REJECTION POPUP STATE
+  //  STAFF REJECTION POPUP STATE
   const [rejectPopup, setRejectPopup] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
 
-  // ⭐ STAFF RATINGS STATE
+  //  STAFF RATINGS STATE
   const [ratingData, setRatingData] = useState({
     averageRating: null,
     totalRatings: 0,
@@ -176,7 +176,7 @@ function AdminStaffDashboard() {
     }
   }, [staffId]);
 
-  // 🔁 TRANSFERRED OUT STATE & FETCHER
+  //  TRANSFERRED OUT STATE & FETCHER
   const [transferredGrievances, setTransferredGrievances] = useState([]);
   const [loadingTransferred, setLoadingTransferred] = useState(false);
 
@@ -493,7 +493,7 @@ function AdminStaffDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to reject grievance");
 
-      setMsg("✅ Grievance rejected. Department Admin has been notified via email.");
+      setMsg("Grievance rejected. Department Admin has been notified via email.");
       setStatusType("success");
 
       setGrievances((prev) =>
@@ -566,7 +566,7 @@ function AdminStaffDashboard() {
         const uploadJson = await uploadRes.json();
         attachmentUrl = uploadJson.filename;
       } catch (err) {
-        setMsg(`❌ Upload Error: ${err.message}`);
+        setMsg(`Upload Error: ${err.message}`);
         setStatusType("error");
         setIsSubmitting(false);
         return;
@@ -589,14 +589,14 @@ function AdminStaffDashboard() {
           studentProgram: "Admin Staff", // Required by backend
           userType: "staff",
           attachment: attachmentUrl || "",
-          issueTypeId: selectedIssueType || null // ✅ Include staff issue type for auto-assignment
+          issueTypeId: selectedIssueType || null //  Include staff issue type for auto-assignment
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Submission failed");
 
-      setMsg("✅ Grievance submitted successfully!");
+      setMsg("Grievance submitted successfully!");
       setStatusType("success");
       setIsSubmitted(true);
       setTimeout(() => setIsSubmitted(false), 5000);
@@ -608,7 +608,7 @@ function AdminStaffDashboard() {
 
       fetchMySubmissions(); // Refresh list
     } catch (err) {
-      setMsg(`❌ Error: ${err.message}`);
+      setMsg(`Error: ${err.message}`);
       setStatusType("error");
     } finally {
       setIsSubmitting(false);
@@ -632,7 +632,7 @@ function AdminStaffDashboard() {
   // Load my submissions when tab changes
   useEffect(() => { if (activeTab === "mine") fetchMySubmissions(); }, [activeTab]);
 
-  // ✅ Fetch Pool Accept Grievances
+  //  Fetch Pool Accept Grievances
   useEffect(() => {
     if (activeTab === "pool" && myDepartment) {
       fetchPoolGrievances();
@@ -703,7 +703,7 @@ function AdminStaffDashboard() {
         setGrievances(prev => prev.filter(g => g._id !== id));
         setMyGrievances(prev => prev.filter(g => g._id !== id));
         setSelectedGrievance(null);
-        setMsg("✅ Grievance removed from view.");
+        setMsg("Grievance removed from view.");
         setStatusType("success");
         setTimeout(() => setMsg(""), 3000);
       } else {
@@ -715,7 +715,7 @@ function AdminStaffDashboard() {
     }
   };
 
-  // ✅ FILTER LOGIC
+  //  FILTER LOGIC
   const getFilteredData = (data, type) => {
     return data.filter((g) => {
       // 1. Search ID (Student ID for Assigned, Staff ID for Mine)
@@ -780,7 +780,7 @@ function AdminStaffDashboard() {
             <h1>Admin Staff Dashboard</h1>
             <p className="admin-header-user-info">
               Welcome, <strong>{staffName || staffId}</strong>
-              {/* ✅ Badge for Team Member */}
+              {/*  Badge for Team Member */}
               {(!myDepartment || myDepartment.toLowerCase() === "general" || myDepartment.trim() === "") ? (
                 <span
                   style={{
@@ -800,7 +800,7 @@ function AdminStaffDashboard() {
                   onClick={() => navigate("/profile")}
                   title="Click to select your department in profile"
                 >
-                  ⚠️ Department Unassigned - Click to Update
+                  <><AlertCircleIcon width="14" height="14" style={{ verticalAlign: "middle", marginRight: "4px" }} />Department Unassigned - Click to Update</>
                 </span>
               ) : (
                 <span className="admin-master-badge">
@@ -808,7 +808,7 @@ function AdminStaffDashboard() {
                 </span>
               )}
 
-              {/* ⭐ Staff Rating Element in Header */}
+              {/*  Staff Rating Element in Header */}
               <span
                 onClick={() => setActiveTab("ratings")}
                 style={{
@@ -848,7 +848,7 @@ function AdminStaffDashboard() {
         </div>
       </header>
 
-      {/* ⚠️ WARNING BANNER FOR UNASSIGNED STAFF */}
+      {/*  WARNING BANNER FOR UNASSIGNED STAFF */}
       {(!myDepartment || myDepartment.toLowerCase() === "general" || myDepartment.trim() === "") && (
         <div style={{ padding: "10px 24px 0" }}>
           <div className="unassigned-dept-warning-banner">
@@ -874,7 +874,7 @@ function AdminStaffDashboard() {
         </div>
       )}
 
-      {/* ✅ TABS NAVBAR (Pill Style) */}
+      {/*  TABS NAVBAR (Pill Style) */}
       <GenericAdminNavbar 
         activeTab={activeTab}
         setActiveTab={(tab) => {
@@ -885,10 +885,10 @@ function AdminStaffDashboard() {
         tabs={[
           { id: "assigned", label: "My Assigned Tasks", IconComponent: ClipboardIcon, isVisible: true },
           { id: "pool", label: "Pool Accept Queue", IconComponent: ClipboardIcon, isVisible: true },
-          { id: "ratings", label: `⭐ My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
+          { id: "ratings", label: `My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
           { id: "submit", label: "Submit Grievance", IconComponent: EditIcon, isVisible: true },
           { id: "mine", label: "My Submissions", IconComponent: ClipboardIcon, isVisible: true },
-          { id: "transferred", label: `🔁 Transferred Out (${transferredGrievances.length})`, IconComponent: CheckCircleIcon, isVisible: true }
+          { id: "transferred", label: `Transferred Out (${transferredGrievances.length})`, IconComponent: RerouteIcon, isVisible: true }
         ]}
       />
 
@@ -902,7 +902,7 @@ function AdminStaffDashboard() {
               <h2>Assigned Grievances</h2>
               <p style={{ marginBottom: "1rem", color: "#64748b" }}>These grievances have been specifically assigned to you.</p>
 
-              {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+              {/*  MODERN RESPONSIVE FILTER BAR */}
               <DepartmentFilterBar
                 searchId={searchId}
                 setSearchId={setSearchId}
@@ -1036,7 +1036,7 @@ function AdminStaffDashboard() {
                                 Reject
                               </button>
                               {g.extensionRequest?.status === "Pending" && (
-                                <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '600' }}>⏳ Pending</span>
+                                <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><ClockIcon width="12" height="12" /> Pending</span>
                               )}
                               <button
                                 className="action-btn chat-btn"
@@ -1177,7 +1177,7 @@ function AdminStaffDashboard() {
                     <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>Grievance / Issue Type</span>
                       <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: "600", background: "#eff6ff", padding: "2px 8px", borderRadius: "10px" }}>
-                        ⚡ Linked to Smart Assignment
+                        <ZapIcon width="12" height="12" style={{ verticalAlign: "middle", marginRight: "4px" }} />Linked to Smart Assignment
                       </span>
                     </label>
                     <select
@@ -1247,7 +1247,7 @@ function AdminStaffDashboard() {
                       : {}
                   }
                 >
-                  {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
+                  {isSubmitted ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircleIcon width="16" height="16" /> Submitted!</span> : isSubmitting ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><ClockIcon width="16" height="16" /> Submitting...</span> : "Submit Grievance"}
                 </button>
 
                 {msg && (
@@ -1267,7 +1267,7 @@ function AdminStaffDashboard() {
             <>
               <h2>My Submitted Grievances</h2>
 
-              {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+              {/*  MODERN RESPONSIVE FILTER BAR */}
               <DepartmentFilterBar
                 searchId={searchId}
                 setSearchId={setSearchId}
@@ -1353,7 +1353,7 @@ function AdminStaffDashboard() {
                     gap: "6px"
                   }}
                 >
-                  🔄 Refresh Ratings
+                  <RefreshIcon width="14" height="14" style={{ marginRight: "4px" }} /> Refresh Ratings
                 </button>
               </div>
 
@@ -1502,7 +1502,7 @@ function AdminStaffDashboard() {
                   textAlign: "center",
                   color: "#64748b"
                 }}>
-                  <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>⭐</div>
+                  <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><StarIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
                   <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Ratings Yet</h4>
                   <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
                     When students rate the grievances you resolve, their star ratings and feedback will appear right here.
@@ -1512,13 +1512,13 @@ function AdminStaffDashboard() {
             </div>
           )}
 
-          {/* TAB 5: 🔁 TRANSFERRED OUT GRIEVANCES */}
+          {/* TAB 5:  TRANSFERRED OUT GRIEVANCES */}
           {activeTab === "transferred" && (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: "1.3rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span>🔁</span> Transferred Out Grievances
+                    <RerouteIcon width="20" height="20" style={{ color: "#6366f1" }} /> Transferred Out Grievances
                   </h2>
                   <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.9rem" }}>
                     Grievances you have re-routed to other departments, with their live status and handling details.
@@ -1537,7 +1537,7 @@ function AdminStaffDashboard() {
                     cursor: "pointer"
                   }}
                 >
-                  🔄 Refresh
+                  <RefreshIcon width="14" height="14" style={{ marginRight: "4px", verticalAlign: "middle" }} /> Refresh
                 </button>
               </div>
 
@@ -1660,7 +1660,7 @@ function AdminStaffDashboard() {
                   textAlign: "center",
                   color: "#64748b"
                 }}>
-                  <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>🔁</div>
+                  <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><RerouteIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
                   <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Transferred Grievances</h4>
                   <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
                     If you re-route a grievance that belongs to another department, its transfer record and live resolution tracking will appear here.
@@ -1700,7 +1700,7 @@ function AdminStaffDashboard() {
         </div>
       </main>
 
-      {/* ✅ Chat Popup (Using Reusable Component) */}
+      {/*  Chat Popup (Using Reusable Component) */}
       <ChatPopup
         isOpen={showChat}
         onClose={closeChat}
@@ -1709,14 +1709,14 @@ function AdminStaffDashboard() {
         currentUserRole="staff"
       />
 
-      {/* 🔔 Real-Time Chat Notification Toast */}
+      {/*  Real-Time Chat Notification Toast */}
       <ChatNotificationToast
         notification={chatNotification}
         onOpenChat={openChat}
         onClose={() => setChatNotification(null)}
       />
 
-      {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
+      {/*  SUPER SMOOTH INTERACTIONS (Makhan UI) */}
       <style>{`
         .dashboard-container { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -1836,7 +1836,7 @@ function AdminStaffDashboard() {
               background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px",
               padding: "10px 14px", marginBottom: "16px", fontSize: "0.82rem", color: "#1e40af", lineHeight: "1.45"
             }}>
-              <strong>📌 Notice to Department Administrator:</strong> When you reject, your Department Administrator will be automatically notified via email with your explanation (just to inform, not a permission).
+              <strong style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><AlertCircleIcon width="14" height="14" style={{ verticalAlign: "middle" }} /> Notice to Department Administrator:</strong> When you reject, your Department Administrator will be automatically notified via email with your explanation (just to inform, not a permission).
             </div>
 
             <p style={{ margin: "0 0 8px 0", fontSize: "0.85rem", color: "#334155", fontWeight: "600" }}>

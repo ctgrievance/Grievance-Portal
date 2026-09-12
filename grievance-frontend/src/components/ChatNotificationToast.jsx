@@ -1,3 +1,4 @@
+import { MessageCircleIcon } from "./Icons";
 import React, { useEffect } from "react";
 
 export default function ChatNotificationToast({ notification, onOpenChat, onClose }) {
@@ -61,7 +62,7 @@ export default function ChatNotificationToast({ notification, onOpenChat, onClos
               fontSize: "14px",
             }}
           >
-            💬
+            <MessageCircleIcon width="14" height="14" />
           </span>
           <div>
             <span style={{ fontWeight: "700", fontSize: "14px", color: "#f8fafc" }}>
@@ -103,7 +104,7 @@ export default function ChatNotificationToast({ notification, onOpenChat, onClos
 
       {/* Grievance Category Tag */}
       <div style={{ fontSize: "11px", color: "#94a3b8", display: "flex", gap: "6px", alignItems: "center" }}>
-        <span>📌 Grievance:</span>
+        <span>Grievance:</span>
         <span style={{ color: "#38bdf8", fontWeight: "600" }}>{notification.category || "General"}</span>
       </div>
 
