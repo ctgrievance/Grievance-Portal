@@ -1,17 +1,32 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { DownloadIcon, XIcon, SearchIcon, TrashIcon } from "./Icons";
+import { 
+  DownloadIcon, 
+  XIcon, 
+  SearchIcon, 
+  TrashIcon,
+  PlusIcon,
+  UploadIcon,
+  RefreshIcon,
+  MailIcon,
+  PhoneIcon,
+  EditIcon,
+  SaveIcon,
+  GraduationCapIcon,
+  CheckCircleIcon,
+  AlertCircleIcon
+} from "./Icons";
 
 const AdminStudentRecords = () => {
-  const [records, setRecords]     = useState([]);
-  const [total, setTotal]         = useState(0);
-  const [page, setPage]           = useState(1);
+  const [records, setRecords]       = useState([]);
+  const [total, setTotal]           = useState(0);
+  const [page, setPage]             = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch]       = useState("");
-  const [loading, setLoading]     = useState(false);
-  const [clearing, setClearing]   = useState(false);
-  const [dragOver, setDragOver]   = useState(false);
-  const [msg, setMsg]             = useState("");
-  const [msgType, setMsgType]     = useState("success");
+  const [search, setSearch]         = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [clearing, setClearing]     = useState(false);
+  const [dragOver, setDragOver]     = useState(false);
+  const [msg, setMsg]               = useState("");
+  const [msgType, setMsgType]       = useState("success");
 
   // ── Upload progress state ────────────────────────────────────────────────
   const [uploadState, setUploadState] = useState(null);
@@ -116,7 +131,7 @@ const AdminStudentRecords = () => {
   const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFileUpload(e.dataTransfer.files[0]); };
 
   const handleClearAll = async () => {
-    if (!window.confirm("⚠️ Delete ALL student records permanently?")) return;
+    if (!window.confirm("⚠️ Delete ALL student records permanently? This cannot be undone.")) return;
     setClearing(true);
     try {
       const res  = await fetch(`${BASE}/clear-all`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
@@ -128,11 +143,11 @@ const AdminStudentRecords = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm(`Delete record ${id}?`)) return;
+    if (!window.confirm(`Are you sure you want to delete student record ${id}?`)) return;
     try {
       const res  = await fetch(`${BASE}/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      if (res.ok) { showMsg("✅ Deleted", "success"); fetchRecords(); }
+      if (res.ok) { showMsg("✅ Record deleted successfully", "success"); fetchRecords(); }
       else throw new Error(data.message);
     } catch (err) { showMsg(`❌ ${err.message}`, "error"); }
   };
@@ -179,9 +194,12 @@ const AdminStudentRecords = () => {
   };
 
   const handleAddNew = async () => {
-    try {
-      if (!newRow.id) throw new Error("ID is required");
+    if (!newRow.id || !newRow.fullName) {
+      showMsg("Student ID and Full Name are required", "error");
+      return;
+    }
 
+    try {
       const res = await fetch(BASE, {
          method: "POST",
          headers: { 
@@ -193,7 +211,7 @@ const AdminStudentRecords = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to add");
 
-      showMsg("New student added successfully", "success");
+      showMsg("New student record added successfully", "success");
       setIsAdding(false);
       setNewRow({ id: "", ctuId: "", fullName: "", email: "", phone: "", school: "", program: "", batch: "", studentType: "" });
       fetchRecords();
@@ -203,92 +221,184 @@ const AdminStudentRecords = () => {
   };
 
   const isUploading = uploadState && (uploadState.status === "uploading" || uploadState.status === "processing");
-  const tableInputStyle = { width: "100%", padding: "6px", border: "1px solid #cbd5e1", borderRadius: "4px" };
 
   return (
-    <div className="card" style={{ padding: "20px", maxWidth: "100%", margin: "0 auto" }}>
+    <div className="records-view-container">
       
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h2>Student Records (Excel View)</h2>
+      {/* ── HEADER BAR ── */}
+      <div className="records-header-bar">
+        <div className="records-header-title-wrap">
+          <div className="records-title-row">
+            <h2 className="records-title">Student Records Directory</h2>
+            <span className="records-count-pill">
+              <GraduationCapIcon width="14" height="14" />
+              {total.toLocaleString()} Records
+            </span>
+          </div>
+          <p className="records-subtitle">
+            Upload, verify and manage CT University student records from master Excel
+          </p>
+        </div>
+
         <button 
+          type="button"
           onClick={() => setIsAdding(!isAdding)}
-          style={{ padding: "10px 20px", background: "#2563eb", color: "white", borderRadius: "6px", border: "none", cursor: "pointer", fontWeight: "600" }}
+          className={`records-add-btn ${isAdding ? "active" : ""}`}
         >
-          {isAdding ? "Cancel Addition" : "+ Add New Student"}
+          {isAdding ? (
+            <><XIcon width="15" height="15" /> Cancel</>
+          ) : (
+            <><PlusIcon width="15" height="15" /> Add New Student</>
+          )}
         </button>
       </div>
 
-      {msg && <div className={`alert-box ${msgType}`}>{msg}</div>}
+      {/* ── NOTIFICATION MESSAGE ── */}
+      {msg && (
+        <div className={`reg-users-alert ${msgType === "error" ? "error" : "success"}`} style={{ marginBottom: "18px" }}>
+          {msgType === "error" ? <AlertCircleIcon width="16" height="16" /> : <CheckCircleIcon width="16" height="16" />}
+          <span>{msg}</span>
+        </div>
+      )}
 
-      <div className="admin-filter-bar">
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); fetchRecords(); }} className="admin-search-form">
-          <span className="admin-search-icon">
+      {/* ── SEARCH & FILTER BAR (SLEEK & FIXED) ── */}
+      <div className="records-filters-bar">
+        <div className="records-search-box">
+          <span className="records-search-icon">
             <SearchIcon width="16" height="16" />
           </span>
           <input 
             type="text" 
-            className="admin-search-input"
-            placeholder="Search by ID, Name, Email, Phone, School..." 
+            className="records-search-input"
+            placeholder="Search by ID, CTU ID, Name, Email, Phone, School..." 
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
           {search && (
             <button
               type="button"
-              className="admin-search-clear"
-              onClick={() => { setSearch(""); setPage(1); fetchRecords(); }}
+              className="records-search-clear"
+              onClick={() => { setSearch(""); setPage(1); }}
+              title="Clear search"
             >
               <XIcon width="14" height="14" />
             </button>
           )}
-          <button type="submit" style={{ display: "none" }}>Search</button>
-        </form>
+        </div>
 
-        <div className="admin-filter-group">
+        <div className="records-filter-actions">
+          {search && (
+            <button
+              type="button"
+              className="records-btn-reset"
+              onClick={() => { setSearch(""); setPage(1); }}
+            >
+              Reset
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="records-btn-reset"
+            onClick={fetchRecords}
+            title="Refresh list"
+          >
+            <RefreshIcon width="14" height="14" />
+            <span>Refresh</span>
+          </button>
+
           {total > 0 && (
             <button 
-              className="admin-filter-select"
+              type="button"
+              className="records-btn-clear-all"
               onClick={handleClearAll} 
               disabled={clearing} 
-              style={{
-                color: "#ef4444",
-                cursor: clearing ? "not-allowed" : "pointer",
-                fontWeight: "600",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px"
-              }}
+              title="Permanently remove all student records"
             >
-              {clearing ? "Clearing..." : <><TrashIcon width="14" height="14"/> Clear All Records</>}
+              <TrashIcon width="14" height="14" />
+              <span>{clearing ? "Clearing..." : "Clear All Records"}</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* ── UPLOAD ZONE ── */}
+      {/* ── SLIDE-DOWN ADD NEW STUDENT CARD ── */}
+      {isAdding && (
+        <div className="records-add-card">
+          <div className="records-add-title">
+            <PlusIcon width="16" height="16" style={{ color: "#2563eb" }} />
+            <span>Add Single Student Record</span>
+          </div>
+          <div className="records-form-grid">
+            <div className="records-form-field">
+              <label className="records-form-label">Student ID *</label>
+              <input type="text" name="id" value={newRow.id} onChange={handleNewRowChange} placeholder="e.g. 20210001" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">CTU ID</label>
+              <input type="text" name="ctuId" value={newRow.ctuId} onChange={handleNewRowChange} placeholder="e.g. CTU1024" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">Full Name *</label>
+              <input type="text" name="fullName" value={newRow.fullName} onChange={handleNewRowChange} placeholder="Student Name" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">Email Address</label>
+              <input type="email" name="email" value={newRow.email} onChange={handleNewRowChange} placeholder="student@ctuniversity.in" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">Phone Number</label>
+              <input type="text" name="phone" value={newRow.phone} onChange={handleNewRowChange} placeholder="Mobile Number" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">School</label>
+              <input type="text" name="school" value={newRow.school} onChange={handleNewRowChange} placeholder="e.g. SET" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">Program</label>
+              <input type="text" name="program" value={newRow.program} onChange={handleNewRowChange} placeholder="e.g. B.Tech CSE" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">Batch</label>
+              <input type="text" name="batch" value={newRow.batch} onChange={handleNewRowChange} placeholder="e.g. 2022-2026" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">Student Type</label>
+              <input type="text" name="studentType" value={newRow.studentType} onChange={handleNewRowChange} placeholder="Regular / Lateral" className="records-form-input" />
+            </div>
+          </div>
+          <div className="records-form-actions">
+            <button type="button" onClick={() => setIsAdding(false)} className="records-btn-cancel">Cancel</button>
+            <button type="button" onClick={handleAddNew} className="records-btn-save">
+              <SaveIcon width="14" height="14" /> Save Record
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SLEEK UPLOAD ZONE ── */}
       <div
+        className={`records-upload-card ${dragOver ? "drag-over" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => !isUploading && fileInputRef.current?.click()}
-        style={{
-          border: `2px dashed ${dragOver ? "#2563eb" : isUploading ? "#60a5fa" : "#93c5fd"}`,
-          borderRadius: "14px", padding: "28px 24px", textAlign: "center",
-          background: dragOver ? "#eff6ff" : isUploading ? "#f0f7ff" : "#f8faff",
-          cursor: isUploading ? "default" : "pointer",
-          marginBottom: "20px", transition: "all 0.2s ease",
-        }}
       >
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
           onChange={(e) => handleFileUpload(e.target.files[0])} />
 
         {!uploadState && (
           <div>
-            <div style={{ fontSize: "2.5rem", marginBottom: "10px" }}>📊</div>
-            <p style={{ color: "#1e40af", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>Drag & Drop Excel File</p>
-            <p style={{ color: "#64748b", margin: "6px 0 12px", fontSize: "0.88rem" }}>or click to browse — .xlsx / .xls (Total: {total} records)</p>
-            <span style={{ padding: "8px 20px", background: "#2563eb", color: "white", borderRadius: "8px", fontWeight: 600, fontSize: "0.88rem" }}>
-              📁 Choose File
+            <div className="records-upload-icon-circle">
+              <UploadIcon width="24" height="24" />
+            </div>
+            <p className="records-upload-title">Drag & Drop Excel File</p>
+            <p className="records-upload-sub">or click to browse — .xlsx / .xls (Total: {total.toLocaleString()} records)</p>
+            <span className="records-upload-browse-btn">
+              <UploadIcon width="14" height="14" /> Choose Excel File
             </span>
           </div>
         )}
@@ -298,21 +408,20 @@ const AdminStudentRecords = () => {
         )}
 
         {uploadState && uploadState.status === "processing" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.88rem", fontWeight: 600 }}>
+          <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "left" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.86rem", fontWeight: 600 }}>
               <span style={{ color: "#1e40af" }}>⚡ Uploading... {uploadState.pct}%</span>
               <span style={{ color: "#475569" }}>{uploadState.inserted.toLocaleString()} / {uploadState.total.toLocaleString()} records</span>
             </div>
-            <div style={{ background: "#dbeafe", borderRadius: "999px", height: "14px", overflow: "hidden", marginBottom: "10px" }}>
+            <div style={{ background: "#dbeafe", borderRadius: "999px", height: "10px", overflow: "hidden", marginBottom: "12px" }}>
               <div style={{
                 height: "100%", borderRadius: "999px",
-                background: "linear-gradient(90deg, #2563eb, #60a5fa)",
+                background: "linear-gradient(90deg, #2563eb, #38bdf8)",
                 width: `${uploadState.pct}%`,
-                transition: "width 0.4s ease",
-                boxShadow: "0 0 8px rgba(37,99,235,0.4)"
+                transition: "width 0.3s ease"
               }} />
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: "24px", fontSize: "0.83rem", color: "#475569" }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: "20px", fontSize: "0.82rem", color: "#475569", flexWrap: "wrap" }}>
               <span>✅ Inserted: <strong>{uploadState.inserted.toLocaleString()}</strong></span>
               <span>⏭ Skipped: <strong>{uploadState.skipped.toLocaleString()}</strong></span>
               <span>⚡ Speed: <strong>{uploadState.speed.toLocaleString()} rec/s</strong></span>
@@ -323,125 +432,190 @@ const AdminStudentRecords = () => {
 
         {uploadState && uploadState.status === "done" && (
           <div>
-            <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>✅</div>
+            <div style={{ fontSize: "2rem", marginBottom: "6px" }}>✅</div>
             <p style={{ color: "#16a34a", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>Upload Complete!</p>
-            <p style={{ color: "#64748b", margin: "6px 0 0", fontSize: "0.88rem" }}>
-              {uploadState.inserted.toLocaleString()} inserted · {uploadState.skipped.toLocaleString()} skipped
+            <p style={{ color: "#64748b", margin: "6px 0 12px", fontSize: "0.88rem" }}>
+              {uploadState.inserted.toLocaleString()} records inserted/updated · {uploadState.skipped.toLocaleString()} skipped
             </p>
-            <button onClick={(e) => { e.stopPropagation(); setUploadState(null); }} style={{ marginTop: "10px", padding: "7px 18px", background: "#2563eb", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "0.88rem" }}>
+            <button 
+              type="button" 
+              onClick={(e) => { e.stopPropagation(); setUploadState(null); }} 
+              className="records-upload-browse-btn"
+            >
               Upload Another
             </button>
           </div>
         )}
       </div>
 
-      <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "8px", padding: "10px 16px", marginBottom: "16px", fontSize: "0.8rem", color: "#0369a1" }}>
-        <strong>📋 Expected Excel Columns:</strong>
-        <span style={{ marginLeft: "8px" }}>ID / Registration No · CTU ID · Name · Email · Phone number · School · program · batch (20xx - 20xx) · Type</span>
+      {/* ── SUPPORTED COLUMNS GUIDE ── */}
+      <div className="records-columns-guide">
+        <strong>📋 Supported Columns:</strong>
+        <div className="records-column-chips">
+          <span className="records-column-chip">ID / Reg No</span>
+          <span className="records-column-chip">CTU ID</span>
+          <span className="records-column-chip">Full Name</span>
+          <span className="records-column-chip">Email</span>
+          <span className="records-column-chip">Phone / Mobile</span>
+          <span className="records-column-chip">School</span>
+          <span className="records-column-chip">Program</span>
+          <span className="records-column-chip">Batch</span>
+          <span className="records-column-chip">Type</span>
+        </div>
       </div>
 
-      <div className="table-container" style={{ overflowX: "auto", maxWidth: "100%" }}>
-        <table className="grievance-table" style={{ width: "100%", minWidth: "1300px" }}>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>CTU ID</th>
-              <th>Full Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>School</th>
-              <th>Program</th>
-              <th>Batch</th>
-              <th>Type</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isAdding && (
-              <tr style={{ background: "#f0fdf4" }}>
-                <td><input type="text" name="id" value={newRow.id} onChange={handleNewRowChange} placeholder="ID" style={tableInputStyle} /></td>
-                <td><input type="text" name="ctuId" value={newRow.ctuId} onChange={handleNewRowChange} placeholder="CTU ID" style={tableInputStyle} /></td>
-                <td><input type="text" name="fullName" value={newRow.fullName} onChange={handleNewRowChange} placeholder="Name" style={tableInputStyle} /></td>
-                <td><input type="email" name="email" value={newRow.email} onChange={handleNewRowChange} placeholder="Email" style={tableInputStyle} /></td>
-                <td><input type="text" name="phone" value={newRow.phone} onChange={handleNewRowChange} placeholder="Phone" style={tableInputStyle} /></td>
-                <td><input type="text" name="school" value={newRow.school} onChange={handleNewRowChange} placeholder="School" style={tableInputStyle} /></td>
-                <td><input type="text" name="program" value={newRow.program} onChange={handleNewRowChange} placeholder="Program" style={tableInputStyle} /></td>
-                <td><input type="text" name="batch" value={newRow.batch} onChange={handleNewRowChange} placeholder="Batch" style={tableInputStyle} /></td>
-                <td><input type="text" name="studentType" value={newRow.studentType} onChange={handleNewRowChange} placeholder="Type" style={tableInputStyle} /></td>
-                <td>
-                  <button onClick={handleAddNew} style={{ padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}>Save</button>
-                </td>
+      {/* ── TABLE VIEW ── */}
+      <div className="records-table-wrap">
+        <div style={{ overflowX: "auto", width: "100%" }}>
+          <table className="records-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>CTU ID</th>
+                <th>Full Name</th>
+                <th>Contact Info</th>
+                <th>School</th>
+                <th>Program</th>
+                <th>Batch</th>
+                <th>Type</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
-            )}
-
-            {/* Existing Records */}
-            {loading ? (
-              <tr><td colSpan="10" style={{ textAlign: "center", padding: "20px" }}>Loading records...</td></tr>
-            ) : records.length === 0 ? (
-              <tr><td colSpan="10" style={{ textAlign: "center", padding: "20px" }}>No student records found.</td></tr>
-            ) : (
-              records.map(record => (
-                <tr key={record.id}>
-                  {editingId === record.id ? (
-                    <>
-                      {/* Editable Row */}
-                      <td><input type="text" value={editFormData.id} disabled style={{...tableInputStyle, background: "#f1f5f9"}} /></td>
-                      <td><input type="text" name="ctuId" value={editFormData.ctuId || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td><input type="text" name="fullName" value={editFormData.fullName || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td><input type="email" name="email" value={editFormData.email || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td><input type="text" name="phone" value={editFormData.phone || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td><input type="text" name="school" value={editFormData.school || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td><input type="text" name="program" value={editFormData.program || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td><input type="text" name="batch" value={editFormData.batch || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td><input type="text" name="studentType" value={editFormData.studentType || ""} onChange={handleEditChange} style={tableInputStyle} /></td>
-                      <td style={{ display: 'flex', gap: '5px' }}>
-                        <button onClick={() => handleSaveEdit(record.id)} style={{ padding: "6px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}>💾</button>
-                        <button onClick={handleCancelEdit} style={{ padding: "6px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}>✖</button>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      {/* Normal View Row */}
-                      <td onDoubleClick={() => handleEditClick(record)} style={{ fontWeight: "bold" }}>{record.id}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.ctuId || "-"}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.fullName || "-"}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.email || "-"}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.phone || "-"}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.school || "-"}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.program || "-"}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.batch || "-"}</td>
-                      <td onDoubleClick={() => handleEditClick(record)}>{record.studentType || "-"}</td>
-                      <td style={{ display: 'flex', gap: '5px' }}>
-                        <button onClick={() => handleEditClick(record)} style={{ padding: "6px 12px", background: "#e2e8f0", border: "none", borderRadius: "4px", cursor: "pointer" }}>Edit</button>
-                        <button onClick={() => handleDelete(record.id)} style={{ padding: "6px", background: "#fee2e2", border: "none", borderRadius: "4px", cursor: "pointer", color: "#ef4444" }}>
-                          <TrashIcon width="16" height="16" />
-                        </button>
-                      </td>
-                    </>
-                  )}
+            </thead>
+            <tbody>
+              {/* Existing Records */}
+              {loading ? (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: "center", padding: "36px", color: "#64748b" }}>
+                    Loading student records...
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : records.length === 0 ? (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
+                    <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
+                    <div style={{ fontWeight: "600", color: "#334155" }}>No student records found</div>
+                    <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                      {search ? "Try adjusting your search criteria" : "Upload an Excel sheet to populate student records."}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                records.map(record => (
+                  <tr key={record.id}>
+                    {editingId === record.id ? (
+                      <>
+                        {/* Editable Row */}
+                        <td><span className="records-id-badge">{record.id}</span></td>
+                        <td><input type="text" name="ctuId" value={editFormData.ctuId || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td><input type="text" name="fullName" value={editFormData.fullName || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td><input type="email" name="email" value={editFormData.email || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td><input type="text" name="school" value={editFormData.school || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td><input type="text" name="program" value={editFormData.program || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td><input type="text" name="batch" value={editFormData.batch || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td><input type="text" name="studentType" value={editFormData.studentType || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td style={{ textAlign: "right" }}>
+                          <div className="records-action-group" style={{ justifyContent: "flex-end" }}>
+                            <button type="button" onClick={() => handleSaveEdit(record.id)} className="records-action-btn edit" title="Save changes">
+                              <SaveIcon width="14" height="14" />
+                            </button>
+                            <button type="button" onClick={handleCancelEdit} className="records-action-btn delete" title="Cancel edit">
+                              <XIcon width="14" height="14" />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        {/* Normal Row */}
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <span className="records-id-badge">{record.id}</span>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <span style={{ color: "#475569", fontWeight: 500 }}>{record.ctuId || "—"}</span>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <div className="records-name-text">{record.fullName || "—"}</div>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          {record.email && (
+                            <div className="records-contact-item">
+                              <MailIcon width="12" height="12" style={{ color: "#94a3b8" }} />
+                              <span>{record.email}</span>
+                            </div>
+                          )}
+                          {record.phone && (
+                            <div className="records-contact-item">
+                              <PhoneIcon width="12" height="12" style={{ color: "#94a3b8" }} />
+                              <span>{record.phone}</span>
+                            </div>
+                          )}
+                          {!record.email && !record.phone && "—"}
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <span style={{ color: "#334155" }}>{record.school || "—"}</span>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <span style={{ color: "#334155", fontWeight: 500 }}>{record.program || "—"}</span>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <span style={{ color: "#64748b", fontSize: "0.82rem" }}>{record.batch || "—"}</span>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <span className="records-type-pill regular">{record.studentType || "Regular"}</span>
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <div className="records-action-group" style={{ justifyContent: "flex-end" }}>
+                            <button 
+                              type="button" 
+                              onClick={() => handleEditClick(record)} 
+                              className="records-action-btn edit" 
+                              title="Edit student record"
+                            >
+                              <EditIcon width="14" height="14" />
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleDelete(record.id)} 
+                              className="records-action-btn delete" 
+                              title="Delete student record"
+                            >
+                              <TrashIcon width="14" height="14" />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Pagination Controls */}
-      {!loading && totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "20px" }}>
-          <div>Showing page {page} of {totalPages} ({total} total records)</div>
-          <div style={{ display: "flex", gap: "10px" }}>
+      {/* ── PAGINATION CONTROLS ── */}
+      {!loading && total > 0 && (
+        <div className="records-pagination">
+          <div>
+            Showing <strong>{((page - 1) * LIMIT) + 1}</strong> to <strong>{Math.min(page * LIMIT, total)}</strong> of <strong>{total.toLocaleString()}</strong> records
+          </div>
+          <div className="records-pag-controls">
             <button 
+              type="button"
+              className="records-pag-btn"
               onClick={() => setPage(p => Math.max(1, p - 1))} 
               disabled={page === 1}
-              style={{ padding: "8px 16px", borderRadius: "6px", border: "1px solid #cbd5e1", background: page === 1 ? "#f1f5f9" : "white", cursor: page === 1 ? "not-allowed" : "pointer" }}
             >
               Previous
             </button>
+            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569", padding: "0 6px" }}>
+              Page {page} of {totalPages}
+            </span>
             <button 
+              type="button"
+              className="records-pag-btn"
               onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
               disabled={page === totalPages}
-              style={{ padding: "8px 16px", borderRadius: "6px", border: "1px solid #cbd5e1", background: page === totalPages ? "#f1f5f9" : "white", cursor: page === totalPages ? "not-allowed" : "pointer" }}
             >
               Next
             </button>
@@ -449,8 +623,8 @@ const AdminStudentRecords = () => {
         </div>
       )}
       
-      <p style={{ marginTop: "10px", fontSize: "0.85rem", color: "#64748b", fontStyle: "italic" }}>
-        * Tip: You can double-click on any cell to quickly edit the row.
+      <p style={{ marginTop: "12px", fontSize: "0.8rem", color: "#94a3b8", textAlign: "right", margin: "8px 0 0" }}>
+        💡 Double-click any row to edit directly.
       </p>
     </div>
   );
