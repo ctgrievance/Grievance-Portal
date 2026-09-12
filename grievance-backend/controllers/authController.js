@@ -213,10 +213,13 @@ export const verifyRegistration = async (req, res) => {
 export const loginUser = async (req, res) => {
   try {
     const { id, password, role } = req.body;
+    if (!id || !password) {
+      return res.status(400).json({ message: "User ID and password are required" });
+    }
     const safeId = id.toString().trim().toUpperCase();
     const userRole = role ? role.toLowerCase().trim() : null;
 
-    // Find user based on role or search all collections
+    // Find user based on role or search collections in parallel
     let user = null;
     let isStudent = false;
 
@@ -227,12 +230,16 @@ export const loginUser = async (req, res) => {
       user = await StaffUser.findOne({ id: safeId });
       isStudent = false;
     } else {
-      // Role not specified, search both collections
-      user = await StudentUser.findOne({ id: safeId });
-      if (user) {
+      // Role not specified: query Student and Staff collections in parallel for speed
+      const [studentUser, staffUser] = await Promise.all([
+        StudentUser.findOne({ id: safeId }),
+        StaffUser.findOne({ id: safeId })
+      ]);
+      if (studentUser) {
+        user = studentUser;
         isStudent = true;
-      } else {
-        user = await StaffUser.findOne({ id: safeId });
+      } else if (staffUser) {
+        user = staffUser;
         isStudent = false;
       }
     }
@@ -240,6 +247,7 @@ export const loginUser = async (req, res) => {
     // Fallback to legacy User collection
     if (!user) {
       user = await User.findOne({ id: safeId });
+      if (user && user.role === "student") isStudent = true;
     }
 
     if (!user) return res.status(400).json({ message: "User not found" });
@@ -299,10 +307,13 @@ export const loginUser = async (req, res) => {
 export const verifyLogin = async (req, res) => {
   try {
     const { id, otp, role } = req.body;
+    if (!id || !otp) {
+      return res.status(400).json({ message: "User ID and OTP are required" });
+    }
     const safeId = id.toString().trim().toUpperCase();
     const userRole = role ? role.toLowerCase().trim() : null;
 
-    // Find user based on role or search all collections
+    // Find user based on role or search collections in parallel
     let user = null;
     let isStudent = false;
 
@@ -313,12 +324,15 @@ export const verifyLogin = async (req, res) => {
       user = await StaffUser.findOne({ id: safeId });
       isStudent = false;
     } else {
-      // Role not specified, search both collections
-      user = await StudentUser.findOne({ id: safeId });
-      if (user) {
+      const [studentUser, staffUser] = await Promise.all([
+        StudentUser.findOne({ id: safeId }),
+        StaffUser.findOne({ id: safeId })
+      ]);
+      if (studentUser) {
+        user = studentUser;
         isStudent = true;
-      } else {
-        user = await StaffUser.findOne({ id: safeId });
+      } else if (staffUser) {
+        user = staffUser;
         isStudent = false;
       }
     }
@@ -326,6 +340,7 @@ export const verifyLogin = async (req, res) => {
     // Fallback to legacy User collection
     if (!user) {
       user = await User.findOne({ id: safeId });
+      if (user && user.role === "student") isStudent = true;
     }
 
     if (!user) return res.status(400).json({ message: "User not found" });
