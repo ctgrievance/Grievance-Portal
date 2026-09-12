@@ -13,7 +13,7 @@ import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
 import { 
   ClipboardIcon, PaperclipIcon, TrashIcon, CheckCircleIcon, XIcon, UserIcon, AlertCircleIcon, ShieldIcon,
-  StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon
+  StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, MessageCircleIcon
 } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
@@ -920,7 +920,7 @@ function AdminStaffDashboard() {
               />
 
               {loading ? (
-                <div className="table-container">
+                <div className="table-container staff-desktop-only">
                   <table className="grievance-table">
                     <thead>
                       <tr>
@@ -955,7 +955,8 @@ function AdminStaffDashboard() {
                   <p>{grievances.length === 0 ? "No grievances found assigned to your ID." : "No grievances match your filters."}</p>
                 </div>
               ) : (
-                <div className="table-container">
+                <>
+                <div className="table-container staff-desktop-only">
                   <table className="grievance-table">
                     <thead>
                       <tr>
@@ -1047,12 +1048,145 @@ function AdminStaffDashboard() {
                                 {unreadMap[g._id] && <span className="notification-dot"></span>}
                               </button>
                             </ActionDropdown>
-                      </td>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="staff-mobile-cards-list staff-mobile-only">
+                  {getFilteredData(grievances, "assigned").map((g) => (
+                    <div
+                      key={g._id}
+                      className="staff-mobile-card staff-mcard"
+                      onClick={() => setSelectedGrievance(g)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {/* Header: User Info + Status Badge */}
+                      <div className="staff-mcard-header">
+                        <div className="staff-mcard-user">
+                          <span className="staff-mcard-name">{g.name}</span>
+                          <UserRoleBadge grievance={g} />
+                          <span className="staff-mcard-id">
+                            {g.regid ? `#${g.regid}` : (g._id ? `#${g._id.slice(-6)}` : "")}
+                          </span>
+                        </div>
+                        <div className="staff-mcard-status">
+                          <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
+                            {g.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Message Preview */}
+                      <div className="staff-mcard-msg">
+                        {g.message}
+                      </div>
+
+                      {/* Meta Grid */}
+                      <div className="staff-mcard-meta-grid">
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Email</span>
+                          <span className="staff-mcard-meta-value" title={g.email}>{g.email || "-"}</span>
+                        </div>
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Submitted On</span>
+                          <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                        </div>
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Department</span>
+                          <span className="staff-mcard-meta-value">{g.category || g.department || "General"}</span>
+                        </div>
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Deadline</span>
+                          <span className="staff-mcard-meta-value">
+                            {(() => {
+                              const ds = getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status);
+                              return (
+                                <span style={{ color: ds.color, fontWeight: ds.isOverdue ? "700" : "600" }}>
+                                  {ds.label} {ds.badge ? `(${ds.badge})` : ""}
+                                </span>
+                              );
+                            })()}
+                          </span>
+                        </div>
+                        {g.status === "Resolved" && g.rating?.stars && (
+                          <div className="staff-mcard-meta-item" style={{ gridColumn: "span 2" }}>
+                            <span className="staff-mcard-meta-label">Student Rating</span>
+                            <span className="staff-mcard-meta-value" style={{ color: "#f59e0b", fontWeight: "700" }}>
+                              {"★".repeat(g.rating.stars)} ({g.rating.stars}.0)
+                            </span>
+                          </div>
+                        )}
+                        {g.extensionRequest?.status === "Pending" && (
+                          <div className="staff-mcard-meta-item" style={{ gridColumn: "span 2" }}>
+                            <span style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "4px", background: "#fffbeb", color: "#b45309", border: "1px solid #fcd34d", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                              <ClockIcon width="12" height="12" /> Extension Request Pending
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer: Tap hint & Actions */}
+                      <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
+                        <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>
+                          Tap for details ➔
+                        </span>
+
+                        <div className="staff-mcard-actions">
+                          {/* Chat */}
+                          <div className="chat-btn-wrapper">
+                            <button
+                              type="button"
+                              className="staff-mcard-btn chat"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentChatId(g._id);
+                                setShowChat(true);
+                              }}
+                              title="Open Chat"
+                            >
+                              <MessageCircleIcon width="13" height="13" />
+                              <span>Chat</span>
+                            </button>
+                            {unreadMap[g._id] && <span className="notification-dot"></span>}
+                          </div>
+
+                          {/* Resolve */}
+                          <button
+                            type="button"
+                            className="staff-mcard-btn resolve"
+                            disabled={g.status === "Resolved" || g.status === "Rejected"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStatus(g._id, "Resolved");
+                            }}
+                          >
+                            Resolve
+                          </button>
+
+                          {/* Reject */}
+                          <button
+                            type="button"
+                            className="staff-mcard-btn reject"
+                            disabled={g.status === "Resolved" || g.status === "Rejected"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRejectPopup(g);
+                              setRejectionReason("");
+                            }}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
               )}
             </>
           )}
@@ -1072,7 +1206,8 @@ function AdminStaffDashboard() {
                   <p style={{ color: "#64748b", margin: 0 }}>No grievances available in the pool</p>
                 </div>
               ) : (
-                <div className="table-container">
+                <>
+                <div className="table-container staff-desktop-only">
                   <table className="grievance-table">
                     <thead>
                       <tr>
@@ -1137,6 +1272,64 @@ function AdminStaffDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="staff-mobile-cards-list staff-mobile-only">
+                  {poolGrievances.map((g) => (
+                    <div
+                      key={g._id}
+                      className="staff-mobile-card staff-mcard"
+                    >
+                      <div className="staff-mcard-header">
+                        <div className="staff-mcard-user">
+                          <span className="staff-mcard-name">{g.name}</span>
+                          <UserRoleBadge grievance={g} />
+                          <span className="staff-mcard-id">
+                            {g.regid ? `#${g.regid}` : (g._id ? `#${g._id.slice(-6)}` : "")}
+                          </span>
+                        </div>
+                        <div className="staff-mcard-status">
+                          <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
+                            {g.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="staff-mcard-msg">
+                        {g.message}
+                      </div>
+
+                      <div className="staff-mcard-meta-grid">
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Email</span>
+                          <span className="staff-mcard-meta-value" title={g.email}>{g.email || "-"}</span>
+                        </div>
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Submitted On</span>
+                          <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                        </div>
+                      </div>
+
+                      <div className="staff-mcard-footer">
+                        <span className="staff-mcard-hint"></span>
+                        <div className="staff-mcard-actions">
+                          <button
+                            type="button"
+                            className="staff-mcard-btn resolve"
+                            style={{ background: "#16a34a", color: "white", width: "100%" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAcceptGrievance(g._id);
+                            }}
+                          >
+                            Accept
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
               )}
             </>
           )}
@@ -1285,7 +1478,8 @@ function AdminStaffDashboard() {
               />
 
               {loadingMine ? <p>Loading...</p> : getFilteredData(myGrievances, "mine").length === 0 ? <p>No submissions match your filters.</p> : (
-                <div className="table-container">
+                <>
+                <div className="table-container staff-desktop-only">
                   <table className="grievance-table">
                     <thead>
                       <tr>
@@ -1323,6 +1517,43 @@ function AdminStaffDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards for My Submissions */}
+                <div className="staff-mobile-cards-list staff-mobile-only">
+                  {getFilteredData(myGrievances, "mine").map((g) => (
+                    <div
+                      key={g._id}
+                      className="staff-mobile-card staff-mcard"
+                      onClick={() => setSelectedGrievance(g)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="staff-mcard-header">
+                        <div className="staff-mcard-user">
+                          <span className="staff-mcard-name">{g.category || "General"}</span>
+                        </div>
+                        <div className="staff-mcard-status">
+                          <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>{g.status}</span>
+                        </div>
+                      </div>
+                      <div className="staff-mcard-msg">{g.message}</div>
+                      <div className="staff-mcard-meta-grid">
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Assigned To</span>
+                          <span className="staff-mcard-meta-value">{g.assignedTo || "Not Assigned"}</span>
+                        </div>
+                        <div className="staff-mcard-meta-item">
+                          <span className="staff-mcard-meta-label">Date</span>
+                          <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                        </div>
+                      </div>
+                      <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
+                        <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>Tap for details ➔</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
               )}
             </>
           )}
@@ -1546,7 +1777,8 @@ function AdminStaffDashboard() {
                   Loading transferred grievances...
                 </div>
               ) : transferredGrievances.length > 0 ? (
-                <div className="table-responsive">
+                <>
+                <div className="table-responsive staff-desktop-only">
                   <table className="grievance-table">
                     <thead>
                       <tr>
@@ -1651,6 +1883,75 @@ function AdminStaffDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards for Transferred Grievances */}
+                <div className="staff-mobile-cards-list staff-mobile-only">
+                  {transferredGrievances.map((g) => {
+                    const myTransfer = g.transferHistory?.filter(
+                      t => t.transferredBy?.toUpperCase() === staffId
+                    ).slice(-1)[0] || g.transferHistory?.slice(-1)[0];
+                    return (
+                      <div
+                        key={g._id}
+                        className="staff-mobile-card staff-mcard"
+                        onClick={() => setSelectedGrievance(g)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="staff-mcard-header">
+                          <div className="staff-mcard-user">
+                            <span className="staff-mcard-name">{g.name}</span>
+                            <UserRoleBadge grievance={g} />
+                            <span className="staff-mcard-id">#{g._id.slice(-6)}</span>
+                          </div>
+                          <div className="staff-mcard-status">
+                            <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>{g.status}</span>
+                          </div>
+                        </div>
+                        <div className="staff-mcard-meta-grid">
+                          <div className="staff-mcard-meta-item">
+                            <span className="staff-mcard-meta-label">Forwarded To</span>
+                            <span className="staff-mcard-meta-value" style={{ color: "#1d4ed8", fontWeight: "700" }}>{myTransfer?.toDepartment || g.category}</span>
+                          </div>
+                          <div className="staff-mcard-meta-item">
+                            <span className="staff-mcard-meta-label">Forwarded Date</span>
+                            <span className="staff-mcard-meta-value">
+                              {myTransfer?.transferredAt
+                                ? new Date(myTransfer.transferredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                : "N/A"}
+                            </span>
+                          </div>
+                          <div className="staff-mcard-meta-item">
+                            <span className="staff-mcard-meta-label">Current Staff</span>
+                            <span className="staff-mcard-meta-value">{g.assignedTo ? (staffMap[g.assignedTo] || g.assignedTo) : "Unassigned"}</span>
+                          </div>
+                          <div className="staff-mcard-meta-item">
+                            <span className="staff-mcard-meta-label">Student</span>
+                            <span className="staff-mcard-meta-value">{g.userId || g.regid || "-"}</span>
+                          </div>
+                        </div>
+                        {myTransfer?.reason && (
+                          <div className="staff-mcard-msg" style={{ fontStyle: "italic", borderLeft: "3px solid #6366f1" }}>
+                            “{myTransfer.reason}”
+                          </div>
+                        )}
+                        <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
+                          <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>Tap for details ➔</span>
+                          <div className="staff-mcard-actions">
+                            <button
+                              type="button"
+                              className="staff-mcard-btn chat"
+                              onClick={() => setSelectedGrievance(g)}
+                            >
+                              View
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                </>
               ) : (
                 <div style={{
                   background: "#f8fafc",

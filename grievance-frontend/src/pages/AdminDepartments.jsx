@@ -335,7 +335,7 @@ function AdminDepartments() {
       )}
 
       {/* KPI Cards Row */}
-      <div className="dept-kpis-grid">
+      <div className="dept-kpi-ribbon">
         <div className="dept-kpi-item total">
           <span className="label">Total Departments</span>
           <div className="val">{departments.length}</div>
@@ -344,11 +344,9 @@ function AdminDepartments() {
           <span className="label">Academic Schools</span>
           <div className="val">{totalAcademic}</div>
         </div>
-        <div className="dept-kpi-item">
+        <div className="dept-kpi-item admin">
           <span className="label">Administrative</span>
-          <div className="val" style={{ color: "#0284c7" }}>
-            {totalAdministrative}
-          </div>
+          <div className="val">{totalAdministrative}</div>
         </div>
         <div className="dept-kpi-item grievances">
           <span className="label">Total Grievances</span>

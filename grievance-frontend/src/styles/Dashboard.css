@@ -1475,6 +1475,93 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* 🔒 Security Watermark Overlay */
+.chat-watermark-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  opacity: 0.048;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.chat-watermark-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 32px;
+  white-space: nowrap;
+  transform: rotate(-24deg) scale(1.05);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #0f172a;
+  text-transform: uppercase;
+  margin: 22px 0;
+}
+
+.chat-watermark-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.chat-screenshot-toast {
+  position: absolute;
+  top: 65px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.94);
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 30px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  animation: chatToastFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  text-align: center;
+  max-width: 90%;
+  backdrop-filter: blur(8px);
+}
+
+@keyframes chatToastFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
 }
 
 /* Messages */
@@ -6673,25 +6760,61 @@ textarea:focus {
 }
 
 /* 1. Executive Metric Ribbon */
-.dept-kpi-ribbon {
+.dept-kpi-ribbon,
+.dept-kpis-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dept-kpi-item {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px 16px;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 16px 20px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dept-kpi-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: #cbd5e1;
+  border-radius: 12px 0 0 12px;
+}
+
+.dept-kpi-item.total::before {
+  background: #3b82f6;
+}
+
+.dept-kpi-item.active::before {
+  background: #16a34a;
+}
+
+.dept-kpi-item.admin::before {
+  background: #0284c7;
+}
+
+.dept-kpi-item.grievances::before {
+  background: #6366f1;
 }
 
 .dept-kpi-item:hover {
   border-color: #cbd5e1;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.08);
 }
 
 .dept-kpi-item .label {
@@ -6704,7 +6827,7 @@ textarea:focus {
 }
 
 .dept-kpi-item .val {
-  font-size: 1.5rem;
+  font-size: 1.65rem;
   font-weight: 800;
   color: #0f172a;
   margin-top: 4px;
@@ -6715,8 +6838,12 @@ textarea:focus {
   color: #16a34a;
 }
 
+.dept-kpi-item.admin .val {
+  color: #0284c7;
+}
+
 .dept-kpi-item.grievances .val {
-  color: #2563eb;
+  color: #6366f1;
 }
 
 /* 2. Directory Main Card */
@@ -7538,7 +7665,8 @@ textarea:focus {
 
 /* 6. Mobile Responsiveness for Departments */
 @media (max-width: 768px) {
-  .dept-kpi-ribbon {
+  .dept-kpi-ribbon,
+  .dept-kpis-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
     margin-bottom: 12px !important;
@@ -9122,5 +9250,189 @@ textarea:focus {
   .records-pag-controls {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   Admin Staff Dashboard Mobile Card View
+   ========================================================================== */
+.staff-desktop-only {
+  display: block !important;
+}
+
+.staff-mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .staff-desktop-only {
+    display: none !important;
+  }
+
+  .staff-mobile-only {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .staff-mobile-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    box-sizing: border-box !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .staff-mobile-card:hover {
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .staff-mobile-card:active {
+    background: #f8fafc !important;
+    transform: scale(0.99) !important;
+  }
+
+  .staff-mcard-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .staff-mcard-user {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    min-width: 0 !important;
+  }
+
+  .staff-mcard-name {
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+  }
+
+  .staff-mcard-id {
+    font-size: 0.75rem !important;
+    font-family: monospace !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+  }
+
+  .staff-mcard-status {
+    flex-shrink: 0 !important;
+  }
+
+  .staff-mcard-msg {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 8px 10px !important;
+    font-size: 0.82rem !important;
+    color: #334155 !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+  }
+
+  .staff-mcard-meta-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 4px 0 !important;
+  }
+
+  .staff-mcard-meta-item {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+  }
+
+  .staff-mcard-meta-label {
+    font-size: 0.68rem !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.4px !important;
+  }
+
+  .staff-mcard-meta-value {
+    color: #1e293b !important;
+    font-weight: 500 !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .staff-mcard-footer {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding-top: 10px !important;
+    border-top: 1px solid #f1f5f9 !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .staff-mcard-hint {
+    font-size: 0.75rem !important;
+    color: #2563eb !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .staff-mcard-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-left: auto !important;
+  }
+
+  .staff-mcard-btn {
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    border: none !important;
+    transition: all 0.15s ease !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  .staff-mcard-btn.chat {
+    background: #0f172a !important;
+    color: #ffffff !important;
+  }
+
+  .staff-mcard-btn.resolve {
+    background: #16a34a !important;
+    color: #ffffff !important;
+  }
+
+  .staff-mcard-btn.reject {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+  }
+
+  .staff-mcard-btn:disabled {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
   }
 }

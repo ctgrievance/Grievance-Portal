@@ -237,6 +237,10 @@ function StudentDashboard() {
   }, [history.length, userId]);
 
   const openChat = (gId) => {
+    const grievance = history.find((item) => item._id === gId);
+    if (grievance && (!grievance.assignedTo || grievance.status === "Pending")) {
+      return;
+    }
     setChatGrievanceId(gId);
     setIsChatOpen(true);
     // Remove red dot immediately
@@ -647,15 +651,39 @@ function StudentDashboard() {
 
                           <td>
                             <div className="chat-btn-wrapper">
-                              <button
-                                className="action-btn"
-                                style={{ backgroundColor: "#0f172a", color: "white" }}
-                                onClick={(e) => { e.stopPropagation(); openChat(g._id); }}
-                              >
-                                Chat
-                              </button>
+                              {(() => {
+                                const isChatEnabled = Boolean(g.assignedTo) && g.status !== "Pending";
+                                return (
+                                  <button
+                                    className={`action-btn ${!isChatEnabled ? "disabled" : ""}`}
+                                    disabled={!isChatEnabled}
+                                    style={
+                                      isChatEnabled
+                                        ? { backgroundColor: "#0f172a", color: "white" }
+                                        : {
+                                            backgroundColor: "#f1f5f9",
+                                            color: "#94a3b8",
+                                            border: "1px solid #e2e8f0",
+                                            cursor: "not-allowed",
+                                            opacity: 0.65
+                                          }
+                                    }
+                                    title={
+                                      isChatEnabled
+                                        ? "Open chat with assigned staff"
+                                        : "Chat will be enabled once staff is assigned"
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isChatEnabled) openChat(g._id);
+                                    }}
+                                  >
+                                    Chat
+                                  </button>
+                                );
+                              })()}
                               {/* 🔴 RED DOT */}
-                              {unreadMap[g._id] && (
+                              {Boolean(g.assignedTo) && g.status !== "Pending" && unreadMap[g._id] && (
                                 <span className="notification-dot"></span>
                               )}
                             </div>
@@ -736,18 +764,31 @@ function StudentDashboard() {
 
                         <div className="student-mcard-chat-wrap" onClick={(e) => e.stopPropagation()}>
                           <div className="chat-btn-wrapper">
-                            <button
-                              type="button"
-                              className="student-mcard-chat-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openChat(g._id);
-                              }}
-                            >
-                              <MessageCircleIcon width="14" height="14" />
-                              <span>Chat</span>
-                            </button>
-                            {unreadMap[g._id] && <span className="notification-dot"></span>}
+                            {(() => {
+                              const isChatEnabled = Boolean(g.assignedTo) && g.status !== "Pending";
+                              return (
+                                <button
+                                  type="button"
+                                  className={`student-mcard-chat-btn ${!isChatEnabled ? "disabled" : ""}`}
+                                  disabled={!isChatEnabled}
+                                  title={
+                                    isChatEnabled
+                                      ? "Open chat with assigned staff"
+                                      : "Chat will be enabled once staff is assigned"
+                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isChatEnabled) openChat(g._id);
+                                  }}
+                                >
+                                  <MessageCircleIcon width="14" height="14" />
+                                  <span>Chat</span>
+                                </button>
+                              );
+                            })()}
+                            {Boolean(g.assignedTo) && g.status !== "Pending" && unreadMap[g._id] && (
+                              <span className="notification-dot"></span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -941,6 +982,16 @@ function StudentDashboard() {
 
                     .student-mcard-chat-btn:active {
                       transform: scale(0.96) !important;
+                    }
+
+                    .student-mcard-chat-btn:disabled,
+                    .student-mcard-chat-btn.disabled {
+                      background: #f1f5f9 !important;
+                      color: #94a3b8 !important;
+                      border: 1px solid #e2e8f0 !important;
+                      cursor: not-allowed !important;
+                      opacity: 0.65 !important;
+                      transform: none !important;
                     }
                   }
 
@@ -1206,6 +1257,9 @@ function StudentDashboard() {
         
         button:hover, .action-btn:hover, .submit-btn:hover, .logout-btn-header:hover {
           transform: translateY(-1px);
+        }
+        button:disabled:hover, .action-btn:disabled:hover, .student-mcard-chat-btn:disabled:hover {
+          transform: none !important;
         }
         button:active, .action-btn:active { transform: scale(0.98); }
 

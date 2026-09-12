@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import "../styles/Dashboard.css"; // Ensure this has basic modal styles
 
 // ✅ Advanced Icons
-import { PaperclipIcon, CameraIcon, FileIcon, XIcon as CloseIcon, MessageCircleIcon } from "./Icons";
+import { PaperclipIcon, CameraIcon, FileIcon, XIcon as CloseIcon, MessageCircleIcon, ShieldIcon } from "./Icons";
 import { getSocket, joinChatRoom, leaveChatRoom } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
 
@@ -12,6 +12,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
   const [selectedFile, setSelectedFile] = useState(null); // ✅ NEW: Track selected file
   const [isUploading, setIsUploading] = useState(false);  // ✅ NEW: Loading state for upload
   const [grievanceData, setGrievanceData] = useState(null); // ✅ Store grievance details
+  const [screenshotAlert, setScreenshotAlert] = useState(false); // 📸 Screenshot detection notice
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null); // ✅ NEW: Ref for hidden file input
@@ -22,6 +23,41 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
   const [showCamera, setShowCamera] = useState(false); // ✅ Camera State
   const videoRef = useRef(null); // ✅ Video Ref
   const canvasRef = useRef(null); // ✅ Canvas Ref
+
+  // 🔒 Desktop Screenshot Interception & Alert
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let timer = null;
+    const triggerNotice = () => {
+      setScreenshotAlert(true);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setScreenshotAlert(false);
+      }, 4000);
+    };
+
+    const handleKeyUp = (e) => {
+      // PrintScreen key
+      if (e.key === "PrintScreen" || e.keyCode === 44) {
+        triggerNotice();
+      }
+      // Windows Shift+S detection
+      if (e.shiftKey && (e.key === "S" || e.key === "s")) {
+        triggerNotice();
+      }
+      // Mac Cmd+Shift+3,4,5
+      if (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(e.key)) {
+        triggerNotice();
+      }
+    };
+
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keyup", handleKeyUp);
+      if (timer) clearTimeout(timer);
+    };
+  }, [isOpen]);
 
   // ⚡ Real-Time Socket.io Connection & Messages
   useEffect(() => {
@@ -235,6 +271,10 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     }
   };
 
+  const viewerName = localStorage.getItem("grievance_user_name") || (currentUserRole === "student" ? "STUDENT" : "STAFF");
+  const viewerId = currentUserId || localStorage.getItem("grievance_id") || "USER";
+  const watermarkText = `${viewerName.toUpperCase()} • ID: ${viewerId} • CONFIDENTIAL`;
+
   if (!isOpen) return null;
 
   return (
@@ -285,10 +325,34 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
           </button>
         </div>
 
+        {/* 📸 Screenshot Alert Toast */}
+        {screenshotAlert && (
+          <div className="chat-screenshot-toast">
+            <span>📸</span>
+            <span>
+              <strong>Screenshot Notice:</strong> This conversation is confidential and watermarked with your user ID ({viewerId}).
+            </span>
+          </div>
+        )}
+
         {/* ✅ CHAT BODY */}
-        <div className="chat-body" ref={chatBodyRef}>
+        <div
+          className="chat-body"
+          ref={chatBodyRef}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {/* 🔒 Dynamic Security Watermark */}
+          <div className="chat-watermark-overlay" aria-hidden="true">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <div key={i} className="chat-watermark-row">
+                <span>{watermarkText}</span>
+                <span>{watermarkText}</span>
+              </div>
+            ))}
+          </div>
+
           {messages.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', textAlign: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', textAlign: 'center', position: 'relative', zIndex: 1 }}>
               <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}><MessageCircleIcon width="48" height="48" style={{ color: "#94a3b8" }} /></div>
               <p>No messages yet.<br />Start the conversation!</p>
             </div>
