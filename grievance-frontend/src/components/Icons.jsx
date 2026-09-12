@@ -387,11 +387,23 @@ export const RepeatIcon = (props) => (
 );
 
 export const SwitchCameraIcon = (props) => (
-    <svg {...defaultProps} {...props}>
-        <path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 2.21.896 4.21 2.343 5.657" />
-        <path d="M4 14c0 4.418 3.582 8 8 8s8-3.582 8-8c0-2.21-.896-4.21-2.343-5.657" />
-        <polyline points="1 10 4 10 4 7" />
-        <polyline points="23 14 20 14 20 17" />
+    <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <polyline points="3 3 3 8 8 8" />
+        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+        <polyline points="21 21 21 16 16 16" />
+        <circle cx="12" cy="12" r="3" strokeWidth="1.8" />
+        <circle cx="12" cy="12" r="1" fill="currentColor" />
     </svg>
 );
 

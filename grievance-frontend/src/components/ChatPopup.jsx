@@ -152,11 +152,12 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
             videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
           }
 
+          const isPortrait = window.innerHeight > window.innerWidth;
           const constraints = {
             video: {
               facingMode: { ideal: cameraFacing },
-              width: { ideal: 1920 },
-              height: { ideal: 1080 }
+              width: { ideal: isPortrait ? 1080 : 1920 },
+              height: { ideal: isPortrait ? 1920 : 1080 }
             },
             audio: false
           };
@@ -281,32 +282,19 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
     if (!capturedPhoto) return;
     setIsConvertingPdf(true);
     try {
-      const isLandscape = capturedPhoto.width > capturedPhoto.height;
+      const imgWidth = capturedPhoto.width;
+      const imgHeight = capturedPhoto.height;
+      const isLandscape = imgWidth > imgHeight;
+
+      // Exact matching orientation: Portrait if portrait, Landscape if landscape
       const pdf = new jsPDF({
         orientation: isLandscape ? "landscape" : "portrait",
-        unit: "mm",
-        format: "a4"
+        unit: "px",
+        format: [imgWidth, imgHeight],
+        hotfixes: ["px_scaling"]
       });
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10;
-      const availWidth = pageWidth - (margin * 2);
-      const availHeight = pageHeight - (margin * 2);
-
-      const imgRatio = capturedPhoto.width / capturedPhoto.height;
-      let renderWidth = availWidth;
-      let renderHeight = availWidth / imgRatio;
-
-      if (renderHeight > availHeight) {
-        renderHeight = availHeight;
-        renderWidth = availHeight * imgRatio;
-      }
-
-      const x = (pageWidth - renderWidth) / 2;
-      const y = (pageHeight - renderHeight) / 2;
-
-      pdf.addImage(capturedPhoto.dataUrl, "JPEG", x, y, renderWidth, renderHeight);
+      pdf.addImage(capturedPhoto.dataUrl, "JPEG", 0, 0, imgWidth, imgHeight);
       const pdfBlob = pdf.output("blob");
       const pdfFile = new File(
         [pdfBlob],
@@ -417,7 +405,8 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
             {/* Top Bar with Camera Status / Facing Indicator & Close */}
             <div className="chat-camera-top-bar">
               <span className="chat-camera-badge">
-                📷 {cameraFacing === "environment" ? "Back Camera" : "Front Camera"}
+                <span className="chat-camera-dot" />
+                {cameraFacing === "environment" ? "Back Camera" : "Front Camera"}
               </span>
               <button
                 type="button"

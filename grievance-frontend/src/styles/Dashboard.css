@@ -1614,17 +1614,27 @@ textarea:focus {
 }
 
 .chat-camera-badge {
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.6);
   color: #ffffff;
-  padding: 5px 14px;
+  padding: 6px 14px;
   border-radius: 20px;
   font-size: 0.78rem;
   font-weight: 600;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.chat-camera-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .chat-camera-close-icon {
@@ -1676,17 +1686,25 @@ textarea:focus {
 }
 
 .chat-camera-action-btn.switch-btn {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   padding: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.22);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
 }
 
-.chat-camera-action-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
+.chat-camera-action-btn.switch-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.08);
+}
+
+.chat-camera-action-btn.switch-btn:active {
+  transform: scale(0.9) rotate(180deg);
 }
 
 .chat-camera-shutter-btn {
