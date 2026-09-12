@@ -13,7 +13,7 @@ import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import ctLogo from "../assets/ct-logo.png";
 import {
   BellIcon, GraduationCapIcon, ChartBarIcon, ClockIcon, CheckCircleIcon,
-  PaperclipIcon, TrashIcon
+  PaperclipIcon, TrashIcon, MessageCircleIcon
 } from "../components/Icons";
 
 
@@ -251,7 +251,14 @@ function StudentDashboard() {
 
   // ✅ FILTER LOGIC
   const filteredHistory = history.filter((g) => {
-    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
+    const searchLower = (searchStaffId || "").toLowerCase().trim();
+    const matchSearch = !searchLower ||
+      (g.assignedTo || "").toLowerCase().includes(searchLower) ||
+      (staffMap[g.assignedTo] || "").toLowerCase().includes(searchLower) ||
+      (g.category || g.school || "").toLowerCase().includes(searchLower) ||
+      (g.message || "").toLowerCase().includes(searchLower) ||
+      (g._id || "").toLowerCase().includes(searchLower);
+
     const matchStatus = filterStatus === "All" || g.status === filterStatus;
     const matchDept = filterDepartment === "All" || (g.category || g.school || "") === filterDepartment;
 
@@ -262,7 +269,7 @@ function StudentDashboard() {
       matchMonth = gDate.getFullYear() === parseInt(year) && (gDate.getMonth() + 1) === parseInt(month);
     }
 
-    return matchStaff && matchStatus && matchDept && matchMonth;
+    return matchSearch && matchStatus && matchDept && matchMonth;
   });
 
   // ✅ Dynamic & Historic Departments for Dropdown
@@ -531,9 +538,9 @@ function StudentDashboard() {
               padding: "12px 14px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
             }}>
               <input
-                type="text" placeholder="Search Staff ID..."
+                type="text" placeholder="Search grievance, staff, keyword..."
                 value={searchStaffId} onChange={(e) => setSearchStaffId(e.target.value)}
-                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 150px", fontSize: "0.85rem", background: "#ffffff" }}
+                style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: "1 1 180px", fontSize: "0.85rem", background: "#ffffff" }}
               />
               <select
                 value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
@@ -587,75 +594,375 @@ function StudentDashboard() {
                 )}
               </div>
             ) : (
-              <div className="table-container">
-                <table className="grievance-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Category / School</th>
-                      <th>Message</th>
-                      <th>Status</th>
-                      <th>Assigned To</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredHistory.map((g) => (
-                      <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                        <td>{formatDate(g.createdAt)}</td>
-                        <td>{g.category || "General"}</td>
+              <>
+                {/* Desktop View: Full Table */}
+                <div className="table-container student-desktop-only">
+                  <table className="grievance-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Category / School</th>
+                        <th>Message</th>
+                        <th>Status</th>
+                        <th>Assigned To</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredHistory.map((g) => (
+                        <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
+                          <td>{formatDate(g.createdAt)}</td>
+                          <td>{g.category || "General"}</td>
 
-                        {/* --- FIXED MESSAGE CELL (Max Width 150px) --- */}
-                        <td className="message-cell" style={{ maxWidth: '150px' }}>
-                          <div
-                            style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                          >
-                            <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>
-                              {g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}
+                          {/* --- FIXED MESSAGE CELL (Max Width 150px) --- */}
+                          <td className="message-cell" style={{ maxWidth: '150px' }}>
+                            <div
+                              style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                            >
+                              <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>
+                                {g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}
+                              </span>
+                            </div>
+                          </td>
+                          {/* ------------------------------------------- */}
+
+                          <td>
+                            <span className={`status-badge status-${g.status.toLowerCase().replace(" ", "")}`}>
+                              {g.status}
                             </span>
-                          </div>
-                        </td>
-                        {/* ------------------------------------------- */}
+                          </td>
 
-                        <td>
-                          <span className={`status-badge status-${g.status.toLowerCase().replace(" ", "")}`}>
+                          {/* ✅ ASSIGNED TO COLUMN */}
+                          <td>
+                            {g.assignedTo ? (
+                              <span style={{ fontWeight: "500", color: "#1e293b" }}>
+                                {staffMap[g.assignedTo] || "Staff"} <span style={{ fontSize: '0.85rem', color: '#64748b' }}>({g.assignedTo})</span>
+                              </span>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Yet to assign</span>
+                            )}
+                          </td>
+
+                          <td>
+                            <div className="chat-btn-wrapper">
+                              <button
+                                className="action-btn"
+                                style={{ backgroundColor: "#0f172a", color: "white" }}
+                                onClick={(e) => { e.stopPropagation(); openChat(g._id); }}
+                              >
+                                Chat
+                              </button>
+                              {/* 🔴 RED DOT */}
+                              {unreadMap[g._id] && (
+                                <span className="notification-dot"></span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View: Organized Grievance Cards */}
+                <div className="student-mobile-cards-list student-mobile-only">
+                  {filteredHistory.map((g) => (
+                    <div
+                      key={g._id}
+                      className="student-mobile-card"
+                      onClick={() => setSelectedGrievance(g)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {/* Top Row: Category + ID on left, Status Badge on right */}
+                      <div className="student-mcard-header">
+                        <div className="student-mcard-header-left">
+                          <span className="student-mcard-dept">
+                            {g.category || g.school || "General"}
+                          </span>
+                          <span className="student-mcard-id">
+                            #{g._id ? g._id.slice(-6) : ""}
+                          </span>
+                        </div>
+                        <div className="student-mcard-status">
+                          <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
                             {g.status}
                           </span>
-                        </td>
+                        </div>
+                      </div>
 
-                        {/* ✅ ASSIGNED TO COLUMN */}
-                        <td>
-                          {g.assignedTo ? (
-                            <span style={{ fontWeight: "500", color: "#1e293b" }}>
-                              {staffMap[g.assignedTo] || "Staff"} <span style={{ fontSize: '0.85rem', color: '#64748b' }}>({g.assignedTo})</span>
+                      {/* Message Preview Box */}
+                      <div className="student-mcard-msg">
+                        {g.message}
+                      </div>
+
+                      {/* Meta Grid: Submission Date, Assigned Staff, Rating */}
+                      <div className="student-mcard-meta-grid">
+                        <div className="student-mcard-meta-item">
+                          <span className="student-mcard-meta-label">Submitted On</span>
+                          <span className="student-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                        </div>
+                        <div className="student-mcard-meta-item">
+                          <span className="student-mcard-meta-label">Assigned Staff</span>
+                          <span className="student-mcard-meta-value">
+                            {g.assignedTo ? (staffMap[g.assignedTo] || g.assignedTo) : "Yet to assign"}
+                          </span>
+                        </div>
+                        {g.status === "Resolved" && (
+                          <div className="student-mcard-meta-item" style={{ gridColumn: "span 2" }}>
+                            <span className="student-mcard-meta-label">Resolution Rating</span>
+                            <span className="student-mcard-meta-value">
+                              {g.rating?.stars ? (
+                                <span style={{ color: "#f59e0b", fontWeight: "700" }}>
+                                  {"★".repeat(g.rating.stars)} ({g.rating.stars}.0)
+                                </span>
+                              ) : (
+                                <span style={{ color: "#2563eb", fontWeight: "600" }}>
+                                  ★ Tap to rate resolution
+                                </span>
+                              )}
                             </span>
-                          ) : (
-                            <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Yet to assign</span>
-                          )}
-                        </td>
+                          </div>
+                        )}
+                      </div>
 
-                        <td>
+                      {/* Footer: Tap hint + Chat Action Button */}
+                      <div className="student-mcard-footer">
+                        <span className="student-mcard-hint">
+                          Tap to view details ➔
+                        </span>
+
+                        <div className="student-mcard-chat-wrap" onClick={(e) => e.stopPropagation()}>
                           <div className="chat-btn-wrapper">
                             <button
-                              className="action-btn"
-                              style={{ backgroundColor: "#0f172a", color: "white" }}
-                              onClick={(e) => { e.stopPropagation(); openChat(g._id); }}
+                              type="button"
+                              className="student-mcard-chat-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openChat(g._id);
+                              }}
                             >
-                              Chat
+                              <MessageCircleIcon width="14" height="14" />
+                              <span>Chat</span>
                             </button>
-                            {/* 🔴 RED DOT */}
-                            {unreadMap[g._id] && (
-                              <span className="notification-dot"></span>
-                            )}
+                            {unreadMap[g._id] && <span className="notification-dot"></span>}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <style>{`
+                  .student-desktop-only {
+                    display: block !important;
+                  }
+                  .student-mobile-only {
+                    display: none !important;
+                  }
+
+                  @media (max-width: 768px) {
+                    .student-desktop-only {
+                      display: none !important;
+                    }
+                    .student-mobile-only {
+                      display: flex !important;
+                      flex-direction: column !important;
+                      gap: 10px !important;
+                      width: 100% !important;
+                    }
+
+                    .mobile-filter-bar {
+                      flex-direction: column !important;
+                      gap: 8px !important;
+                      padding: 10px 12px !important;
+                    }
+                    .mobile-filter-bar input,
+                    .mobile-filter-bar select,
+                    .mobile-filter-bar button {
+                      width: 100% !important;
+                      flex: none !important;
+                      box-sizing: border-box !important;
+                    }
+
+                    .student-mobile-card {
+                      background: #ffffff !important;
+                      border: 1px solid #e2e8f0 !important;
+                      border-radius: 12px !important;
+                      padding: 14px !important;
+                      display: flex !important;
+                      flex-direction: column !important;
+                      gap: 10px !important;
+                      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+                      cursor: pointer !important;
+                      transition: all 0.15s ease !important;
+                      user-select: none !important;
+                      -webkit-tap-highlight-color: transparent !important;
+                      box-sizing: border-box !important;
+                    }
+
+                    .student-mobile-card:hover {
+                      border-color: #cbd5e1 !important;
+                      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.07) !important;
+                    }
+
+                    .student-mobile-card:active {
+                      background: #f8fafc !important;
+                      border-color: #94a3b8 !important;
+                      transform: scale(0.99) !important;
+                    }
+
+                    .student-mcard-header {
+                      display: flex !important;
+                      justify-content: space-between !important;
+                      align-items: center !important;
+                      gap: 8px !important;
+                    }
+
+                    .student-mcard-header-left {
+                      display: flex !important;
+                      align-items: center !important;
+                      gap: 6px !important;
+                      flex-wrap: wrap !important;
+                      min-width: 0 !important;
+                    }
+
+                    .student-mcard-dept {
+                      font-size: 0.82rem !important;
+                      font-weight: 700 !important;
+                      color: #0f172a !important;
+                      background: #f1f5f9 !important;
+                      padding: 3px 8px !important;
+                      border-radius: 6px !important;
+                      border: 1px solid #e2e8f0 !important;
+                    }
+
+                    .student-mcard-id {
+                      font-size: 0.75rem !important;
+                      font-family: monospace !important;
+                      color: #64748b !important;
+                      font-weight: 600 !important;
+                    }
+
+                    .student-mcard-status {
+                      flex-shrink: 0 !important;
+                    }
+
+                    .student-mcard-status .status-badge {
+                      font-size: 0.72rem !important;
+                      padding: 3px 8px !important;
+                      font-weight: 700 !important;
+                    }
+
+                    .student-mcard-msg {
+                      font-size: 0.85rem !important;
+                      color: #334155 !important;
+                      line-height: 1.45 !important;
+                      background: #f8fafc !important;
+                      border: 1px solid #f1f5f9 !important;
+                      border-radius: 8px !important;
+                      padding: 8px 10px !important;
+                      display: -webkit-box !important;
+                      -webkit-line-clamp: 2 !important;
+                      -webkit-box-orient: vertical !important;
+                      overflow: hidden !important;
+                      text-overflow: ellipsis !important;
+                      word-break: break-word !important;
+                    }
+
+                    .student-mcard-meta-grid {
+                      display: grid !important;
+                      grid-template-columns: 1fr 1fr !important;
+                      gap: 8px !important;
+                      font-size: 0.78rem !important;
+                    }
+
+                    .student-mcard-meta-item {
+                      display: flex !important;
+                      flex-direction: column !important;
+                      gap: 2px !important;
+                      min-width: 0 !important;
+                    }
+
+                    .student-mcard-meta-label {
+                      font-size: 0.68rem !important;
+                      font-weight: 600 !important;
+                      color: #94a3b8 !important;
+                      text-transform: uppercase !important;
+                      letter-spacing: 0.4px !important;
+                    }
+
+                    .student-mcard-meta-value {
+                      color: #1e293b !important;
+                      font-weight: 500 !important;
+                      white-space: nowrap !important;
+                      overflow: hidden !important;
+                      text-overflow: ellipsis !important;
+                    }
+
+                    .student-mcard-footer {
+                      display: flex !important;
+                      justify-content: space-between !important;
+                      align-items: center !important;
+                      padding-top: 8px !important;
+                      border-top: 1px solid #f1f5f9 !important;
+                      gap: 10px !important;
+                    }
+
+                    .student-mcard-hint {
+                      font-size: 0.75rem !important;
+                      color: #2563eb !important;
+                      font-weight: 600 !important;
+                      display: flex !important;
+                      align-items: center !important;
+                      gap: 4px !important;
+                    }
+
+                    .student-mcard-chat-btn {
+                      display: inline-flex !important;
+                      align-items: center !important;
+                      gap: 6px !important;
+                      background: #0f172a !important;
+                      color: #ffffff !important;
+                      border: none !important;
+                      border-radius: 6px !important;
+                      padding: 6px 14px !important;
+                      font-size: 0.8rem !important;
+                      font-weight: 600 !important;
+                      cursor: pointer !important;
+                      transition: all 0.15s ease !important;
+                    }
+
+                    .student-mcard-chat-btn:hover {
+                      background: #1e293b !important;
+                    }
+
+                    .student-mcard-chat-btn:active {
+                      transform: scale(0.96) !important;
+                    }
+                  }
+
+                  @media (max-width: 480px) {
+                    .student-mobile-card {
+                      padding: 12px 10px !important;
+                      border-radius: 10px !important;
+                      gap: 8px !important;
+                    }
+
+                    .student-mcard-meta-grid {
+                      grid-template-columns: 1fr !important;
+                      gap: 6px !important;
+                    }
+
+                    .student-mcard-dept {
+                      font-size: 0.76rem !important;
+                      padding: 2px 6px !important;
+                    }
+                  }
+                `}</style>
+              </>
             )}
           </div>
         )}
@@ -663,18 +970,22 @@ function StudentDashboard() {
         {/* --- DETAILS POPUP MODAL --- */}
         {selectedGrievance && (
           <div
+            className="student-modal-overlay"
             onClick={() => setSelectedGrievance(null)}
             style={{
               position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
               backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-              justifyContent: 'center', alignItems: 'center', zIndex: 1000
+              justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+              boxSizing: 'border-box'
             }}
           >
             <div
+              className="student-modal-card"
               onClick={(e) => e.stopPropagation()}
               style={{
                 background: 'white', padding: '25px', borderRadius: '12px', width: '90%', maxWidth: '500px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: '85vh'
+                boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: '85vh',
+                boxSizing: 'border-box'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '15px' }}>
@@ -767,7 +1078,7 @@ function StudentDashboard() {
 
               </div>
 
-              <div style={{ textAlign: 'right', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
+              <div className="modal-footer-btns student-modal-footer" style={{ textAlign: 'right', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button
                   onClick={() => setSelectedGrievance(null)}
                   style={{
@@ -783,8 +1094,8 @@ function StudentDashboard() {
                   onClick={() => handleDeleteGrievance(selectedGrievance._id)}
                   style={{
                     padding: '10px 20px', backgroundColor: '#fee2e2', border: '1px solid #ef4444', borderRadius: '6px',
-                    cursor: 'pointer', fontWeight: '600', color: '#dc2626', transition: 'all 0.2s', marginLeft: '10px',
-                    display: 'inline-flex', alignItems: 'center', gap: '5px'
+                    cursor: 'pointer', fontWeight: '600', color: '#dc2626', transition: 'all 0.2s',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
                   }}
                   onMouseOver={(e) => e.target.style.backgroundColor = '#fecaca'}
                   onMouseOut={(e) => e.target.style.backgroundColor = '#fee2e2'}

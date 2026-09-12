@@ -2444,13 +2444,86 @@ textarea:focus {
     margin: 0;
   }
 
-  [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal) {
-    width: 95% !important;
+  /* MODAL RESPONSIVENESS FIX FOR ALL POPUPS */
+  [style*="position: fixed"][style*="display: flex"],
+  .dept-modal-overlay,
+  .staff-modal-overlay,
+  .reg-users-modal-overlay,
+  .transfer-modal-overlay,
+  .export-modal-overlay,
+  .g-details-modal-overlay,
+  .student-modal-overlay {
+    padding: 8px !important;
+    box-sizing: border-box !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
+  .dept-modal-card,
+  .staff-modal-card.simple,
+  .reg-users-modal-box,
+  .transfer-modal-card,
+  .export-modal-container,
+  .g-details-modal-card,
+  .student-modal-card {
+    width: 100% !important;
     max-width: 100% !important;
-    max-height: 90vh !important;
-    margin: 10px !important;
-    border-radius: 16px !important;
-    padding: 18px !important;
+    max-height: 94vh !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Structured card modals with separate header/body/footer MUST NOT have container padding */
+  .g-details-modal-card,
+  .transfer-modal-card,
+  .export-modal-container,
+  .dept-modal-card,
+  .staff-modal-card.simple {
+    padding: 0 !important;
+  }
+
+  /* Simple standalone modal boxes (without separate header-body wrapper) */
+  .reg-users-modal-box {
+    padding: 16px 14px !important;
+  }
+  .student-modal-card {
+    padding: 16px 14px !important;
+  }
+
+  /* Modal Form / Inner Sections */
+  .dept-modal-header,
+  .staff-modal-header,
+  .reg-users-modal-header {
+    padding: 12px 14px !important;
+  }
+
+  .dept-modal-body,
+  .staff-modal-body,
+  .reg-users-modal-form {
+    padding: 12px 14px !important;
+  }
+
+  .dept-modal-footer,
+  .staff-modal-footer,
+  .reg-users-modal-actions {
+    padding: 12px 14px !important;
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+  }
+
+  .dept-modal-footer button,
+  .staff-modal-footer button,
+  .reg-users-modal-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .reg-users-modal-form .form-row-2 {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
   }
 
   .modal-footer-btns {
@@ -2462,6 +2535,198 @@ textarea:focus {
     width: 100%;
     margin-left: 0 !important;
     justify-content: center;
+  }
+
+  /* =======================================================
+     STUDENT RECENT ACTIVITY MOBILE CARDS (<= 768px)
+     ======================================================= */
+  .student-desktop-only {
+    display: none !important;
+  }
+
+  .student-mobile-only {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .mobile-filter-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+
+  .mobile-filter-bar input,
+  .mobile-filter-bar select,
+  .mobile-filter-bar button {
+    width: 100% !important;
+    flex: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .student-mobile-cards-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+
+  .student-mobile-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    box-sizing: border-box !important;
+  }
+
+  .student-mobile-card:hover {
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.07) !important;
+  }
+
+  .student-mobile-card:active {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    transform: scale(0.99) !important;
+  }
+
+  .student-mcard-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .student-mcard-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    min-width: 0 !important;
+  }
+
+  .student-mcard-dept {
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    background: #f1f5f9 !important;
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  .student-mcard-id {
+    font-size: 0.75rem !important;
+    font-family: monospace !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+  }
+
+  .student-mcard-status {
+    flex-shrink: 0 !important;
+  }
+
+  .student-mcard-status .status-badge {
+    font-size: 0.72rem !important;
+    padding: 3px 8px !important;
+    font-weight: 700 !important;
+  }
+
+  .student-mcard-msg {
+    font-size: 0.85rem !important;
+    color: #334155 !important;
+    line-height: 1.45 !important;
+    background: #f8fafc !important;
+    border: 1px solid #f1f5f9 !important;
+    border-radius: 8px !important;
+    padding: 8px 10px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: break-word !important;
+  }
+
+  .student-mcard-meta-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .student-mcard-meta-item {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+  }
+
+  .student-mcard-meta-label {
+    font-size: 0.68rem !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.4px !important;
+  }
+
+  .student-mcard-meta-value {
+    color: #1e293b !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .student-mcard-footer {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #f1f5f9 !important;
+    gap: 10px !important;
+  }
+
+  .student-mcard-hint {
+    font-size: 0.75rem !important;
+    color: #2563eb !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .student-mcard-chat-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 6px 14px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .student-mcard-chat-btn:hover {
+    background: #1e293b !important;
+  }
+
+  .student-mcard-chat-btn:active {
+    transform: scale(0.96) !important;
   }
 
   /* GRAPH */
@@ -2683,6 +2948,67 @@ textarea:focus {
 
   .message-cell {
     max-width: 120px !important;
+  }
+
+  /* Compact Modal rules for phone screens (<= 480px) */
+  [style*="position: fixed"][style*="display: flex"],
+  .dept-modal-overlay,
+  .staff-modal-overlay,
+  .reg-users-modal-overlay,
+  .transfer-modal-overlay,
+  .export-modal-overlay,
+  .g-details-modal-overlay,
+  .student-modal-overlay {
+    padding: 4px !important;
+  }
+
+  [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
+  .dept-modal-card,
+  .staff-modal-card.simple,
+  .reg-users-modal-box,
+  .transfer-modal-card,
+  .export-modal-container,
+  .g-details-modal-card,
+  .student-modal-card {
+    border-radius: 12px !important;
+    max-height: 96vh !important;
+  }
+
+  .dept-modal-header,
+  .staff-modal-header,
+  .reg-users-modal-header {
+    padding: 10px 12px !important;
+  }
+
+  .dept-modal-body,
+  .staff-modal-body,
+  .reg-users-modal-form {
+    padding: 10px 12px !important;
+  }
+
+  .reg-users-modal-box {
+    padding: 14px 10px !important;
+  }
+
+  .student-modal-card {
+    padding: 14px 10px !important;
+  }
+
+  /* Compact student card on small mobile (<= 480px) */
+  .student-mobile-card {
+    padding: 12px 10px !important;
+    border-radius: 10px !important;
+    gap: 8px !important;
+  }
+
+  .student-mcard-meta-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .student-mcard-dept {
+    font-size: 0.76rem !important;
+    padding: 2px 6px !important;
   }
 }
 
@@ -4089,12 +4415,17 @@ textarea:focus {
 }
 
 /* --- 7. Desktop vs Mobile Display Toggles --- */
-.admin-desktop-only {
+.admin-desktop-only,
+.student-desktop-only {
   display: block;
 }
 
 .admin-mobile-only {
   display: none !important;
+}
+
+.student-mobile-only {
+  display: none;
 }
 
 /* =======================================================
@@ -4310,15 +4641,17 @@ textarea:focus {
   }
 
   /* 4. Desktop Table Hidden on Mobile */
-  .admin-desktop-only {
+  .admin-desktop-only,
+  .student-desktop-only {
     display: none !important;
   }
 
   /* 5. Mobile App Compact Cards List */
-  .admin-mobile-only {
+  .admin-mobile-only,
+  .student-mobile-only {
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 10px !important;
     width: 100% !important;
   }
 

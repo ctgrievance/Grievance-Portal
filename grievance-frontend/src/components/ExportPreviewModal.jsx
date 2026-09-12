@@ -212,6 +212,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
 
     return (
         <div
+            className="export-modal-overlay"
             onClick={onClose}
             style={{
                 position: "fixed",
@@ -227,7 +228,6 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                 alignItems: "center",
                 zIndex: 9999,
                 animation: "fadeIn 0.2s ease-out",
-                padding: "16px",
                 boxSizing: "border-box",
             }}
         >
@@ -777,6 +777,10 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         
         /* Mobile Responsive for Export Modal */
         @media (max-width: 768px) {
+          .export-modal-overlay {
+            padding: 8px !important;
+          }
+
           .export-modal-container {
             max-height: 95vh !important;
             border-radius: 14px !important;

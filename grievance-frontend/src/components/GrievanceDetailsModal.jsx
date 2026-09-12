@@ -183,23 +183,28 @@ const GrievanceDetailsModal = ({
 
   return (
     <div
+      className="g-details-modal-overlay"
       onClick={onClose}
       style={{
         position: "fixed",
         top: 0,
         left: 0,
+        right: 0,
+        bottom: 0,
         width: "100%",
         height: "100%",
         backgroundColor: "rgba(15, 23, 42, 0.65)",
         backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         zIndex: 1100,
-        padding: "16px",
+        boxSizing: "border-box",
       }}
     >
       <div
+        className="g-details-modal-card"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#ffffff",
@@ -213,21 +218,23 @@ const GrievanceDetailsModal = ({
           overflow: "hidden",
           border: "1px solid #e2e8f0",
           animation: "modalFadeIn 0.25s ease-out",
+          boxSizing: "border-box",
         }}
       >
         {/* ================= HEADER ================= */}
         <div
+          className="g-details-modal-header"
           style={{
-            padding: "20px 24px",
             borderBottom: "1px solid #f1f5f9",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             background: "#ffffff",
+            boxSizing: "border-box",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: "1.3rem", fontWeight: "700", color: "#0f172a" }}>
+          <div className="g-details-header-left" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "700", color: "#0f172a" }}>
               Grievance Details
             </h2>
 
@@ -296,27 +303,27 @@ const GrievanceDetailsModal = ({
 
         {/* ================= SCROLLABLE BODY ================= */}
         <div
+          className="g-details-modal-body"
           style={{
-            padding: "24px",
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
-            gap: "20px",
+            boxSizing: "border-box",
           }}
         >
           {/* ⚡ HERO RESOLUTION & TIME METRICS BANNER */}
           {isResolved ? (
             <div
+              className="g-details-hero-metric"
               style={{
                 background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
                 border: "1px solid #86efac",
                 borderRadius: "12px",
-                padding: "16px 20px",
                 display: "flex",
                 flexWrap: "wrap",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: "16px",
+                boxSizing: "border-box",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -364,16 +371,16 @@ const GrievanceDetailsModal = ({
             </div>
           ) : !isRejected ? (
             <div
+              className="g-details-hero-metric"
               style={{
                 background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
                 border: "1px solid #cbd5e1",
                 borderRadius: "12px",
-                padding: "16px 20px",
                 display: "flex",
                 flexWrap: "wrap",
                 alignItems: "center",
                 justifyContent: "space-between",
-                gap: "16px",
+                boxSizing: "border-box",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -430,15 +437,16 @@ const GrievanceDetailsModal = ({
             </div>
           ) : (
             <div
+              className="g-details-card"
               style={{
                 background: "#fef2f2",
                 border: "1.5px solid #fecaca",
                 borderRadius: "12px",
-                padding: "16px 20px",
                 color: "#991b1b",
                 display: "flex",
                 alignItems: "flex-start",
                 gap: "12px",
+                boxSizing: "border-box",
               }}
             >
               <AlertCircleIcon width="22" height="22" style={{ color: "#ef4444", flexShrink: 0, marginTop: "2px" }} />
@@ -463,12 +471,13 @@ const GrievanceDetailsModal = ({
 
           {/* 👤 SECTION 1: STUDENT COMPLETE PROFILE */}
           <div
+            className="g-details-card"
             style={{
               background: "#ffffff",
               border: "1px solid #e2e8f0",
               borderRadius: "12px",
-              padding: "18px 20px",
               boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+              boxSizing: "border-box",
             }}
           >
             <div
@@ -488,10 +497,10 @@ const GrievanceDetailsModal = ({
             </div>
 
             <div
+              className="g-details-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "14px 20px",
                 fontSize: "0.88rem",
               }}
             >
@@ -571,19 +580,21 @@ const GrievanceDetailsModal = ({
 
           {/* 📂 SECTION 2: CATEGORY & ASSIGNMENT DETAILS */}
           <div
+            className="g-details-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "16px",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              boxSizing: "border-box",
             }}
           >
             {/* Card A: Category & Routing */}
             <div
+              className="g-details-card"
               style={{
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
                 borderRadius: "12px",
-                padding: "16px 18px",
+                boxSizing: "border-box",
               }}
             >
               <div
@@ -639,11 +650,12 @@ const GrievanceDetailsModal = ({
 
             {/* Card B: Staff Assignment Details */}
             <div
+              className="g-details-card"
               style={{
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
                 borderRadius: "12px",
-                padding: "16px 18px",
+                boxSizing: "border-box",
               }}
             >
               <div
@@ -1079,23 +1091,25 @@ const GrievanceDetailsModal = ({
 
         {/* ================= FOOTER ACTIONS ================= */}
         <div
+          className="g-details-modal-footer"
           style={{
-            padding: "16px 24px",
             borderTop: "1px solid #f1f5f9",
             background: "#f8fafc",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             flexWrap: "wrap",
-            gap: "10px"
+            gap: "10px",
+            boxSizing: "border-box",
           }}
         >
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <div className="g-details-footer-actions" style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             {onDelete && (
               <button
+                className="g-details-btn g-details-btn-danger"
                 onClick={() => onDelete(grievance._id)}
                 style={{
-                  padding: "8px 16px",
+                  padding: "9px 16px",
                   backgroundColor: "#fee2e2",
                   border: "1px solid #ef4444",
                   borderRadius: "8px",
@@ -1117,9 +1131,10 @@ const GrievanceDetailsModal = ({
 
             {!isResolved && !isRejected && allowTransfer && (
               <button
+                className="g-details-btn g-details-btn-transfer"
                 onClick={() => setShowTransferModal(true)}
                 style={{
-                  padding: "8px 16px",
+                  padding: "9px 16px",
                   backgroundColor: "#eff6ff",
                   border: "1.5px solid #bfdbfe",
                   borderRadius: "8px",
@@ -1142,9 +1157,10 @@ const GrievanceDetailsModal = ({
 
             {!isResolved && !isRejected && onReject && (
               <button
+                className="g-details-btn g-details-btn-reject"
                 onClick={() => onReject(grievance)}
                 style={{
-                  padding: "8px 16px",
+                  padding: "9px 16px",
                   backgroundColor: "#fef2f2",
                   border: "1.5px solid #fecaca",
                   borderRadius: "8px",
@@ -1167,9 +1183,10 @@ const GrievanceDetailsModal = ({
           </div>
 
           <button
+            className="g-details-footer-close-btn"
             onClick={onClose}
             style={{
-              padding: "9px 22px",
+              padding: "9px 24px",
               backgroundColor: "#e2e8f0",
               border: "none",
               borderRadius: "8px",
@@ -1203,6 +1220,131 @@ const GrievanceDetailsModal = ({
         @keyframes modalFadeIn {
           from { opacity: 0; transform: scale(0.97); }
           to { opacity: 1; transform: scale(1); }
+        }
+
+        .g-details-modal-overlay {
+          padding: 16px;
+        }
+
+        .g-details-modal-header {
+          padding: 18px 24px;
+        }
+
+        .g-details-modal-body {
+          padding: 22px 24px;
+          gap: 18px;
+        }
+
+        .g-details-card {
+          padding: 16px 20px;
+        }
+
+        .g-details-hero-metric {
+          padding: 16px 20px;
+          gap: 16px;
+        }
+
+        .g-details-grid {
+          gap: 16px;
+        }
+
+        .g-details-modal-footer {
+          padding: 14px 24px;
+        }
+
+        /* 📱 RESPONSIVE ADJUSTMENTS FOR TABLETS & MOBILES (<= 768px) */
+        @media (max-width: 768px) {
+          .g-details-modal-overlay {
+            padding: 8px !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          .g-details-modal-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 94vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 14px !important;
+          }
+
+          .g-details-modal-header {
+            padding: 12px 14px !important;
+            gap: 8px !important;
+          }
+
+          .g-details-modal-header h2 {
+            font-size: 1.1rem !important;
+          }
+
+          .g-details-modal-body {
+            padding: 12px 12px !important;
+            gap: 12px !important;
+          }
+
+          .g-details-card {
+            padding: 12px 12px !important;
+            border-radius: 10px !important;
+          }
+
+          .g-details-hero-metric {
+            padding: 12px 12px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+
+          .g-details-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .g-details-modal-footer {
+            padding: 12px 12px !important;
+            flex-direction: column-reverse !important;
+            gap: 8px !important;
+          }
+
+          .g-details-footer-actions {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+
+          .g-details-btn,
+          .g-details-footer-close-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 10px 14px !important;
+            font-size: 0.88rem !important;
+          }
+        }
+
+        /* 📱 EXTRA COMPACT FOR PHONES (<= 480px) */
+        @media (max-width: 480px) {
+          .g-details-modal-overlay {
+            padding: 4px !important;
+          }
+
+          .g-details-modal-card {
+            border-radius: 12px !important;
+            max-height: 96vh !important;
+          }
+
+          .g-details-modal-header {
+            padding: 10px 10px !important;
+          }
+
+          .g-details-modal-body {
+            padding: 10px 8px !important;
+            gap: 10px !important;
+          }
+
+          .g-details-card {
+            padding: 10px 8px !important;
+          }
         }
       `}</style>
     </div>

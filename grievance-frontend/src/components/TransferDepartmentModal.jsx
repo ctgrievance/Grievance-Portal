@@ -142,6 +142,7 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
 
   return (
     <div
+      className="transfer-modal-overlay"
       onClick={onClose}
       style={{
         position: "fixed",
@@ -155,10 +156,11 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
         justifyContent: "center",
         alignItems: "center",
         zIndex: 1100,
-        padding: "16px"
+        boxSizing: "border-box",
       }}
     >
       <div
+        className="transfer-modal-card"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#ffffff",
@@ -169,11 +171,13 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          animation: "modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+          animation: "modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+          boxSizing: "border-box",
         }}
       >
         {/* Header */}
         <div
+          className="transfer-modal-header"
           style={{
             padding: "20px 24px",
             background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
@@ -212,7 +216,11 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form
+          onSubmit={handleSubmit}
+          className="transfer-modal-form"
+          style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px", overflowY: "auto" }}
+        >
           {/* Grievance Summary Box */}
           <div
             style={{
@@ -375,11 +383,12 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
           )}
 
           {/* Modal Footer Buttons */}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
+          <div className="transfer-modal-footer" style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
+              className="transfer-modal-cancel-btn"
               style={{
                 padding: "10px 18px",
                 borderRadius: "8px",
@@ -396,6 +405,7 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
             <button
               type="submit"
               disabled={submitting || !targetDepartment || !reason.trim()}
+              className="transfer-modal-submit-btn"
               style={{
                 padding: "10px 22px",
                 borderRadius: "8px",
@@ -418,6 +428,51 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
         @keyframes modalSlideUp {
           from { opacity: 0; transform: translateY(15px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @media (max-width: 768px) {
+          .transfer-modal-overlay {
+            padding: 8px !important;
+          }
+          .transfer-modal-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 94vh !important;
+            border-radius: 14px !important;
+          }
+          .transfer-modal-header {
+            padding: 14px 16px !important;
+          }
+          .transfer-modal-form {
+            padding: 14px 14px !important;
+            gap: 12px !important;
+          }
+          .transfer-modal-footer {
+            flex-direction: column-reverse !important;
+            gap: 8px !important;
+          }
+          .transfer-modal-cancel-btn,
+          .transfer-modal-submit-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .transfer-modal-overlay {
+            padding: 4px !important;
+          }
+          .transfer-modal-card {
+            border-radius: 12px !important;
+            max-height: 96vh !important;
+          }
+          .transfer-modal-header {
+            padding: 12px 12px !important;
+          }
+          .transfer-modal-form {
+            padding: 12px 10px !important;
+          }
         }
       `}</style>
     </div>
