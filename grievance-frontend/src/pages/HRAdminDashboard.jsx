@@ -65,7 +65,7 @@ function HRAdminDashboard() {
 
   // ✅ TABS STATE
   const [activeTab, setActiveTab] = useState("grievances"); // "grievances" | "staff_records" | "student_records" | "registered_students" | "registered_staff"
-  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions("HR");
+  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
 
   // ✅ FILTER STATES
   const [searchId, setSearchId] = useState("");

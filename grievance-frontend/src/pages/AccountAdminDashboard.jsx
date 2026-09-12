@@ -52,7 +52,7 @@ function AccountAdminDashboard() {
   const role = localStorage.getItem("grievance_role");
 
   const [activeTab, setActiveTab] = useState("grievances");
-  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions("Accounts");
+  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
 
   // State
   const [grievances, setGrievances] = useState([]);

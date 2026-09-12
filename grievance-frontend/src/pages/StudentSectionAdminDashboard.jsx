@@ -53,7 +53,7 @@ const getDeadlineStatus = (deadlineDateStr, status) => {
 function StudentSectionAdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("grievances");
-  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions("Student Section");
+  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
 
   // role removed (unused)
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();

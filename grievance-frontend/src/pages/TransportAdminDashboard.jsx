@@ -58,7 +58,7 @@ function TransportAdminDashboard() {
     const adminDept = localStorage.getItem("admin_department");
 
     const [activeTab, setActiveTab] = useState("grievances");
-    const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions("Transport");
+    const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
 
     const [grievances, setGrievances] = useState([]);
     const [msg, setMsg] = useState("");

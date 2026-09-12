@@ -54,7 +54,7 @@ function ExaminationAdminDashboard() {
   const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true";
 
   const [activeTab, setActiveTab] = useState("grievances");
-  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions("Examination");
+  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
 
   const [grievances, setGrievances] = useState([]);
   const [msg, setMsg] = useState("");
