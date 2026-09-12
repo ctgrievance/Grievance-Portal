@@ -311,9 +311,16 @@ export const getDepartmentPermissions = async (req, res) => {
     if (!name) return res.status(400).json({ message: "Department name is required" });
 
     const cleanName = decodeURIComponent(name).trim();
-    const dept = await Department.findOne({
+    let dept = await Department.findOne({
       name: { $regex: new RegExp(`^${cleanName}$`, "i") }
     });
+
+    if (!dept) {
+      // Fallback robust matching for "&" vs "and" variations
+      const allDepts = await Department.find({});
+      const normQuery = cleanName.toLowerCase().replace(/&/g, 'and');
+      dept = allDepts.find(d => d.name.toLowerCase().replace(/&/g, 'and') === normQuery);
+    }
 
     if (!dept) {
       const isStudentSection = cleanName.toLowerCase() === "student section";

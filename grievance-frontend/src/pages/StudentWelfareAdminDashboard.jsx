@@ -271,10 +271,10 @@ function StudentWelfareAdminDashboard() {
       <DepartmentAdminNavbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        allowStudentRecords={false}
-        allowStaffRecords={false}
-        allowRegisteredStudents={false}
-        allowRegisteredStaff={false}
+        allowStudentRecords={allowStudentRecords}
+        allowStaffRecords={allowStaffRecords}
+        allowRegisteredStudents={allowRegisteredStudents}
+        allowRegisteredStaff={allowRegisteredStaff}
         departmentName="Student Welfare"
       />
 
