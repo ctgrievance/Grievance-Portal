@@ -112,17 +112,58 @@ export const getIssueTypesByDepartment = async (req, res) => {
 export const updateIssueType = async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, isActive } = req.body;
+    const { issueName, description, isActive } = req.body;
+
+    const existing = await IssueType.findById(id);
+    if (!existing) {
+      return res.status(404).json({ message: "Issue type not found" });
+    }
+
+    const updateFields = { updatedAt: Date.now() };
+    if (typeof description !== "undefined") {
+      updateFields.description = description;
+    }
+    if (typeof isActive !== "undefined") {
+      updateFields.isActive = isActive;
+    }
+
+    if (typeof issueName !== "undefined") {
+      const trimmedName = issueName.trim();
+      if (!trimmedName) {
+        return res.status(400).json({ message: "Issue name cannot be empty" });
+      }
+
+      // If it's system reserved "Others", do not allow changing the name
+      if (existing.isSystemReserved || existing.issueName === "Others") {
+        if (trimmedName.toLowerCase() !== existing.issueName.toLowerCase()) {
+          return res.status(400).json({ message: "❌ System reserved 'Others' category name cannot be modified." });
+        }
+      }
+
+      // If name is changing, check uniqueness for same department and target audience
+      if (trimmedName.toLowerCase() !== existing.issueName.toLowerCase()) {
+        const duplicate = await IssueType.findOne({
+          _id: { $ne: id },
+          department: existing.department,
+          targetAudience: existing.targetAudience,
+          issueName: { $regex: new RegExp(`^${trimmedName}$`, "i") },
+          isActive: true
+        });
+        if (duplicate) {
+          return res.status(400).json({
+            message: `An issue type with name "${trimmedName}" already exists for ${existing.targetAudience}s in this department.`
+          });
+        }
+      }
+
+      updateFields.issueName = trimmedName;
+    }
 
     const issueType = await IssueType.findByIdAndUpdate(
       id,
-      { description, isActive, updatedAt: Date.now() },
+      updateFields,
       { new: true }
     );
-
-    if (!issueType) {
-      return res.status(404).json({ message: "Issue type not found" });
-    }
 
     res.status(200).json({ message: "Issue type updated successfully", issueType });
   } catch (error) {

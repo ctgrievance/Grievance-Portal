@@ -90,11 +90,19 @@ function IssueManagementPanel({ department }) {
     e.preventDefault();
     if (!editingIssue) return;
 
+    const trimmedName = (formData.issueName || "").trim();
+    if (!trimmedName) {
+      setMessage("Issue Name cannot be empty");
+      setMessageType("error");
+      return;
+    }
+
     try {
       const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/${editingIssue._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          issueName: trimmedName,
           description: formData.description,
           isActive: editingIssue.isActive
         })
@@ -108,7 +116,8 @@ function IssueManagementPanel({ department }) {
         fetchIssues();
         setTimeout(() => setMessage(""), 3000);
       } else {
-        setMessage("Failed to update issue type");
+        const errorData = await res.json().catch(() => ({}));
+        setMessage(errorData.message || "Failed to update issue type");
         setMessageType("error");
       }
     } catch (error) {
@@ -250,14 +259,29 @@ function IssueManagementPanel({ department }) {
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
               <div>
-                <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>Issue Name</label>
+                <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
+                  Issue Name
+                  {(editingIssue?.isSystemReserved || editingIssue?.issueName === "Others") && (
+                    <span style={{ color: "#e11d48", fontSize: "0.75rem", fontWeight: "normal", marginLeft: "8px" }}>
+                      (System reserved category name cannot be changed)
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   value={formData.issueName}
                   onChange={(e) => setFormData({ ...formData, issueName: e.target.value })}
-                  disabled={!!editingIssue}
+                  disabled={Boolean(editingIssue?.isSystemReserved || editingIssue?.issueName === "Others")}
                   placeholder="e.g., Grade Dispute"
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: "20px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: "20px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.9rem",
+                    backgroundColor: (editingIssue?.isSystemReserved || editingIssue?.issueName === "Others") ? "#f1f5f9" : "#ffffff",
+                    cursor: (editingIssue?.isSystemReserved || editingIssue?.issueName === "Others") ? "not-allowed" : "text"
+                  }}
                   required
                 />
               </div>
