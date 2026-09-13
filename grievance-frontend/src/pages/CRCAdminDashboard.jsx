@@ -18,6 +18,7 @@ import DepartmentSwitcher from "../components/DepartmentSwitcher";
 import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
 import ActionDropdown from "../components/ActionDropdown";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
+import DepartmentGrievanceList from "../components/DepartmentGrievanceList";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -131,7 +132,8 @@ function CRCAdminDashboard() {
   const resolveGrievance = async (id) => {
     if (!window.confirm("Resolve this grievance?")) return;
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/${id}`, {
+      const targetId = id?._id || id;
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/${targetId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Resolved", resolvedBy: userId }),
@@ -314,102 +316,16 @@ function CRCAdminDashboard() {
               <p>{grievances.length === 0 ? "No grievances found." : "No grievances match your filters."}</p>
             </div>
           ) : (
-            <div className="table-container">
-            <table className="grievance-table">
-              <thead>
-                <tr>
-                  <th>Student ID</th>
-                  <th>Name</th>
-                  <th>Message</th>
-                  <th>Assigned To</th>
-                  <th>Deadline</th><th>Status</th><th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGrievances.map((g) => (
-                  <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                    <td style={{ fontWeight: 'bold', color: '#334155' }}>{g.userId}</td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span>{g.name}</span>
-                        <UserRoleBadge grievance={g} />
-                      </div>
-                    </td>
-                    <td className="message-cell" style={{ maxWidth: '200px' }}>
-                      <div
-                        style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                      >
-                        <span style={{ wordBreak: 'break-word', lineHeight: '1.3', color: "#334155", fontWeight: "500" }}>
-                          {g.message.substring(0, 40)}{g.message.length > 40 ? "..." : ""}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* ✅ ASSIGNED TO COLUMN */}
-                    <td>
-                      {g.assignedTo ? (
-                        <div>
-                          <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
-                            {staffMap[g.assignedTo] || "Staff"}
-                          </span>
-                          <span style={{ fontSize: "0.85rem", color: "#64748b" }}>({g.assignedTo})</span>
-                        </div>
-                      ) : (
-                        <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned Yet</span>
-                      )}
-                    </td>
-                      <td>
-                        {(() => {
-                          const ds = getDeadlineStatus(g.deadlineDate, g.status);
-                          return (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
-                              <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500', fontSize: '0.85rem' }}>{ds.label}</span>
-                              {ds.badge && <span style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
-                            </div>
-                          );
-                        })()}
-                      </td>
-
-                    <td>
-                      <span className={`status-badge status-${g.status.toLowerCase()}`}>
-                        {g.status}
-                      </span>
-                    </td>
-                    <td>
-                      <ActionDropdown>
-                        <button
-                          className="action-btn assign-btn"
-                          onClick={(e) => { e.stopPropagation(); openAssignPopup(g._id); }}
-                          disabled={g.status === "Resolved" || g.assignedTo}
-                          style={{ opacity: (g.status === "Resolved" || g.assignedTo) ? 0.5 : 1, cursor: (g.status === "Resolved" || g.assignedTo) ? "not-allowed" : "pointer" }}
-                        >
-                          Assign
-                        </button>
-                        <button
-                          className="action-btn resolve-btn"
-                          onClick={(e) => { e.stopPropagation(); resolveGrievance(g); }} // ✅ Now passing the full object 'g'
-                          disabled={g.status === "Resolved"}
-                          style={{ opacity: g.status === "Resolved" ? 0.5 : 1, cursor: g.status === "Resolved" ? "not-allowed" : "pointer" }}
-                        >
-                          Resolve
-                        </button>
-                        <button
-                          className="action-btn reject-btn"
-                          onClick={(e) => { e.stopPropagation(); rejectGrievance(g); }}
-                          disabled={g.status === "Resolved" || g.status === "Rejected"}
-                          style={{ opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1, cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer" }}
-                        >
-                          Reject
-                        </button>
-                      </ActionDropdown>
-                      </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+            <DepartmentGrievanceList
+              grievances={filteredGrievances}
+              staffMap={staffMap}
+              setSelectedGrievance={setSelectedGrievance}
+              openAssignPopup={openAssignPopup}
+              onResolve={resolveGrievance}
+              onReject={rejectGrievance}
+              getDeadlineStatus={getDeadlineStatus}
+              formatDate={formatDate}
+            />
           )}
         </div>
         )}
