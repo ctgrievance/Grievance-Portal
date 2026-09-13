@@ -3,6 +3,7 @@ import StudentRecord from "../models/StudentRecord.js"; // NEW: Student validati
 import StaffRecord from "../models/StaffRecord.js"; // NEW: Staff/Admin validation
 import StudentUser from "../models/StudentUser.js"; // NEW: Student users
 import StaffUser from "../models/StaffUser.js"; // NEW: Staff/Admin users
+import AdminStaffModel from "../models/AdminStaffModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendEmailOtp } from "../utils/emailService.js";
@@ -108,14 +109,16 @@ export const registerRequest = async (req, res) => {
       const staffDept = req.body.department || validRecord.department || "";
       const staffData = {
         ...baseUserData,
-        role: validRecord.role || userRole,
+        role: "staff",
         staffDepartment: staffDept,
+        department: staffDept,
         isDeptAdmin: false,
         adminDepartment: "",
         adminDepartments: [],
         isMasterAdmin: false,
       };
       await StaffUser.findOneAndUpdate({ id: safeId }, staffData, { upsert: true, new: true });
+      await AdminStaffModel.deleteOne({ id: safeId });
 
       if (validRecord && !validRecord.department && staffDept) {
         validRecord.department = staffDept;
@@ -127,7 +130,18 @@ export const registerRequest = async (req, res) => {
     const staffDeptBackup = req.body.department || validRecord.department || "";
     await User.findOneAndUpdate(
       { id: safeId },
-      { ...baseUserData, role: userRole, school: validRecord.school || "", department: validRecord.school || "", program: validRecord.program || "", staffDepartment: staffDeptBackup, adminDepartment: "", adminDepartments: [] },
+      {
+        ...baseUserData,
+        role: userRole === "student" ? "student" : "staff",
+        school: userRole === "student" ? (validRecord.school || "") : "",
+        department: userRole === "student" ? (validRecord.school || "") : staffDeptBackup,
+        program: validRecord.program || "",
+        staffDepartment: staffDeptBackup,
+        isDeptAdmin: false,
+        adminDepartment: "",
+        adminDepartments: [],
+        isMasterAdmin: false,
+      },
       { upsert: true, new: true }
     );
 
@@ -293,19 +307,32 @@ export const loginUser = async (req, res) => {
 
     const isMaster = (actualRole === "admin") && (user.isMasterAdmin || legacyUser?.isMasterAdmin || safeId === "10001");
     const isDept = (actualRole === "admin") && (user.isDeptAdmin || legacyUser?.isDeptAdmin || false);
-    const adminDept = user.adminDepartment || legacyUser?.adminDepartment || "";
-    const rawAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
-      ? user.adminDepartments
-      : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (adminDept ? [adminDept] : []));
-    const userAdminDepts = (actualRole === "admin") ? rawAdminDepts : [];
+
+    let effectiveAdminDept = "";
+    let effectiveAdminDepts = [];
+    if (actualRole === "admin") {
+      const rawAdminDept = user.adminDepartment || legacyUser?.adminDepartment || "";
+      effectiveAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
+        ? user.adminDepartments
+        : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (rawAdminDept ? [rawAdminDept] : []));
+      effectiveAdminDept = rawAdminDept || effectiveAdminDepts[0] || "";
+    } else if (actualRole === "staff") {
+      // Regular staff only has adminDepartment if explicitly assigned to a team
+      effectiveAdminDept = user.adminDepartment || "";
+      effectiveAdminDepts = [];
+    }
+
+    const resolvedDept = (actualRole === "student")
+      ? (user.school || user.department || user.program || legacyUser?.school || "")
+      : (user.staffDepartment || legacyUser?.staffDepartment || user.department || legacyUser?.department || effectiveAdminDept || "");
 
     // Generate Token with strictly authoritative role info
     const tokenPayload = {
       id: user.id,
       role: actualRole,
       isDeptAdmin: isDept,
-      adminDepartment: adminDept || userAdminDepts[0] || "",
-      adminDepartments: userAdminDepts,
+      adminDepartment: effectiveAdminDept,
+      adminDepartments: effectiveAdminDepts,
       isMasterAdmin: isMaster
     };
 
@@ -324,12 +351,12 @@ export const loginUser = async (req, res) => {
         role: actualRole,
         fullName: user.fullName || legacyUser?.fullName || "",
         isDeptAdmin: isDept,
-        adminDepartment: adminDept || userAdminDepts[0] || "",
-        adminDepartments: userAdminDepts,
+        adminDepartment: effectiveAdminDept,
+        adminDepartments: effectiveAdminDepts,
         isMasterAdmin: isMaster,
         school: user.school || legacyUser?.school || "",
         program: user.program || legacyUser?.program || "",
-        department: (actualRole === "student" ? (user.school || user.department || user.program || legacyUser?.school || "") : (user.staffDepartment || legacyUser?.staffDepartment || adminDept)) || ""
+        department: resolvedDept
       },
     });
 
@@ -396,19 +423,32 @@ export const verifyLogin = async (req, res) => {
 
     const isMaster = (actualRole === "admin") && (user.isMasterAdmin || legacyUser?.isMasterAdmin || safeId === "10001");
     const isDept = (actualRole === "admin") && (user.isDeptAdmin || legacyUser?.isDeptAdmin || false);
-    const adminDept = user.adminDepartment || legacyUser?.adminDepartment || "";
-    const rawAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
-      ? user.adminDepartments
-      : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (adminDept ? [adminDept] : []));
-    const userAdminDepts = (actualRole === "admin") ? rawAdminDepts : [];
+
+    let effectiveAdminDept = "";
+    let effectiveAdminDepts = [];
+    if (actualRole === "admin") {
+      const rawAdminDept = user.adminDepartment || legacyUser?.adminDepartment || "";
+      effectiveAdminDepts = Array.isArray(user.adminDepartments) && user.adminDepartments.length > 0
+        ? user.adminDepartments
+        : (Array.isArray(legacyUser?.adminDepartments) && legacyUser.adminDepartments.length > 0 ? legacyUser.adminDepartments : (rawAdminDept ? [rawAdminDept] : []));
+      effectiveAdminDept = rawAdminDept || effectiveAdminDepts[0] || "";
+    } else if (actualRole === "staff") {
+      // Regular staff only has adminDepartment if explicitly assigned to a team
+      effectiveAdminDept = user.adminDepartment || "";
+      effectiveAdminDepts = [];
+    }
+
+    const resolvedDept = (actualRole === "student")
+      ? (user.school || user.department || user.program || legacyUser?.school || "")
+      : (user.staffDepartment || legacyUser?.staffDepartment || user.department || legacyUser?.department || effectiveAdminDept || "");
 
     // Generate Token with strictly authoritative role info
     const tokenPayload = {
       id: user.id,
       role: actualRole,
       isDeptAdmin: isDept,
-      adminDepartment: adminDept || userAdminDepts[0] || "",
-      adminDepartments: userAdminDepts,
+      adminDepartment: effectiveAdminDept,
+      adminDepartments: effectiveAdminDepts,
       isMasterAdmin: isMaster
     };
 
@@ -427,12 +467,12 @@ export const verifyLogin = async (req, res) => {
         role: actualRole,
         fullName: user.fullName || legacyUser?.fullName || "",
         isDeptAdmin: isDept,
-        adminDepartment: adminDept || userAdminDepts[0] || "",
-        adminDepartments: userAdminDepts,
+        adminDepartment: effectiveAdminDept,
+        adminDepartments: effectiveAdminDepts,
         isMasterAdmin: isMaster,
         school: user.school || legacyUser?.school || "",
         program: user.program || legacyUser?.program || "",
-        department: (actualRole === "student" ? (user.school || user.department || user.program || legacyUser?.school || "") : (user.staffDepartment || legacyUser?.staffDepartment || adminDept)) || ""
+        department: resolvedDept
       },
     });
 
@@ -779,8 +819,8 @@ export const updateUserProfile = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
-        department: newDept || user.adminDepartment || user.staffDepartment || (user.isMasterAdmin ? "Super Admin" : ""),
-        adminDepartment: user.adminDepartment || newDept || "",
+        department: newDept || user.staffDepartment || user.adminDepartment || (user.isMasterAdmin ? "Super Admin" : ""),
+        adminDepartment: (user.isDeptAdmin || user.isMasterAdmin) ? (user.adminDepartment || newDept || "") : (user.adminDepartment || ""),
         staffDepartment: user.staffDepartment || newDept || "",
         isDeptAdmin: user.isDeptAdmin || false,
         isMasterAdmin: user.isMasterAdmin || false,

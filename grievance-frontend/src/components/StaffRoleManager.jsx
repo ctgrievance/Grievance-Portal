@@ -53,6 +53,7 @@ function StaffRoleManager() {
   const [selectedReviewsStaff, setSelectedReviewsStaff] = useState(null);
   const [processingId, setProcessingId] = useState(null);
   const [selectedDeptToAssign, setSelectedDeptToAssign] = useState("");
+  const [selectedTeamDeptToAssign, setSelectedTeamDeptToAssign] = useState("");
 
   // Auto-clear message notification
   useEffect(() => {
@@ -113,7 +114,7 @@ function StaffRoleManager() {
 
   // Handle Role Promote or Demote
   const handleRoleChange = async (targetStaffId, action, department) => {
-    if (action === "promote" && !department) {
+    if ((action === "promote" || action === "assign_team") && !department) {
       alert("Please select a department first.");
       return;
     }
@@ -130,6 +131,11 @@ function StaffRoleManager() {
         );
         if (!confirmed) return;
       }
+    } else if (action === "assign_team") {
+      const confirmed = window.confirm(
+        `Assign ${selectedStaffForManage?.fullName || "this staff member"} to the "${department}" team as a Team Member?`
+      );
+      if (!confirmed) return;
     }
 
     setProcessingId(targetStaffId);
@@ -168,6 +174,7 @@ function StaffRoleManager() {
           }
         }
         setSelectedDeptToAssign("");
+        setSelectedTeamDeptToAssign("");
       } else {
         setMsg(data.message || "Failed to update role.");
         setMsgType("error");
@@ -281,7 +288,7 @@ function StaffRoleManager() {
   const totalStaffCount = validStaffList.length;
   const adminStaffCount = validStaffList.filter((s) => s.isDeptAdmin).length;
   const teamStaffCount = validStaffList.filter((s) => s.adminDepartment && !s.isDeptAdmin).length;
-  const generalStaffCount = validStaffList.filter((s) => !s.adminDepartment).length;
+  const generalStaffCount = validStaffList.filter((s) => !s.isDeptAdmin && !s.adminDepartment).length;
 
   // Filtered & Sorted Staff List
   const filteredStaffList = useMemo(() => {
@@ -294,7 +301,7 @@ function StaffRoleManager() {
     } else if (filterRole === "team") {
       list = list.filter((s) => s.adminDepartment && !s.isDeptAdmin);
     } else if (filterRole === "general") {
-      list = list.filter((s) => !s.adminDepartment);
+      list = list.filter((s) => !s.isDeptAdmin && !s.adminDepartment);
     }
 
     // Department filter (only applicable when Master Admin selects a specific department)
@@ -607,7 +614,12 @@ function StaffRoleManager() {
                             className="staff-manage-btn"
                             onClick={() => {
                               setSelectedStaffForManage(staff);
-                              setSelectedDeptToAssign("");
+                              setSelectedDeptToAssign(
+                                !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
+                              );
+                              setSelectedTeamDeptToAssign(
+                                !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
+                              );
                             }}
                           >
                             <EditIcon width="13" height="13" /> Manage Role
@@ -690,7 +702,12 @@ function StaffRoleManager() {
                         className="staff-mobile-manage-btn"
                         onClick={() => {
                           setSelectedStaffForManage(staff);
-                          setSelectedDeptToAssign("");
+                          setSelectedDeptToAssign(
+                            !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
+                          );
+                          setSelectedTeamDeptToAssign(
+                            !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
+                          );
                         }}
                       >
                         <EditIcon width="14" height="14" /> Manage Role
@@ -818,23 +835,42 @@ function StaffRoleManager() {
                           <span>Team Member: <strong>{selectedStaffForManage.adminDepartment}</strong></span>
                         </div>
 
-                        {(isMasterAdmin || isMemberOfMyDept) && (
-                          <button
-                            className="staff-btn-remove-simple"
-                            disabled={processingId === selectedStaffForManage.id}
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Remove ${selectedStaffForManage.fullName} from ${selectedStaffForManage.adminDepartment} team?\n\nThey will be reassigned as General Staff.`
-                                )
-                              ) {
-                                handleRoleChange(selectedStaffForManage.id, "demote");
-                              }
-                            }}
-                          >
-                            Remove from Team
-                          </button>
-                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          {isMasterAdmin && (
+                            <button
+                              className="staff-btn-promote-quick"
+                              disabled={processingId === selectedStaffForManage.id}
+                              onClick={() => {
+                                handleRoleChange(
+                                  selectedStaffForManage.id,
+                                  "promote",
+                                  selectedStaffForManage.adminDepartment
+                                );
+                              }}
+                              title={`Appoint ${selectedStaffForManage.fullName} as Head of ${selectedStaffForManage.adminDepartment}`}
+                            >
+                              <ShieldIcon width="12" height="12" /> Appoint as Head
+                            </button>
+                          )}
+
+                          {(isMasterAdmin || isMemberOfMyDept) && (
+                            <button
+                              className="staff-btn-remove-simple"
+                              disabled={processingId === selectedStaffForManage.id}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Remove ${selectedStaffForManage.fullName} from ${selectedStaffForManage.adminDepartment} team?\n\nThey will be reassigned as General Staff.`
+                                  )
+                                ) {
+                                  handleRoleChange(selectedStaffForManage.id, "demote");
+                                }
+                              }}
+                            >
+                              Remove from Team
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {isMemberOfMyDept && (
@@ -866,12 +902,21 @@ function StaffRoleManager() {
                       </div>
 
                       {(() => {
-                        const currentDepts = getStaffDepartments(selectedStaffForManage);
-                        const availableToAdd = allDepartments.filter((d) => !currentDepts.includes(d));
+                        // Only exclude departments where this staff member is ALREADY a Department Head.
+                        // Team members must be fully eligible to be appointed Head of their team or any department!
+                        const currentHeadDepts = (
+                          selectedStaffForManage.isDeptAdmin
+                            ? getStaffDepartments(selectedStaffForManage)
+                            : []
+                        ).map((d) => (d || "").trim().toLowerCase());
+
+                        const availableToAdd = allDepartments.filter(
+                          (d) => !currentHeadDepts.includes((d || "").trim().toLowerCase())
+                        );
 
                         if (availableToAdd.length === 0) {
                           return (
-                            <p className="staff-modal-empty-text">Already assigned to all departments.</p>
+                            <p className="staff-modal-empty-text">Already appointed as Head of all departments.</p>
                           );
                         }
 
@@ -902,11 +947,65 @@ function StaffRoleManager() {
                                 );
                               }}
                             >
-                              {processingId === selectedStaffForManage.id ? "Assigning..." : "Assign"}
+                              {processingId === selectedStaffForManage.id ? "Assigning..." : "Assign as Head"}
                             </button>
                           </div>
                         );
                       })()}
+
+                      {!selectedStaffForManage.isDeptAdmin && (
+                        <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px dashed #e2e8f0" }}>
+                          <div className="staff-modal-block-label">
+                            <span>
+                              {selectedStaffForManage.adminDepartment
+                                ? "Transfer to Department Team"
+                                : "Assign as Department Team Member"}
+                            </span>
+                          </div>
+                          <div className="staff-assign-row-simple">
+                            <select
+                              className="staff-assign-select-simple"
+                              value={selectedTeamDeptToAssign}
+                              onChange={(e) => setSelectedTeamDeptToAssign(e.target.value)}
+                            >
+                              <option value="">Select Team Department...</option>
+                              {allDepartments
+                                .filter(
+                                  (d) =>
+                                    d.toLowerCase() !==
+                                    (selectedStaffForManage.adminDepartment || "").toLowerCase()
+                                )
+                                .map((dept) => (
+                                  <option key={dept} value={dept}>
+                                    {dept}
+                                  </option>
+                                ))}
+                            </select>
+
+                            <button
+                              className="staff-assign-btn-simple"
+                              disabled={
+                                !selectedTeamDeptToAssign ||
+                                processingId === selectedStaffForManage.id
+                              }
+                              onClick={() => {
+                                if (!selectedTeamDeptToAssign) return;
+                                handleRoleChange(
+                                  selectedStaffForManage.id,
+                                  "assign_team",
+                                  selectedTeamDeptToAssign
+                                );
+                              }}
+                            >
+                              {processingId === selectedStaffForManage.id
+                                ? "Assigning..."
+                                : selectedStaffForManage.adminDepartment
+                                ? "Transfer Team"
+                                : "Add to Team"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : !isMemberOfMyDept && effectiveDept && !selectedStaffForManage.isDeptAdmin ? (

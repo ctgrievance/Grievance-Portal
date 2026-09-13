@@ -24,7 +24,6 @@ function AdminDepartments() {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all"); // all | active | inactive
   const [filterType, setFilterType] = useState("all"); // all | academic | admin
   const [filterAudience, setFilterAudience] = useState("all"); // all | both | student | staff
 
@@ -274,9 +273,6 @@ function AdminDepartments() {
 
   // Filtered List
   const filteredDepartments = departments.filter((d) => {
-    if (filterStatus === "active" && !d.isActive) return false;
-    if (filterStatus === "inactive" && d.isActive) return false;
-
     if (filterType === "academic" && !d.isAcademic) return false;
     if (filterType === "admin" && d.isAcademic) return false;
 
@@ -388,16 +384,6 @@ function AdminDepartments() {
           <div className="dept-filter-actions">
             <select
               className="dept-filter-select"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
-            </select>
-
-            <select
-              className="dept-filter-select"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
@@ -417,13 +403,12 @@ function AdminDepartments() {
               <option value="staff">Staff Only</option>
             </select>
 
-            {(searchQuery || filterStatus !== "all" || filterType !== "all" || filterAudience !== "all") && (
+            {(searchQuery || filterType !== "all" || filterAudience !== "all") && (
               <button
                 type="button"
                 className="dept-filter-reset"
                 onClick={() => {
                   setSearchQuery("");
-                  setFilterStatus("all");
                   setFilterType("all");
                   setFilterAudience("all");
                 }}

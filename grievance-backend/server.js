@@ -39,6 +39,7 @@ import StudentRecord from "./models/StudentRecord.js"; // NEW: Student Records
 import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
 import StudentUser from "./models/StudentUser.js"; // NEW: Student Users
 import StaffUser from "./models/StaffUser.js"; // NEW: Staff/Admin Users
+import AdminStaffModel from "./models/AdminStaffModel.js"; // NEW: Admin Staff Model
 import Grievance from "./models/GrievanceModel.js"; // Import Grievance Model
 import RoutingRule from "./models/RoutingRule.js"; // Import RoutingRule Model
 import { hideGrievance } from "./controllers/grievanceController.js";
@@ -258,6 +259,7 @@ const userSchema = new mongoose.Schema({
   // ✅ DYNAMIC ADMIN FIELDS
   isDeptAdmin: { type: Boolean, default: false },
   adminDepartment: { type: String, default: "" },
+  adminDepartments: { type: [String], default: [] },
   isMasterAdmin: { type: Boolean, default: false } // 🔥 Added for Transferable Ownership
 });
 
@@ -594,9 +596,11 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
     }
 
     // 3. Perform Action
-    if (action === "promote") {
-      // Check if another admin already exists for this department
-      if (isMaster) {
+    if (action === "promote" || action === "assign_team") {
+      const isAssigningTeam = action === "assign_team" || (!isMaster && action === "promote");
+
+      // Check if another admin already exists for this department (only if appointing as Head)
+      if (isMaster && !isAssigningTeam) {
         const existingAdmin = await User.findOne({
           $or: [
             { adminDepartment: department },
@@ -607,35 +611,69 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         });
 
         if (existingAdmin) {
-          // Remove the old admin and cleanly revert to staff
-          existingAdmin.isDeptAdmin = false;
-          existingAdmin.adminDepartment = "";
-          existingAdmin.adminDepartments = [];
-          existingAdmin.role = "staff"; // Reset role to staff
+          // If existingAdmin was head of multiple departments, remove only this department
+          let oldDepts = Array.isArray(existingAdmin.adminDepartments) && existingAdmin.adminDepartments.length > 0
+            ? [...existingAdmin.adminDepartments]
+            : (existingAdmin.adminDepartment ? [existingAdmin.adminDepartment] : []);
+
+          oldDepts = oldDepts.filter(d => d.toLowerCase() !== department.toLowerCase());
+
+          if (oldDepts.length > 0) {
+            existingAdmin.adminDepartments = oldDepts;
+            existingAdmin.adminDepartment = oldDepts[0];
+            existingAdmin.isDeptAdmin = true;
+            existingAdmin.role = "admin";
+          } else {
+            existingAdmin.isDeptAdmin = false;
+            existingAdmin.adminDepartment = "";
+            existingAdmin.adminDepartments = [];
+            existingAdmin.role = "staff"; // Reset role to staff
+          }
           await existingAdmin.save();
 
           // Sync to StaffUser
           await StaffUser.findOneAndUpdate(
             { id: existingAdmin.id },
-            { adminDepartment: "", adminDepartments: [], isDeptAdmin: false, role: "staff" }
-          );
-
-          // 🔥 Purge displaced admin from ALL routing rules
-          await RoutingRule.updateMany(
-            {},
-            { $pull: { assignedStaff: { staffId: existingAdmin.id } } }
-          );
-
-          // 🔥 Reset open grievances assigned to displaced admin
-          await Grievance.updateMany(
             {
-              assignedTo: existingAdmin.id,
-              status: { $in: ["Pending", "Assigned", "In Progress"] }
-            },
-            {
-              $set: { status: "Pending", assignedTo: null, assignedRole: null, assignedBy: null, deadlineDate: null }
+              adminDepartment: existingAdmin.adminDepartment,
+              adminDepartments: existingAdmin.adminDepartments,
+              isDeptAdmin: existingAdmin.isDeptAdmin,
+              role: existingAdmin.role
             }
           );
+
+          // Sync to AdminStaffModel
+          if (existingAdmin.isDeptAdmin) {
+            await AdminStaffModel.findOneAndUpdate(
+              { id: existingAdmin.id },
+              {
+                adminDepartment: existingAdmin.adminDepartment,
+                adminDepartments: existingAdmin.adminDepartments,
+                isDeptAdmin: true
+              }
+            );
+          } else {
+            await AdminStaffModel.deleteOne({ id: existingAdmin.id });
+          }
+
+          // 🔥 Purge displaced admin from ALL routing rules if fully demoted
+          if (!existingAdmin.isDeptAdmin) {
+            await RoutingRule.updateMany(
+              {},
+              { $pull: { assignedStaff: { staffId: existingAdmin.id } } }
+            );
+
+            // 🔥 Reset open grievances assigned to displaced admin
+            await Grievance.updateMany(
+              {
+                assignedTo: existingAdmin.id,
+                status: { $in: ["Pending", "Assigned", "In Progress"] }
+              },
+              {
+                $set: { status: "Pending", assignedTo: null, assignedRole: null, assignedBy: null, deadlineDate: null }
+              }
+            );
+          }
 
           console.log(`🔄 Removed ${existingAdmin.fullName} from Admin role for ${department}`);
 
@@ -667,16 +705,21 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       }
 
       // CRITICAL HIERARCHY & MULTI-DEPT SUPPORT:
-      if (isMaster) {
+      if (isMaster && !isAssigningTeam) {
+        const wasDeptAdmin = Boolean(targetMember.isDeptAdmin);
         targetMember.isDeptAdmin = true;
         targetMember.role = "admin";
 
-        // Multi-Department Head Support: Add to adminDepartments array without duplicates
-        let currentDepts = Array.isArray(targetMember.adminDepartments) ? [...targetMember.adminDepartments] : [];
-        if (targetMember.adminDepartment && !currentDepts.includes(targetMember.adminDepartment)) {
-          currentDepts.push(targetMember.adminDepartment);
+        // Multi-Department Head Support:
+        // Only keep existing head departments if the user was ALREADY a Dept Admin.
+        // If they were a team member or general staff, their head department is strictly the new department!
+        let currentDepts = [];
+        if (wasDeptAdmin) {
+          currentDepts = Array.isArray(targetMember.adminDepartments) && targetMember.adminDepartments.length > 0
+            ? [...targetMember.adminDepartments]
+            : (targetMember.adminDepartment ? [targetMember.adminDepartment] : []);
         }
-        if (!currentDepts.includes(department)) {
+        if (!currentDepts.some(d => d.toLowerCase() === department.toLowerCase())) {
           currentDepts.push(department);
         }
         targetMember.adminDepartments = currentDepts;
@@ -700,6 +743,23 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
           role: targetMember.role
         }
       );
+
+      // Sync to AdminStaffModel
+      if (targetMember.isDeptAdmin) {
+        await AdminStaffModel.findOneAndUpdate(
+          { id: safeTargetId },
+          {
+            id: safeTargetId,
+            fullName: targetMember.fullName,
+            adminDepartment: targetMember.adminDepartment,
+            adminDepartments: targetMember.adminDepartments,
+            isDeptAdmin: true
+          },
+          { upsert: true, new: true }
+        );
+      } else {
+        await AdminStaffModel.deleteOne({ id: safeTargetId });
+      }
 
       // 🔥 ROUTING RULES PURGE & GRIEVANCE RESET ON PROMOTE:
       if (targetMember.isDeptAdmin) {
@@ -820,6 +880,23 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         }
       );
 
+      // Sync to AdminStaffModel
+      if (targetMember.isDeptAdmin) {
+        await AdminStaffModel.findOneAndUpdate(
+          { id: safeTargetId },
+          {
+            id: safeTargetId,
+            fullName: targetMember.fullName,
+            adminDepartment: targetMember.adminDepartment,
+            adminDepartments: targetMember.adminDepartments,
+            isDeptAdmin: true
+          },
+          { upsert: true, new: true }
+        );
+      } else {
+        await AdminStaffModel.deleteOne({ id: safeTargetId });
+      }
+
       // 🔥 PURGE FROM ROUTING RULES
       const ruleQuery = (isStillAdmin && deptToRemove) ? { department: deptToRemove } : {};
       await RoutingRule.updateMany(
@@ -938,23 +1015,21 @@ app.get("/api/admin-staff/all", async (req, res) => {
       if (!key) return;
 
       if (mergedMap[key]) {
-        // Merge: prefer StaffUser's staffDepartment if it has a value
+        // StaffUser is primary authority for staff accounts
         const existing = mergedMap[key];
-        if (su.staffDepartment && !existing.staffDepartment) {
+        if (su.staffDepartment) {
           existing.staffDepartment = su.staffDepartment;
         }
-        if (su.adminDepartment && !existing.adminDepartment) {
-          existing.adminDepartment = su.adminDepartment;
-        }
+        existing.adminDepartment = su.adminDepartment || "";
         if (su.isDeptAdmin !== undefined) {
           existing.isDeptAdmin = su.isDeptAdmin;
         }
-        if (Array.isArray(su.adminDepartments) && su.adminDepartments.length > 0) {
+        if (Array.isArray(su.adminDepartments)) {
           existing.adminDepartments = su.adminDepartments;
         }
         if (su.role) existing.role = su.role;
-        if (su.fullName && !existing.fullName) existing.fullName = su.fullName;
-        if (su.email && !existing.email) existing.email = su.email;
+        if (su.fullName) existing.fullName = su.fullName;
+        if (su.email) existing.email = su.email;
       } else {
         // Staff exists in StaffUser but NOT in User (legacy) — add them!
         mergedMap[key] = {
@@ -989,7 +1064,8 @@ app.get("/api/admin-staff/all", async (req, res) => {
       const sName = String(staff.fullName || "").trim().toLowerCase();
 
       // Resolved registered / profile department
-      const registeredDept = staff.staffDepartment || staff.department || staff.school || staffRecordDeptMap[sCleanId] || staff.adminDepartment || "";
+      const registeredDept = staff.staffDepartment || staff.department || staff.school || staffRecordDeptMap[sCleanId] || "";
+      const adminDept = staff.isDeptAdmin ? (staff.adminDepartment || registeredDept) : (staff.adminDepartment || "");
 
       // Find all rated grievances matching this staff member by ID or by Name
       const matched = ratedGrievances.filter(g => {
@@ -1021,6 +1097,7 @@ app.get("/api/admin-staff/all", async (req, res) => {
         ...staff,
         staffDepartment: registeredDept,
         department: registeredDept,
+        adminDepartment: adminDept,
         averageRating,
         totalRatings,
         ratingsList

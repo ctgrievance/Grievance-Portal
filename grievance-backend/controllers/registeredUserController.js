@@ -360,7 +360,9 @@ export const updateLiveStaff = async (req, res) => {
     if (phone !== undefined) staff.phone = phone.trim();
     if (department !== undefined) {
       staff.staffDepartment = department.trim();
-      staff.adminDepartment = department.trim();
+      if (staff.isDeptAdmin) {
+        staff.adminDepartment = department.trim();
+      }
     }
     if (role !== undefined) staff.role = role.trim();
     if (isDeptAdmin !== undefined && safeId !== "10001") staff.isDeptAdmin = !!isDeptAdmin;
@@ -384,6 +386,7 @@ export const updateLiveStaff = async (req, res) => {
       email: staff.email,
       phone: staff.phone,
       department: staff.staffDepartment,
+      staffDepartment: staff.staffDepartment,
       adminDepartment: staff.adminDepartment,
       role: staff.role,
       isDeptAdmin: staff.isDeptAdmin,

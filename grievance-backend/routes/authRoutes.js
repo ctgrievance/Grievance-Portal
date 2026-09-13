@@ -56,7 +56,7 @@ router.get("/user/:id", async (req, res) => {
     const staffUser = await StaffUser.findOne({ id: safeId });
     if (staffUser) {
       const staffRecord = await StaffRecord.findOne({ id: safeId });
-      const dept = staffUser.staffDepartment || staffUser.adminDepartment || (staffRecord ? staffRecord.department : "") || "General";
+      const dept = staffUser.staffDepartment || (staffRecord ? staffRecord.department : "") || staffUser.adminDepartment || "General";
       return res.json({
         fullName: staffUser.fullName || "",
         email: staffUser.email || "",
