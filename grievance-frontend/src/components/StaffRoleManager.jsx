@@ -8,7 +8,8 @@ import {
   UserIcon,
   SearchIcon,
   EditIcon,
-  StarIcon
+  StarIcon,
+  SaveIcon
 } from "./Icons";
 
 const DEFAULT_DEPARTMENTS = [
@@ -54,6 +55,22 @@ function StaffRoleManager() {
   const [processingId, setProcessingId] = useState(null);
   const [selectedDeptToAssign, setSelectedDeptToAssign] = useState("");
   const [selectedTeamDeptToAssign, setSelectedTeamDeptToAssign] = useState("");
+
+  // Delegated permissions states (Ceiling Rule)
+  const [deptPermissionsForStaff, setDeptPermissionsForStaff] = useState({
+    allowStudentRecords: false,
+    allowStaffRecords: false,
+    allowRegisteredStudents: false,
+    allowRegisteredStaff: false,
+    loading: false
+  });
+  const [staffPermissionsDraft, setStaffPermissionsDraft] = useState({
+    allowStudentRecords: false,
+    allowStaffRecords: false,
+    allowRegisteredStudents: false,
+    allowRegisteredStaff: false
+  });
+  const [savingPermissions, setSavingPermissions] = useState(false);
 
   // Auto-clear message notification
   useEffect(() => {
@@ -217,6 +234,131 @@ function StaffRoleManager() {
     } catch (err) {
       alert("Server error occurred while transferring ownership.");
     }
+  };
+
+  // Fetch department permissions to enforce ceiling rule for delegated permissions
+  const fetchDeptPermsForStaff = useCallback(async (deptName, currentStaffPerms) => {
+    setStaffPermissionsDraft({
+      allowStudentRecords: !!currentStaffPerms?.allowStudentRecords,
+      allowStaffRecords: !!currentStaffPerms?.allowStaffRecords,
+      allowRegisteredStudents: !!currentStaffPerms?.allowRegisteredStudents,
+      allowRegisteredStaff: !!currentStaffPerms?.allowRegisteredStaff,
+    });
+
+    if (!deptName) {
+      setDeptPermissionsForStaff({
+        allowStudentRecords: false,
+        allowStaffRecords: false,
+        allowRegisteredStudents: false,
+        allowRegisteredStaff: false,
+        loading: false,
+      });
+      return;
+    }
+
+    setDeptPermissionsForStaff((prev) => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments/permissions/${encodeURIComponent(deptName)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setDeptPermissionsForStaff({
+          allowStudentRecords: !!data.allowStudentRecords,
+          allowStaffRecords: !!data.allowStaffRecords,
+          allowRegisteredStudents: !!data.allowRegisteredStudents,
+          allowRegisteredStaff: !!data.allowRegisteredStaff,
+          loading: false,
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn("Could not fetch department permissions for staff:", err);
+    }
+
+    setDeptPermissionsForStaff({
+      allowStudentRecords: false,
+      allowStaffRecords: false,
+      allowRegisteredStudents: false,
+      allowRegisteredStaff: false,
+      loading: false,
+    });
+  }, []);
+
+  // Open Manage Role Modal and initialize draft & department ceiling permissions
+  const openManageModal = (staff) => {
+    setSelectedStaffForManage(staff);
+    setSelectedDeptToAssign(
+      !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
+    );
+    setSelectedTeamDeptToAssign(
+      !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
+    );
+    const targetDept = staff.adminDepartment || myDept || staff.staffDepartment || "";
+    fetchDeptPermsForStaff(targetDept, staff.delegatedPermissions);
+  };
+
+  // Save Delegated Permissions for Selected Staff Member
+  const handleSavePermissions = async () => {
+    if (!selectedStaffForManage) return;
+    setSavingPermissions(true);
+    setMsg("Updating delegated permissions...");
+    setMsgType("info");
+
+    try {
+      const targetDept = selectedStaffForManage.adminDepartment || myDept || selectedStaffForManage.staffDepartment || "";
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin-staff/role`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("grievance_token")}`,
+          },
+          body: JSON.stringify({
+            requesterId: requesterId || localStorage.getItem("grievance_id"),
+            targetStaffId: selectedStaffForManage.id,
+            action: "update_permissions",
+            department: targetDept,
+            permissions: staffPermissionsDraft,
+            delegatedPermissions: staffPermissionsDraft,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (res.ok) {
+        setMsg(data.message || "Permissions updated successfully.");
+        setMsgType("success");
+        const updatedList = await fetchStaffList();
+        if (updatedList) {
+          const fresh = updatedList.find((s) => s.id === selectedStaffForManage.id);
+          if (fresh) {
+            setSelectedStaffForManage(fresh);
+            setStaffPermissionsDraft(fresh.delegatedPermissions || {});
+          }
+        }
+      } else {
+        setMsg(data.message || "Failed to update permissions.");
+        setMsgType("error");
+      }
+    } catch (err) {
+      setMsg("Network connection error. Please try again.");
+      setMsgType("error");
+    } finally {
+      setSavingPermissions(false);
+    }
+  };
+
+  // Helper to count active delegated permissions
+  const getActiveDelegatedCount = (staff) => {
+    if (!staff?.delegatedPermissions) return 0;
+    return [
+      staff.delegatedPermissions.allowStudentRecords,
+      staff.delegatedPermissions.allowStaffRecords,
+      staff.delegatedPermissions.allowRegisteredStudents,
+      staff.delegatedPermissions.allowRegisteredStaff,
+    ].filter(Boolean).length;
   };
 
   // Helper to check if a staff member belongs to a department
@@ -604,6 +746,12 @@ function StaffRoleManager() {
                               General Staff{staff.staffDepartment ? ` • ${staff.staffDepartment}` : ""}
                             </span>
                           )}
+
+                          {getActiveDelegatedCount(staff) > 0 && (
+                            <span className="staff-role-pill delegated" title="Has delegated department feature permissions">
+                              <ShieldIcon width="11" height="11" /> {getActiveDelegatedCount(staff)} Delegated {getActiveDelegatedCount(staff) === 1 ? "Permission" : "Permissions"}
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -612,15 +760,7 @@ function StaffRoleManager() {
                         {isEditable ? (
                           <button
                             className="staff-manage-btn"
-                            onClick={() => {
-                              setSelectedStaffForManage(staff);
-                              setSelectedDeptToAssign(
-                                !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
-                              );
-                              setSelectedTeamDeptToAssign(
-                                !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
-                              );
-                            }}
+                            onClick={() => openManageModal(staff)}
                           >
                             <EditIcon width="13" height="13" /> Manage Role
                           </button>
@@ -693,6 +833,12 @@ function StaffRoleManager() {
                         General Staff{staff.staffDepartment ? ` • ${staff.staffDepartment}` : ""}
                       </span>
                     )}
+
+                    {getActiveDelegatedCount(staff) > 0 && (
+                      <span className="staff-role-pill delegated" title="Has delegated department feature permissions">
+                        <ShieldIcon width="11" height="11" /> {getActiveDelegatedCount(staff)} Delegated {getActiveDelegatedCount(staff) === 1 ? "Permission" : "Permissions"}
+                      </span>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -700,15 +846,7 @@ function StaffRoleManager() {
                     {isEditable ? (
                       <button
                         className="staff-mobile-manage-btn"
-                        onClick={() => {
-                          setSelectedStaffForManage(staff);
-                          setSelectedDeptToAssign(
-                            !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
-                          );
-                          setSelectedTeamDeptToAssign(
-                            !staff.isDeptAdmin && staff.adminDepartment ? staff.adminDepartment : ""
-                          );
-                        }}
+                        onClick={() => openManageModal(staff)}
                       >
                         <EditIcon width="14" height="14" /> Manage Role
                       </button>
@@ -1038,7 +1176,167 @@ function StaffRoleManager() {
                   </>
                 ) : null}
 
-                {/* SECTION 3: Danger Zone - Master Admin Transfer */}
+                {/* SECTION 3: Delegated Feature Permissions (Ceiling rule applied) */}
+                {(isMemberOfMyDept || isMasterAdmin || selectedStaffForManage.adminDepartment) && (
+                  <>
+                    <div className="staff-modal-divider"></div>
+                    <div className="staff-modal-block">
+                      <div className="staff-modal-block-label">
+                        <span>Delegated Department Features</span>
+                        {deptPermissionsForStaff.loading && (
+                          <span style={{ fontSize: "0.72rem", color: "#94a3b8", textTransform: "none" }}>
+                            Checking permissions...
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="staff-delegated-perms-block">
+                        <p className="staff-delegated-perms-desc">
+                          Grant or revoke department-level tool access to this staff member. You can only delegate features that Super Admin has enabled for this department.
+                        </p>
+
+                        {!deptPermissionsForStaff.loading &&
+                        !deptPermissionsForStaff.allowStudentRecords &&
+                        !deptPermissionsForStaff.allowStaffRecords &&
+                        !deptPermissionsForStaff.allowRegisteredStudents &&
+                        !deptPermissionsForStaff.allowRegisteredStaff ? (
+                          <div style={{ padding: "10px 12px", background: "#f1f5f9", borderRadius: "6px", fontSize: "0.78rem", color: "#64748b" }}>
+                            <AlertCircleIcon width="13" height="13" style={{ verticalAlign: "middle", marginRight: "4px" }} />
+                            This department has no Super Admin-delegated feature permissions to grant. Once Super Admin enables them for this department, they will appear here.
+                          </div>
+                        ) : (
+                          <div className="staff-perms-grid">
+                            {/* 1. Student Records */}
+                            <div className={`staff-perm-toggle-row ${!deptPermissionsForStaff.allowStudentRecords ? "disabled-dept" : "enabled"}`}>
+                              <div className="staff-perm-info">
+                                <span className="staff-perm-title">
+                                  Student Master Records
+                                  {deptPermissionsForStaff.allowStudentRecords ? (
+                                    <span className="staff-perm-badge-dept active">Dept Permitted</span>
+                                  ) : (
+                                    <span className="staff-perm-badge-dept locked">Dept Disabled</span>
+                                  )}
+                                </span>
+                                <span className="staff-perm-subtitle">Allow browsing and searching student master database</span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                className="staff-perm-checkbox"
+                                disabled={!deptPermissionsForStaff.allowStudentRecords || savingPermissions}
+                                checked={deptPermissionsForStaff.allowStudentRecords && !!staffPermissionsDraft.allowStudentRecords}
+                                onChange={(e) =>
+                                  setStaffPermissionsDraft((prev) => ({
+                                    ...prev,
+                                    allowStudentRecords: e.target.checked,
+                                  }))
+                                }
+                              />
+                            </div>
+
+                            {/* 2. Staff Records */}
+                            <div className={`staff-perm-toggle-row ${!deptPermissionsForStaff.allowStaffRecords ? "disabled-dept" : "enabled"}`}>
+                              <div className="staff-perm-info">
+                                <span className="staff-perm-title">
+                                  Staff Master Records
+                                  {deptPermissionsForStaff.allowStaffRecords ? (
+                                    <span className="staff-perm-badge-dept active">Dept Permitted</span>
+                                  ) : (
+                                    <span className="staff-perm-badge-dept locked">Dept Disabled</span>
+                                  )}
+                                </span>
+                                <span className="staff-perm-subtitle">Allow browsing and searching staff master database</span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                className="staff-perm-checkbox"
+                                disabled={!deptPermissionsForStaff.allowStaffRecords || savingPermissions}
+                                checked={deptPermissionsForStaff.allowStaffRecords && !!staffPermissionsDraft.allowStaffRecords}
+                                onChange={(e) =>
+                                  setStaffPermissionsDraft((prev) => ({
+                                    ...prev,
+                                    allowStaffRecords: e.target.checked,
+                                  }))
+                                }
+                              />
+                            </div>
+
+                            {/* 3. Live Registered Students */}
+                            <div className={`staff-perm-toggle-row ${!deptPermissionsForStaff.allowRegisteredStudents ? "disabled-dept" : "enabled"}`}>
+                              <div className="staff-perm-info">
+                                <span className="staff-perm-title">
+                                  Live Registered Students
+                                  {deptPermissionsForStaff.allowRegisteredStudents ? (
+                                    <span className="staff-perm-badge-dept active">Dept Permitted</span>
+                                  ) : (
+                                    <span className="staff-perm-badge-dept locked">Dept Disabled</span>
+                                  )}
+                                </span>
+                                <span className="staff-perm-subtitle">Allow viewing students registered on the portal</span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                className="staff-perm-checkbox"
+                                disabled={!deptPermissionsForStaff.allowRegisteredStudents || savingPermissions}
+                                checked={deptPermissionsForStaff.allowRegisteredStudents && !!staffPermissionsDraft.allowRegisteredStudents}
+                                onChange={(e) =>
+                                  setStaffPermissionsDraft((prev) => ({
+                                    ...prev,
+                                    allowRegisteredStudents: e.target.checked,
+                                  }))
+                                }
+                              />
+                            </div>
+
+                            {/* 4. Live Registered Staff */}
+                            <div className={`staff-perm-toggle-row ${!deptPermissionsForStaff.allowRegisteredStaff ? "disabled-dept" : "enabled"}`}>
+                              <div className="staff-perm-info">
+                                <span className="staff-perm-title">
+                                  Live Registered Staff
+                                  {deptPermissionsForStaff.allowRegisteredStaff ? (
+                                    <span className="staff-perm-badge-dept active">Dept Permitted</span>
+                                  ) : (
+                                    <span className="staff-perm-badge-dept locked">Dept Disabled</span>
+                                  )}
+                                </span>
+                                <span className="staff-perm-subtitle">Allow viewing staff registered on the portal</span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                className="staff-perm-checkbox"
+                                disabled={!deptPermissionsForStaff.allowRegisteredStaff || savingPermissions}
+                                checked={deptPermissionsForStaff.allowRegisteredStaff && !!staffPermissionsDraft.allowRegisteredStaff}
+                                onChange={(e) =>
+                                  setStaffPermissionsDraft((prev) => ({
+                                    ...prev,
+                                    allowRegisteredStaff: e.target.checked,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {(deptPermissionsForStaff.allowStudentRecords ||
+                          deptPermissionsForStaff.allowStaffRecords ||
+                          deptPermissionsForStaff.allowRegisteredStudents ||
+                          deptPermissionsForStaff.allowRegisteredStaff) && (
+                          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
+                            <button
+                              className="staff-btn-save-perms"
+                              disabled={savingPermissions || deptPermissionsForStaff.loading}
+                              onClick={handleSavePermissions}
+                            >
+                              <SaveIcon width="13" height="13" />
+                              {savingPermissions ? "Saving..." : "Save Feature Permissions"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* SECTION 4: Danger Zone - Master Admin Transfer */}
                 {isMasterAdmin && selectedStaffForManage.id !== requesterId && (
                   <>
                     <div className="staff-modal-divider"></div>

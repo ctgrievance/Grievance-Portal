@@ -11,9 +11,14 @@ import { playNotificationSound } from "../utils/soundAlert";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
+import AdminStudentRecords from "../components/AdminStudentRecords";
+import StaffRecordsTab from "../components/StaffRecordsTab";
+import RegisteredUsersView from "../components/RegisteredUsersView";
+import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import { 
   ClipboardIcon, PaperclipIcon, TrashIcon, CheckCircleIcon, XIcon, UserIcon, AlertCircleIcon, ShieldIcon,
-  StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, MessageCircleIcon
+  StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, MessageCircleIcon,
+  GraduationCapIcon, UsersIcon
 } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
@@ -70,10 +75,52 @@ function AdminStaffDashboard() {
   const myDepartment = localStorage.getItem("admin_department"); // From Login Response
   const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true";
 
+  // Delegated permissions and Department permissions (Ceiling rule)
+  const [liveDelegatedPermissions, setLiveDelegatedPermissions] = useState(() => {
+    try {
+      const raw = localStorage.getItem("delegated_permissions");
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      return {};
+    }
+  });
+
+  const deptPermissions = useDepartmentPermissions(myDepartment);
+
+  // Ceiling rule: Staff can only access if BOTH delegated by Dept Admin AND allowed by Super Admin for Department
+  const canStudentRecords = Boolean(liveDelegatedPermissions?.allowStudentRecords && deptPermissions?.allowStudentRecords);
+  const canStaffRecords = Boolean(liveDelegatedPermissions?.allowStaffRecords && deptPermissions?.allowStaffRecords);
+  const canRegisteredStudents = Boolean(liveDelegatedPermissions?.allowRegisteredStudents && deptPermissions?.allowRegisteredStudents);
+  const canRegisteredStaff = Boolean(liveDelegatedPermissions?.allowRegisteredStaff && deptPermissions?.allowRegisteredStaff);
+  const canRegisteredUsers = canRegisteredStudents || canRegisteredStaff;
+
   // UI State
   const [activeTab, setActiveTab] = useState("assigned"); // "assigned" | "submit" | "mine" | "pool"
   const [staffName, setStaffName] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
+
+  const hasAnyRecordsAccess = canStudentRecords || canStaffRecords || canRegisteredUsers;
+  const recordToolsCount = (canStudentRecords ? 1 : 0) + (canStaffRecords ? 1 : 0) + (canRegisteredUsers ? 1 : 0);
+  const isViewingRecords = activeTab === "student_records" || activeTab === "staff_records" || activeTab === "registered_users";
+
+  // Dynamic context-aware label for the grouped tab
+  const hasRecords = canStudentRecords || canStaffRecords;
+  const hasUsers = canRegisteredUsers;
+  const recordsGroupLabel = (hasRecords && hasUsers) 
+    ? "Records & Users" 
+    : hasRecords 
+      ? "Records Directory" 
+      : "Registered Users";
+
+  // Safety fallback if activeTab is accidentally set to the parent group ID
+  useEffect(() => {
+    if (activeTab === "records_users_group" || activeTab === "dept_records_group") {
+      if (canStudentRecords) setActiveTab("student_records");
+      else if (canStaffRecords) setActiveTab("staff_records");
+      else if (canRegisteredUsers) setActiveTab("registered_users");
+      else setActiveTab("assigned");
+    }
+  }, [activeTab, canStudentRecords, canStaffRecords, canRegisteredUsers]);
   const [grievances, setGrievances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
@@ -234,6 +281,10 @@ function AdminStaffDashboard() {
         if (userRes.ok) {
           setStaffName(userData.fullName || staffId);
           setStaffEmail(userData.email || "");
+          if (userData.delegatedPermissions) {
+            localStorage.setItem("delegated_permissions", JSON.stringify(userData.delegatedPermissions));
+            setLiveDelegatedPermissions(userData.delegatedPermissions);
+          }
         }
       } catch (err) {
         console.error("Error fetching staff info:", err);
@@ -886,6 +937,17 @@ function AdminStaffDashboard() {
           { id: "assigned", label: "My Assigned Tasks", IconComponent: ClipboardIcon, isVisible: true },
           { id: "pool", label: "Pool Accept Queue", IconComponent: ClipboardIcon, isVisible: true },
           { id: "ratings", label: `My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
+          { 
+            id: "records_users_group", 
+            label: recordsGroupLabel, 
+            IconComponent: hasUsers && !hasRecords ? UsersIcon : GraduationCapIcon, 
+            isVisible: hasAnyRecordsAccess,
+            subItems: [
+              { id: "student_records", label: "Student Records", description: "Search & view university student records", IconComponent: GraduationCapIcon, isVisible: canStudentRecords },
+              { id: "staff_records", label: "Staff Records", description: "View department staff directory", IconComponent: UserIcon, isVisible: canStaffRecords },
+              { id: "registered_users", label: "Registered Users", description: "View registered students & staff accounts", IconComponent: UsersIcon, isVisible: canRegisteredUsers }
+            ]
+          },
           { id: "submit", label: "Submit Grievance", IconComponent: EditIcon, isVisible: true },
           { id: "mine", label: "My Submissions", IconComponent: ClipboardIcon, isVisible: true },
           { id: "transferred", label: `Transferred Out (${transferredGrievances.length})`, IconComponent: RerouteIcon, isVisible: true }
@@ -893,7 +955,58 @@ function AdminStaffDashboard() {
       />
 
       <main className="dashboard-body">
-        <div className="card">
+        {/* In-Page Subtabs for Records & Users (Desktop Only) */}
+        {isViewingRecords && recordToolsCount > 1 && (
+          <div className="dept-records-subnav-bar admin-desktop-only">
+            <div className="dept-records-subnav-left">
+              <span className="dept-records-nav-label">{recordsGroupLabel}:</span>
+              <div className="dept-records-pills">
+                {canStudentRecords && (
+                  <button
+                    type="button"
+                    className={`dept-records-pill-btn ${activeTab === "student_records" ? "active" : ""}`}
+                    onClick={() => setActiveTab("student_records")}
+                  >
+                    <GraduationCapIcon width="16" height="16" />
+                    <span>Student Records</span>
+                  </button>
+                )}
+                {canStaffRecords && (
+                  <button
+                    type="button"
+                    className={`dept-records-pill-btn ${activeTab === "staff_records" ? "active" : ""}`}
+                    onClick={() => setActiveTab("staff_records")}
+                  >
+                    <UserIcon width="16" height="16" />
+                    <span>Staff Records</span>
+                  </button>
+                )}
+                {canRegisteredUsers && (
+                  <button
+                    type="button"
+                    className={`dept-records-pill-btn ${activeTab === "registered_users" ? "active" : ""}`}
+                    onClick={() => setActiveTab("registered_users")}
+                  >
+                    <UsersIcon width="16" height="16" />
+                    <span>Registered Users</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "student_records" && canStudentRecords && <AdminStudentRecords />}
+        {activeTab === "staff_records" && canStaffRecords && <StaffRecordsTab />}
+        {activeTab === "registered_users" && canRegisteredUsers && (
+          <RegisteredUsersView
+            allowRegisteredStudents={canRegisteredStudents}
+            allowRegisteredStaff={canRegisteredStaff}
+          />
+        )}
+
+        {activeTab !== "student_records" && activeTab !== "staff_records" && activeTab !== "registered_users" && (
+          <div className="card">
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
           {/* TAB 1: ASSIGNED TASKS */}
@@ -1999,6 +2112,7 @@ function AdminStaffDashboard() {
           )}
           {/* --------------------------------------- */}
         </div>
+        )}
       </main>
 
       {/*  Chat Popup (Using Reusable Component) */}

@@ -72,6 +72,12 @@ function LoginPage() {
     if (data.user.isMasterAdmin) localStorage.setItem("is_master_admin", "true");
     else localStorage.removeItem("is_master_admin");
 
+    if (data.user.delegatedPermissions) {
+      localStorage.setItem("delegated_permissions", JSON.stringify(data.user.delegatedPermissions));
+    } else {
+      localStorage.removeItem("delegated_permissions");
+    }
+
     setMessage("Login successful! Redirecting...");
     setStatusType("success");
 

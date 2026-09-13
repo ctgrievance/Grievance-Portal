@@ -43,6 +43,14 @@ const userSchema = new mongoose.Schema({
   adminDepartments: { type: [String], default: [] },
   isMasterAdmin: { type: Boolean, default: false }, // 🔥 Added for Transferable Ownership
 
+  // Delegated feature permissions assigned by Dept Admin or Super Admin
+  delegatedPermissions: {
+    allowStudentRecords: { type: Boolean, default: false },
+    allowStaffRecords: { type: Boolean, default: false },
+    allowRegisteredStudents: { type: Boolean, default: false },
+    allowRegisteredStaff: { type: Boolean, default: false },
+  },
+
 }, { timestamps: true });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);

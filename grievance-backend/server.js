@@ -960,6 +960,71 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         : `✅ ${targetMember.fullName} removed from department role. ${updateResult.modifiedCount} grievances reset to Pending.`;
 
       res.json({ message: resultMsg });
+    } else if (action === "update_permissions") {
+      const permissions = req.body.delegatedPermissions || req.body.permissions;
+      if (!permissions || typeof permissions !== "object") {
+        return res.status(400).json({ message: "Permissions object is required" });
+      }
+
+      // 1. Target staff's department
+      const targetDept = department || targetMember.adminDepartment || targetMember.staffDepartment || "";
+
+      const normCompare = (a, b) => {
+        if (!a || !b) return false;
+        const cleanA = a.trim().toLowerCase().replace(/&/g, "and");
+        const cleanB = b.trim().toLowerCase().replace(/&/g, "and");
+        return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
+      };
+
+      // If requester is not master admin, verify requester is admin of targetMember's department
+      if (!isMaster) {
+        const isAuthorized = requesterDepts.some(d => normCompare(d, targetDept));
+        if (!isAuthorized) {
+          return res.status(403).json({ message: "❌ You can only update permissions for staff in your department." });
+        }
+      }
+
+      // 2. Fetch Department's active permissions from Department model to enforce Ceiling Rule
+      let deptDoc = await Department.findOne({
+        name: { $regex: new RegExp(`^${(targetDept || "").trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
+      });
+      if (!deptDoc) {
+        const allDepts = await Department.find({});
+        deptDoc = allDepts.find(d => normCompare(d.name, targetDept));
+      }
+
+      const isStudentSection = (targetDept || "").toLowerCase() === "student section";
+      const isHR = (targetDept || "").toLowerCase() === "hr";
+
+      const deptAllowsStudentRecords = deptDoc?.allowStudentRecords !== undefined ? !!deptDoc.allowStudentRecords : isStudentSection;
+      const deptAllowsStaffRecords = deptDoc?.allowStaffRecords !== undefined ? !!deptDoc.allowStaffRecords : isHR;
+      const deptAllowsRegStudents = !!deptDoc?.allowRegisteredStudents;
+      const deptAllowsRegStaff = !!deptDoc?.allowRegisteredStaff;
+
+      // 3. Enforce ceiling limit (cannot grant what department does not possess)
+      const sanitizedPermissions = {
+        allowStudentRecords: deptAllowsStudentRecords ? !!permissions.allowStudentRecords : false,
+        allowStaffRecords: deptAllowsStaffRecords ? !!permissions.allowStaffRecords : false,
+        allowRegisteredStudents: deptAllowsRegStudents ? !!permissions.allowRegisteredStudents : false,
+        allowRegisteredStaff: deptAllowsRegStaff ? !!permissions.allowRegisteredStaff : false,
+      };
+
+      // 4. Update both User and StaffUser models
+      targetMember.delegatedPermissions = sanitizedPermissions;
+      await targetMember.save();
+
+      await StaffUser.findOneAndUpdate(
+        { id: safeTargetId },
+        { $set: { delegatedPermissions: sanitizedPermissions } },
+        { new: true }
+      );
+
+      console.log(`✅ Updated delegated permissions for ${targetMember.fullName} (${safeTargetId}):`, sanitizedPermissions);
+
+      return res.json({
+        message: `✅ Permissions successfully updated for ${targetMember.fullName}.`,
+        delegatedPermissions: sanitizedPermissions
+      });
     } else {
       res.status(400).json({ message: "Invalid action" });
     }
@@ -981,12 +1046,12 @@ app.get("/api/admin-staff/all", async (req, res) => {
       User.find({
         isMasterAdmin: { $ne: true },
         role: { $in: ["staff", "admin"] }
-      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment department school").lean(),
+      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment department school delegatedPermissions").lean(),
 
       StaffUser.find({
         isMasterAdmin: { $ne: true },
         role: { $in: ["staff", "admin"] }
-      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment").lean(),
+      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment delegatedPermissions").lean(),
 
       StaffRecord.find({}).select("id department").lean()
     ]);
@@ -1030,6 +1095,12 @@ app.get("/api/admin-staff/all", async (req, res) => {
         if (su.role) existing.role = su.role;
         if (su.fullName) existing.fullName = su.fullName;
         if (su.email) existing.email = su.email;
+        existing.delegatedPermissions = su.delegatedPermissions || existing.delegatedPermissions || {
+          allowStudentRecords: false,
+          allowStaffRecords: false,
+          allowRegisteredStudents: false,
+          allowRegisteredStaff: false
+        };
       } else {
         // Staff exists in StaffUser but NOT in User (legacy) — add them!
         mergedMap[key] = {
@@ -1042,7 +1113,13 @@ app.get("/api/admin-staff/all", async (req, res) => {
           role: su.role || "staff",
           staffDepartment: su.staffDepartment || "",
           department: su.staffDepartment || "",
-          school: ""
+          school: "",
+          delegatedPermissions: su.delegatedPermissions || {
+            allowStudentRecords: false,
+            allowStaffRecords: false,
+            allowRegisteredStudents: false,
+            allowRegisteredStaff: false
+          }
         };
       }
     });

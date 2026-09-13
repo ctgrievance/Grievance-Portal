@@ -356,7 +356,13 @@ export const loginUser = async (req, res) => {
         isMasterAdmin: isMaster,
         school: user.school || legacyUser?.school || "",
         program: user.program || legacyUser?.program || "",
-        department: resolvedDept
+        department: resolvedDept,
+        delegatedPermissions: user.delegatedPermissions || legacyUser?.delegatedPermissions || {
+          allowStudentRecords: false,
+          allowStaffRecords: false,
+          allowRegisteredStudents: false,
+          allowRegisteredStaff: false
+        }
       },
     });
 
@@ -449,7 +455,8 @@ export const verifyLogin = async (req, res) => {
       isDeptAdmin: isDept,
       adminDepartment: effectiveAdminDept,
       adminDepartments: effectiveAdminDepts,
-      isMasterAdmin: isMaster
+      isMasterAdmin: isMaster,
+      delegatedPermissions: user.delegatedPermissions || legacyUser?.delegatedPermissions || {}
     };
 
     const token = jwt.sign(
@@ -472,7 +479,13 @@ export const verifyLogin = async (req, res) => {
         isMasterAdmin: isMaster,
         school: user.school || legacyUser?.school || "",
         program: user.program || legacyUser?.program || "",
-        department: resolvedDept
+        department: resolvedDept,
+        delegatedPermissions: user.delegatedPermissions || legacyUser?.delegatedPermissions || {
+          allowStudentRecords: false,
+          allowStaffRecords: false,
+          allowRegisteredStudents: false,
+          allowRegisteredStaff: false
+        }
       },
     });
 

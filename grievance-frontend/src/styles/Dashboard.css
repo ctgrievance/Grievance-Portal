@@ -4273,6 +4273,189 @@ textarea:focus {
   line-height: 1.2;
 }
 
+/* --- 2.0.1 Desktop Dropdown Tab Styles --- */
+.admin-nav-tabs li.has-dropdown {
+  position: relative;
+}
+
+.admin-nav-tabs li.has-dropdown .tab-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.admin-tab-chevron {
+  font-size: 0.65rem;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 2px;
+  opacity: 0.75;
+  display: inline-block;
+}
+
+.admin-nav-tabs li.has-dropdown.dropdown-open .admin-tab-chevron,
+.admin-nav-tabs li.has-dropdown:hover .admin-tab-chevron {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.admin-nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  padding: 6px;
+  z-index: 1050;
+}
+
+/* Invisible bridge so mouse hover stays continuous */
+.admin-nav-dropdown-menu::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+
+.admin-nav-tabs li.has-dropdown:hover .admin-nav-dropdown-menu,
+.admin-nav-tabs li.has-dropdown.dropdown-open .admin-nav-dropdown-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: adminDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes adminDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-nav-dropdown-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.admin-nav-dropdown-item.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.admin-nav-dropdown-item .dropdown-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.admin-nav-dropdown-item.active .dropdown-item-icon {
+  color: #2563eb;
+}
+
+.admin-nav-dropdown-item .dropdown-item-label {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.admin-nav-dropdown-item .dropdown-item-check {
+  font-size: 0.8rem;
+  color: #2563eb;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+/* In-Page Directory Subnav Bar (Desktop Only) */
+.dept-records-subnav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.dept-records-subnav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dept-records-nav-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dept-records-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.dept-records-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dept-records-pill-btn:hover {
+  color: #0f172a;
+}
+
+.dept-records-pill-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 /* --- 2.1 Mobile View Selector Dropdown Styles --- */
 .admin-mobile-nav-wrapper {
   position: relative;
@@ -6918,6 +7101,137 @@ textarea:focus {
 
 .staff-modal-done-btn:hover {
   background: #1e293b;
+}
+
+/* ========================================= */
+/* 🛡️ DELEGATED PERMISSIONS IN STAFF MODAL   */
+/* ========================================= */
+.staff-delegated-perms-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.staff-delegated-perms-desc {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.staff-perms-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.staff-perm-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.staff-perm-toggle-row.enabled {
+  border-color: #cbd5e1;
+}
+
+.staff-perm-toggle-row.disabled-dept {
+  background: #f1f5f9;
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.staff-perm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.staff-perm-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.staff-perm-subtitle {
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+.staff-perm-badge-dept {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.staff-perm-badge-dept.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.staff-perm-badge-dept.locked {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.staff-perm-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
+.staff-btn-save-perms {
+  align-self: flex-end;
+  height: 34px;
+  padding: 0 14px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.staff-btn-save-perms:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.staff-btn-save-perms:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.staff-role-pill.delegated {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Mobile Responsiveness for Manage Staff */
