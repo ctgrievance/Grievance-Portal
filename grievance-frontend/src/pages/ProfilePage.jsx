@@ -411,26 +411,28 @@ function ProfilePage() {
   const badge = getRoleBadge();
 
   return (
-    <div className="dashboard-container" style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+    <div className="dashboard-container profile-dashboard-container" style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
       {/* HEADER */}
-      <header className="dashboard-header admin-dashboard-header">
-        <div className="admin-header-brand-wrap" style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <img src={ctLogo} alt="CT University" className="admin-header-logo" style={{ height: "42px" }} />
-          <div className="header-content">
-            <h1>User Profile</h1>
-            <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+      <header className="dashboard-header admin-dashboard-header profile-header">
+        <div className="admin-header-brand-wrap profile-header-brand">
+          <img src={ctLogo} alt="CT University" className="admin-header-logo profile-header-logo" />
+          <div className="header-content profile-header-content">
+            <h1 className="profile-header-title">User Profile</h1>
+            <p className="profile-header-subtitle">
               Manage your account credentials, department routing, and verified contacts
             </p>
           </div>
         </div>
-        <div className="admin-header-actions">
+        <div className="admin-header-actions profile-header-actions">
           <button
-            className="profile-contact-btn"
+            className="profile-contact-btn profile-back-btn"
             onClick={handleBackToDashboard}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: "600" }}
+            title="Return to Dashboard"
+            aria-label="Return to Dashboard"
           >
             <ArrowLeftIcon width="14" height="14" />
-            <span>Back to Dashboard</span>
+            <span className="profile-back-text-full">Back to Dashboard</span>
+            <span className="profile-back-text-short">Dashboard</span>
           </button>
         </div>
       </header>
@@ -438,9 +440,8 @@ function ProfilePage() {
       {/* TOAST NOTIFICATION */}
       {msg && (
         <div
+          className="profile-toast-msg"
           style={{
-            maxWidth: "1280px",
-            margin: "16px auto 0",
             padding: "12px 18px",
             borderRadius: "8px",
             display: "flex",
@@ -453,7 +454,7 @@ function ProfilePage() {
             border: `1px solid ${statusType === "error" ? "#fca5a5" : "#bbf7d0"}`
           }}
         >
-          {statusType === "error" ? <AlertCircleIcon width="18" height="18" /> : <CheckCircleIcon width="18" height="18" />}
+          {statusType === "error" ? <AlertCircleIcon width="18" height="18" style={{ flexShrink: 0 }} /> : <CheckCircleIcon width="18" height="18" style={{ flexShrink: 0 }} />}
           <span>{msg}</span>
         </div>
       )}
@@ -552,21 +553,7 @@ function ProfilePage() {
 
                 <form onSubmit={handleSaveBasic}>
                   {(!profile.isMasterAdmin && profile.role === "staff" && (!profile.department || profile.department.toLowerCase() === "general" || profile.department.trim() === "")) && (
-                    <div
-                      style={{
-                        background: "#fffbeb",
-                        border: "1px solid #fde68a",
-                        borderLeft: "4px solid #f59e0b",
-                        borderRadius: "8px",
-                        padding: "12px 16px",
-                        marginBottom: "18px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        fontSize: "0.85rem",
-                        color: "#92400e"
-                      }}
-                    >
+                    <div className="profile-dept-warning-banner">
                       <AlertCircleIcon width="18" height="18" style={{ flexShrink: 0, color: "#f59e0b" }} />
                       <div>
                         <strong>Department Selection Required:</strong> Please select your official department from the dropdown below and click Save Basic Details to join your team.
@@ -662,7 +649,7 @@ function ProfilePage() {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+                  <div className="profile-form-actions">
                     <button
                       type="submit"
                       className="profile-btn-primary"
@@ -738,10 +725,10 @@ function ProfilePage() {
 
                   {/* Email Edit OTP Drawer */}
                   {showEmailEdit && (
-                    <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px dashed #cbd5e1" }}>
+                    <div className="profile-otp-drawer">
                       {emailStep === 1 ? (
-                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-end" }}>
-                          <div style={{ flex: 1, minWidth: "220px" }}>
+                        <div className="profile-otp-form-row">
+                          <div className="profile-otp-input-wrap">
                             <label style={{ fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px", display: "block" }}>
                               New Email Address
                             </label>
@@ -755,7 +742,7 @@ function ProfilePage() {
                           </div>
                           <button
                             type="button"
-                            className="profile-btn-primary"
+                            className="profile-btn-primary profile-otp-btn"
                             disabled={emailLoading}
                             onClick={handleSendEmailOtp}
                           >
@@ -764,27 +751,21 @@ function ProfilePage() {
                         </div>
                       ) : (
                         <div>
-                          <p style={{ fontSize: "0.84rem", color: "#166534", margin: "0 0 8px 0", fontWeight: "500" }}>
+                          <p style={{ fontSize: "0.84rem", color: "#166534", margin: "0 0 8px 0", fontWeight: "500", wordBreak: "break-word" }}>
                             Enter the 6-digit code sent to <strong>{newEmail}</strong>:
                           </p>
-                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                          <div className="profile-otp-verify-row">
                             <input
                               type="text"
                               maxLength="6"
-                              className="profile-input"
+                              className="profile-input profile-otp-code-input"
                               placeholder="6-Digit OTP"
                               value={emailOtp}
                               onChange={(e) => setEmailOtp(e.target.value)}
-                              style={{
-                                letterSpacing: "4px",
-                                fontWeight: "700",
-                                textAlign: "center",
-                                width: "150px"
-                              }}
                             />
                             <button
                               type="button"
-                              className="profile-btn-primary"
+                              className="profile-btn-primary profile-otp-btn"
                               disabled={emailLoading}
                               onClick={handleVerifyEmailOtp}
                             >
@@ -873,10 +854,10 @@ function ProfilePage() {
 
                   {/* Phone Edit OTP Drawer */}
                   {showPhoneEdit && (
-                    <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px dashed #cbd5e1" }}>
+                    <div className="profile-otp-drawer">
                       {phoneStep === 1 ? (
-                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-end" }}>
-                          <div style={{ flex: 1, minWidth: "220px" }}>
+                        <div className="profile-otp-form-row">
+                          <div className="profile-otp-input-wrap">
                             <label style={{ fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px", display: "block" }}>
                               New Mobile Number (10 digits)
                             </label>
@@ -891,7 +872,7 @@ function ProfilePage() {
                           </div>
                           <button
                             type="button"
-                            className="profile-btn-primary"
+                            className="profile-btn-primary profile-otp-btn"
                             disabled={phoneLoading}
                             onClick={handleSendPhoneOtp}
                           >
@@ -900,27 +881,21 @@ function ProfilePage() {
                         </div>
                       ) : (
                         <div>
-                          <p style={{ fontSize: "0.84rem", color: "#166534", margin: "0 0 8px 0", fontWeight: "500" }}>
+                          <p style={{ fontSize: "0.84rem", color: "#166534", margin: "0 0 8px 0", fontWeight: "500", wordBreak: "break-word" }}>
                             Enter the 6-digit SMS code sent to <strong>{newPhone}</strong>:
                           </p>
-                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                          <div className="profile-otp-verify-row">
                             <input
                               type="text"
                               maxLength="6"
-                              className="profile-input"
+                              className="profile-input profile-otp-code-input"
                               placeholder="SMS OTP"
                               value={phoneOtp}
                               onChange={(e) => setPhoneOtp(e.target.value)}
-                              style={{
-                                letterSpacing: "4px",
-                                fontWeight: "700",
-                                textAlign: "center",
-                                width: "150px"
-                              }}
                             />
                             <button
                               type="button"
-                              className="profile-btn-primary"
+                              className="profile-btn-primary profile-otp-btn"
                               disabled={phoneLoading}
                               onClick={handleVerifyPhoneOtp}
                             >
