@@ -158,7 +158,7 @@ export const getAllDepartmentsAdmin = async (req, res) => {
 // =====================================================
 export const createDepartment = async (req, res) => {
   try {
-    const { name, code, description, targetAudience, isAcademic, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = req.body;
+    const { name, code, description, targetAudience, isAcademic, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff, programs } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Department name is required" });
@@ -174,6 +174,10 @@ export const createDepartment = async (req, res) => {
       return res.status(400).json({ message: `Department "${cleanName}" already exists.` });
     }
 
+    const cleanedPrograms = Array.isArray(programs)
+      ? Array.from(new Set(programs.map(p => (typeof p === 'string' ? p.trim() : '')).filter(Boolean)))
+      : [];
+
     const newDept = new Department({
       name: cleanName,
       code: code ? code.trim().toUpperCase() : undefined,
@@ -184,6 +188,7 @@ export const createDepartment = async (req, res) => {
       allowStaffRecords: !!allowStaffRecords,
       allowRegisteredStudents: !!allowRegisteredStudents,
       allowRegisteredStaff: !!allowRegisteredStaff,
+      programs: cleanedPrograms,
       isActive: true
     });
 
@@ -226,7 +231,7 @@ export const createDepartment = async (req, res) => {
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, code, description, targetAudience, isAcademic, isActive, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = req.body;
+    const { name, code, description, targetAudience, isAcademic, isActive, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff, programs } = req.body;
 
     const dept = await Department.findById(id);
     if (!dept) {
@@ -271,6 +276,9 @@ export const updateDepartment = async (req, res) => {
     if (allowStaffRecords !== undefined) dept.allowStaffRecords = !!allowStaffRecords;
     if (allowRegisteredStudents !== undefined) dept.allowRegisteredStudents = !!allowRegisteredStudents;
     if (allowRegisteredStaff !== undefined) dept.allowRegisteredStaff = !!allowRegisteredStaff;
+    if (programs !== undefined && Array.isArray(programs)) {
+      dept.programs = Array.from(new Set(programs.map(p => (typeof p === 'string' ? p.trim() : '')).filter(Boolean)));
+    }
 
     await dept.save();
 

@@ -49,6 +49,10 @@ const departmentSchema = new mongoose.Schema(
     allowRegisteredStaff: {
       type: Boolean,
       default: false
+    },
+    programs: {
+      type: [String],
+      default: []
     }
   },
   { timestamps: true }

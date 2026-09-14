@@ -183,6 +183,26 @@ conn.once("open", async () => {
     } else {
       console.log(`🏛️ Departments verified (${deptCount} existing).`);
     }
+
+    // Ensure default programs are present for academic departments if currently empty
+    const DEFAULT_ACADEMIC_PROGRAMS = {
+      "School of Engineering and Technology": ["B.Tech - CSE", "B.Tech - AI", "B.Tech - Civil", "B.Tech - Mech", "BCA", "MCA"],
+      "School of Management Studies": ["BBA", "MBA", "B.Com"],
+      "School of Law": ["BA LL.B", "LL.B", "LL.M"],
+      "School of Pharmaceutical Sciences": ["B.Pharm", "D.Pharm"],
+      "School of Hotel Management": ["BHMCT", "B.Sc Hotel Management"],
+      "School of Design and innovation": ["B.Des", "B.Sc Animation"],
+      "School of Allied Health Sciences": ["BPT", "B.Sc MLT"],
+      "School of Social Sciences and Liberal Arts": ["BA (Hons)", "MA"],
+      "School of Agriculture and Natural Sciences": ["B.Sc Agriculture (Hons)"]
+    };
+
+    for (const [deptName, progList] of Object.entries(DEFAULT_ACADEMIC_PROGRAMS)) {
+      await Department.updateOne(
+        { name: deptName, $or: [{ programs: { $exists: false } }, { programs: { $size: 0 } }] },
+        { $set: { programs: progList } }
+      );
+    }
   } catch (seedErr) {
     console.warn("⚠️ Department seeding note:", seedErr.message);
   }

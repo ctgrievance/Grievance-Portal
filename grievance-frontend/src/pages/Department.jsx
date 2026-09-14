@@ -34,7 +34,7 @@ function Department() {
   const categoryTitle = "Academic Department";
 
   const [formData, setFormData] = useState({
-    name: "", regid: userId || "", email: "", phone: "", studentProgram: "", school: "", message: "",
+    name: "", regid: userId || "", email: "", phone: "", studentProgram: "", school: "", program: "", message: "",
   });
 
   const [attachment, setAttachment] = useState(null);
@@ -47,6 +47,7 @@ function Department() {
   const [selectedIssueType, setSelectedIssueType] = useState("");
   const [canSubmit, setCanSubmit] = useState(true);
   const [schoolsList, setSchoolsList] = useState(Object.keys(academicPrograms));
+  const [academicDeptsData, setAcademicDeptsData] = useState([]);
 
   // Fetch dynamic active schools / departments
   useEffect(() => {
@@ -56,11 +57,10 @@ function Department() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            // Include ONLY active academic departments/schools (exclude administrative departments)
-            const academicDepts = data
-              .filter((d) => Boolean(d.isAcademic))
-              .map((d) => d.name);
-            setSchoolsList(academicDepts.length > 0 ? academicDepts : Object.keys(academicPrograms));
+            const academicDepts = data.filter((d) => Boolean(d.isAcademic));
+            setAcademicDeptsData(academicDepts);
+            const deptNames = academicDepts.map((d) => d.name);
+            setSchoolsList(deptNames.length > 0 ? deptNames : Object.keys(academicPrograms));
           }
         }
       } catch (err) {
@@ -170,7 +170,7 @@ function Department() {
       regid: formData.regid,
       email: formData.email,
       phone: formData.phone,
-      studentProgram: formData.school,
+      studentProgram: formData.program || formData.studentProgram || formData.school,
       category: formData.school,
       message: formData.message,
       attachment: attachmentUrl || "",
@@ -264,7 +264,15 @@ function Department() {
               {/* ✅ DROPDOWN FOR SCHOOL SELECTION */}
               <div className="input-group">
                 <label>Select Your School / Department</label>
-                <select name="school" value={formData.school} onChange={handleChange} required>
+                <select
+                  name="school"
+                  value={formData.school}
+                  onChange={(e) => {
+                    handleChange(e);
+                    setFormData(prev => ({ ...prev, school: e.target.value, program: "" }));
+                  }}
+                  required
+                >
                   <option value="">-- Select Your School --</option>
                   {schoolsList.map((school) => (
                     <option key={school} value={school}>{school}</option>
@@ -274,6 +282,28 @@ function Department() {
                   Please select the specific school your grievance relates to.
                 </small>
               </div>
+
+              {/* Dynamic Programs for selected School */}
+              {formData.school && (() => {
+                const currentSchoolObj = academicDeptsData.find(d => d.name === formData.school);
+                const currentPrograms = currentSchoolObj?.programs || [];
+                if (currentPrograms.length === 0) return null;
+                return (
+                  <div className="input-group" style={{ animation: "fadeIn 0.2s ease-out" }}>
+                    <label>Program / Course (Optional)</label>
+                    <select
+                      name="program"
+                      value={formData.program || ""}
+                      onChange={(e) => setFormData(prev => ({ ...prev, program: e.target.value }))}
+                    >
+                      <option value="">-- Select Your Program / Course --</option>
+                      {currentPrograms.map((prog) => (
+                        <option key={prog} value={prog}>{prog}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
 
               <div className="input-group">
                 <label>Select Issue</label>

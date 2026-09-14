@@ -3,17 +3,45 @@ import { Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 // Icons
-import { UserIcon, LockIcon, MailIcon, PhoneIcon, UsersIcon, EyeIcon, EyeOffIcon, ClipboardIcon, GraduationCapIcon } from "../components/Icons";
+import { UserIcon, LockIcon, MailIcon, PhoneIcon, UsersIcon, BookIcon, EyeIcon, EyeOffIcon, ClipboardIcon, GraduationCapIcon } from "../components/Icons";
 
 const fallbackAcademicDepartments = [
-  "School of Engineering and Technology",
-  "School of Management Studies",
-  "School of Hotel Management",
-  "School of Law",
-  "School of Pharmaceutical Sciences",
-  "School of Design and innovation",
-  "School of Allied Health Sciences",
-  "School of Social Sciences and Liberal Arts"
+  {
+    name: "School of Engineering and Technology",
+    programs: ["B.Tech - CSE", "B.Tech - AI", "B.Tech - Civil", "B.Tech - Mech", "BCA", "MCA"]
+  },
+  {
+    name: "School of Management Studies",
+    programs: ["BBA", "MBA", "B.Com"]
+  },
+  {
+    name: "School of Law",
+    programs: ["BA LL.B", "LL.B", "LL.M"]
+  },
+  {
+    name: "School of Pharmaceutical Sciences",
+    programs: ["B.Pharm", "D.Pharm"]
+  },
+  {
+    name: "School of Hotel Management",
+    programs: ["BHMCT", "B.Sc Hotel Management"]
+  },
+  {
+    name: "School of Design and innovation",
+    programs: ["B.Des", "B.Sc Animation"]
+  },
+  {
+    name: "School of Allied Health Sciences",
+    programs: ["BPT", "B.Sc MLT"]
+  },
+  {
+    name: "School of Social Sciences and Liberal Arts",
+    programs: ["BA (Hons)", "MA"]
+  },
+  {
+    name: "School of Agriculture and Natural Sciences",
+    programs: ["B.Sc Agriculture (Hons)"]
+  }
 ];
 
 function RegisterPage() {
@@ -36,6 +64,22 @@ function RegisterPage() {
       })
       .catch(err => console.error("Error fetching departments for registration:", err));
   }, []);
+
+  // Dynamic programs lookup based on selected school/department
+  const selectedDeptObj = (academicDepartments.length > 0 ? academicDepartments : fallbackAcademicDepartments)
+    .find((d) => d.name === (formData.department || formData.school));
+
+  const availablePrograms = selectedDeptObj?.programs || [];
+
+  const handleStudentDepartmentChange = (e) => {
+    const selectedDeptName = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      department: selectedDeptName,
+      school: selectedDeptName,
+      program: "" // Reset program so student picks from the new department's programs
+    }));
+  };
 
   // 🔐 OTP State
   const [otpPhone, setOtpPhone] = useState("");
@@ -105,10 +149,17 @@ function RegisterPage() {
       return;
     }
 
-    if (formData.role === 'student' && !formData.department && !formData.school && !formData.program) {
-      setMsg("Please select your academic department!");
-      setStatusType("error");
-      return;
+    if (formData.role === 'student') {
+      if (!formData.department && !formData.school) {
+        setMsg("Please select your academic department!");
+        setStatusType("error");
+        return;
+      }
+      if (availablePrograms.length > 0 && !formData.program) {
+        setMsg("Please select your program / domain!");
+        setStatusType("error");
+        return;
+      }
     }
 
     if (formData.role === 'staff' && !formData.department) {
@@ -366,36 +417,59 @@ function RegisterPage() {
               </div>
 
               {formData.role === 'student' && (
-                <div className="input-group">
-                  <label>Academic Department</label>
-                  <div className="input-wrapper program-field">
-                    <span className="icon"><GraduationCapIcon /></span>
-                    <select
-                      name="department"
-                      value={formData.department || formData.program || ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormData((prev) => ({
-                          ...prev,
-                          department: val,
-                          school: val,
-                          program: val
-                        }));
-                      }}
-                      required
-                    >
-                      <option value="">Select Your Academic Department</option>
-                      {(academicDepartments.length > 0
-                        ? academicDepartments
-                        : fallbackAcademicDepartments.map((name) => ({ _id: name, name }))
-                      ).map((dept) => (
-                        <option key={dept._id || dept.name} value={dept.name}>
-                          {dept.name}
-                        </option>
-                      ))}
-                    </select>
+                <>
+                  <div className="input-group">
+                    <label>Academic Department / School</label>
+                    <div className="input-wrapper program-field">
+                      <span className="icon"><GraduationCapIcon /></span>
+                      <select
+                        name="department"
+                        value={formData.department || formData.school || ""}
+                        onChange={handleStudentDepartmentChange}
+                        required
+                      >
+                        <option value="">Select Your Academic Department</option>
+                        {(academicDepartments.length > 0
+                          ? academicDepartments
+                          : fallbackAcademicDepartments
+                        ).map((dept) => (
+                          <option key={dept._id || dept.name} value={dept.name}>
+                            {dept.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
+
+                  {(formData.department || formData.school) && (
+                    <div className="input-group" style={{ animation: "fadeIn 0.25s ease-out" }}>
+                      <label>Program & Domain</label>
+                      <div className="input-wrapper program-field">
+                        <span className="icon"><BookIcon /></span>
+                        <select
+                          name="program"
+                          value={formData.program || ""}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, program: e.target.value }))}
+                          required
+                        >
+                          <option value="">
+                            {availablePrograms.length > 0 ? "Select Your Program" : "Select Program (General)"}
+                          </option>
+                          {availablePrograms.map((prog) => (
+                            <option key={prog} value={prog}>
+                              {prog}
+                            </option>
+                          ))}
+                          {availablePrograms.length === 0 && (
+                            <option value={formData.department || formData.school}>
+                              {formData.department || formData.school} (General)
+                            </option>
+                          )}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {formData.role === 'staff' && (

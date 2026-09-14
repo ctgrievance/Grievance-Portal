@@ -31,7 +31,8 @@ function AdminDepartments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
-  const [modalTab, setModalTab] = useState("general"); // "general" | "permissions"
+  const [modalTab, setModalTab] = useState("general"); // "general" | "permissions" | "programs"
+  const [newProgramInput, setNewProgramInput] = useState("");
 
   // Form State
   const [formData, setFormData] = useState({
@@ -44,7 +45,8 @@ function AdminDepartments() {
     allowStudentRecords: false,
     allowStaffRecords: false,
     allowRegisteredStudents: false,
-    allowRegisteredStaff: false
+    allowRegisteredStaff: false,
+    programs: []
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -154,8 +156,10 @@ function AdminDepartments() {
       allowStudentRecords: false,
       allowStaffRecords: false,
       allowRegisteredStudents: false,
-      allowRegisteredStaff: false
+      allowRegisteredStaff: false,
+      programs: []
     });
+    setNewProgramInput("");
     setModalTab("general");
     setIsModalOpen(true);
   };
@@ -174,10 +178,34 @@ function AdminDepartments() {
       allowStudentRecords: dept.allowStudentRecords !== undefined ? !!dept.allowStudentRecords : dept.name.toLowerCase() === "student section",
       allowStaffRecords: dept.allowStaffRecords !== undefined ? !!dept.allowStaffRecords : dept.name.toLowerCase() === "hr",
       allowRegisteredStudents: !!dept.allowRegisteredStudents,
-      allowRegisteredStaff: !!dept.allowRegisteredStaff
+      allowRegisteredStaff: !!dept.allowRegisteredStaff,
+      programs: Array.isArray(dept.programs) ? [...dept.programs] : []
     });
+    setNewProgramInput("");
     setModalTab("general");
     setIsModalOpen(true);
+  };
+
+  // Program Management in Modal
+  const handleAddProgram = () => {
+    const trimmed = newProgramInput.trim();
+    if (!trimmed) return;
+    if (formData.programs && formData.programs.some(p => p.toLowerCase() === trimmed.toLowerCase())) {
+      showNotification(`Program "${trimmed}" is already in the list.`, "error");
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      programs: [...(prev.programs || []), trimmed]
+    }));
+    setNewProgramInput("");
+  };
+
+  const handleRemoveProgram = (programToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      programs: (prev.programs || []).filter((p) => p !== programToRemove)
+    }));
   };
 
   const handleCloseModal = () => {
@@ -757,6 +785,27 @@ function AdminDepartments() {
                   </span>
                 )}
               </button>
+              <button
+                type="button"
+                className={`dept-modal-tab-btn ${modalTab === "programs" ? "active" : ""}`}
+                onClick={() => setModalTab("programs")}
+              >
+                Programs & Domains
+                {formData.programs && formData.programs.length > 0 && (
+                  <span
+                    style={{
+                      background: "#eff6ff",
+                      color: "#2563eb",
+                      fontSize: "0.68rem",
+                      padding: "1px 6px",
+                      borderRadius: "10px",
+                      fontWeight: "700"
+                    }}
+                  >
+                    {formData.programs.length}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Modal Form */}
@@ -972,6 +1021,105 @@ function AdminDepartments() {
                           setFormData({ ...formData, allowStaffRecords: e.target.checked });
                         }}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {modalTab === "programs" && (
+                  <div className="dept-programs-container">
+                    <div className="dept-programs-header-note">
+                      <div className="dept-programs-note-icon">
+                        <GraduationCapIcon width="20" height="20" />
+                      </div>
+                      <div className="dept-programs-note-text">
+                        <h4>Department Academic Programs / Domains</h4>
+                        <p>
+                          Define the degree programs and courses offered under this department (e.g., <em>B.Tech - CSE, BCA, MBA</em>).
+                          Students will dynamically choose from this list after choosing this school.
+                        </p>
+                      </div>
+                    </div>
+
+                    {!formData.isAcademic && (
+                      <div className="dept-programs-warning">
+                        <AlertCircleIcon width="16" height="16" />
+                        <span>
+                          <strong>Notice:</strong> This department is currently not marked as an <em>Academic Department</em> in General Information. Mark it as academic so students can select it.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Add Program Input Row */}
+                    <div className="dept-program-add-box">
+                      <label className="dept-form-label">Add New Program / Domain</label>
+                      <div className="dept-program-input-row">
+                        <input
+                          type="text"
+                          className="dept-form-input"
+                          placeholder="e.g. B.Tech - Computer Science, BCA, MBA"
+                          value={newProgramInput}
+                          onChange={(e) => setNewProgramInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddProgram();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="dept-btn-add-prog"
+                          onClick={handleAddProgram}
+                          disabled={!newProgramInput.trim()}
+                        >
+                          <PlusIcon width="16" height="16" /> Add
+                        </button>
+                      </div>
+                      <span className="dept-program-input-hint">
+                        Type program name and press <strong>Enter</strong> or click <strong>Add</strong>.
+                      </span>
+                    </div>
+
+                    {/* Program List */}
+                    <div className="dept-programs-list-section">
+                      <div className="dept-programs-list-header">
+                        <span className="dept-programs-count-title">
+                          Configured Programs ({formData.programs?.length || 0})
+                        </span>
+                        {formData.programs && formData.programs.length > 1 && (
+                          <button
+                            type="button"
+                            className="dept-programs-clear-btn"
+                            onClick={() => setFormData((prev) => ({ ...prev, programs: [] }))}
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+
+                      {(!formData.programs || formData.programs.length === 0) ? (
+                        <div className="dept-programs-empty">
+                          <p>No programs added yet.</p>
+                          <small>Use the input above to add programs for this department.</small>
+                        </div>
+                      ) : (
+                        <div className="dept-program-chips-wrap">
+                          {formData.programs.map((program, idx) => (
+                            <div key={idx} className="dept-program-chip">
+                              <span className="dept-program-chip-text">{program}</span>
+                              <button
+                                type="button"
+                                className="dept-program-chip-del"
+                                onClick={() => handleRemoveProgram(program)}
+                                title={`Remove ${program}`}
+                                aria-label={`Remove ${program}`}
+                              >
+                                <XIcon width="14" height="14" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
