@@ -21,6 +21,7 @@ import {
 } from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
+import MaintenanceControlPanel from "../components/MaintenanceControlPanel";
 import { getDeptAdminRoute } from "../App";
 
 const formatDate = (dateString) => {
@@ -406,6 +407,7 @@ function AdminDashboard() {
 
       {/* BODY */}
       <main className="dashboard-body admin-dashboard-body">
+        {isMasterAdmin && <MaintenanceControlPanel />}
         {activeTab === "staff" && canManageStaff && <StaffRoleManager />}
         {activeTab === "departments" && isMasterAdmin && <AdminDepartments />}
         {activeTab === "registered_users" && isMasterAdmin && (

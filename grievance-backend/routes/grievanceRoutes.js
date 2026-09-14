@@ -6,6 +6,7 @@ import Grievance from "../models/GrievanceModel.js";
 
 import {
   submitGrievance,
+  checkSubmissionLimit,
   getAllGrievances,
   getCategoryGrievances,
   getUserGrievances,
@@ -31,6 +32,9 @@ const router = express.Router();
 
 // ✅ Student submits grievance
 router.post("/submit", submitGrievance);
+
+// ⏱️ Check 24-hour grievance submission limit
+router.get("/submission-limit/:userId", checkSubmissionLimit);
 
 // ✅ Student grievance history
 router.get("/user/:userId", getUserGrievances); // Reuse for user grievances

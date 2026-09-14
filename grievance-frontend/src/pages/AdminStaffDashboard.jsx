@@ -23,6 +23,8 @@ import {
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import GenericAdminNavbar from "../components/GenericAdminNavbar";
+import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
+import { useMaintenance } from "../context/MaintenanceContext";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -68,6 +70,7 @@ const schools = [
 
 function AdminStaffDashboard() {
   const navigate = useNavigate();
+  const { isMaintenanceActive } = useMaintenance();
 
   //  Get Details from LocalStorage (Faster & Error Free)
   const role = localStorage.getItem("grievance_role")?.toLowerCase();
@@ -955,6 +958,9 @@ function AdminStaffDashboard() {
       />
 
       <main className="dashboard-body">
+        {/* 🛠️ System Maintenance Announcement */}
+        <MaintenanceNoticeBanner mode="dashboard" />
+
         {/* In-Page Subtabs for Records & Users (Desktop Only) */}
         {isViewingRecords && recordToolsCount > 1 && (
           <div className="dept-records-subnav-bar admin-desktop-only">
@@ -1453,6 +1459,9 @@ function AdminStaffDashboard() {
               <h2>Submit Staff Grievance</h2>
               <p>Select the relevant School/Department. It will be routed to the Head of Department.</p>
 
+              {/* 🛠️ Maintenance Notice */}
+              <MaintenanceNoticeBanner mode="form" />
+
               <form onSubmit={handleSubmit}>
                 <div className="form-row">
                   <div className="input-group">
@@ -1533,9 +1542,17 @@ function AdminStaffDashboard() {
                 <button
                   type="submit"
                   className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
-                  disabled={isSubmitting || isSubmitted}
+                  disabled={isSubmitting || isSubmitted || isMaintenanceActive}
                   style={
-                    isSubmitted
+                    isMaintenanceActive
+                      ? {
+                          background: "#94a3b8",
+                          color: "#ffffff",
+                          cursor: "not-allowed",
+                          opacity: 0.7,
+                          boxShadow: "none"
+                        }
+                      : isSubmitted
                       ? {
                           background: "linear-gradient(135deg, #16a34a, #15803d)",
                           color: "#ffffff",
@@ -1553,7 +1570,7 @@ function AdminStaffDashboard() {
                       : {}
                   }
                 >
-                  {isSubmitted ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircleIcon width="16" height="16" /> Submitted!</span> : isSubmitting ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><ClockIcon width="16" height="16" /> Submitting...</span> : "Submit Grievance"}
+                  {isMaintenanceActive ? "🔒 Submissions Paused (Maintenance)" : isSubmitted ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircleIcon width="16" height="16" /> Submitted!</span> : isSubmitting ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><ClockIcon width="16" height="16" /> Submitting...</span> : "Submit Grievance"}
                 </button>
 
                 {msg && (

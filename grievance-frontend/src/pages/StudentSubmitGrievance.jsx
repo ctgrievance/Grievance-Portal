@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "../styles/Dashboard.css";
 import StudentNavbar from "../components/StudentNavbar";
+import SubmissionLimitBanner from "../components/SubmissionLimitBanner";
+import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
+import { useMaintenance } from "../context/MaintenanceContext";
 import ctLogo from "../assets/ct-logo.png";
 import { GraduationCapIcon } from "../components/Icons";
 
@@ -34,6 +37,8 @@ function StudentSubmitGrievance() {
   const [loading, setLoading] = useState(true);
   const [issueTypes, setIssueTypes] = useState([]);
   const [selectedIssueType, setSelectedIssueType] = useState("");
+  const [canSubmit, setCanSubmit] = useState(true);
+  const { isMaintenanceActive } = useMaintenance();
 
   // Auth Check
   useEffect(() => {
@@ -234,6 +239,11 @@ function StudentSubmitGrievance() {
         <div className="card">
           <h2>Submit {activeDepartment} Grievance</h2>
 
+          <SubmissionLimitBanner
+            userId={userId}
+            onLimitStatusChange={(status) => setCanSubmit(status.canSubmit)}
+          />
+
           {loading ? (
             <p>Loading your details...</p>
           ) : (
@@ -320,34 +330,40 @@ function StudentSubmitGrievance() {
               </div>
 
               <div className="input-group">
-                <label>Message</label>
+                <label>Grievance Details</label>
                 <textarea
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
-                  rows="4"
-                  placeholder="Details..."
                   required
-                ></textarea>
+                  placeholder="Explain your issue in detail..."
+                />
               </div>
 
               <div className="input-group">
-                <label>Attach Document (Optional)</label>
+                <label>Attachment (Optional)</label>
                 <input
-                  id="fileInput"
                   type="file"
+                  id="fileInput"
                   onChange={handleFileChange}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="file-input"
+                  accept=".jpg,.jpeg,.png,.pdf,.docx"
                 />
               </div>
 
               <button
                 type="submit"
                 className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
-                disabled={isSubmitting || isSubmitted}
+                disabled={isSubmitting || isSubmitted || !canSubmit || isMaintenanceActive}
                 style={
-                  isSubmitted
+                  isMaintenanceActive || !canSubmit
+                    ? {
+                        background: "#94a3b8",
+                        color: "#ffffff",
+                        cursor: "not-allowed",
+                        opacity: 0.7,
+                        boxShadow: "none"
+                      }
+                    : isSubmitted
                     ? {
                         background: "linear-gradient(135deg, #16a34a, #15803d)",
                         color: "#ffffff",
@@ -365,7 +381,15 @@ function StudentSubmitGrievance() {
                     : {}
                 }
               >
-                {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
+                {isMaintenanceActive
+                  ? "🔒 Submissions Paused (Maintenance)"
+                  : !canSubmit
+                  ? "🔒 Cooldown Active (1 Grievance / 24h)"
+                  : isSubmitted
+                  ? "✅ Submitted!"
+                  : isSubmitting
+                  ? "⏳ Submitting..."
+                  : "Submit Grievance"}
               </button>
 
               {msg && (

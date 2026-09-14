@@ -3,6 +3,7 @@ import User from "../models/UserModel.js";
 import StaffUser from "../models/StaffUser.js";
 import StaffRecord from "../models/StaffRecord.js";
 import IssueType from "../models/IssueType.js";
+import SystemConfig from "../models/SystemConfig.js";
 import nodemailer from "nodemailer";
 import { autoAssignGrievance } from "./routingRuleController.js";
 import {
@@ -17,6 +18,16 @@ import {
 ===================================================== */
 export const submitGrievance = async (req, res) => {
   try {
+    // 🛠️ 0. MAINTENANCE MODE CHECK: Block incoming grievances when active
+    const systemConfig = await SystemConfig.findOne({ key: "portal_settings" });
+    if (systemConfig && systemConfig.isMaintenanceActive) {
+      return res.status(503).json({
+        message: systemConfig.maintenanceMessage || "The portal is currently under scheduled maintenance. Grievance submissions are paused.",
+        isMaintenance: true,
+        reason: systemConfig.maintenanceReason || "Scheduled Maintenance"
+      });
+    }
+
     const {
       userId,
       name,
@@ -59,6 +70,40 @@ export const submitGrievance = async (req, res) => {
       /^\d{5}$/.test(String(userId || "").trim());
 
     const resolvedUserType = isStaffSubmitter ? "staff" : (req.body.userType || "student");
+
+    // ⏱️ 24-HOUR SINGLE GRIEVANCE LIMIT FOR STUDENTS
+    if (resolvedUserType === "student" && userId) {
+      const safeUserId = userId.toString().trim();
+      const lastGrievance = await Grievance.findOne({
+        userId: safeUserId,
+        userType: { $ne: "staff" }
+      }).sort({ createdAt: -1 });
+
+      if (lastGrievance) {
+        const lastSubmissionTime = new Date(lastGrievance.createdAt).getTime();
+        const now = Date.now();
+        const elapsedMs = now - lastSubmissionTime;
+        const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+
+        if (elapsedMs < cooldownMs) {
+          const remainingMs = cooldownMs - elapsedMs;
+          const remainingHours = Math.floor(remainingMs / (60 * 60 * 1000));
+          const remainingMinutes = Math.ceil((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+          const nextAllowedAt = new Date(lastSubmissionTime + cooldownMs);
+
+          return res.status(429).json({
+            message: `You can only submit 1 grievance every 24 hours. Next submission available in ${remainingHours}h ${remainingMinutes}m.`,
+            canSubmit: false,
+            cooldownActive: true,
+            remainingMs,
+            remainingHours,
+            remainingMinutes,
+            nextAllowedAt,
+            lastSubmissionAt: lastGrievance.createdAt
+          });
+        }
+      }
+    }
 
     const grievance = await Grievance.create({
       userId,
@@ -111,6 +156,75 @@ export const submitGrievance = async (req, res) => {
       message: "Failed to submit grievance",
       error: err.message || "Unknown error"
     });
+  }
+};
+
+// =====================================================
+// ⏱️ CHECK 24-HOUR SUBMISSION LIMIT STATUS
+// =====================================================
+export const checkSubmissionLimit = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const safeUserId = userId.toString().trim();
+
+    // Staff members and admin staff are exempt
+    const isStaff = /^\d{5}$/.test(safeUserId);
+    if (isStaff) {
+      return res.status(200).json({
+        canSubmit: true,
+        cooldownActive: false,
+        isExempt: true
+      });
+    }
+
+    const lastGrievance = await Grievance.findOne({
+      userId: safeUserId,
+      userType: { $ne: "staff" }
+    }).sort({ createdAt: -1 });
+
+    if (!lastGrievance) {
+      return res.status(200).json({
+        canSubmit: true,
+        cooldownActive: false
+      });
+    }
+
+    const lastSubmissionTime = new Date(lastGrievance.createdAt).getTime();
+    const now = Date.now();
+    const elapsedMs = now - lastSubmissionTime;
+    const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+
+    if (elapsedMs < cooldownMs) {
+      const remainingMs = cooldownMs - elapsedMs;
+      const remainingHours = Math.floor(remainingMs / (60 * 60 * 1000));
+      const remainingMinutes = Math.ceil((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+      const nextAllowedAt = new Date(lastSubmissionTime + cooldownMs);
+
+      return res.status(200).json({
+        canSubmit: false,
+        cooldownActive: true,
+        remainingMs,
+        remainingHours,
+        remainingMinutes,
+        nextAllowedAt,
+        lastSubmissionAt: lastGrievance.createdAt,
+        message: `You can only submit 1 grievance every 24 hours. Next submission available in ${remainingHours}h ${remainingMinutes}m.`
+      });
+    }
+
+    return res.status(200).json({
+      canSubmit: true,
+      cooldownActive: false,
+      lastSubmissionAt: lastGrievance.createdAt
+    });
+
+  } catch (err) {
+    console.error("Check submission limit error:", err);
+    res.status(500).json({ message: "Failed to check submission limit" });
   }
 };
 

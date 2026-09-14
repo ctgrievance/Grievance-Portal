@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import { MaintenanceProvider } from "./context/MaintenanceContext";
 
 // Lazy-load dashboards for fast initial bundle load
 const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
@@ -59,6 +60,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   const id = localStorage.getItem("grievance_id")?.toUpperCase();
   const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true"; // Boss
   const isMasterAdmin = localStorage.getItem("is_master_admin") === "true"; // Master
+
   let adminDept = localStorage.getItem("admin_department");
   let adminDepts = [];
   try {
@@ -141,28 +143,29 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 function App() {
   return (
-    <Router>
-      <Suspense
-        fallback={
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: "100vh",
-              fontFamily: "Outfit, sans-serif",
-              color: "#6366f1",
-              fontSize: "1.1rem",
-              fontWeight: 500,
-            }}
-          >
-            Loading...
-          </div>
-        }
-      >
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+    <MaintenanceProvider>
+      <Router>
+        <Suspense
+          fallback={
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: "100vh",
+                fontFamily: "Outfit, sans-serif",
+                color: "#6366f1",
+                fontSize: "1.1rem",
+                fontWeight: 500,
+              }}
+            >
+              Loading...
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
           {/* --- STUDENT ROUTES --- */}
           <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
@@ -217,7 +220,8 @@ function App() {
         </Routes>
       </Suspense>
     </Router>
-  );
+  </MaintenanceProvider>
+);
 }
 
 export default App;

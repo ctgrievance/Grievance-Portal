@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
 import StudentNavbar from "../components/StudentNavbar";
+import SubmissionLimitBanner from "../components/SubmissionLimitBanner";
+import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
+import { useMaintenance } from "../context/MaintenanceContext";
 import ctLogo from "../assets/ct-logo.png";
 import { GraduationCapIcon } from "../components/Icons";
 
@@ -26,6 +29,7 @@ function Department() {
   const navigate = useNavigate();
   const role = localStorage.getItem("grievance_role");
   const userId = localStorage.getItem("grievance_id");
+  const { isMaintenanceActive } = useMaintenance();
 
   const categoryTitle = "Academic Department";
 
@@ -41,6 +45,7 @@ function Department() {
   const [loading, setLoading] = useState(true);
   const [issueTypes, setIssueTypes] = useState([]);
   const [selectedIssueType, setSelectedIssueType] = useState("");
+  const [canSubmit, setCanSubmit] = useState(true);
   const [schoolsList, setSchoolsList] = useState(Object.keys(academicPrograms));
 
   // Fetch dynamic active schools / departments
@@ -51,11 +56,11 @@ function Department() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            // Include all active student-facing departments & schools
-            const studentDepts = data
-              .filter((d) => d.targetAudience === "both" || d.targetAudience === "student" || !d.targetAudience)
+            // Include ONLY active academic departments/schools (exclude administrative departments)
+            const academicDepts = data
+              .filter((d) => Boolean(d.isAcademic))
               .map((d) => d.name);
-            setSchoolsList(studentDepts.length > 0 ? studentDepts : data.map((d) => d.name));
+            setSchoolsList(academicDepts.length > 0 ? academicDepts : Object.keys(academicPrograms));
           }
         }
       } catch (err) {
@@ -223,6 +228,11 @@ function Department() {
         <div className="card">
           <h2>Submit {categoryTitle} Grievance</h2>
 
+          <SubmissionLimitBanner
+            userId={userId}
+            onLimitStatusChange={(status) => setCanSubmit(status.canSubmit)}
+          />
+
           {loading ? (
             <p>Loading your details...</p>
           ) : (
@@ -301,9 +311,17 @@ function Department() {
               <button
                 type="submit"
                 className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
-                disabled={isSubmitting || isSubmitted}
+                disabled={isSubmitting || isSubmitted || !canSubmit || isMaintenanceActive}
                 style={
-                  isSubmitted
+                  isMaintenanceActive || !canSubmit
+                    ? {
+                        background: "#94a3b8",
+                        color: "#ffffff",
+                        cursor: "not-allowed",
+                        opacity: 0.7,
+                        boxShadow: "none"
+                      }
+                    : isSubmitted
                     ? {
                         background: "linear-gradient(135deg, #16a34a, #15803d)",
                         color: "#ffffff",
@@ -321,7 +339,15 @@ function Department() {
                     : {}
                 }
               >
-                {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
+                {isMaintenanceActive
+                  ? "🔒 Submissions Paused (Maintenance)"
+                  : !canSubmit
+                  ? "🔒 Cooldown Active (1 Grievance / 24h)"
+                  : isSubmitted
+                  ? "✅ Submitted!"
+                  : isSubmitting
+                  ? "⏳ Submitting..."
+                  : "Submit Grievance"}
               </button>
 
               {msg && (

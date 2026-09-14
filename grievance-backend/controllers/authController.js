@@ -548,7 +548,16 @@ export const forgotPassword = async (req, res) => {
       return res.status(404).json({ message: "No registered user found with this University ID." });
     }
 
-    const email = user.email || staffUser?.email || studentUser?.email || legacyUser?.email || "";
+    let email = user.email || staffUser?.email || studentUser?.email || legacyUser?.email || "";
+
+    // Fallback to official records if email is missing on user document
+    if (!email) {
+      const [studentRecord, staffRecord] = await Promise.all([
+        StudentRecord.findOne({ id: safeId }),
+        StaffRecord.findOne({ id: safeId })
+      ]);
+      email = studentRecord?.email || staffRecord?.email || "";
+    }
 
     if (!email) {
       return res.status(400).json({ message: "No registered email address found for this account. Please contact Administrator." });
@@ -573,7 +582,11 @@ export const forgotPassword = async (req, res) => {
     // Send OTP strictly via Email (saves SMS API cost)
     if (global.logOTP) global.logOTP("PASSWORD RESET (EMAIL)", email, otp);
     console.log(`🔑 [PASSWORD RESET OTP] ID: ${safeId} | Email: ${email} | OTP: ${otp}`);
-    await sendEmailOtp(email, otp, "🔐 Your Password Reset OTP - Grievance Portal", "to reset your password");
+    const emailResult = await sendEmailOtp(email, otp, "🔐 Your Password Reset OTP - Grievance Portal", "to reset your password");
+
+    if (emailResult && emailResult.success === false) {
+      return res.status(500).json({ message: "Failed to send reset email. Please try again later or contact support." });
+    }
 
     return res.status(200).json({
       message: `Password reset OTP has been sent to your registered email (${maskedEmail}).`,
@@ -658,17 +671,16 @@ export const resetPassword = async (req, res) => {
 
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    const clearPayload = {
-      password: hashedPassword,
-      resetOtp: undefined,
-      resetOtpExpires: undefined
+    const updateDoc = {
+      $set: { password: hashedPassword },
+      $unset: { resetOtp: "", resetOtpExpires: "" }
     };
 
     // Update across all collections to stay in sync
     await Promise.all([
-      StudentUser.updateOne({ id: safeId }, clearPayload),
-      StaffUser.updateOne({ id: safeId }, clearPayload),
-      User.updateOne({ id: safeId }, clearPayload)
+      StudentUser.updateOne({ id: safeId }, updateDoc),
+      StaffUser.updateOne({ id: safeId }, updateDoc),
+      User.updateOne({ id: safeId }, updateDoc)
     ]);
 
     res.status(200).json({ message: "✅ Password reset successfully. You can now login with your new password." });
@@ -878,6 +890,14 @@ export const requestEmailOtp = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found." });
 
+    // Students cannot modify contact details directly; must contact Student Section
+    const isStudentUser = (user.role === "student") || (await StudentUser.findOne({ id: userId }));
+    if (isStudentUser) {
+      return res.status(403).json({
+        message: "Student contact details cannot be updated directly from the portal. Please contact the Student Section to update your email or phone."
+      });
+    }
+
     user.pendingEmail = cleanEmail;
     user.pendingEmailOtp = otp;
     user.pendingEmailOtpExpires = expires;
@@ -986,6 +1006,14 @@ export const requestPhoneOtp = async (req, res) => {
                await User.findOne({ id: userId });
 
     if (!user) return res.status(404).json({ message: "User not found." });
+
+    // Students cannot modify contact details directly; must contact Student Section
+    const isStudentUser = (user.role === "student") || (await StudentUser.findOne({ id: userId }));
+    if (isStudentUser) {
+      return res.status(403).json({
+        message: "Student contact details cannot be updated directly from the portal. Please contact the Student Section to update your email or phone."
+      });
+    }
 
     user.pendingPhone = cleanPhone;
     user.pendingPhoneOtp = otp;

@@ -9,6 +9,8 @@ import { playNotificationSound } from "../utils/soundAlert";
 import Verifications from "../components/Verifications";
 import StudentNavbar from "../components/StudentNavbar";
 import StudentServiceGrid from "../components/StudentServiceGrid";
+import SubmissionLimitBanner from "../components/SubmissionLimitBanner";
+import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import ctLogo from "../assets/ct-logo.png";
 import {
@@ -500,6 +502,12 @@ function StudentDashboard() {
             </div>
           </div>
         )}
+
+        {/* 🛠️ System Maintenance Announcement */}
+        <MaintenanceNoticeBanner mode="dashboard" />
+
+        {/* ⏱️ 24-Hour Grievance Cooldown Notification (Timer Only) */}
+        <SubmissionLimitBanner userId={userId} timerOnly={true} />
 
         {/* ✅ 2. SERVICES GRID (Lodge Grievance) */}
         <StudentServiceGrid departments={departments} />

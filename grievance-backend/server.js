@@ -34,6 +34,7 @@ import routingRuleRoutes from "./routes/routingRuleRoutes.js"; // NEW: Routing R
 import staffPoolRoutes from "./routes/staffPoolRoutes.js"; // NEW: Staff Pool Routes
 import departmentRoutes from "./routes/departmentRoutes.js"; // NEW: Dynamic Departments
 import registeredUserRoutes from "./routes/registeredUserRoutes.js"; // NEW: Live Registered Users
+import systemRoutes from "./routes/systemRoutes.js"; // NEW: System & Maintenance Routes
 import Department from "./models/Department.js"; // NEW: Department Model
 import StudentRecord from "./models/StudentRecord.js"; // NEW: Student Records
 import StaffRecord from "./models/StaffRecord.js"; // NEW: Staff/Admin Records
@@ -100,6 +101,7 @@ app.use("/api/routing-rules", routingRuleRoutes); // NEW: Routing Rule Routes
 app.use("/api/staff-pool", staffPoolRoutes); // NEW: Staff Pool Routes
 app.use("/api/departments", departmentRoutes); // NEW: Dynamic Departments Routes
 app.use("/api/registered-users", registeredUserRoutes); // NEW: Live Registered Students and Staff Routes
+app.use("/api/system", systemRoutes); // NEW: System & Maintenance Routes
 
 // ------------------ 2️⃣ Database & GridFS Init ------------------
 connectDB();

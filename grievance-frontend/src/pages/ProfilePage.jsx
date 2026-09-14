@@ -57,6 +57,8 @@ function ProfilePage() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneTimer, setPhoneTimer] = useState(0);
 
+  const isStudent = (profile.role || localStorage.getItem("grievance_role") || "").toLowerCase() === "student";
+
   // Notification helper
   const showToast = (text, type = "success") => {
     setMsg(text);
@@ -669,9 +671,36 @@ function ProfilePage() {
                   </div>
                   <div>
                     <h3>Security & Contact Verification</h3>
-                    <p>Two-factor OTP authentication is required to update verified email or phone numbers.</p>
+                    <p>
+                      {isStudent
+                        ? "Contact information is linked to your official university records."
+                        : "Two-factor OTP authentication is required to update verified email or phone numbers."}
+                    </p>
                   </div>
                 </div>
+
+                {isStudent && (
+                  <div
+                    style={{
+                      margin: "0 0 16px 0",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      backgroundColor: "#eff6ff",
+                      border: "1px solid #bfdbfe",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "10px",
+                      color: "#1e40af",
+                      fontSize: "0.85rem",
+                      lineHeight: "1.45"
+                    }}
+                  >
+                    <AlertCircleIcon width="18" height="18" style={{ flexShrink: 0, marginTop: "2px", color: "#2563eb" }} />
+                    <div>
+                      <strong>Official Student Record Notice:</strong> Email address and mobile phone number cannot be modified directly from this portal. To update your registered contact details, please contact the <strong>Student Section</strong>.
+                    </div>
+                  </div>
+                )}
 
                 {/* EMAIL ITEM */}
                 <div className="profile-contact-item">
@@ -691,40 +720,61 @@ function ProfilePage() {
                       </div>
                     </div>
 
-                    {!showEmailEdit ? (
-                      <button
-                        type="button"
-                        className="profile-contact-btn"
-                        onClick={() => {
-                          setShowEmailEdit(true);
-                          setEmailStep(1);
-                          setNewEmail("");
-                          setEmailOtp("");
-                        }}
-                      >
-                        Change Email
-                      </button>
+                    {!isStudent ? (
+                      !showEmailEdit ? (
+                        <button
+                          type="button"
+                          className="profile-contact-btn"
+                          onClick={() => {
+                            setShowEmailEdit(true);
+                            setEmailStep(1);
+                            setNewEmail("");
+                            setEmailOtp("");
+                          }}
+                        >
+                          Change Email
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailEdit(false)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#64748b",
+                            fontSize: "0.84rem",
+                            cursor: "pointer",
+                            fontWeight: "500",
+                            textDecoration: "underline"
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      )
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowEmailEdit(false)}
+                      <span
                         style={{
-                          background: "none",
-                          border: "none",
-                          color: "#64748b",
-                          fontSize: "0.84rem",
-                          cursor: "pointer",
-                          fontWeight: "500",
-                          textDecoration: "underline"
+                          fontSize: "0.78rem",
+                          fontWeight: "600",
+                          color: "#475569",
+                          backgroundColor: "#f1f5f9",
+                          padding: "6px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          whiteSpace: "nowrap"
                         }}
+                        title="Contact the Student Section to update your verified email address"
                       >
-                        Cancel
-                      </button>
+                        🔒 Contact Student Section
+                      </span>
                     )}
                   </div>
 
                   {/* Email Edit OTP Drawer */}
-                  {showEmailEdit && (
+                  {!isStudent && showEmailEdit && (
                     <div className="profile-otp-drawer">
                       {emailStep === 1 ? (
                         <div className="profile-otp-form-row">
@@ -820,40 +870,61 @@ function ProfilePage() {
                       </div>
                     </div>
 
-                    {!showPhoneEdit ? (
-                      <button
-                        type="button"
-                        className="profile-contact-btn"
-                        onClick={() => {
-                          setShowPhoneEdit(true);
-                          setPhoneStep(1);
-                          setNewPhone("");
-                          setPhoneOtp("");
-                        }}
-                      >
-                        {profile.phone ? "Change Phone" : "Add Phone"}
-                      </button>
+                    {!isStudent ? (
+                      !showPhoneEdit ? (
+                        <button
+                          type="button"
+                          className="profile-contact-btn"
+                          onClick={() => {
+                            setShowPhoneEdit(true);
+                            setPhoneStep(1);
+                            setNewPhone("");
+                            setPhoneOtp("");
+                          }}
+                        >
+                          {profile.phone ? "Change Phone" : "Add Phone"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowPhoneEdit(false)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#64748b",
+                            fontSize: "0.84rem",
+                            cursor: "pointer",
+                            fontWeight: "500",
+                            textDecoration: "underline"
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      )
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowPhoneEdit(false)}
+                      <span
                         style={{
-                          background: "none",
-                          border: "none",
-                          color: "#64748b",
-                          fontSize: "0.84rem",
-                          cursor: "pointer",
-                          fontWeight: "500",
-                          textDecoration: "underline"
+                          fontSize: "0.78rem",
+                          fontWeight: "600",
+                          color: "#475569",
+                          backgroundColor: "#f1f5f9",
+                          padding: "6px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          whiteSpace: "nowrap"
                         }}
+                        title="Contact the Student Section to update your verified mobile number"
                       >
-                        Cancel
-                      </button>
+                        🔒 Contact Student Section
+                      </span>
                     )}
                   </div>
 
                   {/* Phone Edit OTP Drawer */}
-                  {showPhoneEdit && (
+                  {!isStudent && showPhoneEdit && (
                     <div className="profile-otp-drawer">
                       {phoneStep === 1 ? (
                         <div className="profile-otp-form-row">

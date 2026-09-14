@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/Dashboard.css";
 import StudentNavbar from "../components/StudentNavbar";
+import SubmissionLimitBanner from "../components/SubmissionLimitBanner";
 import ctLogo from "../assets/ct-logo.png";
 import { GraduationCapIcon } from "../components/Icons";
 
@@ -27,6 +28,8 @@ function StudentTransport() {
     const [loading, setLoading] = useState(true);
     const [issueTypes, setIssueTypes] = useState([]);
     const [selectedIssueType, setSelectedIssueType] = useState("");
+    const [canSubmit, setCanSubmit] = useState(true);
+    const [isMaintenance, setIsMaintenance] = useState(false);
 
     // Route protection
     useEffect(() => {
@@ -194,6 +197,14 @@ function StudentTransport() {
                 <div className="card">
                     <h2>Submit Transport Grievance</h2>
 
+                    <SubmissionLimitBanner
+                        userId={userId}
+                        onLimitStatusChange={(status) => {
+                            setCanSubmit(status.canSubmit);
+                            setIsMaintenance(!!status.isMaintenance);
+                        }}
+                    />
+
                     {loading ? (
                         <p>Loading your details...</p>
                     ) : (
@@ -300,9 +311,17 @@ function StudentTransport() {
                             <button
                                 type="submit"
                                 className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
-                                disabled={isSubmitting || isSubmitted}
+                                disabled={isSubmitting || isSubmitted || !canSubmit}
                                 style={
-                                  isSubmitted
+                                  !canSubmit
+                                    ? {
+                                        background: "#94a3b8",
+                                        color: "#ffffff",
+                                        cursor: "not-allowed",
+                                        opacity: 0.7,
+                                        boxShadow: "none"
+                                      }
+                                    : isSubmitted
                                     ? {
                                         background: "linear-gradient(135deg, #16a34a, #15803d)",
                                         color: "#ffffff",
@@ -320,7 +339,13 @@ function StudentTransport() {
                                     : {}
                                 }
                               >
-                                {isSubmitted ? "✅ Submitted!" : isSubmitting ? "⏳ Submitting..." : "Submit Grievance"}
+                                {!canSubmit
+                                  ? (isMaintenance ? "🔒 Submissions Paused (Maintenance)" : "🔒 Cooldown Active (1 Grievance / 24h)")
+                                  : isSubmitted
+                                  ? "✅ Submitted!"
+                                  : isSubmitting
+                                  ? "⏳ Submitting..."
+                                  : "Submit Grievance"}
                               </button>
 
                               {msg && (
