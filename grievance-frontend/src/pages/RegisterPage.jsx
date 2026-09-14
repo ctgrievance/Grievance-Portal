@@ -3,31 +3,38 @@ import { Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 // Icons
-import { UserIcon, LockIcon, PhoneIcon, MailIcon, UsersIcon, BookIcon, EyeIcon, EyeOffIcon, KeyIcon, ClipboardIcon } from "../components/Icons";
+import { UserIcon, LockIcon, MailIcon, PhoneIcon, UsersIcon, EyeIcon, EyeOffIcon, ClipboardIcon, GraduationCapIcon } from "../components/Icons";
 
-const academicPrograms = {
-  "School of Engineering and Technology": ["B.Tech - CSE", "B.Tech - AI", "B.Tech - Civil", "B.Tech - Mech", "BCA", "MCA"],
-  "School of Management Studies": ["BBA", "MBA", "B.Com"],
-  "School of Law": ["BA LL.B", "LL.B", "LL.M"],
-  "School of Pharmaceutical Sciences": ["B.Pharm", "D.Pharm"],
-  "School of Design": ["B.Des", "B.Sc Animation"],
-  "School of Health Sciences": ["BPT", "B.Sc MLT"]
-};
+const fallbackAcademicDepartments = [
+  "School of Engineering and Technology",
+  "School of Management Studies",
+  "School of Hotel Management",
+  "School of Law",
+  "School of Pharmaceutical Sciences",
+  "School of Design and innovation",
+  "School of Allied Health Sciences",
+  "School of Social Sciences and Liberal Arts"
+];
 
 function RegisterPage() {
-  const [formData, setFormData] = useState({ id: "", role: "", studentType: "current", fullName: "", email: "", phone: "", password: "", program: "", department: "" });
+  const [formData, setFormData] = useState({ id: "", role: "", studentType: "current", fullName: "", email: "", phone: "", password: "", program: "", department: "", school: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [staffDepartments, setStaffDepartments] = useState([]);
+  const [academicDepartments, setAcademicDepartments] = useState([]);
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) setStaffDepartments(data);
+        if (Array.isArray(data)) {
+          setStaffDepartments(data);
+          const academic = data.filter(d => Boolean(d.isAcademic));
+          setAcademicDepartments(academic);
+        }
       })
-      .catch(err => console.error("Error fetching departments for staff registration:", err));
+      .catch(err => console.error("Error fetching departments for registration:", err));
   }, []);
 
   // 🔐 OTP State
@@ -94,6 +101,12 @@ function RegisterPage() {
 
     if (formData.password !== confirmPassword) {
       setMsg("Passwords do not match!");
+      setStatusType("error");
+      return;
+    }
+
+    if (formData.role === 'student' && !formData.department && !formData.school && !formData.program) {
+      setMsg("Please select your academic department!");
       setStatusType("error");
       return;
     }
@@ -354,15 +367,31 @@ function RegisterPage() {
 
               {formData.role === 'student' && (
                 <div className="input-group">
-                  <label>Program & Domain</label>
+                  <label>Academic Department</label>
                   <div className="input-wrapper program-field">
-                    <span className="icon"><BookIcon /></span>
-                    <select name="program" value={formData.program} onChange={handleChange} required>
-                      <option value="">Select Your Program</option>
-                      {Object.entries(academicPrograms).map(([dept, courses]) => (
-                        <optgroup key={dept} label={dept}>
-                          {courses.map(course => <option key={course} value={course}>{course}</option>)}
-                        </optgroup>
+                    <span className="icon"><GraduationCapIcon /></span>
+                    <select
+                      name="department"
+                      value={formData.department || formData.program || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData((prev) => ({
+                          ...prev,
+                          department: val,
+                          school: val,
+                          program: val
+                        }));
+                      }}
+                      required
+                    >
+                      <option value="">Select Your Academic Department</option>
+                      {(academicDepartments.length > 0
+                        ? academicDepartments
+                        : fallbackAcademicDepartments.map((name) => ({ _id: name, name }))
+                      ).map((dept) => (
+                        <option key={dept._id || dept.name} value={dept.name}>
+                          {dept.name}
+                        </option>
                       ))}
                     </select>
                   </div>

@@ -6,6 +6,7 @@ import SubmissionLimitBanner from "../components/SubmissionLimitBanner";
 import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
 import { useMaintenance } from "../context/MaintenanceContext";
 import { GraduationCapIcon, LockIcon, CheckCircleIcon, ClockIcon } from "../components/Icons";
+import ctLogo from "../assets/ct-logo.png";
 
 function StudentSubmitGrievance() {
   const navigate = useNavigate();

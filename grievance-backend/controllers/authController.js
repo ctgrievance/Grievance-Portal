@@ -96,15 +96,33 @@ export const registerRequest = async (req, res) => {
 
     // Create user in appropriate collection
     if (userRole === "student") {
+      const studentDept = req.body.department || req.body.school || req.body.program || "";
       const studentData = {
         ...baseUserData,
         role: "student",
-        school: validRecord.school || req.body.school || "",
-        department: validRecord.school || req.body.department || "",
-        program: validRecord.program || req.body.program || "",
+        school: validRecord.school || req.body.school || studentDept,
+        department: validRecord.school || validRecord.department || studentDept,
+        program: validRecord.program || req.body.program || studentDept,
         studentType: validRecord.studentType || req.body.studentType || "",
       };
       await StudentUser.findOneAndUpdate({ id: safeId }, studentData, { upsert: true, new: true });
+
+      if (validRecord) {
+        let changed = false;
+        if (!validRecord.school && studentDept) {
+          validRecord.school = studentDept;
+          changed = true;
+        }
+        if (!validRecord.department && studentDept) {
+          validRecord.department = studentDept;
+          changed = true;
+        }
+        if (!validRecord.program && studentDept) {
+          validRecord.program = studentDept;
+          changed = true;
+        }
+        if (changed) await validRecord.save();
+      }
     } else {
       const staffDept = req.body.department || validRecord.department || "";
       const staffData = {
@@ -133,9 +151,9 @@ export const registerRequest = async (req, res) => {
       {
         ...baseUserData,
         role: userRole === "student" ? "student" : "staff",
-        school: userRole === "student" ? (validRecord.school || "") : "",
-        department: userRole === "student" ? (validRecord.school || "") : staffDeptBackup,
-        program: validRecord.program || "",
+        school: userRole === "student" ? (validRecord.school || req.body.school || req.body.department || "") : "",
+        department: userRole === "student" ? (validRecord.school || req.body.department || req.body.school || "") : staffDeptBackup,
+        program: userRole === "student" ? (validRecord.program || req.body.program || req.body.department || "") : "",
         staffDepartment: staffDeptBackup,
         isDeptAdmin: false,
         adminDepartment: "",

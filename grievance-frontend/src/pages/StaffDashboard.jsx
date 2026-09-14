@@ -9,6 +9,7 @@ import GenericAdminNavbar from "../components/GenericAdminNavbar";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
 import { useMaintenance } from "../context/MaintenanceContext";
+import ctLogo from "../assets/ct-logo.png";
 
 
 // Helper: format dates for tables
