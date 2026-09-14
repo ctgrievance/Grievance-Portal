@@ -1,5 +1,6 @@
 import React from "react";
 import { useMaintenance } from "../context/MaintenanceContext";
+import { WrenchIcon, LockIcon, ShieldAlertIcon } from "./Icons";
 
 export default function MaintenanceNoticeBanner({ mode = "dashboard", className = "" }) {
   const { isMaintenanceActive, maintenanceMessage, maintenanceReason } = useMaintenance();
@@ -12,87 +13,90 @@ export default function MaintenanceNoticeBanner({ mode = "dashboard", className 
         className={`maintenance-form-banner ${className}`}
         style={{
           margin: "0 0 20px 0",
-          padding: "16px 20px",
-          background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%)",
-          border: "1.5px solid rgba(99, 102, 241, 0.45)",
-          borderRadius: "14px",
-          color: "#ffffff",
-          boxShadow: "0 6px 24px rgba(79, 70, 229, 0.18)",
+          padding: "16px 18px",
+          background: "#ffffff",
+          border: "1px solid #fecaca",
+          borderLeft: "4px solid #dc2626",
+          borderRadius: "12px",
+          color: "#0f172a",
+          boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
           display: "flex",
           alignItems: "flex-start",
           gap: "14px",
-          position: "relative",
-          overflow: "hidden"
+          position: "relative"
         }}
       >
-        {/* Accent Top Gradient Line matching project theme */}
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "3px",
-            background: "linear-gradient(90deg, #6366f1, #9333ea, #ec4899)"
-          }}
-        />
-
-        <div
-          style={{
-            width: "42px",
-            height: "42px",
-            borderRadius: "10px",
-            background: "rgba(99, 102, 241, 0.2)",
-            border: "1px solid rgba(129, 140, 248, 0.4)",
+            width: "38px",
+            height: "38px",
+            borderRadius: "8px",
+            background: "#fee2e2",
+            color: "#dc2626",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "1.3rem",
             flexShrink: 0
           }}
         >
-          🛑
+          <ShieldAlertIcon width="20" height="20" />
         </div>
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
             <span
               style={{
-                background: "linear-gradient(135deg, #6366f1, #9333ea)",
-                color: "#ffffff",
-                padding: "3px 10px",
-                borderRadius: "12px",
+                backgroundColor: "#fee2e2",
+                color: "#b91c1c",
+                border: "1px solid #fca5a5",
+                padding: "2px 8px",
+                borderRadius: "10px",
                 fontSize: "0.72rem",
                 fontWeight: "700",
                 textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                boxShadow: "0 2px 8px rgba(99, 102, 241, 0.35)"
+                letterSpacing: "0.4px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
               }}
             >
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  backgroundColor: "#dc2626",
+                  display: "inline-block"
+                }}
+              />
               Submissions Paused
             </span>
-            <strong style={{ fontSize: "0.98rem", color: "#ffffff" }}>
+            <strong style={{ fontSize: "0.95rem", color: "#0f172a" }}>
               {maintenanceReason || "Scheduled Portal Maintenance Active"}
             </strong>
           </div>
-          <div style={{ fontSize: "0.88rem", color: "#c7d2fe", lineHeight: "1.5" }}>
+
+          <div style={{ fontSize: "0.86rem", color: "#475569", lineHeight: "1.5" }}>
             {maintenanceMessage ||
               "The Grievance Redressal Portal is currently under scheduled maintenance. Incoming grievance submissions are temporarily paused. Please check back shortly."}
           </div>
+
           <div
             style={{
-              marginTop: "8px",
-              paddingTop: "8px",
-              borderTop: "1px dashed rgba(165, 180, 252, 0.25)",
+              marginTop: "10px",
+              padding: "7px 12px",
+              borderRadius: "6px",
+              backgroundColor: "#fef2f2",
+              border: "1px solid #fee2e2",
               fontSize: "0.8rem",
-              color: "#a5b4fc",
+              color: "#991b1b",
               fontWeight: "600",
               display: "flex",
               alignItems: "center",
-              gap: "6px"
+              gap: "7px"
             }}
           >
-            <span>🔒</span>
+            <LockIcon width="13" height="13" />
             <span>Grievance form is locked. Submissions will automatically resume once maintenance is completed.</span>
           </div>
         </div>
@@ -106,74 +110,73 @@ export default function MaintenanceNoticeBanner({ mode = "dashboard", className 
       className={`maintenance-dashboard-banner ${className}`}
       style={{
         margin: "0 0 20px 0",
-        padding: "16px 22px",
-        background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%)",
-        border: "1.5px solid rgba(99, 102, 241, 0.4)",
-        borderRadius: "14px",
-        color: "#ffffff",
-        boxShadow: "0 8px 25px -5px rgba(79, 70, 229, 0.2), 0 4px 12px rgba(15, 23, 42, 0.12)",
+        padding: "16px 20px",
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        borderLeft: "4px solid #3b82f6",
+        borderRadius: "12px",
+        color: "#0f172a",
+        boxShadow: "0 1px 4px rgba(15, 23, 42, 0.04)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: "14px",
-        position: "relative",
-        overflow: "hidden"
+        position: "relative"
       }}
     >
-      {/* Accent Top Bar matching project theme gradient */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "3px",
-          background: "linear-gradient(90deg, #6366f1, #9333ea, #ec4899)"
-        }}
-      />
-
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: "280px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: "260px" }}>
         <div
           style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "12px",
-            background: "rgba(99, 102, 241, 0.2)",
-            border: "1px solid rgba(129, 140, 248, 0.45)",
+            width: "40px",
+            height: "40px",
+            borderRadius: "10px",
+            background: "#eff6ff",
+            border: "1px solid #dbeafe",
+            color: "#2563eb",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "1.4rem",
-            flexShrink: 0,
-            boxShadow: "0 2px 10px rgba(99, 102, 241, 0.25)"
+            flexShrink: 0
           }}
         >
-          🛠️
+          <WrenchIcon width="20" height="20" />
         </div>
 
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "3px" }}>
             <span
               style={{
-                background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-                color: "#ffffff",
-                padding: "3px 10px",
-                borderRadius: "12px",
+                backgroundColor: "#eff6ff",
+                color: "#1d4ed8",
+                border: "1px solid #bfdbfe",
+                padding: "2px 8px",
+                borderRadius: "10px",
                 fontSize: "0.72rem",
                 fontWeight: "700",
                 textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                boxShadow: "0 2px 8px rgba(99, 102, 241, 0.35)"
+                letterSpacing: "0.4px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
               }}
             >
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  backgroundColor: "#2563eb",
+                  display: "inline-block"
+                }}
+              />
               System Maintenance
             </span>
-            <strong style={{ fontSize: "1.02rem", color: "#ffffff", letterSpacing: "0.2px" }}>
+            <strong style={{ fontSize: "0.98rem", color: "#0f172a" }}>
               Grievance Submissions Temporarily Paused
             </strong>
           </div>
-          <div style={{ fontSize: "0.86rem", color: "#c7d2fe", lineHeight: "1.45" }}>
+          <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: "1.45" }}>
             {maintenanceMessage ||
               "The portal is undergoing scheduled maintenance. New grievance submissions are paused. You can still view your dashboard, history, and status updates."}
           </div>
@@ -184,24 +187,24 @@ export default function MaintenanceNoticeBanner({ mode = "dashboard", className 
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "8px",
-          padding: "6px 14px",
+          gap: "7px",
+          padding: "5px 12px",
           borderRadius: "20px",
-          backgroundColor: "rgba(99, 102, 241, 0.15)",
-          border: "1px solid rgba(165, 180, 252, 0.3)",
-          fontSize: "0.8rem",
-          color: "#e0e7ff",
+          backgroundColor: "#f8fafc",
+          border: "1px solid #e2e8f0",
+          fontSize: "0.78rem",
+          color: "#475569",
           fontWeight: "600",
           whiteSpace: "nowrap"
         }}
       >
         <span
           style={{
-            width: "8px",
-            height: "8px",
+            width: "6px",
+            height: "6px",
             borderRadius: "50%",
-            backgroundColor: "#818cf8",
-            boxShadow: "0 0 10px #6366f1"
+            backgroundColor: "#10b981",
+            display: "inline-block"
           }}
         />
         <span>Dashboard Active & Browsable</span>
@@ -209,3 +212,4 @@ export default function MaintenanceNoticeBanner({ mode = "dashboard", className 
     </div>
   );
 }
+

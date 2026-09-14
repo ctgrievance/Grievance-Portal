@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { useMaintenance } from "../context/MaintenanceContext";
-import { ShieldIcon, AlertCircleIcon, CheckCircleIcon } from "./Icons";
+import {
+  ShieldAlertIcon,
+  CheckCircleIcon,
+  PlayIcon,
+  PauseIcon,
+  XIcon,
+  SpinnerIcon
+} from "./Icons";
 
 export default function MaintenanceControlPanel({ onStatusChanged }) {
   const {
@@ -40,7 +47,7 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
         allowStaffLogin: allowStaff
       });
       setShowModal(false);
-      setToast(res.message || "Maintenance mode updated successfully!");
+      setToast(res.message || "Maintenance status updated successfully.");
       setTimeout(() => setToast(""), 4000);
       if (onStatusChanged) onStatusChanged(targetActive);
     } catch (err) {
@@ -63,38 +70,39 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
   return (
     <div
       style={{
-        margin: "0 0 24px 0",
-        background: isMaintenanceActive
-          ? "linear-gradient(135deg, #450a0a 0%, #1f1212 100%)"
-          : "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-        border: `1.5px solid ${isMaintenanceActive ? "#ef4444" : "#334155"}`,
-        borderRadius: "14px",
-        padding: "18px 22px",
-        color: "#ffffff",
-        boxShadow: isMaintenanceActive
-          ? "0 4px 25px rgba(239, 68, 68, 0.25)"
-          : "0 4px 20px rgba(15, 23, 42, 0.15)",
+        margin: "0 0 20px 0",
+        background: isMaintenanceActive ? "#fffdfd" : "#ffffff",
+        border: `1px solid ${isMaintenanceActive ? "#fecaca" : "#e2e8f0"}`,
+        borderLeft: `4px solid ${isMaintenanceActive ? "#dc2626" : "#0f172a"}`,
+        borderRadius: "12px",
+        padding: "16px 20px",
+        color: "#0f172a",
+        boxShadow: "0 1px 4px rgba(15, 23, 42, 0.04)",
         position: "relative",
-        transition: "all 0.3s ease"
+        transition: "all 0.2s ease"
       }}
     >
       {toast && (
         <div
           style={{
             position: "absolute",
-            top: "-14px",
+            top: "-12px",
             right: "20px",
-            backgroundColor: "#10b981",
+            backgroundColor: "#0f172a",
             color: "#ffffff",
-            padding: "6px 14px",
+            padding: "5px 14px",
             borderRadius: "20px",
-            fontSize: "0.82rem",
+            fontSize: "0.8rem",
             fontWeight: "600",
-            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.4)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.2)",
             zIndex: 10
           }}
         >
-          {toast}
+          <CheckCircleIcon width="14" height="14" style={{ color: "#34d399" }} />
+          <span>{toast}</span>
         </div>
       )}
 
@@ -111,48 +119,65 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
         <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: "260px" }}>
           <div
             style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              backgroundColor: isMaintenanceActive ? "rgba(239, 68, 68, 0.2)" : "rgba(16, 185, 129, 0.2)",
-              border: `1px solid ${isMaintenanceActive ? "#ef4444" : "#10b981"}`,
+              width: "40px",
+              height: "40px",
+              borderRadius: "10px",
+              backgroundColor: isMaintenanceActive ? "#fee2e2" : "#f1f5f9",
+              border: `1px solid ${isMaintenanceActive ? "#fca5a5" : "#e2e8f0"}`,
+              color: isMaintenanceActive ? "#dc2626" : "#0f172a",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "1.4rem",
               flexShrink: 0
             }}
           >
-            {isMaintenanceActive ? "🛑" : "🟢"}
+            {isMaintenanceActive ? (
+              <ShieldAlertIcon width="20" height="20" />
+            ) : (
+              <CheckCircleIcon width="20" height="20" />
+            )}
           </div>
 
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               <span
                 style={{
-                  fontSize: "0.76rem",
+                  fontSize: "0.72rem",
                   fontWeight: "700",
                   textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                  padding: "3px 10px",
-                  borderRadius: "20px",
-                  backgroundColor: isMaintenanceActive ? "#ef4444" : "#10b981",
-                  color: "#ffffff"
+                  letterSpacing: "0.4px",
+                  padding: "2px 8px",
+                  borderRadius: "12px",
+                  backgroundColor: isMaintenanceActive ? "#fee2e2" : "#ecfdf5",
+                  color: isMaintenanceActive ? "#b91c1c" : "#047857",
+                  border: `1px solid ${isMaintenanceActive ? "#fca5a5" : "#a7f3d0"}`,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px"
                 }}
               >
+                <span
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    backgroundColor: isMaintenanceActive ? "#dc2626" : "#10b981",
+                    display: "inline-block"
+                  }}
+                />
                 {isMaintenanceActive ? "Maintenance Active" : "Portal Live"}
               </span>
 
-              <span style={{ fontSize: "1.02rem", fontWeight: "700", color: "#f8fafc" }}>
+              <span style={{ fontSize: "0.98rem", fontWeight: "700", color: "#0f172a" }}>
                 {isMaintenanceActive
                   ? "Incoming Grievances Paused"
                   : "Accepting Grievances & Normal Operations"}
               </span>
             </div>
 
-            <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
+            <p style={{ margin: "4px 0 0 0", fontSize: "0.84rem", color: "#64748b", lineHeight: "1.4" }}>
               {isMaintenanceActive
-                ? `Active since ${formattedActivatedAt || "recently"}${activatedBy ? ` by ${activatedBy}` : ""}. Students and staff see the maintenance screen.`
+                ? `Active since ${formattedActivatedAt || "recently"}${activatedBy ? ` by ${activatedBy}` : ""}. Students and staff see the maintenance notice.`
                 : "Students and staff can lodge and view grievances freely across all departments."}
             </p>
           </div>
@@ -166,44 +191,70 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
               disabled={loading}
               onClick={() => handleConfirmToggle(false)}
               style={{
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                backgroundColor: "#0f172a",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "10px",
-                padding: "10px 20px",
-                fontSize: "0.9rem",
-                fontWeight: "700",
+                borderRadius: "8px",
+                padding: "9px 18px",
+                fontSize: "0.86rem",
+                fontWeight: "600",
                 cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: "0 4px 14px rgba(16, 185, 129, 0.4)",
+                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.15)",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s ease"
+                gap: "7px",
+                transition: "all 0.15s ease",
+                opacity: loading ? 0.7 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = "#1e293b";
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = "#0f172a";
               }}
             >
-              <span>{loading ? "Updating..." : "▶️ Resume Portal & Grievances"}</span>
+              {loading ? (
+                <>
+                  <SpinnerIcon size={14} />
+                  <span>Resuming...</span>
+                </>
+              ) : (
+                <>
+                  <PlayIcon width="13" height="13" />
+                  <span>Resume Portal & Grievances</span>
+                </>
+              )}
             </button>
           ) : (
             <button
               type="button"
               onClick={handleOpenModal}
               style={{
-                background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "10px",
-                padding: "10px 20px",
-                fontSize: "0.9rem",
-                fontWeight: "700",
+                backgroundColor: "#ffffff",
+                color: "#dc2626",
+                border: "1px solid #fca5a5",
+                borderRadius: "8px",
+                padding: "8px 16px",
+                fontSize: "0.86rem",
+                fontWeight: "600",
                 cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(239, 68, 68, 0.35)",
+                boxShadow: "0 1px 2px rgba(220, 38, 38, 0.05)",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s ease"
+                gap: "7px",
+                transition: "all 0.15s ease"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#fef2f2";
+                e.currentTarget.style.borderColor = "#ef4444";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#ffffff";
+                e.currentTarget.style.borderColor = "#fca5a5";
               }}
             >
-              <span>🛑 Pause Grievances (Maintenance Mode)</span>
+              <PauseIcon width="13" height="13" />
+              <span>Pause Grievances (Maintenance)</span>
             </button>
           )}
         </div>
@@ -218,40 +269,74 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.75)",
-            backdropFilter: "blur(6px)",
+            backgroundColor: "rgba(15, 23, 42, 0.5)",
+            backdropFilter: "blur(3px)",
             zIndex: 9999,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "20px"
+            padding: "16px"
           }}
         >
           <div
             style={{
-              backgroundColor: "#1e293b",
-              borderRadius: "16px",
+              backgroundColor: "#ffffff",
+              borderRadius: "14px",
               maxWidth: "520px",
               width: "100%",
-              padding: "26px",
-              border: "1.5px solid #ef4444",
-              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)",
-              color: "#f8fafc"
+              padding: "24px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 20px 30px -5px rgba(15, 23, 42, 0.2)",
+              color: "#0f172a"
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-              <span style={{ fontSize: "1.5rem" }}>🛑</span>
-              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "700", color: "#f87171" }}>
-                Pause Incoming Grievances & Enable Maintenance
-              </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  <ShieldAlertIcon width="20" height="20" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "700", color: "#0f172a" }}>
+                    Enable Maintenance Mode
+                  </h3>
+                  <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                    Pause incoming student & staff grievance submissions
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#94a3b8",
+                  padding: "4px",
+                  borderRadius: "6px"
+                }}
+              >
+                <XIcon width="18" height="18" />
+              </button>
             </div>
 
-            <p style={{ fontSize: "0.88rem", color: "#cbd5e1", lineHeight: "1.5", margin: "0 0 16px 0" }}>
-              Activating maintenance mode will immediately pause all new grievance submissions. Students and staff will see the maintenance screen. You as Super Admin will retain full access to this dashboard.
+            <p style={{ fontSize: "0.86rem", color: "#475569", lineHeight: "1.5", margin: "0 0 16px 0" }}>
+              Activating maintenance pauses all new grievance lodging across the portal. Students and staff will see the maintenance notice. As Super Admin, you will retain full access to review, re-route, and resolve tickets.
             </p>
 
             <div style={{ marginBottom: "14px" }}>
-              <label style={{ fontSize: "0.82rem", fontWeight: "600", color: "#94a3b8", display: "block", marginBottom: "6px" }}>
+              <label style={{ fontSize: "0.8rem", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>
                 Maintenance Reason / Title
               </label>
               <input
@@ -261,18 +346,19 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
                 placeholder="e.g. Scheduled System Upgrade"
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
+                  padding: "9px 12px",
                   borderRadius: "8px",
-                  border: "1px solid #475569",
-                  backgroundColor: "#0f172a",
-                  color: "#ffffff",
-                  fontSize: "0.9rem"
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  color: "#0f172a",
+                  fontSize: "0.88rem",
+                  boxSizing: "border-box"
                 }}
               />
             </div>
 
             <div style={{ marginBottom: "18px" }}>
-              <label style={{ fontSize: "0.82rem", fontWeight: "600", color: "#94a3b8", display: "block", marginBottom: "6px" }}>
+              <label style={{ fontSize: "0.8rem", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>
                 Notice Message (Shown to Students & Staff)
               </label>
               <textarea
@@ -282,13 +368,14 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
                 placeholder="Message displayed to users..."
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
+                  padding: "9px 12px",
                   borderRadius: "8px",
-                  border: "1px solid #475569",
-                  backgroundColor: "#0f172a",
-                  color: "#ffffff",
-                  fontSize: "0.9rem",
-                  resize: "vertical"
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  color: "#0f172a",
+                  fontSize: "0.88rem",
+                  resize: "vertical",
+                  boxSizing: "border-box"
                 }}
               />
             </div>
@@ -299,12 +386,12 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
                 onClick={() => setShowModal(false)}
                 disabled={loading}
                 style={{
-                  padding: "10px 18px",
+                  padding: "9px 16px",
                   borderRadius: "8px",
-                  border: "1px solid #475569",
-                  backgroundColor: "transparent",
-                  color: "#cbd5e1",
-                  fontSize: "0.88rem",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#ffffff",
+                  color: "#475569",
+                  fontSize: "0.85rem",
                   fontWeight: "600",
                   cursor: "pointer"
                 }}
@@ -316,18 +403,31 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
                 onClick={() => handleConfirmToggle(true)}
                 disabled={loading}
                 style={{
-                  padding: "10px 20px",
+                  padding: "9px 18px",
                   borderRadius: "8px",
                   border: "none",
-                  backgroundColor: "#ef4444",
+                  backgroundColor: "#dc2626",
                   color: "#ffffff",
-                  fontSize: "0.88rem",
-                  fontWeight: "700",
+                  fontSize: "0.85rem",
+                  fontWeight: "600",
                   cursor: loading ? "not-allowed" : "pointer",
-                  boxShadow: "0 4px 12px rgba(239, 68, 68, 0.4)"
+                  boxShadow: "0 1px 3px rgba(220, 38, 38, 0.2)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
                 }}
               >
-                {loading ? "Activating..." : "Confirm & Activate Now"}
+                {loading ? (
+                  <>
+                    <SpinnerIcon size={14} />
+                    <span>Activating...</span>
+                  </>
+                ) : (
+                  <>
+                    <PauseIcon width="13" height="13" />
+                    <span>Confirm & Activate Now</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -336,3 +436,4 @@ export default function MaintenanceControlPanel({ onStatusChanged }) {
     </div>
   );
 }
+

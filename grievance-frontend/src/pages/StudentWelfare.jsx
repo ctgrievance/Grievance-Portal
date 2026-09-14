@@ -354,11 +354,11 @@ function StudentWelfare() {
                 }
               >
                 {!canSubmit
-                  ? (isMaintenance ? "🔒 Submissions Paused (Maintenance)" : "🔒 Cooldown Active (1 Grievance / 24h)")
+                  ? (isMaintenance ? "Submissions Paused (Maintenance)" : "Cooldown Active (1 Grievance / 24h)")
                   : isSubmitted
-                  ? "✅ Submitted!"
+                  ? "Submitted!"
                   : isSubmitting
-                  ? "⏳ Submitting..."
+                  ? "Submitting..."
                   : "Submit Grievance"}
               </button>
 

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import ctLogo from "../assets/ct-logo.png";
 import { useMaintenance } from "../context/MaintenanceContext";
+import { WrenchIcon, MegaphoneIcon, RefreshIcon, SpinnerIcon } from "./Icons";
 
 export default function MaintenanceScreen() {
   const {
@@ -129,13 +130,20 @@ export default function MaintenanceScreen() {
         {/* Animated Maintenance Icon */}
         <div
           style={{
-            fontSize: "3.5rem",
-            lineHeight: 1,
-            marginBottom: "16px",
-            filter: "drop-shadow(0 4px 16px rgba(245, 158, 11, 0.3))"
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "72px",
+            height: "72px",
+            borderRadius: "20px",
+            background: "rgba(245, 158, 11, 0.15)",
+            border: "1px solid rgba(245, 158, 11, 0.3)",
+            color: "#fbbf24",
+            marginBottom: "20px",
+            boxShadow: "0 4px 20px rgba(245, 158, 11, 0.15)"
           }}
         >
-          🛠️
+          <WrenchIcon width="36" height="36" />
         </div>
 
         {/* Headings */}
@@ -176,8 +184,22 @@ export default function MaintenanceScreen() {
             textAlign: "left"
           }}
         >
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-            <span style={{ fontSize: "1.1rem" }}>📢</span>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                background: "rgba(245, 158, 11, 0.2)",
+                color: "#fbbf24",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}
+            >
+              <MegaphoneIcon width="16" height="16" />
+            </div>
             <div>
               <div style={{ fontWeight: "600", color: "#f8fafc", marginBottom: "4px" }}>
                 {maintenanceReason || "System Notice"}
@@ -241,7 +263,17 @@ export default function MaintenanceScreen() {
             gap: "8px"
           }}
         >
-          <span>{checking ? "Checking System Status..." : "🔄 Refresh Status"}</span>
+          {checking ? (
+            <>
+              <SpinnerIcon size={16} />
+              <span>Checking System Status...</span>
+            </>
+          ) : (
+            <>
+              <RefreshIcon width="16" height="16" />
+              <span>Check System Status</span>
+            </>
+          )}
         </button>
 
         {/* Super Admin Bypass Link */}
@@ -259,6 +291,7 @@ export default function MaintenanceScreen() {
           </Link>
         </div>
       </div>
+
 
       {/* University Footer */}
       <div

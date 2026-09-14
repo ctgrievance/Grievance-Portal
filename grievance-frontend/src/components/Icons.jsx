@@ -416,5 +416,55 @@ export const CopyIcon = (props) => (
 
 export const CloseIcon = XIcon;
 
+export const PlayIcon = (props) => (
+    <svg {...defaultProps} fill="currentColor" {...props}>
+        <polygon points="6 4 20 12 6 20 6 4" />
+    </svg>
+);
 
+export const PauseIcon = (props) => (
+    <svg {...defaultProps} fill="currentColor" {...props}>
+        <rect x="6" y="4" width="4" height="16" rx="1" />
+        <rect x="14" y="4" width="4" height="16" rx="1" />
+    </svg>
+);
 
+export const WrenchIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+);
+
+export const ShieldAlertIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+);
+
+export const MegaphoneIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="m3 11 18-5v12L3 13v-2z" />
+        <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </svg>
+);
+
+export const SpinnerIcon = ({ size = 20, ...props }) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        style={{ animation: "spin 0.8s linear infinite" }}
+        {...props}
+    >
+        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
+        <path
+            d="M12 2a10 10 0 0 1 10 10"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+        />
+    </svg>
+);

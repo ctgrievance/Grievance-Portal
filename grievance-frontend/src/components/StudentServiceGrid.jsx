@@ -13,6 +13,7 @@ import {
   SparklesIcon,
   BookIcon,
   SearchIcon,
+  XIcon,
   ChevronRightIcon
 } from "./Icons";
 
@@ -255,14 +256,16 @@ export default function StudentServiceGrid({ departments = [] }) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="service-search-input"
+            style={{ paddingLeft: "38px", paddingRight: "34px" }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
               className="clear-search-btn"
               title="Clear search"
+              type="button"
             >
-              ✕
+              <XIcon width="13" height="13" />
             </button>
           )}
         </div>

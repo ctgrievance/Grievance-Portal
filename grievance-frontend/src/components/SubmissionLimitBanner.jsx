@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useMaintenance } from "../context/MaintenanceContext";
 import MaintenanceNoticeBanner from "./MaintenanceNoticeBanner";
+import { LockIcon, ClockIcon } from "./Icons";
 
 /**
  * ⏱️ SubmissionLimitBanner
@@ -131,7 +132,8 @@ export default function SubmissionLimitBanner({
               display: "inline-block"
             }}
           />
-          <span>🔒 Submissions Paused (Maintenance)</span>
+          <LockIcon width="13" height="13" />
+          <span>Submissions Paused (Maintenance)</span>
         </div>
       );
     }
@@ -184,7 +186,7 @@ export default function SubmissionLimitBanner({
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: "600", fontSize: "0.95rem" }}>
-          <span>⏳</span>
+          <ClockIcon width="16" height="16" />
           <span>Next Grievance Submission Available In:</span>
         </span>
         <span
@@ -341,7 +343,10 @@ export default function SubmissionLimitBanner({
                 boxShadow: "0 2px 6px rgba(120, 53, 15, 0.2)"
               }}
             >
-              <span>⏳ {formattedCountdown}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <ClockIcon width="14" height="14" />
+                <span>{formattedCountdown}</span>
+              </span>
             </div>
           </div>
 

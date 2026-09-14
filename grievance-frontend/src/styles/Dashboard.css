@@ -3824,38 +3824,62 @@ textarea:focus {
 
 .service-search-wrap .search-icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
   color: #94a3b8;
   pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.service-search-wrap input.service-search-input,
+.service-search-wrap input[type="text"].service-search-input,
 .service-search-input {
   width: 100%;
-  padding: 0.55rem 2rem 0.55rem 2.25rem;
+  padding-left: 38px !important;
+  padding-right: 34px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   color: #1e293b;
   background: #f8fafc;
   outline: none;
   transition: all 0.2s ease;
+  box-sizing: border-box;
+  min-height: 40px;
 }
 
+.service-search-wrap input.service-search-input:focus,
+.service-search-wrap input[type="text"].service-search-input:focus,
 .service-search-input:focus {
   background: white;
   border-color: #0f172a;
   box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
 }
 
-.clear-search-btn {
+.service-search-wrap .clear-search-btn {
   position: absolute;
   right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   border: none;
   background: none;
   color: #94a3b8;
   cursor: pointer;
-  font-size: 0.8rem;
-  padding: 2px 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.service-search-wrap .clear-search-btn:hover {
+  color: #0f172a;
 }
 
 /* Category Pills Bar */
@@ -6376,6 +6400,183 @@ textarea:focus {
     flex-direction: column;
     gap: 10px;
     align-items: center;
+  }
+}
+
+/* ==========================================================================
+   RECORDS VS REGISTERED AUDIT VIEW & RESPONSIVE MOBILE CARDS
+   ========================================================================== */
+.reg-compare-desktop-table {
+  display: block;
+}
+
+.reg-compare-mobile-cards {
+  display: none;
+}
+
+.reg-compare-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.reg-compare-mcard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: all 0.15s ease;
+}
+
+.reg-compare-mcard:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 6px rgba(15, 23, 42, 0.06);
+}
+
+.reg-compare-mcard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.reg-compare-mcard-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.reg-compare-mcard-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.reg-compare-mcard-ids {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.reg-compare-mcard-badge {
+  font-family: monospace;
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.reg-compare-mcard-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.reg-compare-mcard-contacts {
+  display: flex;
+  gap: 10px;
+  font-size: 0.76rem;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.reg-compare-mcard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+  margin-top: 2px;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .reg-compare-desktop-table {
+    display: none !important;
+  }
+
+  .reg-compare-mobile-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .reg-compare-cohort-wrap {
+    width: 100% !important;
+  }
+
+  .reg-compare-cohort-wrap button {
+    flex: 1 !important;
+    justify-content: center !important;
+    padding: 7px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .reg-compare-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .reg-compare-kpi-grid > div {
+    padding: 10px 12px !important;
+  }
+
+  .reg-compare-kpi-grid .kpi-num {
+    font-size: 1.35rem !important;
+  }
+
+  .reg-compare-status-filter-group {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .reg-compare-status-filter-group button {
+    flex: 1 1 calc(33.333% - 4px) !important;
+    justify-content: center !important;
+    padding: 6px 8px !important;
+    font-size: 0.74rem !important;
+  }
+
+  .reg-compare-search-box {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+  }
+
+  .reg-compare-dept-select {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+  }
+
+  .reg-compare-actions {
+    width: 100% !important;
+    margin-left: 0 !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .reg-compare-actions button {
+    flex: 1 !important;
+    justify-content: center !important;
   }
 }
 

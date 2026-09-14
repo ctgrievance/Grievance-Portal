@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
-import ctLogo from "../assets/ct-logo.png";
-import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon } from "../components/Icons";
+import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon, LockIcon } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import GenericAdminNavbar from "../components/GenericAdminNavbar";
@@ -701,7 +700,21 @@ function StaffDashboard() {
                         : {}
                     }
                   >
-                    {isMaintenanceActive ? "🔒 Submissions Paused (Maintenance)" : isSubmitted ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircleIcon width="16" height="16" /> Submitted!</span> : isSubmitting ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><ClockIcon width="16" height="16" /> Submitting...</span> : "Submit Grievance"}
+                    {isMaintenanceActive ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                        <LockIcon width="16" height="16" /> Submissions Paused (Maintenance)
+                      </span>
+                    ) : isSubmitted ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                        <CheckCircleIcon width="16" height="16" /> Submitted!
+                      </span>
+                    ) : isSubmitting ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                        <ClockIcon width="16" height="16" /> Submitting...
+                      </span>
+                    ) : (
+                      "Submit Grievance"
+                    )}
                   </button>
                 </div>
 

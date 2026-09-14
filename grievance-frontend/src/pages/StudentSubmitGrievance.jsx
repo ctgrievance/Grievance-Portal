@@ -5,8 +5,7 @@ import StudentNavbar from "../components/StudentNavbar";
 import SubmissionLimitBanner from "../components/SubmissionLimitBanner";
 import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
 import { useMaintenance } from "../context/MaintenanceContext";
-import ctLogo from "../assets/ct-logo.png";
-import { GraduationCapIcon } from "../components/Icons";
+import { GraduationCapIcon, LockIcon, CheckCircleIcon, ClockIcon } from "../components/Icons";
 
 function StudentSubmitGrievance() {
   const navigate = useNavigate();
@@ -381,15 +380,25 @@ function StudentSubmitGrievance() {
                     : {}
                 }
               >
-                {isMaintenanceActive
-                  ? "🔒 Submissions Paused (Maintenance)"
-                  : !canSubmit
-                  ? "🔒 Cooldown Active (1 Grievance / 24h)"
-                  : isSubmitted
-                  ? "✅ Submitted!"
-                  : isSubmitting
-                  ? "⏳ Submitting..."
-                  : "Submit Grievance"}
+                {isMaintenanceActive ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                    <LockIcon width="15" height="15" /> Submissions Paused (Maintenance)
+                  </span>
+                ) : !canSubmit ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                    <LockIcon width="15" height="15" /> Cooldown Active (1 Grievance / 24h)
+                  </span>
+                ) : isSubmitted ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                    <CheckCircleIcon width="15" height="15" /> Submitted!
+                  </span>
+                ) : isSubmitting ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                    <ClockIcon width="15" height="15" /> Submitting...
+                  </span>
+                ) : (
+                  "Submit Grievance"
+                )}
               </button>
 
               {msg && (
