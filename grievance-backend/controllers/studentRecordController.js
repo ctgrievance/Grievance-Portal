@@ -34,11 +34,54 @@ const findField = (row, ...keywords) => {
 // ─────────────────────────────────────────────────────────────────────────
 
 // ─── Background processor (batch insertMany) ─────────────────────────────
-const processUpload = async (jobId, rows) => {
+const processUpload = async (jobId, rows, mode = "add") => {
   const job = uploadJobs.get(jobId);
   const BATCH = 200; // rows per batch
 
   try {
+    // 1️⃣ IF MODE IS "CHANGE" (Complete Replace / Overwrite):
+    // Clear all existing records before inserting the fresh batch
+    if (mode === "change") {
+      const del = await StudentRecord.deleteMany({});
+      console.log(`🔄 [StudentRecord] Mode 'change': Cleared ${del.deletedCount} existing records.`);
+    }
+
+    // 2️⃣ IF MODE IS "REMOVE" (Delete matching records found in Excel):
+    if (mode === "remove") {
+      let deleted = 0;
+      const idsToDelete = [];
+      for (const row of rows) {
+        let id = findField(row,
+          "ID", "Student ID", "StudentID", "Reg No", "Registration No",
+          "Reg. No", "RegNo", "UID", "Roll No", "RollNo", "Enrollment No"
+        ).toUpperCase();
+        if (!id) {
+          const ctuFallback = findField(row, "CTU ID", "CTU Id", "CTUID", "ctuId", "CTU_ID", "CTU").toUpperCase();
+          if (ctuFallback) id = ctuFallback;
+        }
+        if (id) idsToDelete.push(id);
+      }
+
+      if (idsToDelete.length > 0) {
+        for (let i = 0; i < idsToDelete.length; i += 500) {
+          const chunk = idsToDelete.slice(i, i + 500);
+          const res = await StudentRecord.deleteMany({ id: { $in: chunk } });
+          deleted += (res.deletedCount || 0);
+          job.deleted = deleted;
+          job.processed = Math.min(i + 500, idsToDelete.length);
+          uploadJobs.set(jobId, job);
+        }
+      }
+
+      job.status = "done";
+      job.deleted = deleted;
+      job.processed = rows.length;
+      uploadJobs.set(jobId, job);
+      console.log(`🗑️ [StudentRecord] Mode 'remove': Deleted ${deleted} student records.`);
+      return;
+    }
+
+    // 3️⃣ IF MODE IS "ADD" OR "CHANGE" (Insert / Upsert rows):
     let inserted = 0;
     let skipped = 0;
     let errors = [];
@@ -178,39 +221,63 @@ export const uploadStudentRecords = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
+    const mode = (req.body.mode || "add").toLowerCase().trim(); // "add" | "remove" | "change"
     const filePath = req.file.path;
     const workbook = xlsx.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows = xlsx.utils.sheet_to_json(sheet, { defval: "" });
+
+    // ✅ Multi-Tab Extraction: iterate over ALL sheets in workbook
+    let allRows = [];
+    const sheetSummaries = [];
+    const sheetNames = workbook.SheetNames || [];
+
+    for (const sheetName of sheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) continue;
+      const sheetRows = xlsx.utils.sheet_to_json(sheet, { defval: "" });
+      if (sheetRows && sheetRows.length > 0) {
+        sheetSummaries.push({ name: sheetName, rowCount: sheetRows.length });
+        allRows.push(...sheetRows);
+      }
+    }
 
     try { fs.unlinkSync(filePath); } catch (_) {}
 
-    if (!rows || rows.length === 0)
-      return res.status(400).json({ message: "Excel sheet is empty or invalid" });
+    if (!allRows || allRows.length === 0)
+      return res.status(400).json({ message: "Excel file has no records across any sheets/tabs" });
 
-    const detectedHeaders = rows[0] ? Object.keys(rows[0]) : [];
-    console.log("📊 Excel headers:", detectedHeaders);
-    console.log("📝 Total rows:", rows.length);
+    const detectedHeaders = allRows[0] ? Object.keys(allRows[0]) : [];
+    console.log(`📊 Multi-Sheet Excel: ${sheetNames.length} tabs found (${sheetNames.join(", ")}). Total rows: ${allRows.length}. Mode: ${mode}`);
 
     // Create job
     const jobId = `job_${Date.now()}`;
     uploadJobs.set(jobId, {
       status: "processing",
-      total: rows.length,
+      mode,
+      total: allRows.length,
       processed: 0,
       inserted: 0,
       skipped: 0,
+      deleted: 0,
+      sheetCount: sheetNames.length,
+      sheetNames,
+      sheetSummaries,
       errors: [],
       detectedHeaders,
       startedAt: Date.now(),
     });
 
     // Return immediately with jobId
-    res.json({ jobId, total: rows.length, message: "Upload started" });
+    res.json({
+      jobId,
+      total: allRows.length,
+      sheetCount: sheetNames.length,
+      sheetNames,
+      mode,
+      message: `Upload started in '${mode}' mode across ${sheetNames.length} sheet tab(s)`
+    });
 
     // Process in background (non-blocking)
-    setImmediate(() => processUpload(jobId, rows));
+    setImmediate(() => processUpload(jobId, allRows, mode));
   } catch (error) {
     console.error("Upload Error:", error);
     res.status(500).json({ message: "Failed to process Excel file", error: error.message });

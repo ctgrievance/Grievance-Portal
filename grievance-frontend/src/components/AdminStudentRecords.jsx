@@ -15,6 +15,7 @@ import {
   CheckCircleIcon,
   AlertCircleIcon
 } from "./Icons";
+import ExcelUploadModeModal from "./ExcelUploadModeModal";
 
 const AdminStudentRecords = () => {
   const [records, setRecords]       = useState([]);
@@ -30,6 +31,8 @@ const AdminStudentRecords = () => {
 
   // ── Upload progress state ────────────────────────────────────────────────
   const [uploadState, setUploadState] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [showModeModal, setShowModeModal] = useState(false);
   const pollRef    = useRef(null);
   const startRef   = useRef(null);
   const fileInputRef = useRef();
@@ -83,6 +86,9 @@ const AdminStudentRecords = () => {
           processed: data.processed,
           inserted:  data.inserted,
           skipped:   data.skipped,
+          deleted:   data.deleted || 0,
+          mode:      data.mode || "add",
+          sheetCount: data.sheetCount || 1,
           pct,
           speed,
           eta:       remaining,
@@ -93,7 +99,13 @@ const AdminStudentRecords = () => {
           stopPoll();
           fetchRecords();
           if (data.status === "done") {
-            showMsg(`✅ Upload complete! ${data.inserted} inserted, ${data.skipped} skipped.`, "success");
+            if (data.mode === "remove") {
+              showMsg(`🗑️ Remove complete! ${data.deleted || 0} matching records deleted from database.`, "success");
+            } else if (data.mode === "change") {
+              showMsg(`🔄 Complete overwrite done! ${data.inserted} records replaced across ${data.sheetCount || 1} sheet tab(s).`, "success");
+            } else {
+              showMsg(`✅ Upload complete! ${data.inserted} inserted/updated, ${data.skipped} skipped across ${data.sheetCount || 1} sheet tab(s).`, "success");
+            }
           } else {
             showMsg(`❌ Upload failed: ${data.errorMessage || "Unknown error"}`, "error");
           }
@@ -102,23 +114,52 @@ const AdminStudentRecords = () => {
     }, 500);
   };
 
-  const handleFileUpload = async (file) => {
+  // ── Step 1: File Selected → Open Mode Choice Modal ──
+  const handleFileSelect = (file) => {
     if (!file) return;
     const ext = file.name.split(".").pop().toLowerCase();
-    if (!["xlsx", "xls"].includes(ext)) { showMsg("❌ Only .xlsx or .xls files allowed", "error"); return; }
+    if (!["xlsx", "xls"].includes(ext)) {
+      showMsg("❌ Only .xlsx or .xls files allowed", "error");
+      return;
+    }
+    setPendingFile(file);
+    setShowModeModal(true);
+  };
 
-    setUploadState({ status: "uploading", pct: 0, total: 0, processed: 0, inserted: 0, skipped: 0, speed: 0, eta: null });
+  // ── Step 2: User Confirms Mode → Execute Upload ──
+  const handleExecuteUpload = async (mode = "add") => {
+    if (!pendingFile) return;
+    const file = pendingFile;
+    setPendingFile(null);
+    setShowModeModal(false);
+
+    setUploadState({ status: "uploading", pct: 0, total: 0, processed: 0, inserted: 0, skipped: 0, deleted: 0, mode, speed: 0, eta: null });
     stopPoll();
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("mode", mode);
 
     try {
       const res  = await fetch(`${BASE}/upload`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      setUploadState({ status: "processing", jobId: data.jobId, total: data.total, processed: 0, inserted: 0, skipped: 0, pct: 0, speed: 0, eta: null });
+      setUploadState({
+        status: "processing",
+        jobId: data.jobId,
+        total: data.total,
+        sheetCount: data.sheetCount || 1,
+        sheetNames: data.sheetNames || [],
+        mode: data.mode || mode,
+        processed: 0,
+        inserted: 0,
+        skipped: 0,
+        deleted: 0,
+        pct: 0,
+        speed: 0,
+        eta: null
+      });
       startPolling(data.jobId, data.total);
     } catch (err) {
       setUploadState(null);
@@ -128,7 +169,7 @@ const AdminStudentRecords = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFileUpload(e.dataTransfer.files[0]); };
+  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFileSelect(e.dataTransfer.files[0]); };
 
   const handleClearAll = async () => {
     if (!window.confirm("⚠️ Delete ALL student records permanently? This cannot be undone.")) return;
@@ -388,7 +429,7 @@ const AdminStudentRecords = () => {
         onClick={() => !isUploading && fileInputRef.current?.click()}
       >
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
-          onChange={(e) => handleFileUpload(e.target.files[0])} />
+          onChange={(e) => handleFileSelect(e.target.files[0])} />
 
         {!uploadState && (
           <div>
@@ -396,7 +437,7 @@ const AdminStudentRecords = () => {
               <UploadIcon width="24" height="24" />
             </div>
             <p className="records-upload-title">Drag & Drop Excel File</p>
-            <p className="records-upload-sub">or click to browse — .xlsx / .xls (Total: {total.toLocaleString()} records)</p>
+            <p className="records-upload-sub">or click to browse — .xlsx / .xls (Total: {total.toLocaleString()} records · Multi-Tab auto extraction)</p>
             <span className="records-upload-browse-btn">
               <UploadIcon width="14" height="14" /> Choose Excel File
             </span>
@@ -404,26 +445,41 @@ const AdminStudentRecords = () => {
         )}
 
         {uploadState && uploadState.status === "uploading" && (
-          <p style={{ color: "#2563eb", fontWeight: 600, margin: 0 }}>⏳ Reading Excel file...</p>
+          <p style={{ color: "#2563eb", fontWeight: 600, margin: 0 }}>⏳ Reading all sheet tabs in Excel file...</p>
         )}
 
         {uploadState && uploadState.status === "processing" && (
           <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "left" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.86rem", fontWeight: 600 }}>
-              <span style={{ color: "#1e40af" }}>⚡ Uploading... {uploadState.pct}%</span>
-              <span style={{ color: "#475569" }}>{uploadState.inserted.toLocaleString()} / {uploadState.total.toLocaleString()} records</span>
+              <span style={{ color: "#1e40af" }}>
+                {uploadState.mode === "remove" ? "🗑️ Deleting records..." : uploadState.mode === "change" ? "🔄 Overwriting database..." : "⚡ Adding records..."} {uploadState.pct}%
+              </span>
+              <span style={{ color: "#475569" }}>
+                {uploadState.sheetCount ? `${uploadState.sheetCount} tab(s) · ` : ""}
+                {uploadState.mode === "remove" ? `${(uploadState.deleted || 0).toLocaleString()} deleted` : `${uploadState.inserted.toLocaleString()} / ${uploadState.total.toLocaleString()} records`}
+              </span>
             </div>
             <div style={{ background: "#dbeafe", borderRadius: "999px", height: "10px", overflow: "hidden", marginBottom: "12px" }}>
               <div style={{
                 height: "100%", borderRadius: "999px",
-                background: "linear-gradient(90deg, #2563eb, #38bdf8)",
+                background: uploadState.mode === "remove"
+                  ? "linear-gradient(90deg, #ef4444, #f87171)"
+                  : uploadState.mode === "change"
+                  ? "linear-gradient(90deg, #6366f1, #a855f7)"
+                  : "linear-gradient(90deg, #2563eb, #38bdf8)",
                 width: `${uploadState.pct}%`,
                 transition: "width 0.3s ease"
               }} />
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: "20px", fontSize: "0.82rem", color: "#475569", flexWrap: "wrap" }}>
-              <span>✅ Inserted: <strong>{uploadState.inserted.toLocaleString()}</strong></span>
-              <span>⏭ Skipped: <strong>{uploadState.skipped.toLocaleString()}</strong></span>
+              {uploadState.mode === "remove" ? (
+                <span>🗑️ Deleted: <strong>{(uploadState.deleted || 0).toLocaleString()}</strong></span>
+              ) : (
+                <>
+                  <span>✅ Inserted: <strong>{uploadState.inserted.toLocaleString()}</strong></span>
+                  <span>⏭ Skipped: <strong>{uploadState.skipped.toLocaleString()}</strong></span>
+                </>
+              )}
               <span>⚡ Speed: <strong>{uploadState.speed.toLocaleString()} rec/s</strong></span>
               {uploadState.eta !== null && <span>⏱ ETA: <strong>{uploadState.eta}s</strong></span>}
             </div>
@@ -432,21 +488,41 @@ const AdminStudentRecords = () => {
 
         {uploadState && uploadState.status === "done" && (
           <div>
-            <div style={{ fontSize: "2rem", marginBottom: "6px" }}>✅</div>
-            <p style={{ color: "#16a34a", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>Upload Complete!</p>
+            <div style={{ fontSize: "2rem", marginBottom: "6px" }}>
+              {uploadState.mode === "remove" ? "🗑️" : uploadState.mode === "change" ? "🔄" : "✅"}
+            </div>
+            <p style={{ color: uploadState.mode === "remove" ? "#dc2626" : uploadState.mode === "change" ? "#6366f1" : "#16a34a", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>
+              {uploadState.mode === "remove" ? "Deletion Complete!" : uploadState.mode === "change" ? "Complete Overwrite Done!" : "Upload Complete!"}
+            </p>
             <p style={{ color: "#64748b", margin: "6px 0 12px", fontSize: "0.88rem" }}>
-              {uploadState.inserted.toLocaleString()} records inserted/updated · {uploadState.skipped.toLocaleString()} skipped
+              {uploadState.mode === "remove"
+                ? `${(uploadState.deleted || 0).toLocaleString()} matching records deleted from database.`
+                : `${uploadState.inserted.toLocaleString()} records inserted/updated · ${uploadState.skipped.toLocaleString()} skipped across ${uploadState.sheetCount || 1} sheet tab(s)`
+              }
             </p>
             <button 
               type="button" 
               onClick={(e) => { e.stopPropagation(); setUploadState(null); }} 
               className="records-upload-browse-btn"
             >
-              Upload Another
+              Upload Another File
             </button>
           </div>
         )}
       </div>
+
+      {/* ── 3-OPTIONS UPLOAD MODE MODAL ── */}
+      <ExcelUploadModeModal
+        isOpen={showModeModal}
+        onClose={() => {
+          setShowModeModal(false);
+          setPendingFile(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }}
+        onConfirm={handleExecuteUpload}
+        file={pendingFile}
+        recordType="Student"
+      />
 
       {/* ── SUPPORTED COLUMNS GUIDE ── */}
       <div className="records-columns-guide">
@@ -647,6 +723,18 @@ const AdminStudentRecords = () => {
       <p style={{ marginTop: "12px", fontSize: "0.8rem", color: "#94a3b8", textAlign: "right", margin: "8px 0 0" }}>
         💡 Double-click any row to edit directly.
       </p>
+
+      {/* ── EXCEL UPLOAD MODE CHOICE MODAL ── */}
+      <ExcelUploadModeModal
+        isOpen={showModeModal}
+        onClose={() => {
+          setShowModeModal(false);
+          setPendingFile(null);
+        }}
+        onConfirm={handleExecuteUpload}
+        file={pendingFile}
+        recordType="Student"
+      />
     </div>
   );
 };

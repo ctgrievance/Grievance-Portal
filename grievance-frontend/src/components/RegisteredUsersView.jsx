@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import RegisteredStudentsTab from "./RegisteredStudentsTab";
 import RegisteredStaffTab from "./RegisteredStaffTab";
+import RecordsComparisonTab from "./RecordsComparisonTab";
 import { DownloadIcon, GraduationCapIcon, UsersIcon, AlertCircleIcon, CheckCircleIcon } from "./Icons";
 
 /**
  * RegisteredUsersView
  * Sleek executive directory for Verified Students and Staff accounts.
- * Includes sub-tab switcher and one-click direct Excel export.
+ * Includes sub-tab switcher, records vs registered comparison, and one-click direct Excel export.
  */
 function RegisteredUsersView({
   allowRegisteredStudents = false,
@@ -15,12 +16,13 @@ function RegisteredUsersView({
 }) {
   const canStudents = isSuperAdmin || !!allowRegisteredStudents;
   const canStaff = isSuperAdmin || !!allowRegisteredStaff;
+  const canCompare = isSuperAdmin || canStudents || canStaff;
 
   // Determine initial active sub-tab based on permissions
   const [activeSubTab, setActiveSubTab] = useState(() => {
     if (canStudents) return "students";
     if (canStaff) return "staff";
-    return "students";
+    return "compare";
   });
 
   const [exporting, setExporting] = useState(false);
@@ -29,12 +31,12 @@ function RegisteredUsersView({
 
   // Keep activeSubTab in sync if permissions change
   useEffect(() => {
-    if (!canStudents && canStaff) {
+    if (!canStudents && canStaff && activeSubTab === "students") {
       setActiveSubTab("staff");
-    } else if (canStudents && !canStaff) {
+    } else if (canStudents && !canStaff && activeSubTab === "staff") {
       setActiveSubTab("students");
     }
-  }, [canStudents, canStaff]);
+  }, [canStudents, canStaff, activeSubTab]);
 
   const handleExportUsers = async () => {
     setExporting(true);
@@ -105,6 +107,17 @@ function RegisteredUsersView({
               <span>Registered Staff</span>
             </button>
           )}
+
+          {canCompare && (
+            <button
+              type="button"
+              onClick={() => setActiveSubTab("compare")}
+              className={`reg-users-subtab-btn ${activeSubTab === "compare" ? "active" : ""}`}
+            >
+              <CheckCircleIcon width="16" height="16" />
+              <span>Records vs Registered</span>
+            </button>
+          )}
         </div>
 
         {/* Export Button (Available to Super Admin) */}
@@ -142,6 +155,7 @@ function RegisteredUsersView({
       {/* Sub-tab content view */}
       {activeSubTab === "students" && canStudents && <RegisteredStudentsTab />}
       {activeSubTab === "staff" && canStaff && <RegisteredStaffTab />}
+      {activeSubTab === "compare" && canCompare && <RecordsComparisonTab />}
     </div>
   );
 }

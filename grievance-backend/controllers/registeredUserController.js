@@ -4,6 +4,9 @@ import User from "../models/UserModel.js";
 import AdminStaffModel from "../models/AdminStaffModel.js";
 import Grievance from "../models/GrievanceModel.js";
 import Department from "../models/Department.js";
+import StudentRecord from "../models/StudentRecord.js";
+import StaffRecord from "../models/StaffRecord.js";
+import xlsx from "xlsx";
 
 // =========================================================================
 // 1️⃣ GET LIVE REGISTERED STUDENTS
@@ -480,3 +483,273 @@ export const deleteLiveStaff = async (req, res) => {
     res.status(500).json({ message: "Failed to delete staff member", error: err.message });
   }
 };
+
+// =========================================================================
+// 7️⃣ COMPARE RECORDS VS REGISTERED USERS (Students or Staff)
+// =========================================================================
+export const getRecordsComparison = async (req, res) => {
+  try {
+    const {
+      type = "students", // "students" | "staff"
+      status = "all", // "all" | "registered" | "not_registered"
+      search = "",
+      department = "all",
+      page = 1,
+      limit = 50,
+      export: isExport = "false"
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(200, Math.max(10, parseInt(limit, 10) || 50));
+    const isStudents = type.toLowerCase() === "students" || type.toLowerCase() === "student";
+
+    const verifiedCondition = {
+      isVerified: true,
+      $or: [{ otp: { $exists: false } }, { otp: null }, { otp: "" }]
+    };
+
+    if (isStudents) {
+      // 1️⃣ Fetch all registered student IDs and their metadata map
+      const registeredStudents = await StudentUser.find(verifiedCondition)
+        .select("id fullName email phone createdAt updatedAt isVerified")
+        .lean();
+      
+      const registeredMap = new Map();
+      for (const u of registeredStudents) {
+        if (u.id) registeredMap.set(u.id.toUpperCase(), u);
+      }
+      const registeredIds = Array.from(registeredMap.keys());
+
+      // 2️⃣ Base counts for StudentRecord
+      const totalRecords = await StudentRecord.countDocuments({});
+      const totalRegistered = await StudentRecord.countDocuments({ id: { $in: registeredIds } });
+      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
+      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
+
+      // 3️⃣ Build query filter for StudentRecord
+      const query = {};
+
+      if (status === "registered") {
+        query.id = { $in: registeredIds };
+      } else if (status === "not_registered") {
+        query.id = { $nin: registeredIds };
+      }
+
+      if (department && department !== "all") {
+        query.$or = [{ school: department }, { program: department }];
+      }
+
+      if (search.trim()) {
+        const q = search.trim();
+        const regex = new RegExp(q, "i");
+        const searchConditions = [
+          { id: regex },
+          { ctuId: regex },
+          { fullName: regex },
+          { email: regex },
+          { phone: regex },
+          { school: regex },
+          { program: regex },
+          { batch: regex },
+          { studentType: regex }
+        ];
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+          delete query.$or;
+        } else {
+          query.$or = searchConditions;
+        }
+      }
+
+      // Distinct schools for dropdown
+      const schools = await StudentRecord.distinct("school");
+      const cleanSchools = schools.filter(s => s && s.trim()).sort();
+
+      // Export to Excel
+      if (isExport === "true" || isExport === true) {
+        const allMatching = await StudentRecord.find(query).sort({ id: 1 }).lean();
+        const exportData = allMatching.map((rec, idx) => {
+          const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+          return {
+            "S.No": idx + 1,
+            "Student ID": rec.id || "",
+            "CTU ID": rec.ctuId || "",
+            "Full Name": rec.fullName || "",
+            "Official Email": rec.email || "",
+            "Official Phone": rec.phone || "",
+            "School": rec.school || "",
+            "Program": rec.program || "",
+            "Batch": rec.batch || "",
+            "Type": rec.studentType || "",
+            "Portal Status": regInfo ? "REGISTERED" : "NOT REGISTERED",
+            "Registered Email": regInfo?.email || "—",
+            "Registered Phone": regInfo?.phone || "—",
+            "Registered On": regInfo?.createdAt ? new Date(regInfo.createdAt).toLocaleDateString("en-US") : "—"
+          };
+        });
+
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(exportData);
+        xlsx.utils.book_append_sheet(wb, ws, "Students_Comparison");
+        const buffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+
+        res.setHeader("Content-Disposition", `attachment; filename="Students_Comparison_${status}_${new Date().toISOString().split("T")[0]}.xlsx"`);
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        return res.send(buffer);
+      }
+
+      const totalFiltered = await StudentRecord.countDocuments(query);
+      const rawRecords = await StudentRecord.find(query)
+        .sort({ createdAt: -1, id: 1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean();
+
+      const records = rawRecords.map(rec => {
+        const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+        return {
+          ...rec,
+          isRegistered: !!regInfo,
+          registeredAt: regInfo?.createdAt || null,
+          registeredEmail: regInfo?.email || null,
+          registeredPhone: regInfo?.phone || null
+        };
+      });
+
+      return res.status(200).json({
+        type: "students",
+        statusFilter: status,
+        total: totalFiltered,
+        page: pageNum,
+        totalPages: Math.ceil(totalFiltered / limitNum) || 1,
+        summary: {
+          totalRecords,
+          totalRegistered,
+          totalNotRegistered,
+          registrationRate
+        },
+        departments: cleanSchools,
+        records
+      });
+    } else {
+      // 2️⃣ STAFF COMPARISON
+      const registeredStaff = await StaffUser.find(verifiedCondition)
+        .select("id fullName email phone role staffDepartment adminDepartment isDeptAdmin isMasterAdmin createdAt updatedAt isVerified")
+        .lean();
+
+      const registeredMap = new Map();
+      for (const u of registeredStaff) {
+        if (u.id) registeredMap.set(u.id.toUpperCase(), u);
+      }
+      const registeredIds = Array.from(registeredMap.keys());
+
+      const totalRecords = await StaffRecord.countDocuments({});
+      const totalRegistered = await StaffRecord.countDocuments({ id: { $in: registeredIds } });
+      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
+      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
+
+      const query = {};
+
+      if (status === "registered") {
+        query.id = { $in: registeredIds };
+      } else if (status === "not_registered") {
+        query.id = { $nin: registeredIds };
+      }
+
+      if (department && department !== "all") {
+        query.department = department;
+      }
+
+      if (search.trim()) {
+        const q = search.trim();
+        const regex = new RegExp(q, "i");
+        const searchConditions = [
+          { id: regex },
+          { fullName: regex },
+          { email: regex },
+          { phone: regex },
+          { department: regex },
+          { role: regex }
+        ];
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+          delete query.$or;
+        } else {
+          query.$or = searchConditions;
+        }
+      }
+
+      const departments = await StaffRecord.distinct("department");
+      const cleanDepartments = departments.filter(d => d && d.trim()).sort();
+
+      if (isExport === "true" || isExport === true) {
+        const allMatching = await StaffRecord.find(query).sort({ id: 1 }).lean();
+        const exportData = allMatching.map((rec, idx) => {
+          const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+          return {
+            "S.No": idx + 1,
+            "Staff ID": rec.id || "",
+            "Full Name": rec.fullName || "",
+            "Official Email": rec.email || "",
+            "Official Phone": rec.phone || "",
+            "Role": rec.role || "staff",
+            "Department": rec.department || "",
+            "Portal Status": regInfo ? "REGISTERED" : "NOT REGISTERED",
+            "Portal Role": regInfo?.role || (regInfo?.isDeptAdmin ? "Dept Admin" : "—"),
+            "Registered Email": regInfo?.email || "—",
+            "Registered Phone": regInfo?.phone || "—",
+            "Registered On": regInfo?.createdAt ? new Date(regInfo.createdAt).toLocaleDateString("en-US") : "—"
+          };
+        });
+
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(exportData);
+        xlsx.utils.book_append_sheet(wb, ws, "Staff_Comparison");
+        const buffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+
+        res.setHeader("Content-Disposition", `attachment; filename="Staff_Comparison_${status}_${new Date().toISOString().split("T")[0]}.xlsx"`);
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        return res.send(buffer);
+      }
+
+      const totalFiltered = await StaffRecord.countDocuments(query);
+      const rawRecords = await StaffRecord.find(query)
+        .sort({ createdAt: -1, id: 1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean();
+
+      const records = rawRecords.map(rec => {
+        const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+        return {
+          ...rec,
+          isRegistered: !!regInfo,
+          registeredAt: regInfo?.createdAt || null,
+          registeredEmail: regInfo?.email || null,
+          registeredPhone: regInfo?.phone || null,
+          registeredRole: regInfo?.role || (regInfo?.isDeptAdmin ? "dept_admin" : null)
+        };
+      });
+
+      return res.status(200).json({
+        type: "staff",
+        statusFilter: status,
+        total: totalFiltered,
+        page: pageNum,
+        totalPages: Math.ceil(totalFiltered / limitNum) || 1,
+        summary: {
+          totalRecords,
+          totalRegistered,
+          totalNotRegistered,
+          registrationRate
+        },
+        departments: cleanDepartments,
+        records
+      });
+    }
+  } catch (err) {
+    console.error("Error in getRecordsComparison:", err);
+    res.status(500).json({ message: "Failed to compare records vs registered accounts", error: err.message });
+  }
+};
+

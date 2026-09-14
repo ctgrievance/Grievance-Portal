@@ -5,10 +5,14 @@ import {
   deleteLiveStudent,
   getLiveStaff,
   updateLiveStaff,
-  deleteLiveStaff
+  deleteLiveStaff,
+  getRecordsComparison
 } from "../controllers/registeredUserController.js";
 
 const router = express.Router();
+
+// Comparison route (records vs registered)
+router.get("/compare", getRecordsComparison);
 
 // Student routes
 router.get("/students", getLiveStudents);
