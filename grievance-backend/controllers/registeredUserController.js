@@ -223,11 +223,24 @@ export const getLiveStaff = async (req, res) => {
       Object.assign(query, pendingCondition);
     }
 
-    if (department !== "all") {
-      query.$or = [
-        { staffDepartment: department },
-        { adminDepartment: department }
+    if (department && department !== "all") {
+      const cleanDept = department.toString().trim();
+      const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = escaped
+        .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+        .replace(/\s+/g, "\\s+");
+      const deptRegex = new RegExp(`^${pattern}$`, "i");
+
+      const deptCondition = [
+        { staffDepartment: { $regex: deptRegex } },
+        { adminDepartment: { $regex: deptRegex } }
       ];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: deptCondition }];
+        delete query.$or;
+      } else {
+        query.$or = deptCondition;
+      }
     }
 
     if (role === "admin") {
@@ -325,18 +338,30 @@ export const getLiveStaff = async (req, res) => {
       StaffUser.distinct("adminDepartment")
     ]);
 
-    const allDeptsSet = new Set();
+    // Dynamic deduplication: canonicalize against official departments without hardcoding
+    const normalizeKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+    const deptCanonicalMap = new Map();
     if (Array.isArray(deptDocs)) {
-      deptDocs.forEach(d => { if (d.name && d.name.trim()) allDeptsSet.add(d.name.trim()); });
-    }
-    if (Array.isArray(staffDepts)) {
-      staffDepts.forEach(d => { if (d && d.trim()) allDeptsSet.add(d.trim()); });
-    }
-    if (Array.isArray(adminDepts)) {
-      adminDepts.forEach(d => { if (d && d.trim()) allDeptsSet.add(d.trim()); });
+      deptDocs.forEach(d => {
+        const cleanName = (d.name || "").replace(/\s+/g, " ").trim();
+        if (cleanName) {
+          const k = normalizeKey(cleanName);
+          if (!deptCanonicalMap.has(k)) deptCanonicalMap.set(k, cleanName);
+        }
+      });
     }
 
-    const departments = Array.from(allDeptsSet).sort((a, b) => a.localeCompare(b));
+    const allDeptsMap = new Map(deptCanonicalMap);
+    const candidateDepts = [...(staffDepts || []), ...(adminDepts || [])];
+    candidateDepts.forEach(d => {
+      const cleanName = (d || "").replace(/\s+/g, " ").trim();
+      if (cleanName) {
+        const k = normalizeKey(cleanName);
+        if (!allDeptsMap.has(k)) allDeptsMap.set(k, cleanName);
+      }
+    });
+
+    const departments = Array.from(allDeptsMap.values()).sort((a, b) => a.localeCompare(b));
 
     res.status(200).json({
       total,
@@ -693,7 +718,12 @@ export const getRecordsComparison = async (req, res) => {
       }
 
       if (department && department !== "all") {
-        query.department = department;
+        const cleanDept = department.toString().trim();
+        const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const pattern = escaped
+          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+          .replace(/\s+/g, "\\s+");
+        query.department = { $regex: new RegExp(`^${pattern}$`, "i") };
       }
 
       if (search.trim()) {
@@ -715,8 +745,31 @@ export const getRecordsComparison = async (req, res) => {
         }
       }
 
-      const departments = await StaffRecord.distinct("department");
-      const cleanDepartments = departments.filter(d => d && d.trim()).sort();
+      const [allDistinctDepts, officialDepts] = await Promise.all([
+        StaffRecord.distinct("department"),
+        Department.find({ isActive: true }).select("name").sort({ name: 1 })
+      ]);
+      const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+      const compMap = new Map();
+      if (Array.isArray(officialDepts)) {
+        officialDepts.forEach(d => {
+          const c = (d.name || "").replace(/\s+/g, " ").trim();
+          if (c) {
+            const k = normKey(c);
+            if (!compMap.has(k)) compMap.set(k, c);
+          }
+        });
+      }
+      if (Array.isArray(allDistinctDepts)) {
+        allDistinctDepts.forEach(d => {
+          const c = (d || "").replace(/\s+/g, " ").trim();
+          if (c) {
+            const k = normKey(c);
+            if (!compMap.has(k)) compMap.set(k, c);
+          }
+        });
+      }
+      const cleanDepartments = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
 
       if (isExport === "true" || isExport === true) {
         const allMatching = await StaffRecord.find(query).sort({ id: 1 }).lean();

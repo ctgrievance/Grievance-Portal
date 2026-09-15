@@ -12,6 +12,11 @@ import {
   MailIcon,
   UserIcon
 } from "./Icons";
+import {
+  getCleanDepartmentList,
+  canonicalizeDepartment,
+  buildOfficialDeptMap
+} from "../utils/departmentNormalizer";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -56,7 +61,9 @@ function RegisteredStaffTab() {
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [departments, setDepartments] = useState(DEFAULT_DEPARTMENTS);
+  const [officialDepartments, setOfficialDepartments] = useState([]);
+  const [departments, setDepartments] = useState(() => getCleanDepartmentList(DEFAULT_DEPARTMENTS, []));
+  const deptMap = React.useMemo(() => buildOfficialDeptMap(officialDepartments), [officialDepartments]);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -126,10 +133,7 @@ function RegisteredStaffTab() {
       setTotalPending(data.totalPending || 0);
       setTotalPages(data.totalPages || 1);
       if (data.departments && Array.isArray(data.departments) && data.departments.length > 0) {
-        setDepartments(prev => {
-          const set = new Set([...prev, ...data.departments]);
-          return Array.from(set).sort((a, b) => a.localeCompare(b));
-        });
+        setDepartments(prev => getCleanDepartmentList([...prev, ...data.departments], officialDepartments));
       }
     } catch (err) {
       console.error(err);
@@ -137,7 +141,7 @@ function RegisteredStaffTab() {
     } finally {
       setLoading(false);
     }
-  }, [search, deptFilter, roleFilter, statusFilter, staffTypeFilter, page, BASE_URL]);
+  }, [search, deptFilter, roleFilter, statusFilter, staffTypeFilter, page, officialDepartments, BASE_URL]);
 
   useEffect(() => {
     fetchStaff();
@@ -152,10 +156,8 @@ function RegisteredStaffTab() {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             const names = data.map(d => (typeof d === "string" ? d : d.name)).filter(Boolean);
-            setDepartments(prev => {
-              const set = new Set([...prev, ...names]);
-              return Array.from(set).sort((a, b) => a.localeCompare(b));
-            });
+            setOfficialDepartments(names);
+            setDepartments(prev => getCleanDepartmentList(prev, names));
           }
         }
       } catch (err) {
@@ -561,7 +563,7 @@ function RegisteredStaffTab() {
                         {/* Department */}
                         <td>
                           <span className="reg-user-dept-badge">
-                            {staff.staffDepartment || staff.adminDepartment || "General"}
+                            {canonicalizeDepartment(staff.staffDepartment || staff.adminDepartment, deptMap) || "General"}
                           </span>
                         </td>
 
@@ -687,7 +689,7 @@ function RegisteredStaffTab() {
                 {/* Metadata Row: Department & Category & Status */}
                 <div className="reg-user-mcard-meta">
                   <span className="reg-user-dept-badge">
-                    {staff.staffDepartment || staff.adminDepartment || "General"}
+                    {canonicalizeDepartment(staff.staffDepartment || staff.adminDepartment, deptMap) || "General"}
                   </span>
                   {staff.staffType === "Teaching" ? (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", padding: "2px 7px", borderRadius: "10px", fontSize: "0.72rem", fontWeight: "600", background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }}>
