@@ -35,37 +35,102 @@ const sendSms = async (phone, otp, customMessage = null) => {
 };
 
 // =================================================
+// 🔍 REAL-TIME CHECK STUDENT ID / CTU ID REQUIREMENT
+// =================================================
+export const checkStudentId = async (req, res) => {
+  try {
+    const rawId = req.params.id;
+    if (!rawId) {
+      return res.status(400).json({ message: "Registration Number / ID is required" });
+    }
+
+    const safeId = rawId.toString().trim().toUpperCase();
+
+    // Look up in StudentRecord by registration ID first, fallback to ctuId
+    let record = await StudentRecord.findOne({ id: safeId });
+    if (!record) {
+      record = await StudentRecord.findOne({ ctuId: safeId });
+    }
+
+    if (!record) {
+      return res.status(404).json({
+        exists: false,
+        message: "Registration Number not found in University Student Records. Please contact university support."
+      });
+    }
+
+    const recId = (record.id || "").toString().trim().toUpperCase();
+    const recCtuId = (record.ctuId || "").toString().trim().toUpperCase();
+
+    // Rule: If record.ctuId exists, is not empty, and is NOT equal to record.id,
+    // the student has a distinct CTU ID and must provide it.
+    const requiresCtuId = Boolean(recCtuId && recCtuId !== recId);
+
+    // Check if student is already registered & verified
+    const registeredUser = await StudentUser.findOne({
+      $or: [{ id: recId }, { ctuId: recCtuId }, { id: safeId }, { ctuId: safeId }]
+    });
+
+    const isAlreadyRegistered = Boolean(registeredUser && registeredUser.isVerified);
+
+    return res.status(200).json({
+      exists: true,
+      requiresCtuId,
+      isAlreadyRegistered,
+      resolvedId: recId,
+      studentName: record.fullName || "",
+      school: record.school || "",
+      program: record.program || "",
+      batch: record.batch || "",
+      mobile: record.phone || "",
+      email: record.email || ""
+    });
+  } catch (error) {
+    console.error("Check Student ID Error:", error);
+    return res.status(500).json({ message: "Server error checking Student ID" });
+  }
+};
+
+// =================================================
 // 1️⃣ REGISTER REQUEST (SEND DUAL OTP) - UPDATED FOR SEPARATED DATA
 // =================================================
 export const registerRequest = async (req, res) => {
   try {
-    const { email, password, id, phone, role } = req.body;
-    const safeId = id.toString().trim().toUpperCase();
+    const { email, password, id, ctuId, phone, role } = req.body;
+    const safeId = (id || "").toString().trim().toUpperCase();
+    const safeCtuId = (ctuId || "").toString().trim().toUpperCase();
     const cleanEmail = (email || "").toString().toLowerCase().trim();
     const userRole = role ? role.toLowerCase().trim() : "student";
 
     // Check if user already exists in either collection
     let existingUser = null;
     if (userRole === "student") {
-      existingUser = await StudentUser.findOne({ $or: [{ email: cleanEmail }, { id: safeId }] });
+      const orConditions = [{ email: cleanEmail }, { id: safeId }, { ctuId: safeId }];
+      if (safeCtuId) orConditions.push({ id: safeCtuId }, { ctuId: safeCtuId });
+      existingUser = await StudentUser.findOne({ $or: orConditions });
     } else {
       existingUser = await StaffUser.findOne({ $or: [{ email: cleanEmail }, { id: safeId }] });
     }
 
     // Also check legacy User collection
     if (!existingUser) {
-      existingUser = await User.findOne({ $or: [{ email: cleanEmail }, { id: safeId }] });
+      const legacyConditions = [{ email: cleanEmail }, { id: safeId }];
+      if (safeCtuId) legacyConditions.push({ ctuId: safeCtuId });
+      existingUser = await User.findOne({ $or: legacyConditions });
     }
 
     // User exists check ENABLED (Testing mode disabled)
     if (existingUser && existingUser.isVerified) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "User already exists. Please log in." });
     }
 
     // ✅ Validate ID against official records (StudentRecord for students, StaffRecord for staff/admin)
     let validRecord = null;
     if (userRole === "student") {
       validRecord = await StudentRecord.findOne({ id: safeId });
+      if (!validRecord) {
+        validRecord = await StudentRecord.findOne({ ctuId: safeId });
+      }
     } else {
       validRecord = await StaffRecord.findOne({ id: safeId });
     }
@@ -73,6 +138,23 @@ export const registerRequest = async (req, res) => {
     if (!validRecord) {
       return res.status(403).json({ message: `ID not found in University ${userRole === "student" ? "Student" : "Staff"} Records.` });
     }
+
+    const recRegId = (validRecord.id || "").toString().trim().toUpperCase();
+    const recCtuId = (validRecord.ctuId || "").toString().trim().toUpperCase();
+    const requiresCtuId = Boolean(userRole === "student" && recCtuId && recCtuId !== recRegId);
+
+    // 🔒 Enforce CTU ID verification if student has a distinct CTU ID
+    if (requiresCtuId) {
+      if (!safeCtuId) {
+        return res.status(400).json({ message: "CTU ID is required for your registration number." });
+      }
+      if (safeCtuId !== recCtuId) {
+        return res.status(400).json({ message: "Entered CTU ID does not match university records for this student." });
+      }
+    }
+
+    const finalStudentId = recRegId || safeId;
+    const finalCtuId = recCtuId || (requiresCtuId ? safeCtuId : finalStudentId);
 
     // Generate OTPs
     const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -83,8 +165,8 @@ export const registerRequest = async (req, res) => {
 
     // Prepare user data based on role
     const baseUserData = {
-      id: safeId,
-      email: email.toLowerCase().trim(),
+      id: finalStudentId,
+      email: cleanEmail,
       phone,
       password: hashedPassword,
       fullName: validRecord.fullName || req.body.fullName || "",
@@ -97,29 +179,31 @@ export const registerRequest = async (req, res) => {
 
     // Create user in appropriate collection
     if (userRole === "student") {
-      const studentDept = req.body.department || req.body.school || req.body.program || "";
+      const studentSchool = req.body.department || req.body.school || validRecord.school || "";
+      const studentProgram = validRecord.program || req.body.program || studentSchool;
       const studentData = {
         ...baseUserData,
+        ctuId: finalCtuId,
         role: "student",
-        school: validRecord.school || req.body.school || studentDept,
-        department: validRecord.school || validRecord.department || studentDept,
-        program: validRecord.program || req.body.program || studentDept,
+        school: studentSchool,
+        department: studentSchool,
+        program: studentProgram,
         studentType: validRecord.studentType || req.body.studentType || "",
       };
-      await StudentUser.findOneAndUpdate({ id: safeId }, studentData, { upsert: true, new: true });
+      await StudentUser.findOneAndUpdate({ id: finalStudentId }, studentData, { upsert: true, new: true });
 
       if (validRecord) {
         let changed = false;
-        if (!validRecord.school && studentDept) {
-          validRecord.school = studentDept;
+        if (!validRecord.school && studentSchool) {
+          validRecord.school = studentSchool;
           changed = true;
         }
-        if (!validRecord.department && studentDept) {
-          validRecord.department = studentDept;
+        if (!validRecord.department && studentSchool) {
+          validRecord.department = studentSchool;
           changed = true;
         }
-        if (!validRecord.program && studentDept) {
-          validRecord.program = studentDept;
+        if (!validRecord.program && studentProgram) {
+          validRecord.program = studentProgram;
           changed = true;
         }
         if (changed) await validRecord.save();
@@ -147,14 +231,17 @@ export const registerRequest = async (req, res) => {
 
     // Also save to legacy User collection for backup
     const staffDeptBackup = req.body.department || validRecord.department || "";
+    const studentSchool = req.body.department || req.body.school || validRecord?.school || "";
+    const studentProgram = validRecord?.program || req.body.program || studentSchool;
     await User.findOneAndUpdate(
-      { id: safeId },
+      { id: finalStudentId },
       {
         ...baseUserData,
+        ctuId: userRole === "student" ? finalCtuId : "",
         role: userRole === "student" ? "student" : "staff",
-        school: userRole === "student" ? (validRecord.school || req.body.school || req.body.department || "") : "",
-        department: userRole === "student" ? (validRecord.school || req.body.department || req.body.school || "") : staffDeptBackup,
-        program: userRole === "student" ? (validRecord.program || req.body.program || req.body.department || "") : "",
+        school: userRole === "student" ? studentSchool : "",
+        department: userRole === "student" ? studentSchool : staffDeptBackup,
+        program: userRole === "student" ? studentProgram : "",
         staffDepartment: staffDeptBackup,
         isDeptAdmin: false,
         adminDepartment: "",
@@ -198,10 +285,10 @@ export const verifyRegistration = async (req, res) => {
       return res.status(400).json({ message: "Email or University ID is required" });
     }
 
-    // Build resilient query matching either normalized email or University ID
+    // Build resilient query matching either normalized email or University ID / CTU ID
     const userQuery = safeId && cleanEmail
-      ? { $or: [{ email: cleanEmail }, { id: safeId }] }
-      : (safeId ? { id: safeId } : { email: cleanEmail });
+      ? { $or: [{ email: cleanEmail }, { id: safeId }, { ctuId: safeId }] }
+      : (safeId ? { $or: [{ id: safeId }, { ctuId: safeId }] } : { email: cleanEmail });
 
     // Find user in StudentUser or StaffUser
     let user = await StudentUser.findOne(userQuery);
@@ -310,9 +397,9 @@ export const loginUser = async (req, res) => {
 
     // Search across collections in parallel to authoritatively locate user record
     const [studentUser, staffUser, legacyUser] = await Promise.all([
-      StudentUser.findOne({ id: safeId }),
+      StudentUser.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] }),
       StaffUser.findOne({ id: safeId }),
-      User.findOne({ id: safeId })
+      User.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] })
     ]);
 
     const user = staffUser || studentUser || legacyUser;
@@ -418,9 +505,9 @@ export const verifyLogin = async (req, res) => {
     const userRole = role ? role.toLowerCase().trim() : null;
 
     const [studentUser, staffUser, legacyUser] = await Promise.all([
-      StudentUser.findOne({ id: safeId }),
+      StudentUser.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] }),
       StaffUser.findOne({ id: safeId }),
-      User.findOne({ id: safeId })
+      User.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] })
     ]);
 
     const user = staffUser || studentUser || legacyUser;

@@ -5,6 +5,7 @@ import StudentUser from "../models/StudentUser.js";
 import StudentRecord from "../models/StudentRecord.js";
 import StaffRecord from "../models/StaffRecord.js";
 import {
+  checkStudentId,
   registerRequest,
   verifyRegistration,
   loginUser,
@@ -22,6 +23,9 @@ import {
 import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
+
+// Real-time verification of student ID & CTU ID requirement
+router.get("/check-student-id/:id", checkStudentId);
 
 // Register (Step 1 & 2)
 router.post("/register-request", registerRequest);
@@ -70,10 +74,10 @@ router.get("/user/:id", async (req, res) => {
       });
     }
 
-    // 2️⃣ Check Student collections
-    const studentUser = await StudentUser.findOne({ id: safeId });
-    const studentRecord = await StudentRecord.findOne({ id: safeId });
-    const legacyUser = await User.findOne({ id: safeId });
+    // 2️⃣ Check Student collections (match either Registration ID or CTU ID)
+    const studentUser = await StudentUser.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] });
+    const studentRecord = await StudentRecord.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] });
+    const legacyUser = await User.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] });
 
     const isStudent = !!studentUser || !!studentRecord || (legacyUser && legacyUser.role === "student") || /^\d+$/.test(safeId);
 

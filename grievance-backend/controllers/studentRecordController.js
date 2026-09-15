@@ -97,9 +97,12 @@ const processUpload = async (jobId, rows, mode = "add") => {
           "Reg No", "Registration No", "Reg. No", "RegNo", "UID", "Roll No", "RollNo", "Enrollment No"
         ).toUpperCase();
 
-        // ✅ Fallback 1: use CTU ID if ID is blank
+        // ✅ Fallback 1: use CTU ID / Admission No if ID is blank
         if (!id) {
-          const ctuFallback = findField(row, "CTU ID", "CTU Id", "CTUID", "ctuId", "CTU_ID", "CTU").toUpperCase();
+          const ctuFallback = findField(row,
+            "CTU ID", "CTU Id", "CTUID", "ctuId", "CTU_ID", "CTU",
+            "AdmissionNo", "Admission No", "Admission_No", "Admission", "AdmissionID", "Adm No", "AdmNo"
+          ).toUpperCase();
           if (ctuFallback) id = ctuFallback;
         }
 
@@ -116,9 +119,15 @@ const processUpload = async (jobId, rows, mode = "add") => {
           continue;
         }
 
+        const rawCtu = findField(row,
+          "CTU ID", "CTU Id", "CTUID", "ctuId", "CTU_ID", "CTU",
+          "AdmissionNo", "Admission No", "Admission_No", "Admission", "AdmissionID", "Adm No", "AdmNo"
+        );
+        const finalCtuId = rawCtu ? rawCtu.trim().toUpperCase() : id;
+
         docs.push({
           id,
-          ctuId: findField(row, "CTU ID", "CTU Id", "CTUID", "ctuId", "CTU_ID", "CTU") || null,
+          ctuId: finalCtuId,
           fullName: findField(row, "StudentName", "Student Name", "Student_Name", "FullName", "Full Name", "Name", "FULL NAME", "Full name"),
           email: findField(row, "StudentEmail", "Student Email", "Student_Email", "Email", "Email ID", "EmailID", "E-mail", "email", "EMAIL", "Mail").toLowerCase(),
           phone: findField(row, "StudentMobileNo", "Student Mobile No", "Student_Mobile_No", "StudentMobile", "Mobile", "Mobile No", "MobileNo", "Phone number", "Phone Number", "PhoneNumber", "Phone No", "PhoneNo", "Contact", "Contact No", "Phone", "Mob"),

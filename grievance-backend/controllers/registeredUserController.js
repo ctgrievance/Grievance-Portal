@@ -45,6 +45,7 @@ export const getLiveStudents = async (req, res) => {
       const regex = new RegExp(q, "i");
       const searchOr = [
         { id: regex },
+        { ctuId: regex },
         { fullName: regex },
         { email: regex },
         { phone: regex },
@@ -72,6 +73,9 @@ export const getLiveStudents = async (req, res) => {
       const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
       sObj.otpPending = hasPendingOtp;
       sObj.isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
+      if (!sObj.ctuId) {
+        sObj.ctuId = sObj.id;
+      }
       delete sObj.otp; // never leak secret OTP to frontend
       return sObj;
     });
@@ -92,7 +96,7 @@ export const getLiveStudents = async (req, res) => {
       students
     });
   } catch (err) {
-    console.error("Error fetching live students:", err);
+    console.error("Error in getLiveStudents:", err);
     res.status(500).json({ message: "Failed to fetch live registered students", error: err.message });
   }
 };
@@ -104,7 +108,7 @@ export const updateLiveStudent = async (req, res) => {
   try {
     const { id } = req.params;
     const safeId = id.toString().trim().toUpperCase();
-    const { fullName, email, phone, program, studentType, isVerified } = req.body;
+    const { fullName, email, phone, program, studentType, isVerified, ctuId } = req.body;
 
     const student = await StudentUser.findOne({ id: safeId });
     if (!student) {
@@ -126,6 +130,7 @@ export const updateLiveStudent = async (req, res) => {
     if (phone !== undefined) student.phone = phone.trim();
     if (program !== undefined) student.program = program.trim();
     if (studentType !== undefined) student.studentType = studentType.trim();
+    if (ctuId !== undefined) student.ctuId = ctuId.trim().toUpperCase();
 
     if (isVerified !== undefined) {
       const isTryingToVerify = !!isVerified;

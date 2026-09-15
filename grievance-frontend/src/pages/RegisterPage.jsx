@@ -45,12 +45,107 @@ const fallbackAcademicDepartments = [
 ];
 
 function RegisterPage() {
-  const [formData, setFormData] = useState({ id: "", role: "", studentType: "current", fullName: "", email: "", phone: "", password: "", program: "", department: "", school: "" });
+  const [formData, setFormData] = useState({
+    id: "",
+    ctuId: "",
+    role: "",
+    studentType: "current",
+    fullName: "",
+    email: "",
+    phone: "",
+    password: "",
+    program: "",
+    department: "",
+    school: ""
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [staffDepartments, setStaffDepartments] = useState([]);
   const [academicDepartments, setAcademicDepartments] = useState([]);
+
+  // 🆔 Real-time student verification state
+  const [requiresCtuId, setRequiresCtuId] = useState(false);
+  const [idChecking, setIdChecking] = useState(false);
+  const [idFeedback, setIdFeedback] = useState(null);
+
+  const checkStudentIdRequirement = async (idToTest) => {
+    const queryId = (idToTest || formData.id || "").trim().toUpperCase();
+    if (formData.role !== "student" || !queryId || queryId.length < 4) {
+      setRequiresCtuId(false);
+      setIdFeedback(null);
+      return;
+    }
+
+    setIdChecking(true);
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/check-student-id/${encodeURIComponent(queryId)}`
+      );
+      const data = await res.json();
+
+      if (res.ok && data.exists) {
+        if (data.isAlreadyRegistered) {
+          setIdFeedback({
+            type: "warning",
+            message: "⚠️ This student account is already registered. Please proceed to login."
+          });
+        } else {
+          setIdFeedback({
+            type: "success",
+            message: `Verified: ${data.studentName || "Student Record Found"}`
+          });
+        }
+
+        setRequiresCtuId(Boolean(data.requiresCtuId));
+
+        const deptList = academicDepartments.length > 0 ? academicDepartments : fallbackAcademicDepartments;
+        const cleanSchool = (data.school || "").replace(/\s*-\s*\d+$/, "").trim().toLowerCase();
+        const matchedDept = deptList.find(d => 
+          d.name.toLowerCase() === (data.school || "").toLowerCase() ||
+          (cleanSchool && d.name.toLowerCase().includes(cleanSchool)) ||
+          (cleanSchool && cleanSchool.includes(d.name.toLowerCase()))
+        );
+        const resolvedSchool = matchedDept ? matchedDept.name : (data.school || "");
+
+        // Helpful prefill if not yet typed
+        setFormData((prev) => ({
+          ...prev,
+          fullName: prev.fullName || data.studentName || "",
+          email: prev.email || data.email || "",
+          phone: prev.phone || data.mobile || "",
+          department: prev.department || resolvedSchool,
+          school: prev.school || resolvedSchool,
+          program: data.program || prev.program || ""
+        }));
+      } else {
+        setRequiresCtuId(false);
+        setIdFeedback({
+          type: "error",
+          message: data.message || "Registration number not found in university records."
+        });
+      }
+    } catch (err) {
+      console.error("Error checking student ID:", err);
+    } finally {
+      setIdChecking(false);
+    }
+  };
+
+  // Real-time debounce check when student enters Registration ID
+  useEffect(() => {
+    if (formData.role !== "student" || !formData.id || formData.id.trim().length < 4) {
+      setRequiresCtuId(false);
+      setIdFeedback(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      checkStudentIdRequirement(formData.id);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [formData.id, formData.role]);
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`)
@@ -65,19 +160,12 @@ function RegisterPage() {
       .catch(err => console.error("Error fetching departments for registration:", err));
   }, []);
 
-  // Dynamic programs lookup based on selected school/department
-  const selectedDeptObj = (academicDepartments.length > 0 ? academicDepartments : fallbackAcademicDepartments)
-    .find((d) => d.name === (formData.department || formData.school));
-
-  const availablePrograms = selectedDeptObj?.programs || [];
-
   const handleStudentDepartmentChange = (e) => {
     const selectedDeptName = e.target.value;
     setFormData((prev) => ({
       ...prev,
       department: selectedDeptName,
-      school: selectedDeptName,
-      program: "" // Reset program so student picks from the new department's programs
+      school: selectedDeptName
     }));
   };
 
@@ -93,12 +181,24 @@ function RegisterPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     let processedValue = value;
-    if (name === "id") {
+    if (name === "id" || name === "ctuId") {
       processedValue = value.toUpperCase();
     } else if (name === "email") {
       processedValue = value.toLowerCase().trim();
     }
-    setFormData({ ...formData, [name]: processedValue });
+
+    setFormData((prev) => {
+      const next = { ...prev, [name]: processedValue };
+      if (name === "role" && processedValue !== "student") {
+        setRequiresCtuId(false);
+        setIdFeedback(null);
+      }
+      return next;
+    });
+
+    if (name === "id") {
+      setIdFeedback(null);
+    }
   };
 
   const getPasswordStrength = (password) => {
@@ -154,13 +254,13 @@ function RegisterPage() {
     }
 
     if (formData.role === 'student') {
-      if (!formData.department && !formData.school) {
-        setMsg("Please select your academic department!");
+      if (requiresCtuId && !formData.ctuId?.trim()) {
+        setMsg("Please enter your CTU ID as required for your registration number.");
         setStatusType("error");
         return;
       }
-      if (availablePrograms.length > 0 && !formData.program) {
-        setMsg("Please select your program / domain!");
+      if (!formData.department && !formData.school) {
+        setMsg("Please select your academic department / school!");
         setStatusType("error");
         return;
       }
@@ -211,12 +311,14 @@ function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: (formData.id || "").toString().trim().toUpperCase(),
+          ctuId: (formData.ctuId || "").toString().trim().toUpperCase(),
           email: (formData.email || "").toString().toLowerCase().trim(),
           otpPhone: (otpPhone || "").toString().trim(),
           otpEmail: (otpEmail || "").toString().trim(),
           formData: {
             ...formData,
             id: (formData.id || "").toString().trim().toUpperCase(),
+            ctuId: (formData.ctuId || "").toString().trim().toUpperCase(),
             email: (formData.email || "").toString().toLowerCase().trim(),
           }
         }),
@@ -259,7 +361,7 @@ function RegisterPage() {
             <form onSubmit={handleRegisterSubmit}>
               <div className="two-col-row">
                 <div className="input-group">
-                  <label>Role</label>
+                  <label style={{ minHeight: "20px", display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>Role</label>
                   <div className="input-wrapper role-field">
                     <span className="icon"><UsersIcon /></span>
                     <select name="role" value={formData.role} onChange={handleChange} required>
@@ -272,13 +374,95 @@ function RegisterPage() {
                 </div>
 
                 <div className="input-group">
-                  <label>University ID</label>
-                  <div className="input-wrapper id-field">
+                  <label style={{ minHeight: "20px", display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
+                    {formData.role === "student" ? "Registration No" : "University ID"}
+                  </label>
+                  <div className="input-wrapper id-field" style={{ position: "relative" }}>
                     <span className="icon"><UserIcon /></span>
-                    <input name="id" placeholder="e.g. 72212871" value={formData.id} onChange={handleChange} required />
+                    <input
+                      name="id"
+                      placeholder={formData.role === "student" ? "e.g. 72615777" : "e.g. 10025"}
+                      value={formData.id}
+                      onChange={handleChange}
+                      onBlur={() => checkStudentIdRequirement(formData.id)}
+                      required
+                      style={{ paddingRight: (idFeedback?.type === "success" || idChecking) ? "38px" : undefined }}
+                    />
+                    {idChecking && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          display: "inline-block",
+                          width: "14px",
+                          height: "14px",
+                          border: "2px solid #6366f1",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 0.6s linear infinite",
+                          pointerEvents: "none",
+                          zIndex: 3
+                        }}
+                        title="Checking university records..."
+                      />
+                    )}
+                    {idFeedback && idFeedback.type === "success" && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          pointerEvents: "none",
+                          zIndex: 3,
+                          animation: "fadeIn 0.25s ease-out"
+                        }}
+                        title={idFeedback.message || "Record Verified"}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" fill="#16a34a" />
+                          <path d="M7.5 12.2l3 3 6-6" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    )}
                   </div>
+                  {idFeedback && idFeedback.type !== "success" && (
+                    <div style={{
+                      fontSize: "0.78rem",
+                      marginTop: "6px",
+                      color: idFeedback.type === "warning" ? "#b45309" : "#b91c1c",
+                      fontWeight: "500",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}>
+                      {idFeedback.message}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* 🔒 Real-Time Conditional CTU ID Requirement */}
+              {formData.role === "student" && requiresCtuId && (
+                <div className="input-group" style={{ animation: "fadeIn 0.3s ease-out" }}>
+                  <label>CTU ID</label>
+                  <div className="input-wrapper id-field">
+                    <span className="icon"><UserIcon /></span>
+                    <input
+                      name="ctuId"
+                      placeholder="e.g. CTU2601710"
+                      value={formData.ctuId}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               {formData.role === 'student' && (
                 <div className="input-group">
@@ -429,59 +613,28 @@ function RegisterPage() {
               </div>
 
               {formData.role === 'student' && (
-                <>
-                  <div className="input-group">
-                    <label>Academic Department / School</label>
-                    <div className="input-wrapper program-field">
-                      <span className="icon"><GraduationCapIcon /></span>
-                      <select
-                        name="department"
-                        value={formData.department || formData.school || ""}
-                        onChange={handleStudentDepartmentChange}
-                        required
-                      >
-                        <option value="">Select Your Academic Department</option>
-                        {(academicDepartments.length > 0
-                          ? academicDepartments
-                          : fallbackAcademicDepartments
-                        ).map((dept) => (
-                          <option key={dept._id || dept.name} value={dept.name}>
-                            {dept.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                <div className="input-group">
+                  <label>Academic Department / School</label>
+                  <div className="input-wrapper program-field">
+                    <span className="icon"><GraduationCapIcon /></span>
+                    <select
+                      name="department"
+                      value={formData.department || formData.school || ""}
+                      onChange={handleStudentDepartmentChange}
+                      required
+                    >
+                      <option value="">Select Your Academic Department</option>
+                      {(academicDepartments.length > 0
+                        ? academicDepartments
+                        : fallbackAcademicDepartments
+                      ).map((dept) => (
+                        <option key={dept._id || dept.name} value={dept.name}>
+                          {dept.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-
-                  {(formData.department || formData.school) && (
-                    <div className="input-group" style={{ animation: "fadeIn 0.25s ease-out" }}>
-                      <label>Program & Domain</label>
-                      <div className="input-wrapper program-field">
-                        <span className="icon"><BookIcon /></span>
-                        <select
-                          name="program"
-                          value={formData.program || ""}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, program: e.target.value }))}
-                          required
-                        >
-                          <option value="">
-                            {availablePrograms.length > 0 ? "Select Your Program" : "Select Program (General)"}
-                          </option>
-                          {availablePrograms.map((prog) => (
-                            <option key={prog} value={prog}>
-                              {prog}
-                            </option>
-                          ))}
-                          {availablePrograms.length === 0 && (
-                            <option value={formData.department || formData.school}>
-                              {formData.department || formData.school} (General)
-                            </option>
-                          )}
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
 
               {formData.role === 'staff' && (

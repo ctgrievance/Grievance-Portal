@@ -300,13 +300,15 @@ function LoginPage() {
                 /* STEP 1: CREDENTIALS */
                 <form onSubmit={handleLoginStep1} className="animated-form">
                   <div className="input-group">
-                    <label>{selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} ID</label>
+                    <label>
+                      {selectedRole === "student" ? "Student ID / Registration No / CTU ID" : `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} ID`}
+                    </label>
                     <div className="input-wrapper id-field">
                       <span className="icon"><UserIcon /></span>
                       <input
                         type="text"
                         placeholder={
-                          selectedRole === "student" ? "e.g. 72212871" :
+                          selectedRole === "student" ? "e.g. 72615777 or CTU2601710" :
                             selectedRole === "staff" ? "e.g. 25001" : "e.g. 10002"
                         }
                         value={userId}

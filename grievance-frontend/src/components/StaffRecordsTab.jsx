@@ -22,6 +22,7 @@ function StaffRecordsTab() {
   const [total, setTotal]           = useState(0);
   const [page, setPage]             = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [jumpPage, setJumpPage]     = useState("1");
   const [limit]                     = useState(20);
   const [search, setSearch]         = useState("");
   
@@ -74,6 +75,22 @@ function StaffRecordsTab() {
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
+
+  useEffect(() => {
+    setJumpPage(page.toString());
+  }, [page]);
+
+  const handleJumpPage = (e) => {
+    if (e) e.preventDefault();
+    const target = parseInt(jumpPage, 10);
+    if (isNaN(target)) {
+      setJumpPage(page.toString());
+      return;
+    }
+    const clamped = Math.max(1, Math.min(totalPages, target));
+    setPage(clamped);
+    setJumpPage(clamped.toString());
+  };
 
   const showMsg = (message, type = "info") => {
     setMsg(message);
@@ -718,14 +735,46 @@ function StaffRecordsTab() {
             <button 
               type="button"
               className="records-pag-btn"
+              onClick={() => setPage(1)} 
+              disabled={page === 1}
+              title="First Page"
+              style={{ minWidth: "36px", padding: "0 8px" }}
+            >
+              «
+            </button>
+            <button 
+              type="button"
+              className="records-pag-btn"
               onClick={() => setPage(p => Math.max(1, p - 1))} 
               disabled={page === 1}
             >
               Previous
             </button>
-            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569", padding: "0 6px" }}>
-              Page {page} of {totalPages}
-            </span>
+
+            {/* Jump to Page Form */}
+            <form onSubmit={handleJumpPage} className="records-pag-jump-form">
+              <span>Page</span>
+              <input
+                type="number"
+                min="1"
+                max={totalPages}
+                value={jumpPage}
+                onChange={(e) => setJumpPage(e.target.value)}
+                onBlur={handleJumpPage}
+                onFocus={(e) => e.target.select()}
+                className="records-pag-jump-input"
+                title="Enter page number and press Enter"
+              />
+              <span>of {totalPages.toLocaleString()}</span>
+              <button
+                type="submit"
+                className="records-pag-go-btn"
+                title="Jump to page"
+              >
+                Go
+              </button>
+            </form>
+
             <button 
               type="button"
               className="records-pag-btn"
@@ -733,6 +782,16 @@ function StaffRecordsTab() {
               disabled={page === totalPages}
             >
               Next
+            </button>
+            <button 
+              type="button"
+              className="records-pag-btn"
+              onClick={() => setPage(totalPages)} 
+              disabled={page === totalPages}
+              title="Last Page"
+              style={{ minWidth: "36px", padding: "0 8px" }}
+            >
+              »
             </button>
           </div>
         </div>

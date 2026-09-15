@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 const studentUserSchema = new mongoose.Schema({
     // Basic Identity
     id: { type: String, required: true, unique: true }, // RegID
+    ctuId: { type: String, default: "" }, // CTU ID if assigned
 
     // Personal Info
     fullName: { type: String },

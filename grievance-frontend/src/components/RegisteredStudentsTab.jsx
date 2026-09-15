@@ -48,6 +48,7 @@ function RegisteredStudentsTab() {
     phone: "",
     program: "",
     studentType: "",
+    ctuId: "",
     isVerified: true
   });
   const [savingEdit, setSavingEdit] = useState(false);
@@ -109,6 +110,7 @@ function RegisteredStudentsTab() {
       phone: student.phone || "",
       program: student.program || "",
       studentType: student.studentType || "",
+      ctuId: student.ctuId || student.id || "",
       isVerified: isActuallyVerified
     });
     setShowEditModal(true);
@@ -196,7 +198,7 @@ function RegisteredStudentsTab() {
           <input
             type="text"
             className="reg-users-search-input"
-            placeholder="Search by ID, name, email, phone, program..."
+            placeholder="Search by CTU ID, Reg No, name, email, phone, program..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -268,7 +270,8 @@ function RegisteredStudentsTab() {
             <table className="reg-users-table">
               <thead>
                 <tr>
-                  <th>Student ID</th>
+                  <th>CTU ID</th>
+                  <th>Reg No</th>
                   <th>Full Name</th>
                   <th>Contact Info</th>
                   <th>Program / Course</th>
@@ -281,13 +284,13 @@ function RegisteredStudentsTab() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="reg-users-empty-cell">
+                    <td colSpan="9" className="reg-users-empty-cell">
                       <div className="reg-users-loading-spinner">Loading registered students...</div>
                     </td>
                   </tr>
                 ) : students.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="reg-users-empty-cell">
+                    <td colSpan="9" className="reg-users-empty-cell">
                       <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                       <div style={{ fontWeight: "600", color: "#334155" }}>No registered students found</div>
                       <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -298,7 +301,24 @@ function RegisteredStudentsTab() {
                 ) : (
                   students.map((student) => (
                     <tr key={student._id || student.id}>
-                      {/* ID */}
+                      {/* CTU ID */}
+                      <td>
+                        <span style={{
+                          display: "inline-block",
+                          padding: "3px 8px",
+                          borderRadius: "6px",
+                          fontSize: "0.82rem",
+                          fontWeight: "600",
+                          fontFamily: "monospace",
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          border: "1px solid #bfdbfe"
+                        }}>
+                          {student.ctuId || student.id || "—"}
+                        </span>
+                      </td>
+
+                      {/* Reg No / ID */}
                       <td>
                         <span className="reg-user-id-badge">{student.id}</span>
                       </td>
@@ -402,11 +422,28 @@ function RegisteredStudentsTab() {
 
             return (
               <div key={student._id || student.id} className="reg-user-mobile-card">
-                {/* Header Row: Name + ID + Status */}
+                {/* Header Row: Name + IDs + Status */}
                 <div className="reg-user-mcard-header">
                   <div className="reg-user-mcard-title-group">
                     <span className="reg-user-mcard-name">{student.fullName || "Student"}</span>
-                    <span className="reg-user-id-badge">{student.id}</span>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "3px", flexWrap: "wrap" }}>
+                      {student.ctuId && (
+                        <span style={{
+                          display: "inline-block",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                          fontFamily: "monospace",
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          border: "1px solid #bfdbfe"
+                        }} title="CTU ID">
+                          {student.ctuId}
+                        </span>
+                      )}
+                      <span className="reg-user-id-badge" title="Registration No">{student.id}</span>
+                    </div>
                   </div>
                   {isVerified ? (
                     <span className="reg-status-badge verified">
@@ -517,6 +554,26 @@ function RegisteredStudentsTab() {
             </div>
 
             <form onSubmit={handleEditSubmit} className="reg-users-modal-form">
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label>Registration No (ID)</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={selectedStudent?.id || ""}
+                    style={{ background: "#f8fafc", color: "#64748b" }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>CTU ID</label>
+                  <input
+                    type="text"
+                    value={editFormData.ctuId}
+                    onChange={(e) => setEditFormData({ ...editFormData, ctuId: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
                 <label>Full Name *</label>
                 <input
