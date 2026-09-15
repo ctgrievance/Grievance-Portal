@@ -92,8 +92,12 @@ function RegisterPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Keep uppercase but allow numbers freely
-    const processedValue = name === "id" ? value.toUpperCase() : value;
+    let processedValue = value;
+    if (name === "id") {
+      processedValue = value.toUpperCase();
+    } else if (name === "email") {
+      processedValue = value.toLowerCase().trim();
+    }
     setFormData({ ...formData, [name]: processedValue });
   };
 
@@ -206,10 +210,15 @@ function RegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: formData.email,
-          otpPhone: otpPhone,
-          otpEmail: otpEmail,
-          formData: formData
+          id: (formData.id || "").toString().trim().toUpperCase(),
+          email: (formData.email || "").toString().toLowerCase().trim(),
+          otpPhone: (otpPhone || "").toString().trim(),
+          otpEmail: (otpEmail || "").toString().trim(),
+          formData: {
+            ...formData,
+            id: (formData.id || "").toString().trim().toUpperCase(),
+            email: (formData.email || "").toString().toLowerCase().trim(),
+          }
         }),
       });
       const data = await res.json();
@@ -324,6 +333,9 @@ function RegisterPage() {
                   <input
                     name="email"
                     type="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
                     placeholder={"e.g. name@univ.com or personal@mail.com"}
                     value={formData.email}
                     onChange={handleChange}

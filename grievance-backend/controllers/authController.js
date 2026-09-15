@@ -41,19 +41,20 @@ export const registerRequest = async (req, res) => {
   try {
     const { email, password, id, phone, role } = req.body;
     const safeId = id.toString().trim().toUpperCase();
+    const cleanEmail = (email || "").toString().toLowerCase().trim();
     const userRole = role ? role.toLowerCase().trim() : "student";
 
     // Check if user already exists in either collection
     let existingUser = null;
     if (userRole === "student") {
-      existingUser = await StudentUser.findOne({ $or: [{ email }, { id: safeId }] });
+      existingUser = await StudentUser.findOne({ $or: [{ email: cleanEmail }, { id: safeId }] });
     } else {
-      existingUser = await StaffUser.findOne({ $or: [{ email }, { id: safeId }] });
+      existingUser = await StaffUser.findOne({ $or: [{ email: cleanEmail }, { id: safeId }] });
     }
 
     // Also check legacy User collection
     if (!existingUser) {
-      existingUser = await User.findOne({ $or: [{ email }, { id: safeId }] });
+      existingUser = await User.findOne({ $or: [{ email: cleanEmail }, { id: safeId }] });
     }
 
     // User exists check ENABLED (Testing mode disabled)
@@ -189,32 +190,46 @@ export const registerRequest = async (req, res) => {
 // =================================================
 export const verifyRegistration = async (req, res) => {
   try {
-    const { email, otpEmail, otpPhone } = req.body;
+    const { email, otpEmail, otpPhone, id, formData } = req.body;
+    const cleanEmail = (email || formData?.email || "").toString().toLowerCase().trim();
+    const safeId = (id || formData?.id || "").toString().trim().toUpperCase();
+
+    if (!cleanEmail && !safeId) {
+      return res.status(400).json({ message: "Email or University ID is required" });
+    }
+
+    // Build resilient query matching either normalized email or University ID
+    const userQuery = safeId && cleanEmail
+      ? { $or: [{ email: cleanEmail }, { id: safeId }] }
+      : (safeId ? { id: safeId } : { email: cleanEmail });
 
     // Find user in StudentUser or StaffUser
-    let user = await StudentUser.findOne({ email });
+    let user = await StudentUser.findOne(userQuery);
     let isStudent = true;
 
     if (!user) {
-      user = await StaffUser.findOne({ email });
+      user = await StaffUser.findOne(userQuery);
       isStudent = false;
     }
 
     // Fallback to legacy User
     if (!user) {
-      user = await User.findOne({ email });
+      user = await User.findOne(userQuery);
       isStudent = null; // Unknown, use legacy
     }
 
     if (!user) return res.status(400).json({ message: "User not found" });
 
     // Validate Phone OTP
-    if (user.phoneOtp !== otpPhone || user.phoneOtpExpires < Date.now()) {
+    const submittedPhoneOtp = (otpPhone || "").toString().trim();
+    const submittedEmailOtp = (otpEmail || "").toString().trim();
+
+    if (user.phoneOtp !== submittedPhoneOtp || user.phoneOtpExpires < Date.now()) {
       return res.status(400).json({ message: "Invalid or expired Phone OTP" });
     }
 
     // Validate Email OTP
-    if (user.otp !== otpEmail || user.otpExpires < Date.now()) {
+    if (user.otp !== submittedEmailOtp || user.otpExpires < Date.now()) {
       return res.status(400).json({ message: "Invalid or expired Email OTP" });
     }
 
@@ -228,7 +243,7 @@ export const verifyRegistration = async (req, res) => {
 
     // Also update legacy User collection for sync
     await User.findOneAndUpdate(
-      { email },
+      userQuery,
       { isVerified: true, otp: undefined, otpExpires: undefined, phoneOtp: undefined, phoneOtpExpires: undefined }
     );
 
