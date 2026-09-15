@@ -327,17 +327,17 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
       const row = data[i];
 
       // 🔥 Case-insensitive column mapping
-      const rowId = row.ID || row.id || row.Id;  // Main ID column
-      const rowCtuId = row["CTU ID"] || row["ctu id"] || row["CTU id"] || row["Ctu Id"] || null;  // CTU ID is separate
-      const rowEmail = row.Email || row.email || row.EMAIL;
-      const rowName = row.Name || row.name || row.NAME;
-      const rowPhone = row.Phone || row.phone || row.PHONE || row["Phone no."] || row["Phone no"] || row["PHONE NO."] || row["phone no."];
+      const rowId = row["ID / Reg No"] || row["ID/Reg No"] || row.ID || row.id || row.Id || row["Reg No"] || row["Registration No"];  // Main ID column
+      const rowCtuId = row["CTU ID"] || row["ctu id"] || row["CTU id"] || row["Ctu Id"] || row.CTUID || null;  // CTU ID is separate
+      const rowEmail = row.StudentEmail || row["Student Email"] || row.Email || row.email || row.EMAIL;
+      const rowName = row.StudentName || row["Student Name"] || row.Name || row.name || row.NAME || row.FullName || row["Full Name"];
+      const rowPhone = row.StudentMobileNo || row["Student Mobile No"] || row.Phone || row.phone || row.PHONE || row["Phone no."] || row["Phone no"] || row["PHONE NO."] || row["phone no."] || row.Mobile || row.MobileNo;
       const rowRole = row.Role || row.role || row.ROLE;
       const rowDepartment = row.Department || row.department || row.DEPARTMENT;
       const rowProgram = row.Program || row.program || row.PROGRAM;
       const rowStudentType = row.StudentType || row.studentType || row.studenttype;
-      const rowSchool = row.School || row.school || row.SCHOOL;
-      const rowBatch = row.batch || row.Batch || row.BATCH;
+      const rowSchool = row.School_Name || row["School Name"] || row.School || row.school || row.SCHOOL;
+      const rowBatch = row.BatchName || row["Batch Name"] || row.batch || row.Batch || row.BATCH;
 
       // 🔥 Only ID is required for verification - email, phone etc are optional
       if (rowId) {
@@ -1344,4 +1344,17 @@ app.get("/", (req, res) => res.send("✅ Backend Running"));
 
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server: http://localhost:${PORT}`));
+
+// 🛡️ Nginx Keep-Alive alignment (prevent 502 Bad Gateway race conditions)
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
+
+// 🛡️ Global Exception Handlers to avoid silent deadlocks
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("⚠️ [Server] Unhandled Rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("❌ [Server] Uncaught Exception:", err);
+});
+
+server.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running: http://0.0.0.0:${PORT}`));

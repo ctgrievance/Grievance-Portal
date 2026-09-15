@@ -52,8 +52,8 @@ const processUpload = async (jobId, rows, mode = "add") => {
       const idsToDelete = [];
       for (const row of rows) {
         let id = findField(row,
-          "ID", "Student ID", "StudentID", "Reg No", "Registration No",
-          "Reg. No", "RegNo", "UID", "Roll No", "RollNo", "Enrollment No"
+          "ID / Reg No", "ID/Reg No", "ID / RegNo", "ID/RegNo", "ID", "Student ID", "StudentID",
+          "Reg No", "Registration No", "Reg. No", "RegNo", "UID", "Roll No", "RollNo", "Enrollment No"
         ).toUpperCase();
         if (!id) {
           const ctuFallback = findField(row, "CTU ID", "CTU Id", "CTUID", "ctuId", "CTU_ID", "CTU").toUpperCase();
@@ -93,8 +93,8 @@ const processUpload = async (jobId, rows, mode = "add") => {
 
       for (const row of batch) {
         let id = findField(row,
-          "ID", "Student ID", "StudentID", "Reg No", "Registration No",
-          "Reg. No", "RegNo", "UID", "Roll No", "RollNo", "Enrollment No"
+          "ID / Reg No", "ID/Reg No", "ID / RegNo", "ID/RegNo", "ID", "Student ID", "StudentID",
+          "Reg No", "Registration No", "Reg. No", "RegNo", "UID", "Roll No", "RollNo", "Enrollment No"
         ).toUpperCase();
 
         // ✅ Fallback 1: use CTU ID if ID is blank
@@ -119,12 +119,12 @@ const processUpload = async (jobId, rows, mode = "add") => {
         docs.push({
           id,
           ctuId: findField(row, "CTU ID", "CTU Id", "CTUID", "ctuId", "CTU_ID", "CTU") || null,
-          fullName: findField(row, "Name", "Full Name", "FullName", "Student Name", "StudentName", "FULL NAME", "Full name"),
-          email: findField(row, "Email", "Email ID", "EmailID", "E-mail", "email", "EMAIL", "Mail").toLowerCase(),
-          phone: findField(row, "Phone number", "Phone Number", "PhoneNumber", "Phone No", "PhoneNo", "Mobile", "Mobile No", "MobileNo", "Contact", "Contact No", "Phone", "Mob"),
-          school: findField(row, "School", "Department", "Dept", "Faculty", "College", "School Name", "Institute"),
-          program: findField(row, "program", "Program", "Programme", "Course", "Branch", "Degree", "Specialization", "Stream"),
-          batch: findField(row, "batch", "Batch", "BATCH", "Academic Year", "Session", "Admission Year", "Year", "Joining Year"),
+          fullName: findField(row, "StudentName", "Student Name", "Student_Name", "FullName", "Full Name", "Name", "FULL NAME", "Full name"),
+          email: findField(row, "StudentEmail", "Student Email", "Student_Email", "Email", "Email ID", "EmailID", "E-mail", "email", "EMAIL", "Mail").toLowerCase(),
+          phone: findField(row, "StudentMobileNo", "Student Mobile No", "Student_Mobile_No", "StudentMobile", "Mobile", "Mobile No", "MobileNo", "Phone number", "Phone Number", "PhoneNumber", "Phone No", "PhoneNo", "Contact", "Contact No", "Phone", "Mob"),
+          school: findField(row, "School_Name", "School Name", "School", "Department", "Dept", "Faculty", "College", "Institute"),
+          program: findField(row, "Program", "program", "Programme", "Course", "Branch", "Degree", "Specialization", "Stream"),
+          batch: findField(row, "BatchName", "Batch Name", "Batch_Name", "batch", "Batch", "BATCH", "Academic Year", "Session", "Admission Year", "Year", "Joining Year"),
           studentType: findField(row, "Student Type", "StudentType", "Type", "Admission Type", "AdmissionType", "Category", "Mode"),
         });
       }
@@ -296,12 +296,14 @@ export const getUploadProgress = (req, res) => {
 export const addStudentRecord = async (req, res) => {
   try {
     const { id, ctuId, fullName, email, phone, program, studentType, school, batch } = req.body;
-    if (!id) return res.status(400).json({ message: "Student ID is required" });
+    if (!id) return res.status(400).json({ message: "Student ID / Reg No is required" });
     const exists = await StudentRecord.findOne({ id: id.trim().toUpperCase() });
-    if (exists) return res.status(400).json({ message: "Student ID already exists" });
+    if (exists) return res.status(400).json({ message: "Student ID / Reg No already exists" });
     const record = await StudentRecord.create({
       id: id.trim().toUpperCase(), ctuId: ctuId || null,
-      fullName, email, phone, program, studentType, school, batch,
+      fullName: fullName || "", email: (email || "").toLowerCase().trim(), phone: phone || "",
+      program: program || "", studentType: studentType || "", school: school || "",
+      batch: batch || "",
     });
     res.status(201).json({ message: "Student record added", record });
   } catch (error) {

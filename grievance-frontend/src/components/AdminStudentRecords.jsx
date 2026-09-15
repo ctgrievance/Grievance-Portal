@@ -43,7 +43,7 @@ const AdminStudentRecords = () => {
 
   // New Row State
   const [isAdding, setIsAdding] = useState(false);
-  const [newRow, setNewRow] = useState({ id: "", ctuId: "", fullName: "", email: "", phone: "", school: "", program: "", batch: "", studentType: "" });
+  const [newRow, setNewRow] = useState({ id: "", ctuId: "", fullName: "", email: "", phone: "", school: "", program: "", batch: "" });
 
   const LIMIT = 20;
   const BASE  = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/student-records`;
@@ -254,7 +254,7 @@ const AdminStudentRecords = () => {
 
       showMsg("New student record added successfully", "success");
       setIsAdding(false);
-      setNewRow({ id: "", ctuId: "", fullName: "", email: "", phone: "", school: "", program: "", batch: "", studentType: "" });
+      setNewRow({ id: "", ctuId: "", fullName: "", email: "", phone: "", school: "", program: "", batch: "" });
       fetchRecords();
     } catch (err) {
       showMsg(err.message, "error");
@@ -311,7 +311,7 @@ const AdminStudentRecords = () => {
           <input 
             type="text" 
             className="records-search-input"
-            placeholder="Search by ID, CTU ID, Name, Email, Phone, School..." 
+            placeholder="Search by CTU ID, ID / Reg No, StudentName, Email, Mobile, School, Batch..." 
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -375,40 +375,36 @@ const AdminStudentRecords = () => {
           </div>
           <div className="records-form-grid">
             <div className="records-form-field">
-              <label className="records-form-label">Student ID *</label>
-              <input type="text" name="id" value={newRow.id} onChange={handleNewRowChange} placeholder="e.g. 20210001" className="records-form-input" />
-            </div>
-            <div className="records-form-field">
               <label className="records-form-label">CTU ID</label>
-              <input type="text" name="ctuId" value={newRow.ctuId} onChange={handleNewRowChange} placeholder="e.g. CTU1024" className="records-form-input" />
+              <input type="text" name="ctuId" value={newRow.ctuId} onChange={handleNewRowChange} placeholder="e.g. 72013143" className="records-form-input" />
             </div>
             <div className="records-form-field">
-              <label className="records-form-label">Full Name *</label>
+              <label className="records-form-label">ID / Reg No *</label>
+              <input type="text" name="id" value={newRow.id} onChange={handleNewRowChange} placeholder="e.g. 72013143" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">StudentName *</label>
               <input type="text" name="fullName" value={newRow.fullName} onChange={handleNewRowChange} placeholder="Student Name" className="records-form-input" />
             </div>
             <div className="records-form-field">
-              <label className="records-form-label">Email Address</label>
-              <input type="email" name="email" value={newRow.email} onChange={handleNewRowChange} placeholder="student@ctuniversity.in" className="records-form-input" />
+              <label className="records-form-label">StudentEmail</label>
+              <input type="email" name="email" value={newRow.email} onChange={handleNewRowChange} placeholder="student@gmail.com" className="records-form-input" />
             </div>
             <div className="records-form-field">
-              <label className="records-form-label">Phone Number</label>
+              <label className="records-form-label">StudentMobileNo</label>
               <input type="text" name="phone" value={newRow.phone} onChange={handleNewRowChange} placeholder="Mobile Number" className="records-form-input" />
             </div>
             <div className="records-form-field">
-              <label className="records-form-label">School</label>
-              <input type="text" name="school" value={newRow.school} onChange={handleNewRowChange} placeholder="e.g. SET" className="records-form-input" />
+              <label className="records-form-label">School_Name</label>
+              <input type="text" name="school" value={newRow.school} onChange={handleNewRowChange} placeholder="e.g. School of Law" className="records-form-input" />
             </div>
             <div className="records-form-field">
               <label className="records-form-label">Program</label>
-              <input type="text" name="program" value={newRow.program} onChange={handleNewRowChange} placeholder="e.g. B.Tech CSE" className="records-form-input" />
+              <input type="text" name="program" value={newRow.program} onChange={handleNewRowChange} placeholder="e.g. B.A., LL.B." className="records-form-input" />
             </div>
             <div className="records-form-field">
-              <label className="records-form-label">Batch</label>
-              <input type="text" name="batch" value={newRow.batch} onChange={handleNewRowChange} placeholder="e.g. 2022-2026" className="records-form-input" />
-            </div>
-            <div className="records-form-field">
-              <label className="records-form-label">Student Type</label>
-              <input type="text" name="studentType" value={newRow.studentType} onChange={handleNewRowChange} placeholder="Regular / Lateral" className="records-form-input" />
+              <label className="records-form-label">BatchName</label>
+              <input type="text" name="batch" value={newRow.batch} onChange={handleNewRowChange} placeholder="e.g. BATCH 2022-27" className="records-form-input" />
             </div>
           </div>
           <div className="records-form-actions">
@@ -528,15 +524,14 @@ const AdminStudentRecords = () => {
       <div className="records-columns-guide">
         <strong>📋 Supported Columns:</strong>
         <div className="records-column-chips">
-          <span className="records-column-chip">ID / Reg No</span>
           <span className="records-column-chip">CTU ID</span>
-          <span className="records-column-chip">Full Name</span>
-          <span className="records-column-chip">Email</span>
-          <span className="records-column-chip">Phone / Mobile</span>
-          <span className="records-column-chip">School</span>
+          <span className="records-column-chip">ID / Reg No</span>
+          <span className="records-column-chip">StudentName</span>
+          <span className="records-column-chip">StudentEmail</span>
+          <span className="records-column-chip">StudentMobileNo</span>
+          <span className="records-column-chip">School_Name</span>
           <span className="records-column-chip">Program</span>
-          <span className="records-column-chip">Batch</span>
-          <span className="records-column-chip">Type</span>
+          <span className="records-column-chip">BatchName</span>
         </div>
       </div>
 
@@ -546,14 +541,14 @@ const AdminStudentRecords = () => {
           <table className="records-table">
             <thead>
               <tr>
-                <th>Student ID</th>
                 <th>CTU ID</th>
-                <th>Full Name</th>
-                <th>Contact Info</th>
-                <th>School</th>
+                <th>ID / Reg No</th>
+                <th>StudentName</th>
+                <th>StudentEmail</th>
+                <th>StudentMobileNo</th>
+                <th>School_Name</th>
                 <th>Program</th>
-                <th>Batch</th>
-                <th>Type</th>
+                <th>BatchName</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
@@ -581,35 +576,14 @@ const AdminStudentRecords = () => {
                     {editingId === record.id ? (
                       <>
                         {/* Editable Row */}
+                        <td><input type="text" name="ctuId" value={editFormData.ctuId || ""} onChange={handleEditChange} placeholder="CTU ID" className="records-form-input" style={{ height: "30px", minWidth: "90px" }} /></td>
                         <td><span className="records-id-badge">{record.id}</span></td>
-                        <td><input type="text" name="ctuId" value={editFormData.ctuId || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td><input type="text" name="fullName" value={editFormData.fullName || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            <input 
-                              type="email" 
-                              name="email" 
-                              value={editFormData.email || ""} 
-                              onChange={handleEditChange} 
-                              placeholder="Email address"
-                              className="records-form-input" 
-                              style={{ height: "28px", fontSize: "0.8rem" }} 
-                            />
-                            <input 
-                              type="text" 
-                              name="phone" 
-                              value={editFormData.phone || ""} 
-                              onChange={handleEditChange} 
-                              placeholder="Phone number"
-                              className="records-form-input" 
-                              style={{ height: "28px", fontSize: "0.8rem" }} 
-                            />
-                          </div>
-                        </td>
-                        <td><input type="text" name="school" value={editFormData.school || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td><input type="text" name="program" value={editFormData.program || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td><input type="text" name="batch" value={editFormData.batch || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
-                        <td><input type="text" name="studentType" value={editFormData.studentType || ""} onChange={handleEditChange} className="records-form-input" style={{ height: "30px" }} /></td>
+                        <td><input type="text" name="fullName" value={editFormData.fullName || ""} onChange={handleEditChange} placeholder="StudentName" className="records-form-input" style={{ height: "30px", minWidth: "120px" }} /></td>
+                        <td><input type="email" name="email" value={editFormData.email || ""} onChange={handleEditChange} placeholder="StudentEmail" className="records-form-input" style={{ height: "30px", minWidth: "140px", fontSize: "0.8rem" }} /></td>
+                        <td><input type="text" name="phone" value={editFormData.phone || ""} onChange={handleEditChange} placeholder="StudentMobileNo" className="records-form-input" style={{ height: "30px", minWidth: "100px", fontSize: "0.8rem" }} /></td>
+                        <td><input type="text" name="school" value={editFormData.school || ""} onChange={handleEditChange} placeholder="School_Name" className="records-form-input" style={{ height: "30px", minWidth: "120px" }} /></td>
+                        <td><input type="text" name="program" value={editFormData.program || ""} onChange={handleEditChange} placeholder="Program" className="records-form-input" style={{ height: "30px", minWidth: "120px" }} /></td>
+                        <td><input type="text" name="batch" value={editFormData.batch || ""} onChange={handleEditChange} placeholder="BatchName" className="records-form-input" style={{ height: "30px", minWidth: "90px" }} /></td>
                         <td style={{ textAlign: "right" }}>
                           <div className="records-action-group" style={{ justifyContent: "flex-end" }}>
                             <button type="button" onClick={() => handleSaveEdit(record.id)} className="records-action-btn edit" title="Save changes">
@@ -625,40 +599,32 @@ const AdminStudentRecords = () => {
                       <>
                         {/* Normal Row */}
                         <td onDoubleClick={() => handleEditClick(record)}>
-                          <span className="records-id-badge">{record.id}</span>
+                          <span style={{ color: "#475569", fontWeight: 500 }}>{record.ctuId || "—"}</span>
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
-                          <span style={{ color: "#475569", fontWeight: 500 }}>{record.ctuId || "—"}</span>
+                          <span className="records-id-badge">{record.id}</span>
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
                           <div className="records-name-text">{record.fullName || "—"}</div>
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
-                          {record.email && (
-                            <div className="records-contact-item">
-                              <MailIcon width="12" height="12" style={{ color: "#94a3b8" }} />
-                              <span>{record.email}</span>
-                            </div>
-                          )}
-                          {record.phone && (
-                            <div className="records-contact-item">
-                              <PhoneIcon width="12" height="12" style={{ color: "#94a3b8" }} />
-                              <span>{record.phone}</span>
-                            </div>
-                          )}
-                          {!record.email && !record.phone && "—"}
+                          {record.email ? (
+                            <span style={{ fontSize: "0.82rem", color: "#334155" }}>{record.email}</span>
+                          ) : "—"}
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
-                          <span style={{ color: "#334155" }}>{record.school || "—"}</span>
+                          {record.phone ? (
+                            <span style={{ fontSize: "0.82rem", color: "#334155" }}>{record.phone}</span>
+                          ) : "—"}
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
-                          <span style={{ color: "#334155", fontWeight: 500 }}>{record.program || "—"}</span>
+                          <span style={{ color: "#334155", fontSize: "0.82rem" }}>{record.school || "—"}</span>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          <span style={{ color: "#334155", fontWeight: 500, fontSize: "0.82rem" }}>{record.program || "—"}</span>
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
                           <span style={{ color: "#64748b", fontSize: "0.82rem" }}>{record.batch || "—"}</span>
-                        </td>
-                        <td onDoubleClick={() => handleEditClick(record)}>
-                          <span className="records-type-pill regular">{record.studentType || "Regular"}</span>
                         </td>
                         <td style={{ textAlign: "right" }}>
                           <div className="records-action-group" style={{ justifyContent: "flex-end" }}>

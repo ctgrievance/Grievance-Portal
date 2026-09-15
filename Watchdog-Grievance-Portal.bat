@@ -21,16 +21,15 @@ if errorlevel 1 (
     echo [%date% %time%] [SUCCESS] Nginx restarted and active on ports 80 and 443.
 )
 
-:: 2. Check Backend Server (HTTP response or Port 5000 listening)
+:: 2. Check Backend Server (HTTP response on port 5000)
 curl.exe -s --max-time 4 http://127.0.0.1:5000 >nul 2>&1
 if errorlevel 1 (
-    netstat -ano | findstr "LISTENING" | findstr "5000" >nul
-    if errorlevel 1 (
-        echo [%date% %time%] [ALERT] Backend Server down on port 5000! Auto-recovering...
-        powershell -NoProfile -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'cmd.exe /c \"node server.js\"'; CurrentDirectory = 'C:\Users\admin\Desktop\Grievance-Portal\grievance-backend'}" >nul 2>&1
-        ping 127.0.0.1 -n 4 >nul
-        echo [%date% %time%] [SUCCESS] Backend Server restarted on port 5000.
-    )
+    echo [%date% %time%] [ALERT] Backend Server unresponsive or down on port 5000! Auto-recovering...
+    powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }" >nul 2>&1
+    ping 127.0.0.1 -n 2 >nul
+    powershell -NoProfile -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'cmd.exe /c \"node server.js\"'; CurrentDirectory = 'C:\Users\admin\Desktop\Grievance-Portal\grievance-backend'}" >nul 2>&1
+    ping 127.0.0.1 -n 4 >nul
+    echo [%date% %time%] [SUCCESS] Backend Server restarted on port 5000.
 )
 
 :: 3. Check Frontend App (Port 3000)
