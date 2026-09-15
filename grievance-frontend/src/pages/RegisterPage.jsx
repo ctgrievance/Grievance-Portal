@@ -93,31 +93,11 @@ function RegisterPage() {
         } else {
           setIdFeedback({
             type: "success",
-            message: `Verified: ${data.studentName || "Student Record Found"}`
+            message: "Registration ID verified"
           });
         }
 
         setRequiresCtuId(Boolean(data.requiresCtuId));
-
-        const deptList = academicDepartments.length > 0 ? academicDepartments : fallbackAcademicDepartments;
-        const cleanSchool = (data.school || "").replace(/\s*-\s*\d+$/, "").trim().toLowerCase();
-        const matchedDept = deptList.find(d => 
-          d.name.toLowerCase() === (data.school || "").toLowerCase() ||
-          (cleanSchool && d.name.toLowerCase().includes(cleanSchool)) ||
-          (cleanSchool && cleanSchool.includes(d.name.toLowerCase()))
-        );
-        const resolvedSchool = matchedDept ? matchedDept.name : (data.school || "");
-
-        // Helpful prefill if not yet typed
-        setFormData((prev) => ({
-          ...prev,
-          fullName: prev.fullName || data.studentName || "",
-          email: prev.email || data.email || "",
-          phone: prev.phone || data.mobile || "",
-          department: prev.department || resolvedSchool,
-          school: prev.school || resolvedSchool,
-          program: data.program || prev.program || ""
-        }));
       } else {
         setRequiresCtuId(false);
         setIdFeedback({

@@ -77,13 +77,7 @@ export const checkStudentId = async (req, res) => {
       exists: true,
       requiresCtuId,
       isAlreadyRegistered,
-      resolvedId: recId,
-      studentName: record.fullName || "",
-      school: record.school || "",
-      program: record.program || "",
-      batch: record.batch || "",
-      mobile: record.phone || "",
-      email: record.email || ""
+      resolvedId: recId
     });
   } catch (error) {
     console.error("Check Student ID Error:", error);
