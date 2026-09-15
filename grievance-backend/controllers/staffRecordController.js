@@ -29,6 +29,25 @@ const findField = (row, ...keywords) => {
   }
   return "";
 };
+
+// ─── Merged cells propagator ──────────────────────────────────────────────
+// Expands top-left cell values into all cells covered by Excel merged ranges
+export const fillMergedCells = (sheet) => {
+  if (!sheet || !sheet["!merges"] || !Array.isArray(sheet["!merges"])) return;
+  for (const merge of sheet["!merges"]) {
+    const startCellAddress = xlsx.utils.encode_cell(merge.s);
+    const cellValue = sheet[startCellAddress];
+    if (!cellValue) continue;
+
+    for (let r = merge.s.r; r <= merge.e.r; r++) {
+      for (let c = merge.s.c; c <= merge.e.c; c++) {
+        if (r === merge.s.r && c === merge.s.c) continue;
+        const targetAddress = xlsx.utils.encode_cell({ r, c });
+        sheet[targetAddress] = { ...cellValue };
+      }
+    }
+  }
+};
 // ─────────────────────────────────────────────────────────────────────────
 
 // ─── Background processor (batch insertMany) ─────────────────────────────
@@ -107,6 +126,25 @@ const processUpload = async (jobId, rows, mode = "add") => {
         let role = roleRaw ? roleRaw.toLowerCase() : "staff";
         if (role !== "admin") role = "staff";
 
+        // Determine staffType (Teaching vs Non-Teaching)
+        let staffType = row._sheetStaffType || "";
+        if (!staffType) {
+          const explicitType = findField(row, "Staff Type", "StaffType", "Category", "Staff Category", "Classification", "Teaching / Non-Teaching");
+          if (/faculty|teach/i.test(explicitType)) {
+            staffType = "Teaching";
+          } else if (/admin|non/i.test(explicitType)) {
+            staffType = "Non-Teaching";
+          }
+        }
+        if (!staffType) {
+          const desig = findField(row, "Designation", "Post", "Designation / Role");
+          if (/professor|lecturer|teacher|faculty|instructor|dean|hod/i.test(desig)) {
+            staffType = "Teaching";
+          } else {
+            staffType = "Non-Teaching";
+          }
+        }
+
         docs.push({
           id,
           fullName: findField(row, "Name", "Full Name", "FullName", "Staff Name", "Employee Name", "Emp Name", "Emp. Name", "Faculty Name", "Teacher Name"),
@@ -114,6 +152,7 @@ const processUpload = async (jobId, rows, mode = "add") => {
           phone: findField(row, "Phone number", "Phone Number", "PhoneNumber", "Phone No", "Mobile", "Mobile No", "Mobile Number", "Contact", "Contact No"),
           department: findField(row, "Department", "Dept", "Faculty", "School", "Deaprtment", "Depart", "Branch"),
           role: role,
+          staffType: staffType,
         });
       }
 
@@ -141,7 +180,7 @@ const processUpload = async (jobId, rows, mode = "add") => {
         const result = await StaffRecord.bulkWrite(ops, { ordered: false });
         inserted += (result.upsertedCount || 0) + (result.modifiedCount || 0);
 
-        // 🔥 Sync updated name/contact details to registered accounts while strictly protecting Admin roles
+        // 🔥 Sync updated name/contact/staffType details to registered accounts while strictly protecting Admin roles
         for (const doc of uniqueDocs) {
           try {
             const existingUser = await User.findOne({ id: doc.id });
@@ -150,6 +189,7 @@ const processUpload = async (jobId, rows, mode = "add") => {
               if (doc.fullName) syncUpdate.fullName = doc.fullName;
               if (doc.email) syncUpdate.email = doc.email;
               if (doc.phone) syncUpdate.phone = doc.phone;
+              if (doc.staffType) syncUpdate.staffType = doc.staffType;
 
               const isAlreadyAdmin = existingUser.isDeptAdmin || existingUser.isMasterAdmin || existingUser.role === "admin";
               if (!isAlreadyAdmin && doc.role) {
@@ -202,11 +242,12 @@ export const getAllRecords = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20; // Default 20 per page as requested
     const search = req.query.search || "";
+    const staffType = (req.query.staffType || "all").toString().trim();
     
     // Build search query for id, name, email, phone, department
-    const query = {};
+    const baseQuery = {};
     if (search) {
-      query.$or = [
+      baseQuery.$or = [
         { id: { $regex: search, $options: "i" } },
         { fullName: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
@@ -215,14 +256,38 @@ export const getAllRecords = async (req, res) => {
       ];
     }
 
-    const total = await StaffRecord.countDocuments(query);
-    const records = await StaffRecord.find(query)
-      .sort({ createdAt: -1 }) // Newest first
-      .skip((page - 1) * limit)
-      .limit(limit);
+    const query = { ...baseQuery };
+    if (staffType.toLowerCase() === "teaching") {
+      query.staffType = "Teaching";
+    } else if (staffType.toLowerCase() === "non-teaching" || staffType.toLowerCase() === "non_teaching" || staffType.toLowerCase() === "admin") {
+      if (query.$or) {
+        query.$and = [
+          { $or: query.$or },
+          { $or: [{ staffType: "Non-Teaching" }, { staffType: { $exists: false } }, { staffType: "" }] }
+        ];
+        delete query.$or;
+      } else {
+        query.$or = [{ staffType: "Non-Teaching" }, { staffType: { $exists: false } }, { staffType: "" }];
+      }
+    }
+
+    const [total, totalTeaching, totalNonTeaching, records] = await Promise.all([
+      StaffRecord.countDocuments(query),
+      StaffRecord.countDocuments({ ...baseQuery, staffType: "Teaching" }),
+      StaffRecord.countDocuments({
+        ...baseQuery,
+        $or: [{ staffType: "Non-Teaching" }, { staffType: { $exists: false } }, { staffType: "" }]
+      }),
+      StaffRecord.find(query)
+        .sort({ createdAt: -1 }) // Newest first
+        .skip((page - 1) * limit)
+        .limit(limit)
+    ]);
 
     res.json({
       total,
+      totalTeaching,
+      totalNonTeaching,
       page,
       totalPages: Math.ceil(total / limit),
       records
@@ -235,7 +300,7 @@ export const getAllRecords = async (req, res) => {
 // Add a new staff record
 export const addRecord = async (req, res) => {
   try {
-    const { id, fullName, email, phone, role, department } = req.body;
+    const { id, fullName, email, phone, role, department, staffType } = req.body;
     
     if (!id || !role) {
       return res.status(400).json({ message: "ID and Role are required" });
@@ -253,7 +318,8 @@ export const addRecord = async (req, res) => {
       email,
       phone,
       role: role.toLowerCase(),
-      department
+      department,
+      staffType: staffType === "Teaching" ? "Teaching" : "Non-Teaching"
     });
 
     await record.save();
@@ -291,6 +357,7 @@ export const updateRecord = async (req, res) => {
     if (updateData.name) syncFields.fullName = updateData.name.trim();
     if (updateData.email) syncFields.email = updateData.email.toLowerCase().trim();
     if (updateData.phone) syncFields.phone = updateData.phone.trim();
+    if (updateData.staffType) syncFields.staffType = updateData.staffType;
 
     // Check if target user is currently an admin to avoid demoting them to staff on verification record update
     const existingUser = await User.findOne({ id: cleanId });
@@ -357,10 +424,33 @@ export const uploadStaffRecords = async (req, res) => {
     for (const sheetName of sheetNames) {
       const sheet = workbook.Sheets[sheetName];
       if (!sheet) continue;
+
+      // 🔥 Expand merged cells so values (like Department) are propagated to all merged rows
+      fillMergedCells(sheet);
+
+      // Detect sheet category: "Faculty" / "Teach" -> Teaching, "Admin" / "Non-Teach" / "Staff" -> Non-Teaching
+      const sName = sheetName.toLowerCase().trim();
+      let defaultStaffType = "";
+      if (sName.includes("faculty") || sName.includes("teach") || sName.includes("academic") || sName.includes("prof")) {
+        defaultStaffType = "Teaching";
+      } else if (sName.includes("admin") || sName.includes("non-teach") || sName.includes("non teach") || sName.includes("staff")) {
+        defaultStaffType = "Non-Teaching";
+      }
+
       const sheetRows = xlsx.utils.sheet_to_json(sheet, { defval: "" });
       if (sheetRows && sheetRows.length > 0) {
-        sheetSummaries.push({ name: sheetName, rowCount: sheetRows.length });
-        allRows.push(...sheetRows);
+        // Tag each row with detected sheet category
+        const taggedRows = sheetRows.map(row => ({
+          ...row,
+          _sheetName: sheetName,
+          _sheetStaffType: defaultStaffType
+        }));
+        sheetSummaries.push({ 
+          name: sheetName, 
+          rowCount: sheetRows.length,
+          category: defaultStaffType || "General"
+        });
+        allRows.push(...taggedRows);
       }
     }
 

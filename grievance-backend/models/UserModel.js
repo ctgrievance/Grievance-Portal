@@ -38,6 +38,7 @@ const userSchema = new mongoose.Schema({
 
   // Admin / Staff Info
   staffDepartment: { type: String, default: "" },
+  staffType: { type: String, enum: ["Teaching", "Non-Teaching"], default: "Non-Teaching" },
   isDeptAdmin: { type: Boolean, default: false },
   adminDepartment: { type: String, default: "" },
   adminDepartments: { type: [String], default: [] },

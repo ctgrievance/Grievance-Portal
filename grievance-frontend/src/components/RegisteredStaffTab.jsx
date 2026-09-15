@@ -29,9 +29,12 @@ function RegisteredStaffTab() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalVerified, setTotalVerified] = useState(0);
+  const [totalTeaching, setTotalTeaching] = useState(0);
+  const [totalNonTeaching, setTotalNonTeaching] = useState(0);
   const [totalAdmins, setTotalAdmins] = useState(0);
   const [totalRegularStaff, setTotalRegularStaff] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
+  const [staffTypeFilter, setStaffTypeFilter] = useState("all"); // "all" | "Teaching" | "Non-Teaching"
   const DEFAULT_DEPARTMENTS = [
     "Accounts",
     "Admission",
@@ -74,6 +77,7 @@ function RegisteredStaffTab() {
     phone: "",
     department: "",
     role: "staff",
+    staffType: "Non-Teaching",
     isDeptAdmin: false,
     isVerified: true
   });
@@ -103,6 +107,7 @@ function RegisteredStaffTab() {
         department: deptFilter,
         role: roleFilter,
         status: statusFilter,
+        staffType: staffTypeFilter,
         page: page.toString(),
         limit: "25"
       });
@@ -114,6 +119,8 @@ function RegisteredStaffTab() {
       setStaffList(data.staff || []);
       setTotal(data.total || 0);
       setTotalVerified(data.totalVerified || 0);
+      setTotalTeaching(data.totalTeaching || 0);
+      setTotalNonTeaching(data.totalNonTeaching || 0);
       setTotalAdmins(data.totalAdmins || 0);
       setTotalRegularStaff(data.totalRegularStaff || 0);
       setTotalPending(data.totalPending || 0);
@@ -130,7 +137,7 @@ function RegisteredStaffTab() {
     } finally {
       setLoading(false);
     }
-  }, [search, deptFilter, roleFilter, statusFilter, page, BASE_URL]);
+  }, [search, deptFilter, roleFilter, statusFilter, staffTypeFilter, page, BASE_URL]);
 
   useEffect(() => {
     fetchStaff();
@@ -168,6 +175,7 @@ function RegisteredStaffTab() {
       phone: staff.phone || "",
       department: staff.staffDepartment || staff.adminDepartment || "",
       role: staff.role || "staff",
+      staffType: staff.staffType || "Non-Teaching",
       isDeptAdmin: !!staff.isDeptAdmin,
       isVerified: isActuallyVerified
     });
@@ -241,16 +249,20 @@ function RegisteredStaffTab() {
       {/* EXECUTIVE KPI METRICS */}
       <div className="reg-users-kpi-grid">
         <div className="reg-users-kpi-card verified">
-          <span className="reg-users-kpi-label">Verified Staff</span>
+          <span className="reg-users-kpi-label">Total Verified</span>
           <div className="reg-users-kpi-val">{totalVerified}</div>
+        </div>
+        <div className="reg-users-kpi-card" style={{ borderLeft: "4px solid #10b981", background: "white" }}>
+          <span className="reg-users-kpi-label" style={{ color: "#047857" }}>Faculty (Teaching)</span>
+          <div className="reg-users-kpi-val" style={{ color: "#065f46" }}>{totalTeaching}</div>
+        </div>
+        <div className="reg-users-kpi-card" style={{ borderLeft: "4px solid #6366f1", background: "white" }}>
+          <span className="reg-users-kpi-label" style={{ color: "#4338ca" }}>Admin (Non-Teaching)</span>
+          <div className="reg-users-kpi-val" style={{ color: "#3730a3" }}>{totalNonTeaching}</div>
         </div>
         <div className="reg-users-kpi-card admin">
           <span className="reg-users-kpi-label">Admins & Heads</span>
           <div className="reg-users-kpi-val">{totalAdmins}</div>
-        </div>
-        <div className="reg-users-kpi-card regular">
-          <span className="reg-users-kpi-label">Regular Staff</span>
-          <div className="reg-users-kpi-val">{totalRegularStaff}</div>
         </div>
       </div>
 
@@ -261,6 +273,84 @@ function RegisteredStaffTab() {
           <span>{msg}</span>
         </div>
       )}
+
+      {/* ── CATEGORY SUB-TABS (All / Teaching / Non-Teaching) ── */}
+      <div className="staff-category-tabs" style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap", alignItems: "center" }}>
+        <button
+          type="button"
+          onClick={() => { setStaffTypeFilter("all"); setPage(1); }}
+          className={`records-tab-pill ${staffTypeFilter === "all" ? "active" : ""}`}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            cursor: "pointer",
+            border: staffTypeFilter === "all" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+            backgroundColor: staffTypeFilter === "all" ? "#eff6ff" : "#fff",
+            color: staffTypeFilter === "all" ? "#1d4ed8" : "#64748b",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>All Registered Staff</span>
+          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "all" ? "#dbeafe" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "all" ? "#1e40af" : "#475569" }}>
+            {totalVerified}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setStaffTypeFilter("Teaching"); setPage(1); }}
+          className={`records-tab-pill ${staffTypeFilter === "Teaching" ? "active" : ""}`}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            cursor: "pointer",
+            border: staffTypeFilter === "Teaching" ? "2px solid #10b981" : "1px solid #e2e8f0",
+            backgroundColor: staffTypeFilter === "Teaching" ? "#ecfdf5" : "#fff",
+            color: staffTypeFilter === "Teaching" ? "#047857" : "#64748b",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>Teaching (Faculty)</span>
+          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "Teaching" ? "#d1fae5" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "Teaching" ? "#065f46" : "#475569" }}>
+            {totalTeaching}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setStaffTypeFilter("Non-Teaching"); setPage(1); }}
+          className={`records-tab-pill ${staffTypeFilter === "Non-Teaching" ? "active" : ""}`}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            cursor: "pointer",
+            border: staffTypeFilter === "Non-Teaching" ? "2px solid #6366f1" : "1px solid #e2e8f0",
+            backgroundColor: staffTypeFilter === "Non-Teaching" ? "#eef2ff" : "#fff",
+            color: staffTypeFilter === "Non-Teaching" ? "#4338ca" : "#64748b",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>Non-Teaching (Admin / Offices)</span>
+          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "Non-Teaching" ? "#e0e7ff" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "Non-Teaching" ? "#3730a3" : "#475569" }}>
+            {totalNonTeaching}
+          </span>
+        </button>
+      </div>
 
       {/* FILTER & SEARCH CONTROLS */}
       <div className="reg-users-filters-bar">
@@ -294,6 +384,22 @@ function RegisteredStaffTab() {
         </div>
 
         <div className="reg-users-filter-controls">
+          <div className="reg-users-select-wrap category">
+            <select
+              className="reg-users-select"
+              value={staffTypeFilter}
+              onChange={(e) => {
+                setStaffTypeFilter(e.target.value);
+                setPage(1);
+              }}
+              title="Filter by category"
+            >
+              <option value="all">All Categories</option>
+              <option value="Teaching">Teaching (Faculty)</option>
+              <option value="Non-Teaching">Non-Teaching (Admin)</option>
+            </select>
+          </div>
+
           <div className="reg-users-select-wrap dept">
             <select
               className="reg-users-select"
@@ -352,6 +458,7 @@ function RegisteredStaffTab() {
                 setDeptFilter("all");
                 setRoleFilter("all");
                 setStatusFilter("registered");
+                setStaffTypeFilter("all");
                 setPage(1);
               }}
               title="Reset all filters"
@@ -381,6 +488,7 @@ function RegisteredStaffTab() {
                 <tr>
                   <th>Staff ID</th>
                   <th>Full Name</th>
+                  <th>Category</th>
                   <th>Contact Info</th>
                   <th>Department</th>
                   <th>Role & Authority</th>
@@ -392,13 +500,13 @@ function RegisteredStaffTab() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="reg-users-empty-cell">
+                    <td colSpan="9" className="reg-users-empty-cell">
                       <div className="reg-users-loading-spinner">Loading registered staff members...</div>
                     </td>
                   </tr>
                 ) : staffList.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="reg-users-empty-cell">
+                    <td colSpan="9" className="reg-users-empty-cell">
                       <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                       <div style={{ fontWeight: "600", color: "#334155" }}>No registered staff found</div>
                       <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -421,6 +529,19 @@ function RegisteredStaffTab() {
                         {/* Name */}
                         <td>
                           <div className="reg-user-name">{staff.fullName || "Staff Member"}</div>
+                        </td>
+
+                        {/* Category */}
+                        <td>
+                          {staff.staffType === "Teaching" ? (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 9px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "600", background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }}>
+                              Faculty
+                            </span>
+                          ) : (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 9px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "600", background: "#f8fafc", color: "#475569", border: "1px solid #cbd5e1" }}>
+                              Admin
+                            </span>
+                          )}
                         </td>
 
                         {/* Contact */}
@@ -563,11 +684,20 @@ function RegisteredStaffTab() {
                   )}
                 </div>
 
-                {/* Metadata Row: Department & Status */}
+                {/* Metadata Row: Department & Category & Status */}
                 <div className="reg-user-mcard-meta">
                   <span className="reg-user-dept-badge">
                     {staff.staffDepartment || staff.adminDepartment || "General"}
                   </span>
+                  {staff.staffType === "Teaching" ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", padding: "2px 7px", borderRadius: "10px", fontSize: "0.72rem", fontWeight: "600", background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }}>
+                      Faculty
+                    </span>
+                  ) : (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", padding: "2px 7px", borderRadius: "10px", fontSize: "0.72rem", fontWeight: "600", background: "#f8fafc", color: "#475569", border: "1px solid #cbd5e1" }}>
+                      Admin
+                    </span>
+                  )}
                   {isVerified ? (
                     <span className="reg-status-badge verified">
                       <CheckCircleIcon width="11" height="11" />
@@ -717,6 +847,17 @@ function RegisteredStaffTab() {
                       {dept}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Staff Category (Classification) *</label>
+                <select
+                  value={editFormData.staffType || "Non-Teaching"}
+                  onChange={(e) => setEditFormData({ ...editFormData, staffType: e.target.value })}
+                >
+                  <option value="Teaching">Teaching (Faculty)</option>
+                  <option value="Non-Teaching">Non-Teaching (Admin / Offices)</option>
                 </select>
               </div>
 

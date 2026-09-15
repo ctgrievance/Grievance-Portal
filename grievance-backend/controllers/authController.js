@@ -210,11 +210,13 @@ export const registerRequest = async (req, res) => {
       }
     } else {
       const staffDept = req.body.department || validRecord.department || "";
+      const staffCategory = validRecord?.staffType || "Non-Teaching";
       const staffData = {
         ...baseUserData,
         role: "staff",
         staffDepartment: staffDept,
         department: staffDept,
+        staffType: staffCategory,
         isDeptAdmin: false,
         adminDepartment: "",
         adminDepartments: [],
@@ -231,6 +233,7 @@ export const registerRequest = async (req, res) => {
 
     // Also save to legacy User collection for backup
     const staffDeptBackup = req.body.department || validRecord.department || "";
+    const staffCategoryBackup = validRecord?.staffType || "Non-Teaching";
     const studentSchool = req.body.department || req.body.school || validRecord?.school || "";
     const studentProgram = validRecord?.program || req.body.program || studentSchool;
     await User.findOneAndUpdate(
@@ -243,6 +246,7 @@ export const registerRequest = async (req, res) => {
         department: userRole === "student" ? studentSchool : staffDeptBackup,
         program: userRole === "student" ? studentProgram : "",
         staffDepartment: staffDeptBackup,
+        staffType: userRole === "student" ? "Non-Teaching" : staffCategoryBackup,
         isDeptAdmin: false,
         adminDepartment: "",
         adminDepartments: [],

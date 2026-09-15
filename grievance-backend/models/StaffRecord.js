@@ -29,6 +29,11 @@ const staffRecordSchema = new mongoose.Schema({
         type: String,
         default: ""
     }, // e.g., Student Welfare, HR
+    staffType: {
+        type: String,
+        enum: ["Teaching", "Non-Teaching"],
+        default: "Non-Teaching"
+    }, // e.g., Teaching (Faculty) vs Non-Teaching (Admin/Office)
 }, { timestamps: true });
 
 const StaffRecord = mongoose.model("StaffRecord", staffRecordSchema);

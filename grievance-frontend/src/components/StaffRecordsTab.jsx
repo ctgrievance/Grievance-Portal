@@ -20,6 +20,9 @@ import ExcelUploadModeModal from "./ExcelUploadModeModal";
 function StaffRecordsTab() {
   const [records, setRecords]       = useState([]);
   const [total, setTotal]           = useState(0);
+  const [totalTeaching, setTotalTeaching] = useState(0);
+  const [totalNonTeaching, setTotalNonTeaching] = useState(0);
+  const [staffTypeFilter, setStaffTypeFilter] = useState("all"); // "all" | "Teaching" | "Non-Teaching"
   const [page, setPage]             = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [jumpPage, setJumpPage]     = useState("1");
@@ -41,7 +44,7 @@ function StaffRecordsTab() {
   const fileInputRef = useRef();
 
   // New Row State
-  const [newRow, setNewRow] = useState({ id: "", fullName: "", email: "", phone: "", role: "staff", department: "" });
+  const [newRow, setNewRow] = useState({ id: "", fullName: "", email: "", phone: "", role: "staff", department: "", staffType: "Non-Teaching" });
   const [isAdding, setIsAdding] = useState(false);
 
   // Editable Row State
@@ -54,13 +57,15 @@ function StaffRecordsTab() {
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
-      const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`;
+      const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&staffType=${staffTypeFilter}`;
       const res = await fetch(url);
       const data = await res.json();
 
       if (res.ok) {
         setRecords(data.records);
         setTotal(data.total);
+        setTotalTeaching(data.totalTeaching || 0);
+        setTotalNonTeaching(data.totalNonTeaching || 0);
         setTotalPages(data.totalPages);
       } else {
         throw new Error(data.message || "Failed to fetch records");
@@ -70,7 +75,7 @@ function StaffRecordsTab() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, limit]);
+  }, [page, search, limit, staffTypeFilter]);
 
   useEffect(() => {
     fetchRecords();
@@ -344,6 +349,84 @@ function StaffRecordsTab() {
         </div>
       )}
 
+      {/* ── CATEGORY TABS (All / Teaching / Non-Teaching) ── */}
+      <div className="staff-category-tabs" style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap", alignItems: "center" }}>
+        <button
+          type="button"
+          onClick={() => { setStaffTypeFilter("all"); setPage(1); }}
+          className={`records-tab-pill ${staffTypeFilter === "all" ? "active" : ""}`}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            cursor: "pointer",
+            border: staffTypeFilter === "all" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+            backgroundColor: staffTypeFilter === "all" ? "#eff6ff" : "#fff",
+            color: staffTypeFilter === "all" ? "#1d4ed8" : "#64748b",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>All Staff</span>
+          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "all" ? "#dbeafe" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "all" ? "#1e40af" : "#475569" }}>
+            {total}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setStaffTypeFilter("Teaching"); setPage(1); }}
+          className={`records-tab-pill ${staffTypeFilter === "Teaching" ? "active" : ""}`}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            cursor: "pointer",
+            border: staffTypeFilter === "Teaching" ? "2px solid #10b981" : "1px solid #e2e8f0",
+            backgroundColor: staffTypeFilter === "Teaching" ? "#ecfdf5" : "#fff",
+            color: staffTypeFilter === "Teaching" ? "#047857" : "#64748b",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>Teaching (Faculty)</span>
+          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "Teaching" ? "#d1fae5" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "Teaching" ? "#065f46" : "#475569" }}>
+            {totalTeaching}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setStaffTypeFilter("Non-Teaching"); setPage(1); }}
+          className={`records-tab-pill ${staffTypeFilter === "Non-Teaching" ? "active" : ""}`}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            cursor: "pointer",
+            border: staffTypeFilter === "Non-Teaching" ? "2px solid #6366f1" : "1px solid #e2e8f0",
+            backgroundColor: staffTypeFilter === "Non-Teaching" ? "#eef2ff" : "#fff",
+            color: staffTypeFilter === "Non-Teaching" ? "#4338ca" : "#64748b",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <span>Non-Teaching (Admin / Offices)</span>
+          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "Non-Teaching" ? "#e0e7ff" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "Non-Teaching" ? "#3730a3" : "#475569" }}>
+            {totalNonTeaching}
+          </span>
+        </button>
+      </div>
+
       {/* ── SEARCH & FILTER BAR (SLEEK & FIXED) ── */}
       <div className="records-filters-bar">
         <div className="records-search-box">
@@ -423,6 +506,13 @@ function StaffRecordsTab() {
             <div className="records-form-field">
               <label className="records-form-label">Full Name *</label>
               <input type="text" name="fullName" value={newRow.fullName} onChange={handleNewRowChange} placeholder="Full Name" className="records-form-input" />
+            </div>
+            <div className="records-form-field">
+              <label className="records-form-label">Category</label>
+              <select name="staffType" value={newRow.staffType || "Non-Teaching"} onChange={handleNewRowChange} className="records-form-input">
+                <option value="Teaching">Teaching (Faculty)</option>
+                <option value="Non-Teaching">Non-Teaching (Admin)</option>
+              </select>
             </div>
             <div className="records-form-field">
               <label className="records-form-label">Email Address</label>
@@ -565,6 +655,7 @@ function StaffRecordsTab() {
               <tr>
                 <th>Staff ID</th>
                 <th>Full Name</th>
+                <th>Category</th>
                 <th>Contact Info</th>
                 <th>Role</th>
                 <th>Department</th>
@@ -575,13 +666,13 @@ function StaffRecordsTab() {
               {/* Existing Records */}
               {loading ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", padding: "36px", color: "#64748b" }}>
+                  <td colSpan="7" style={{ textAlign: "center", padding: "36px", color: "#64748b" }}>
                     Loading staff records...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
+                  <td colSpan="7" style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
                     <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                     <div style={{ fontWeight: "600", color: "#334155" }}>No staff records found</div>
                     <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -606,6 +697,18 @@ function StaffRecordsTab() {
                             className="records-form-input" 
                             style={{ height: "32px", fontSize: "0.84rem" }} 
                           />
+                        </td>
+                        <td>
+                          <select 
+                            name="staffType" 
+                            value={editFormData.staffType || "Non-Teaching"} 
+                            onChange={handleEditChange} 
+                            className="records-form-input" 
+                            style={{ height: "32px", fontSize: "0.82rem" }}
+                          >
+                            <option value="Teaching">Teaching (Faculty)</option>
+                            <option value="Non-Teaching">Non-Teaching (Admin)</option>
+                          </select>
                         </td>
                         <td>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -671,6 +774,17 @@ function StaffRecordsTab() {
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
                           <div className="records-name-text">{record.fullName || "—"}</div>
+                        </td>
+                        <td onDoubleClick={() => handleEditClick(record)}>
+                          {record.staffType === "Teaching" ? (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 9px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "600", background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }}>
+                              Faculty
+                            </span>
+                          ) : (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 9px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "600", background: "#f8fafc", color: "#475569", border: "1px solid #cbd5e1" }}>
+                              Admin
+                            </span>
+                          )}
                         </td>
                         <td onDoubleClick={() => handleEditClick(record)}>
                           {record.email && (

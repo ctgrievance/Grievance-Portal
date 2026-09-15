@@ -611,8 +611,19 @@ export default function RecordsComparisonTab() {
                               <div style={{ fontWeight: 600, color: "#334155" }}>
                                 {rec.department || "General"}
                               </div>
-                              <div style={{ fontSize: "0.74rem", color: "#64748b", textTransform: "capitalize" }}>
-                                Role: {rec.role || "staff"}
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px", flexWrap: "wrap" }}>
+                                <span style={{ fontSize: "0.74rem", color: "#64748b", textTransform: "capitalize" }}>
+                                  Role: {rec.role || "staff"}
+                                </span>
+                                {rec.staffType === "Teaching" ? (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", padding: "1px 6px", borderRadius: "10px", fontSize: "0.7rem", fontWeight: "600", background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }}>
+                                    Faculty
+                                  </span>
+                                ) : (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", padding: "1px 6px", borderRadius: "10px", fontSize: "0.7rem", fontWeight: "600", background: "#f8fafc", color: "#475569", border: "1px solid #cbd5e1" }}>
+                                    Admin
+                                  </span>
+                                )}
                               </div>
                             </>
                           )}
@@ -766,8 +777,19 @@ export default function RecordsComparisonTab() {
                           <div style={{ fontWeight: 600, color: "#334155" }}>
                             {rec.department || "General"}
                           </div>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b", textTransform: "capitalize" }}>
-                            Role: {rec.role || "staff"}
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: "0.74rem", color: "#64748b", textTransform: "capitalize" }}>
+                              Role: {rec.role || "staff"}
+                            </span>
+                            {rec.staffType === "Teaching" ? (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", padding: "1px 6px", borderRadius: "10px", fontSize: "0.7rem", fontWeight: "600", background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }}>
+                                Faculty
+                              </span>
+                            ) : (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", padding: "1px 6px", borderRadius: "10px", fontSize: "0.7rem", fontWeight: "600", background: "#f8fafc", color: "#475569", border: "1px solid #cbd5e1" }}>
+                                Admin
+                              </span>
+                            )}
                           </div>
                         </>
                       )}

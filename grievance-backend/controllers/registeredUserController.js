@@ -199,7 +199,7 @@ export const deleteLiveStudent = async (req, res) => {
 // =========================================================================
 export const getLiveStaff = async (req, res) => {
   try {
-    const { search = "", department = "all", role = "all", status = "registered", page = 1, limit = 50 } = req.query;
+    const { search = "", department = "all", role = "all", status = "registered", staffType = "all", page = 1, limit = 50 } = req.query;
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 50;
 
@@ -269,23 +269,47 @@ export const getLiveStaff = async (req, res) => {
       .select("-password -phoneOtp -resetOtp") // retain otp presence check
       .sort({ createdAt: -1 });
 
-    // Also pull admin records from AdminStaffModel to attach live roles
-    const adminRecords = await AdminStaffModel.find({});
+    // Also pull admin records and staff records for complete role/staffType enrichment
+    const [adminRecords, staffRecords] = await Promise.all([
+      AdminStaffModel.find({}),
+      StaffRecord.find({}).select("id staffType department").lean()
+    ]);
     const adminMap = new Map(adminRecords.map(a => [a.id, a]));
+    const staffRecordTypeMap = new Map(staffRecords.map(r => [r.id ? r.id.toUpperCase() : "", r.staffType]));
 
-    const enriched = rawStaff.map(s => {
+    let enriched = rawStaff.map(s => {
       const sObj = s.toObject();
+      const sUpperId = sObj.id ? sObj.id.toUpperCase() : "";
       const adminRec = adminMap.get(s.id);
       if (adminRec) {
         sObj.adminDepartment = adminRec.adminDepartment || sObj.adminDepartment || "";
         sObj.isDeptAdmin = adminRec.isDeptAdmin !== undefined ? adminRec.isDeptAdmin : sObj.isDeptAdmin;
       }
+      sObj.staffType = sObj.staffType || staffRecordTypeMap.get(sUpperId) || "Non-Teaching";
       const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
       sObj.otpPending = hasPendingOtp;
       sObj.isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
       delete sObj.otp; // never leak secret OTP to frontend
       return sObj;
     });
+
+    // Calculate verified teaching vs non-teaching counts across ALL registered staff
+    let totalTeaching = 0;
+    let totalNonTeaching = 0;
+    enriched.forEach(s => {
+      if (s.isOtpVerified) {
+        if (s.staffType === "Teaching") totalTeaching++;
+        else totalNonTeaching++;
+      }
+    });
+
+    // Filter by staffType if requested ("teaching" vs "non-teaching")
+    const cleanStaffType = (staffType || "all").toString().toLowerCase().trim();
+    if (cleanStaffType === "teaching") {
+      enriched = enriched.filter(s => s.staffType === "Teaching");
+    } else if (cleanStaffType === "non-teaching" || cleanStaffType === "non_teaching" || cleanStaffType === "admin") {
+      enriched = enriched.filter(s => s.staffType !== "Teaching");
+    }
 
     const total = enriched.length;
     const paginated = enriched.slice((pageNum - 1) * limitNum, pageNum * limitNum);
@@ -321,6 +345,8 @@ export const getLiveStaff = async (req, res) => {
       totalPending,
       totalAdmins,
       totalRegularStaff,
+      totalTeaching,
+      totalNonTeaching,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
       departments,
@@ -339,7 +365,7 @@ export const updateLiveStaff = async (req, res) => {
   try {
     const { id } = req.params;
     const safeId = id.toString().trim().toUpperCase();
-    const { fullName, email, phone, department, role, isDeptAdmin, isVerified } = req.body;
+    const { fullName, email, phone, department, role, isDeptAdmin, isVerified, staffType } = req.body;
 
     const staff = await StaffUser.findOne({ id: safeId });
     if (!staff) {
@@ -373,6 +399,10 @@ export const updateLiveStaff = async (req, res) => {
       }
     }
     if (role !== undefined) staff.role = role.trim();
+    if (staffType !== undefined && (staffType === "Teaching" || staffType === "Non-Teaching")) {
+      staff.staffType = staffType;
+      await StaffRecord.updateOne({ id: safeId }, { $set: { staffType } });
+    }
     if (isDeptAdmin !== undefined && safeId !== "10001") staff.isDeptAdmin = !!isDeptAdmin;
 
     if (isVerified !== undefined) {
@@ -397,6 +427,7 @@ export const updateLiveStaff = async (req, res) => {
       staffDepartment: staff.staffDepartment,
       adminDepartment: staff.adminDepartment,
       role: staff.role,
+      staffType: staff.staffType || "Non-Teaching",
       isDeptAdmin: staff.isDeptAdmin,
       isVerified: staff.isVerified
     };
@@ -698,6 +729,7 @@ export const getRecordsComparison = async (req, res) => {
             "Official Email": rec.email || "",
             "Official Phone": rec.phone || "",
             "Role": rec.role || "staff",
+            "Staff Category": rec.staffType || "Non-Teaching",
             "Department": rec.department || "",
             "Portal Status": regInfo ? "REGISTERED" : "NOT REGISTERED",
             "Portal Role": regInfo?.role || (regInfo?.isDeptAdmin ? "Dept Admin" : "—"),

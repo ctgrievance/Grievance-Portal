@@ -308,9 +308,41 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
 
     // Read from disk instead of buffer
     const workbook = xlsx.readFile(req.file.path);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(sheet);
+    const sheetNames = workbook.SheetNames || [];
+    let data = [];
+
+    for (const sheetName of sheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) continue;
+
+      // Expand merged cells
+      if (sheet["!merges"] && Array.isArray(sheet["!merges"])) {
+        for (const merge of sheet["!merges"]) {
+          const startCellAddress = xlsx.utils.encode_cell(merge.s);
+          const cellValue = sheet[startCellAddress];
+          if (!cellValue) continue;
+          for (let r = merge.s.r; r <= merge.e.r; r++) {
+            for (let c = merge.s.c; c <= merge.e.c; c++) {
+              if (r === merge.s.r && c === merge.s.c) continue;
+              sheet[xlsx.utils.encode_cell({ r, c })] = { ...cellValue };
+            }
+          }
+        }
+      }
+
+      const sName = sheetName.toLowerCase().trim();
+      let defaultStaffType = "";
+      if (sName.includes("faculty") || sName.includes("teach") || sName.includes("academic") || sName.includes("prof")) {
+        defaultStaffType = "Teaching";
+      } else if (sName.includes("admin") || sName.includes("non-teach") || sName.includes("non teach") || sName.includes("staff")) {
+        defaultStaffType = "Non-Teaching";
+      }
+
+      const sheetRows = xlsx.utils.sheet_to_json(sheet, { defval: "" });
+      if (sheetRows && sheetRows.length > 0) {
+        data.push(...sheetRows.map(r => ({ ...r, _sheetStaffType: defaultStaffType })));
+      }
+    }
 
     console.log(`📊 Total rows in Excel: ${data.length}`);
 
@@ -390,6 +422,11 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
           studentCount++;
         } else if (detectedRole === "staff") {
           const finalRole = (excelRole === "admin") ? "admin" : "staff";
+          let finalStaffType = row._sheetStaffType || "";
+          if (!finalStaffType) {
+            const desig = (rowRole || "").toLowerCase();
+            finalStaffType = /faculty|prof|teach/i.test(desig) ? "Teaching" : "Non-Teaching";
+          }
           staffBatch.push({
             updateOne: {
               filter: { id: safeId },
@@ -400,7 +437,8 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
                   email: safeEmail,
                   phone: rowPhone ? rowPhone.toString().trim() : "",
                   role: finalRole,
-                  department: rowDepartment ? rowDepartment.toString().trim() : ""
+                  department: rowDepartment ? rowDepartment.toString().trim() : "",
+                  staffType: finalStaffType
                 }
               },
               upsert: true

@@ -33,6 +33,7 @@ const staffUserSchema = new mongoose.Schema({
 
     // Staff/Admin Specific Info
     staffDepartment: { type: String, default: "" },
+    staffType: { type: String, enum: ["Teaching", "Non-Teaching"], default: "Non-Teaching" },
 
     // Admin Role Management
     isDeptAdmin: { type: Boolean, default: false },
