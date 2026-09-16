@@ -133,6 +133,20 @@ conn.once("open", async () => {
     console.log("ℹ️ Index check skipped:", err.message);
   }
 
+  // ⚠️ AUTO-FIX: Drop stale 'staffId_1_department_1' index on adminstaffs
+  try {
+    const adminStaffColl = conn.db.collection("adminstaffs");
+    const adminIndexes = await adminStaffColl.indexes();
+    const staleIndex = adminIndexes.find(idx => idx.name === "staffId_1_department_1");
+
+    if (staleIndex) {
+      await adminStaffColl.dropIndex("staffId_1_department_1");
+      console.log("🔥 FIX APPLIED: Dropped stale staffId_1_department_1 index on adminstaffs");
+    }
+  } catch (err) {
+    console.log("ℹ️ adminstaffs index check skipped:", err.message);
+  }
+
   // ✅ SEEDING: Ensure Master Admin Exists
   try {
     const User = mongoose.model("User");
