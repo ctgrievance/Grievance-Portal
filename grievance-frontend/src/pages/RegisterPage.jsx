@@ -69,6 +69,18 @@ function RegisterPage() {
   const [idChecking, setIdChecking] = useState(false);
   const [idFeedback, setIdFeedback] = useState(null);
 
+  // 🌐 Dynamic API URL resolver matching LoginPage
+  const getApiBaseUrl = () => {
+    if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
+    if (typeof window !== "undefined" && window.location.origin) {
+      if (window.location.port === "3000") {
+        return `${window.location.protocol}//${window.location.hostname}:5000`;
+      }
+      return window.location.origin;
+    }
+    return "http://localhost:5000";
+  };
+
   const checkStudentIdRequirement = async (idToTest) => {
     const queryId = (idToTest || formData.id || "").trim().toUpperCase();
     if (formData.role !== "student" || !queryId || queryId.length < 4) {
@@ -79,9 +91,17 @@ function RegisterPage() {
 
     setIdChecking(true);
     try {
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/check-student-id/${encodeURIComponent(queryId)}`
+        `${baseUrl}/api/auth/check-student-id/${encodeURIComponent(queryId)}`
       );
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.warn("Non-JSON response from check-student-id:", res.status);
+        return;
+      }
+
       const data = await res.json();
 
       if (res.ok && data.exists) {
@@ -128,8 +148,15 @@ function RegisterPage() {
   }, [formData.id, formData.role]);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`)
-      .then(res => res.json())
+    const baseUrl = getApiBaseUrl();
+    fetch(`${baseUrl}/api/departments`)
+      .then(res => {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return res.json();
+        }
+        return [];
+      })
       .then(data => {
         if (Array.isArray(data)) {
           setStaffDepartments(data);
@@ -165,6 +192,15 @@ function RegisterPage() {
       processedValue = value.toUpperCase();
     } else if (name === "email") {
       processedValue = value.toLowerCase().trim();
+    } else if (name === "phone") {
+      // Auto-sanitize phone: extract digits, strip +91 / 0 international prefix
+      let digits = value.replace(/\D/g, "");
+      if (digits.length > 10 && digits.startsWith("91")) {
+        digits = digits.slice(2);
+      } else if (digits.length > 10 && digits.startsWith("0")) {
+        digits = digits.slice(1);
+      }
+      processedValue = digits.slice(0, 10);
     }
 
     setFormData((prev) => {
@@ -217,6 +253,7 @@ function RegisterPage() {
   const strength = getPasswordStrength(formData.password);
 
   // STEP 1: Request OTP
+  // STEP 1: Request OTP
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
 
@@ -229,6 +266,14 @@ function RegisterPage() {
 
     if (formData.password !== confirmPassword) {
       setMsg("Passwords do not match!");
+      setStatusType("error");
+      return;
+    }
+
+    // ✅ Explicit Mobile Phone Validation (Indian 10-digit mobile number)
+    const cleanPhone = (formData.phone || "").replace(/\D/g, "");
+    if (cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setMsg("Please enter a valid 10-digit mobile number (e.g. 9876543210).");
       setStatusType("error");
       return;
     }
@@ -256,21 +301,52 @@ function RegisterPage() {
     setStatusType("info");
     setLoading(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
+
     try {
-      // 🔥 Update Endpoint
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/register-request`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth/register-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          phone: cleanPhone,
+          id: (formData.id || "").trim().toUpperCase(),
+          ctuId: (formData.ctuId || "").trim().toUpperCase(),
+          email: (formData.email || "").toLowerCase().trim(),
+        }),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+
+      clearTimeout(timeoutId);
+
+      const contentType = res.headers.get("content-type");
+      let data = {};
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        // Reverse proxy HTML error (e.g. 502 Bad Gateway, 504 Gateway Timeout)
+        if (res.status === 502 || res.status === 504) {
+          throw new Error("University server is taking longer than usual to respond. Please check your SMS/Email in a moment or try again.");
+        }
+        throw new Error(`Server temporarily unavailable (${res.status}). Please try again in a moment.`);
+      }
+
+      if (!res.ok) throw new Error(data.message || "Failed to send verification codes.");
 
       setStep(2);
       setMsg("Verification codes sent to Phone and Email!");
       setStatusType("success");
     } catch (err) {
-      setMsg(err.message || "Failed to send OTPs.");
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        setMsg("Connection timed out. The server took too long to respond. Please check your connection and try again.");
+      } else if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+        setMsg("Network connection error. Please check your internet connection.");
+      } else {
+        setMsg(err.message || "Failed to send OTPs.");
+      }
       setStatusType("error");
     } finally {
       setLoading(false);
@@ -284,9 +360,13 @@ function RegisterPage() {
     setStatusType("info");
     setLoading(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
-      // 🔥 Update Endpoint & Payload
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/verify-registration`, {
+      const baseUrl = getApiBaseUrl();
+      const cleanPhone = (formData.phone || "").toString().replace(/\D/g, "").slice(-10);
+      const res = await fetch(`${baseUrl}/api/auth/verify-registration`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -300,17 +380,39 @@ function RegisterPage() {
             id: (formData.id || "").toString().trim().toUpperCase(),
             ctuId: (formData.ctuId || "").toString().trim().toUpperCase(),
             email: (formData.email || "").toString().toLowerCase().trim(),
+            phone: cleanPhone,
           }
         }),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+
+      clearTimeout(timeoutId);
+
+      const contentType = res.headers.get("content-type");
+      let data = {};
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        if (res.status === 502 || res.status === 504) {
+          throw new Error("Verification server took too long to respond. Please try again in a moment.");
+        }
+        throw new Error(`Server temporarily unavailable (${res.status}). Please try again.`);
+      }
+
+      if (!res.ok) throw new Error(data.message || "Invalid OTPs.");
 
       setMsg("Registration successful! Redirecting to Login...");
       setStatusType("success");
       setTimeout(() => window.location.href = "/", 2000);
     } catch (err) {
-      setMsg(err.message || "Invalid OTPs.");
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        setMsg("Verification timed out. Please try again.");
+      } else if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+        setMsg("Network connection error. Please check your internet connection.");
+      } else {
+        setMsg(err.message || "Invalid OTPs.");
+      }
       setStatusType("error");
     } finally {
       setLoading(false);
@@ -485,7 +587,16 @@ function RegisterPage() {
                   <label>Phone</label>
                   <div className="input-wrapper phone-field">
                     <span className="icon"><PhoneIcon /></span>
-                    <input name="phone" type="tel" placeholder="9876543210" value={formData.phone} onChange={handleChange} pattern="[0-9]{10}" required />
+                    <input
+                      name="phone"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength="10"
+                      placeholder="9876543210"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                    />
                   </div>
                 </div>
               </div>

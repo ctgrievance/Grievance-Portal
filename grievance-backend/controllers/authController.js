@@ -9,20 +9,28 @@ import jwt from "jsonwebtoken";
 import { sendEmailOtp } from "../utils/emailService.js";
 
 
-// ================= SMS SETUP (Innuvis API) =================
 const sendSms = async (phone, otp, customMessage = null) => {
   try {
-    let formattedPhone = phone.toString().trim();
-    if (formattedPhone.length === 10) {
-      formattedPhone = "91" + formattedPhone;
+    if (!phone) return null;
+    let digits = phone.toString().replace(/\D/g, "");
+    if (digits.length > 10 && digits.startsWith("91")) {
+      digits = digits.slice(2);
+    } else if (digits.length > 10 && digits.startsWith("0")) {
+      digits = digits.slice(1);
     }
+    const clean10 = digits.slice(-10);
+    const formattedPhone = "91" + clean10;
 
     const message = customMessage || `Dear User, Your One-Time Password (OTP) for registering on the CT University Grievance Portal is: ${otp} - CTU Support Team`;
     const encodedMessage = encodeURIComponent(message);
 
-    const url = `${process.env.SMS_API_URL}&number=${formattedPhone}&text=${encodedMessage}`;
+    const url = `${process.env.SMS_API_URL}&number=${encodeURIComponent(formattedPhone)}&text=${encodedMessage}`;
 
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
     const data = await response.text();
     
     console.log("✅ SMS API Called for:", formattedPhone);
@@ -31,6 +39,7 @@ const sendSms = async (phone, otp, customMessage = null) => {
     return data;
   } catch (error) {
     console.error("SMS API Network Error:", error.message);
+    return null;
   }
 };
 
@@ -94,6 +103,13 @@ export const registerRequest = async (req, res) => {
     const safeId = (id || "").toString().trim().toUpperCase();
     const safeCtuId = (ctuId || "").toString().trim().toUpperCase();
     const cleanEmail = (email || "").toString().toLowerCase().trim();
+    let cleanPhone = (phone || "").toString().replace(/\D/g, "");
+    if (cleanPhone.length > 10 && cleanPhone.startsWith("91")) {
+      cleanPhone = cleanPhone.slice(2);
+    } else if (cleanPhone.length > 10 && cleanPhone.startsWith("0")) {
+      cleanPhone = cleanPhone.slice(1);
+    }
+    cleanPhone = cleanPhone.slice(-10);
     const userRole = role ? role.toLowerCase().trim() : "student";
 
     // Check if user already exists in either collection
@@ -161,7 +177,7 @@ export const registerRequest = async (req, res) => {
     const baseUserData = {
       id: finalStudentId,
       email: cleanEmail,
-      phone,
+      phone: cleanPhone || phone || "",
       password: hashedPassword,
       fullName: validRecord.fullName || req.body.fullName || "",
       otp: emailOtp,
@@ -249,20 +265,26 @@ export const registerRequest = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // 📱 Send Phone OTP via Innuvis API
-    if (phone) {
-      await sendSms(phone, phoneOtp);
+    // 📱 Send Phone OTP via Innuvis API & 📧 Send Email OTP concurrently
+    const dispatchPromises = [];
+    if (cleanPhone) {
+      dispatchPromises.push(
+        sendSms(cleanPhone, phoneOtp).catch((err) => console.error("SMS Dispatch Error:", err))
+      );
+    }
+    if (cleanEmail) {
+      dispatchPromises.push(
+        sendEmailOtp(cleanEmail, emailOtp).catch((err) => console.error("Email Dispatch Error:", err))
+      );
     }
 
-    // 📧 Send Email OTP
-    if (email) {
-      await sendEmailOtp(email, emailOtp);
-    }
+    // Run dispatch concurrently to prevent reverse-proxy timeout
+    await Promise.allSettled(dispatchPromises);
 
     // 🔐 Log OTP prominently in terminal
-    if (global.logOTP) global.logOTP("REGISTRATION", email, emailOtp, phoneOtp);
+    if (global.logOTP) global.logOTP("REGISTRATION", cleanEmail, emailOtp, phoneOtp);
     
-    res.status(200).json({ message: `Verification codes sent to ${phone} and ${email}` });
+    res.status(200).json({ message: `Verification codes sent to ${cleanPhone || phone} and ${cleanEmail}` });
 
   } catch (err) {
     console.error("Register Error:", err);

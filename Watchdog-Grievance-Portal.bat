@@ -22,7 +22,7 @@ if errorlevel 1 (
 )
 
 :: 2. Check Backend Server (HTTP response on port 5000)
-curl.exe -s --max-time 4 http://127.0.0.1:5000 >nul 2>&1
+curl.exe -s --max-time 10 http://127.0.0.1:5000 >nul 2>&1
 if errorlevel 1 (
     echo [%date% %time%] [ALERT] Backend Server unresponsive or down on port 5000! Auto-recovering...
     powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }" >nul 2>&1

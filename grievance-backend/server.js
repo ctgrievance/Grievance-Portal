@@ -47,6 +47,7 @@ import { hideGrievance } from "./controllers/grievanceController.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config({ path: path.join(__dirname, ".env") });
 dotenv.config();
 
 const app = express();
@@ -1379,6 +1380,24 @@ app.use("/api/grievances", grievanceExportRoutes);// ✅ Soft Delete Route
 app.use("/api/grievances", grievanceRoutes);
 app.use("/api/chat", chatRoutes);
 app.get("/", (req, res) => res.send("✅ Backend Running"));
+
+// ------------------ 🔟 API 404 & JSON ERROR HANDLING ------------------
+// Catch-all for unmatched API routes: ALWAYS return JSON (never HTML)
+app.use("/api", (req, res) => {
+  res.status(404).json({ message: `API route ${req.method} ${req.originalUrl} not found` });
+});
+
+// Global API error handler ensuring all uncaught API errors return structured JSON
+app.use((err, req, res, next) => {
+  console.error("❌ [API Middleware Error]:", err.message || err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  const status = typeof err.status === "number" ? err.status : 500;
+  res.status(status).json({
+    message: err.message || "Internal server error"
+  });
+});
 
 
 const PORT = process.env.PORT || 5000;
