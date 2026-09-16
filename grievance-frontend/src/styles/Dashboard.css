@@ -10193,10 +10193,10 @@ textarea:focus {
   gap: 6px;
   height: 38px;
   padding: 0 14px;
-  border: 1px solid #fecaca;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  background: #fff1f2;
-  color: #e11d48;
+  background: #ffffff;
+  color: #64748b;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -10204,94 +10204,97 @@ textarea:focus {
 }
 
 .records-btn-clear-all:hover:not(:disabled) {
-  background: #ffe4e6;
-  border-color: #fda4af;
-  color: #be123c;
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #e11d48;
 }
 
 .records-btn-clear-all:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* ── Upload Zone ── */
 .records-upload-card {
-  border: 2px dashed #cbd5e1;
-  border-radius: 14px;
-  padding: 24px 20px;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 22px 20px;
   text-align: center;
-  background: #f8faff;
+  background: #fafafa;
   cursor: pointer;
-  margin-bottom: 20px;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  margin-bottom: 18px;
+  transition: all 0.15s ease;
   box-sizing: border-box;
 }
 
 .records-upload-card:hover {
-  border-color: #60a5fa;
-  background: #eff6ff;
+  border-color: #94a3b8;
+  background: #f8fafc;
 }
 
 .records-upload-card.drag-over {
-  border-color: #2563eb;
-  background: #eff6ff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  border-color: #0f172a;
+  background: #f1f5f9;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06);
 }
 
 .records-upload-icon-circle {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: #e0e7ff;
-  color: #4338ca;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(67, 56, 202, 0.12);
 }
 
 .records-upload-title {
   color: #0f172a;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.98rem;
   margin: 0;
 }
 
 .records-upload-sub {
   color: #64748b;
   margin: 4px 0 12px;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
 }
 
 .records-upload-browse-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
-  background: #2563eb;
+  padding: 7px 16px;
+  background: #0f172a;
   color: #ffffff;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 0.84rem;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+  font-size: 0.83rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
   transition: all 0.15s ease;
+  border: none;
+  cursor: pointer;
 }
 
 .records-upload-browse-btn:hover {
-  background: #1d4ed8;
+  background: #1e293b;
   transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
 }
 
 /* ── Supported Columns Banner ── */
 .records-columns-guide {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 10px 16px;
-  margin-bottom: 20px;
-  font-size: 0.82rem;
-  color: #0369a1;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  font-size: 0.8rem;
+  color: #475569;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -10307,13 +10310,14 @@ textarea:focus {
 
 .records-column-chip {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2.5px 8px;
   background: #ffffff;
-  border: 1px solid #bfdbfe;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: #1e40af;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 /* ── Add New Record Slide-Down Card ── */

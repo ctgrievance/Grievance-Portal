@@ -13,7 +13,8 @@ import {
   SaveIcon,
   StaffIcon,
   CheckCircleIcon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  FileIcon
 } from "./Icons";
 import ExcelUploadModeModal from "./ExcelUploadModeModal";
 
@@ -350,28 +351,51 @@ function StaffRecordsTab() {
       )}
 
       {/* ── CATEGORY TABS (All / Teaching / Non-Teaching) ── */}
-      <div className="staff-category-tabs" style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap", alignItems: "center" }}>
+      <div
+        className="staff-category-tabs"
+        style={{
+          display: "inline-flex",
+          background: "#f1f5f9",
+          borderRadius: "10px",
+          padding: "4px",
+          border: "1px solid #e2e8f0",
+          gap: "4px",
+          marginBottom: "16px",
+          flexWrap: "wrap",
+          alignItems: "center"
+        }}
+      >
         <button
           type="button"
           onClick={() => { setStaffTypeFilter("all"); setPage(1); }}
           className={`records-tab-pill ${staffTypeFilter === "all" ? "active" : ""}`}
           style={{
-            padding: "8px 16px",
-            borderRadius: "8px",
-            fontSize: "0.85rem",
-            fontWeight: "600",
+            padding: "6px 14px",
+            borderRadius: "7px",
+            fontSize: "0.83rem",
+            fontWeight: 600,
             cursor: "pointer",
-            border: staffTypeFilter === "all" ? "2px solid #2563eb" : "1px solid #e2e8f0",
-            backgroundColor: staffTypeFilter === "all" ? "#eff6ff" : "#fff",
-            color: staffTypeFilter === "all" ? "#1d4ed8" : "#64748b",
+            border: "none",
+            backgroundColor: staffTypeFilter === "all" ? "#ffffff" : "transparent",
+            color: staffTypeFilter === "all" ? "#0f172a" : "#64748b",
+            boxShadow: staffTypeFilter === "all" ? "0 1px 3px rgba(15, 23, 42, 0.08)" : "none",
             display: "inline-flex",
             alignItems: "center",
-            gap: "8px",
-            transition: "all 0.2s ease"
+            gap: "7px",
+            transition: "all 0.15s ease"
           }}
         >
           <span>All Staff</span>
-          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "all" ? "#dbeafe" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "all" ? "#1e40af" : "#475569" }}>
+          <span
+            style={{
+              fontSize: "0.72rem",
+              background: staffTypeFilter === "all" ? "#0f172a" : "#e2e8f0",
+              color: staffTypeFilter === "all" ? "#ffffff" : "#475569",
+              padding: "2px 7px",
+              borderRadius: "999px",
+              fontWeight: 600
+            }}
+          >
             {total}
           </span>
         </button>
@@ -381,22 +405,32 @@ function StaffRecordsTab() {
           onClick={() => { setStaffTypeFilter("Teaching"); setPage(1); }}
           className={`records-tab-pill ${staffTypeFilter === "Teaching" ? "active" : ""}`}
           style={{
-            padding: "8px 16px",
-            borderRadius: "8px",
-            fontSize: "0.85rem",
-            fontWeight: "600",
+            padding: "6px 14px",
+            borderRadius: "7px",
+            fontSize: "0.83rem",
+            fontWeight: 600,
             cursor: "pointer",
-            border: staffTypeFilter === "Teaching" ? "2px solid #10b981" : "1px solid #e2e8f0",
-            backgroundColor: staffTypeFilter === "Teaching" ? "#ecfdf5" : "#fff",
-            color: staffTypeFilter === "Teaching" ? "#047857" : "#64748b",
+            border: "none",
+            backgroundColor: staffTypeFilter === "Teaching" ? "#ffffff" : "transparent",
+            color: staffTypeFilter === "Teaching" ? "#0f172a" : "#64748b",
+            boxShadow: staffTypeFilter === "Teaching" ? "0 1px 3px rgba(15, 23, 42, 0.08)" : "none",
             display: "inline-flex",
             alignItems: "center",
-            gap: "8px",
-            transition: "all 0.2s ease"
+            gap: "7px",
+            transition: "all 0.15s ease"
           }}
         >
           <span>Teaching (Faculty)</span>
-          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "Teaching" ? "#d1fae5" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "Teaching" ? "#065f46" : "#475569" }}>
+          <span
+            style={{
+              fontSize: "0.72rem",
+              background: staffTypeFilter === "Teaching" ? "#0f172a" : "#e2e8f0",
+              color: staffTypeFilter === "Teaching" ? "#ffffff" : "#475569",
+              padding: "2px 7px",
+              borderRadius: "999px",
+              fontWeight: 600
+            }}
+          >
             {totalTeaching}
           </span>
         </button>
@@ -406,22 +440,32 @@ function StaffRecordsTab() {
           onClick={() => { setStaffTypeFilter("Non-Teaching"); setPage(1); }}
           className={`records-tab-pill ${staffTypeFilter === "Non-Teaching" ? "active" : ""}`}
           style={{
-            padding: "8px 16px",
-            borderRadius: "8px",
-            fontSize: "0.85rem",
-            fontWeight: "600",
+            padding: "6px 14px",
+            borderRadius: "7px",
+            fontSize: "0.83rem",
+            fontWeight: 600,
             cursor: "pointer",
-            border: staffTypeFilter === "Non-Teaching" ? "2px solid #6366f1" : "1px solid #e2e8f0",
-            backgroundColor: staffTypeFilter === "Non-Teaching" ? "#eef2ff" : "#fff",
-            color: staffTypeFilter === "Non-Teaching" ? "#4338ca" : "#64748b",
+            border: "none",
+            backgroundColor: staffTypeFilter === "Non-Teaching" ? "#ffffff" : "transparent",
+            color: staffTypeFilter === "Non-Teaching" ? "#0f172a" : "#64748b",
+            boxShadow: staffTypeFilter === "Non-Teaching" ? "0 1px 3px rgba(15, 23, 42, 0.08)" : "none",
             display: "inline-flex",
             alignItems: "center",
-            gap: "8px",
-            transition: "all 0.2s ease"
+            gap: "7px",
+            transition: "all 0.15s ease"
           }}
         >
           <span>Non-Teaching (Admin / Offices)</span>
-          <span style={{ fontSize: "0.75rem", background: staffTypeFilter === "Non-Teaching" ? "#e0e7ff" : "#f1f5f9", padding: "2px 7px", borderRadius: "10px", color: staffTypeFilter === "Non-Teaching" ? "#3730a3" : "#475569" }}>
+          <span
+            style={{
+              fontSize: "0.72rem",
+              background: staffTypeFilter === "Non-Teaching" ? "#0f172a" : "#e2e8f0",
+              color: staffTypeFilter === "Non-Teaching" ? "#ffffff" : "#475569",
+              padding: "2px 7px",
+              borderRadius: "999px",
+              fontWeight: 600
+            }}
+          >
             {totalNonTeaching}
           </span>
         </button>
@@ -568,56 +612,77 @@ function StaffRecordsTab() {
         )}
 
         {uploadState && uploadState.status === "uploading" && (
-          <p style={{ color: "#2563eb", fontWeight: 600, margin: 0 }}>⏳ Reading all sheet tabs in Excel file...</p>
+          <p style={{ color: "#334155", fontWeight: 600, margin: 0, fontSize: "0.88rem" }}>
+            Reading all sheet tabs in Excel file...
+          </p>
         )}
 
         {uploadState && uploadState.status === "processing" && (
-          <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "left" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.86rem", fontWeight: 600 }}>
-              <span style={{ color: "#1e40af" }}>
-                {uploadState.mode === "remove" ? "🗑️ Deleting records..." : uploadState.mode === "change" ? "🔄 Overwriting database..." : "⚡ Adding records..."} {uploadState.pct}%
+          <div style={{ maxWidth: "560px", margin: "0 auto", textAlign: "left" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.84rem", fontWeight: 600 }}>
+              <span style={{ color: "#0f172a" }}>
+                {uploadState.mode === "remove" ? "Deleting records..." : uploadState.mode === "change" ? "Overwriting database..." : "Importing records..."} {uploadState.pct}%
               </span>
-              <span style={{ color: "#475569" }}>
+              <span style={{ color: "#64748b" }}>
                 {uploadState.sheetCount ? `${uploadState.sheetCount} tab(s) · ` : ""}
                 {uploadState.mode === "remove" ? `${(uploadState.deleted || 0).toLocaleString()} deleted` : `${uploadState.inserted.toLocaleString()} / ${uploadState.total.toLocaleString()} records`}
               </span>
             </div>
-            <div style={{ background: "#dbeafe", borderRadius: "999px", height: "10px", overflow: "hidden", marginBottom: "12px" }}>
+            <div style={{ background: "#e2e8f0", borderRadius: "999px", height: "8px", overflow: "hidden", marginBottom: "12px" }}>
               <div style={{
                 height: "100%", borderRadius: "999px",
-                background: uploadState.mode === "remove"
-                  ? "linear-gradient(90deg, #ef4444, #f87171)"
-                  : uploadState.mode === "change"
-                  ? "linear-gradient(90deg, #6366f1, #a855f7)"
-                  : "linear-gradient(90deg, #2563eb, #38bdf8)",
+                background: uploadState.mode === "remove" ? "#e11d48" : "#0f172a",
                 width: `${uploadState.pct}%`,
                 transition: "width 0.3s ease"
               }} />
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: "20px", fontSize: "0.82rem", color: "#475569", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: "16px", fontSize: "0.8rem", color: "#64748b", flexWrap: "wrap" }}>
               {uploadState.mode === "remove" ? (
-                <span>🗑️ Deleted: <strong>{(uploadState.deleted || 0).toLocaleString()}</strong></span>
+                <span>Deleted: <strong style={{ color: "#0f172a" }}>{(uploadState.deleted || 0).toLocaleString()}</strong></span>
               ) : (
                 <>
-                  <span>✅ Inserted: <strong>{uploadState.inserted.toLocaleString()}</strong></span>
-                  <span>⏭ Skipped: <strong>{uploadState.skipped.toLocaleString()}</strong></span>
+                  <span>Inserted: <strong style={{ color: "#0f172a" }}>{uploadState.inserted.toLocaleString()}</strong></span>
+                  <span>Skipped: <strong style={{ color: "#0f172a" }}>{uploadState.skipped.toLocaleString()}</strong></span>
                 </>
               )}
-              <span>⚡ Speed: <strong>{uploadState.speed.toLocaleString()} rec/s</strong></span>
-              {uploadState.eta !== null && <span>⏱ ETA: <strong>{uploadState.eta}s</strong></span>}
+              <span>Speed: <strong style={{ color: "#0f172a" }}>{uploadState.speed.toLocaleString()} rec/s</strong></span>
+              {uploadState.eta !== null && <span>ETA: <strong style={{ color: "#0f172a" }}>{uploadState.eta}s</strong></span>}
             </div>
           </div>
         )}
 
         {uploadState && uploadState.status === "done" && (
-          <div>
-            <div style={{ fontSize: "2rem", marginBottom: "6px" }}>
-              {uploadState.mode === "remove" ? "🗑️" : uploadState.mode === "change" ? "🔄" : "✅"}
+          <div style={{ padding: "4px 0" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: uploadState.mode === "remove" ? "#fff1f2" : "#f0fdf4",
+                border: uploadState.mode === "remove" ? "1px solid #fecdd3" : "1px solid #bbf7d0",
+                color: uploadState.mode === "remove" ? "#be123c" : "#166534",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "10px"
+              }}
+            >
+              {uploadState.mode === "remove" ? (
+                <TrashIcon width="17" height="17" />
+              ) : uploadState.mode === "change" ? (
+                <RefreshIcon width="17" height="17" />
+              ) : (
+                <CheckCircleIcon width="17" height="17" />
+              )}
             </div>
-            <p style={{ color: uploadState.mode === "remove" ? "#dc2626" : uploadState.mode === "change" ? "#6366f1" : "#16a34a", fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>
-              {uploadState.mode === "remove" ? "Deletion Complete!" : uploadState.mode === "change" ? "Complete Overwrite Done!" : "Upload Complete!"}
+            <p style={{ color: "#0f172a", fontWeight: 700, fontSize: "1rem", margin: "0 0 4px" }}>
+              {uploadState.mode === "remove"
+                ? "Matching Records Removed"
+                : uploadState.mode === "change"
+                ? "Complete Overwrite Finished"
+                : "Excel Records Imported"}
             </p>
-            <p style={{ color: "#64748b", margin: "6px 0 12px", fontSize: "0.88rem" }}>
+            <p style={{ color: "#64748b", margin: "0 0 14px", fontSize: "0.84rem" }}>
               {uploadState.mode === "remove"
                 ? `${(uploadState.deleted || 0).toLocaleString()} matching records deleted from database.`
                 : `${uploadState.inserted.toLocaleString()} records inserted/updated · ${uploadState.skipped.toLocaleString()} skipped across ${uploadState.sheetCount || 1} sheet tab(s)`
@@ -628,7 +693,8 @@ function StaffRecordsTab() {
               onClick={(e) => { e.stopPropagation(); setUploadState(null); }} 
               className="records-upload-browse-btn"
             >
-              Upload Another
+              <UploadIcon width="13" height="13" />
+              <span>Upload Another</span>
             </button>
           </div>
         )}
@@ -636,7 +702,10 @@ function StaffRecordsTab() {
 
       {/* ── SUPPORTED COLUMNS GUIDE ── */}
       <div className="records-columns-guide">
-        <strong>📋 Supported Columns:</strong>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "#334155" }}>
+          <FileIcon width="14" height="14" style={{ color: "#64748b" }} />
+          <span>Supported Columns:</span>
+        </div>
         <div className="records-column-chips">
           <span className="records-column-chip">ID / Staff ID / Emp Code</span>
           <span className="records-column-chip">Full Name / Faculty Name</span>
