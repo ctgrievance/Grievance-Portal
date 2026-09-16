@@ -221,31 +221,15 @@ function RegisteredStudentsTab() {
         </div>
 
         <div className="reg-users-filter-controls">
-          <div className="reg-users-select-wrap status">
-            <select
-              className="reg-users-select"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="registered">Verified Only</option>
-              <option value="pending">Pending OTP</option>
-              <option value="all">All Accounts</option>
-            </select>
-          </div>
-
           <div className="reg-users-btn-group">
             <button
               type="button"
               className="reg-users-btn-reset"
               onClick={() => {
                 setSearch("");
-                setStatusFilter("registered");
                 setPage(1);
               }}
-              title="Reset all filters"
+              title="Reset search"
             >
               Reset
             </button>
@@ -354,17 +338,10 @@ function RegisteredStudentsTab() {
 
                       {/* Verification Status */}
                       <td>
-                        {student.isOtpVerified || (student.isVerified && !student.otpPending) ? (
-                          <span className="reg-status-badge verified">
-                            <CheckCircleIcon width="12" height="12" />
-                            <span>Verified</span>
-                          </span>
-                        ) : (
-                          <span className="reg-status-badge pending">
-                            <AlertCircleIcon width="12" height="12" />
-                            <span>Pending OTP</span>
-                          </span>
-                        )}
+                        <span className="reg-status-badge verified">
+                          <CheckCircleIcon width="12" height="12" />
+                          <span>Verified</span>
+                        </span>
                       </td>
 
                       {/* Date */}
@@ -445,17 +422,10 @@ function RegisteredStudentsTab() {
                       <span className="reg-user-id-badge" title="Registration No">{student.id}</span>
                     </div>
                   </div>
-                  {isVerified ? (
-                    <span className="reg-status-badge verified">
-                      <CheckCircleIcon width="11" height="11" />
-                      <span>Verified</span>
-                    </span>
-                  ) : (
-                    <span className="reg-status-badge pending">
-                      <AlertCircleIcon width="11" height="11" />
-                      <span>Pending OTP</span>
-                    </span>
-                  )}
+                  <span className="reg-status-badge verified">
+                    <CheckCircleIcon width="11" height="11" />
+                    <span>Verified</span>
+                  </span>
                 </div>
 
                 {/* Metadata Row: Program & Type */}

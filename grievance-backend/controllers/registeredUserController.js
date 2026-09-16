@@ -550,6 +550,11 @@ export const deleteLiveStaff = async (req, res) => {
 // =========================================================================
 export const getRecordsComparison = async (req, res) => {
   try {
+    // Disable HTTP caching on comparison data so cohort switching is always fresh and never 304-stale
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
     const {
       type = "students", // "students" | "staff"
       status = "all", // "all" | "registered" | "not_registered"
@@ -562,7 +567,8 @@ export const getRecordsComparison = async (req, res) => {
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(200, Math.max(10, parseInt(limit, 10) || 50));
-    const isStudents = type.toLowerCase() === "students" || type.toLowerCase() === "student";
+    const reqType = (type || "").toString().trim().toLowerCase();
+    const isStudents = reqType === "students" || reqType === "student";
 
     const verifiedCondition = {
       isVerified: true,

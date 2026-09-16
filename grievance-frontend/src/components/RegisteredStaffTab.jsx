@@ -436,20 +436,6 @@ function RegisteredStaffTab() {
             </select>
           </div>
 
-          <div className="reg-users-select-wrap status">
-            <select
-              className="reg-users-select"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="registered">Verified Only</option>
-              <option value="pending">Pending OTP</option>
-              <option value="all">All Accounts</option>
-            </select>
-          </div>
 
           <div className="reg-users-btn-group">
             <button
@@ -459,7 +445,6 @@ function RegisteredStaffTab() {
                 setSearch("");
                 setDeptFilter("all");
                 setRoleFilter("all");
-                setStatusFilter("registered");
                 setStaffTypeFilter("all");
                 setPage(1);
               }}
@@ -589,17 +574,10 @@ function RegisteredStaffTab() {
 
                         {/* Status */}
                         <td>
-                          {staff.isOtpVerified || (staff.isVerified && !staff.otpPending) ? (
-                            <span className="reg-status-badge verified">
-                              <CheckCircleIcon width="12" height="12" />
-                              <span>Verified</span>
-                            </span>
-                          ) : (
-                            <span className="reg-status-badge pending">
-                              <AlertCircleIcon width="12" height="12" />
-                              <span>Pending OTP</span>
-                            </span>
-                          )}
+                          <span className="reg-status-badge verified">
+                            <CheckCircleIcon width="12" height="12" />
+                            <span>Verified</span>
+                          </span>
                         </td>
 
                         {/* Date */}
@@ -700,17 +678,10 @@ function RegisteredStaffTab() {
                       Admin
                     </span>
                   )}
-                  {isVerified ? (
-                    <span className="reg-status-badge verified">
-                      <CheckCircleIcon width="11" height="11" />
-                      <span>Verified</span>
-                    </span>
-                  ) : (
-                    <span className="reg-status-badge pending">
-                      <AlertCircleIcon width="11" height="11" />
-                      <span>Pending OTP</span>
-                    </span>
-                  )}
+                  <span className="reg-status-badge verified">
+                    <CheckCircleIcon width="11" height="11" />
+                    <span>Verified</span>
+                  </span>
                 </div>
 
                 {/* Contact Row */}

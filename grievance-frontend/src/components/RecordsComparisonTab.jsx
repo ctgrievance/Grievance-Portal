@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   GraduationCapIcon,
   UsersIcon,
@@ -20,6 +20,11 @@ export default function RecordsComparisonTab() {
   const [department, setDepartment] = useState("all");
   const [page, setPage] = useState(1);
   const [limit] = useState(25);
+
+  const cohortRef = useRef(cohort);
+  cohortRef.current = cohort;
+
+  const abortControllerRef = useRef(null);
 
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
@@ -47,21 +52,46 @@ export default function RecordsComparisonTab() {
     }, 4500);
   };
 
-  const fetchComparison = useCallback(async () => {
+  const fetchComparison = useCallback(async (
+    targetCohort = cohortRef.current,
+    targetStatus = statusFilter,
+    targetSearch = search,
+    targetDept = department,
+    targetPage = page
+  ) => {
+    // Abort previous in-flight comparison request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
-        type: cohort,
-        status: statusFilter,
-        search: search.trim(),
-        department,
-        page: page.toString(),
-        limit: limit.toString()
+        type: targetCohort,
+        status: targetStatus,
+        search: (targetSearch || "").trim(),
+        department: targetDept || "all",
+        page: (targetPage || 1).toString(),
+        limit: limit.toString(),
+        _t: Date.now().toString()
       });
 
-      const res = await fetch(`${BASE_URL}?${queryParams.toString()}`);
+      const res = await fetch(`${BASE_URL}?${queryParams.toString()}`, {
+        signal: controller.signal,
+        headers: {
+          "Cache-Control": "no-cache, no-store",
+          "Pragma": "no-cache"
+        }
+      });
       if (!res.ok) throw new Error("Failed to load comparison records");
       const data = await res.json();
+
+      // Guard: strictly ignore response if active cohort has switched
+      if (data.type && data.type !== cohortRef.current) {
+        return;
+      }
 
       setRecords(data.records || []);
       setTotal(data.total || 0);
@@ -73,25 +103,45 @@ export default function RecordsComparisonTab() {
         setDepartmentsList(data.departments);
       }
     } catch (err) {
+      if (err.name === "AbortError") return;
       console.error("Comparison fetch error:", err);
       showNotification(err.message || "Failed to fetch comparison", "error");
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
-  }, [cohort, statusFilter, search, department, page, limit, BASE_URL]);
+  }, [statusFilter, search, department, page, limit, BASE_URL]);
 
   useEffect(() => {
     fetchComparison();
-  }, [fetchComparison]);
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [cohort, statusFilter, search, department, page]);
 
-  // Cohort switch resets filters and page
+  // Cohort switch resets filters and page immediately and fetches new cohort
   const handleCohortChange = (newCohort) => {
     if (newCohort === cohort) return;
+    cohortRef.current = newCohort;
     setCohort(newCohort);
     setStatusFilter("all");
     setSearch("");
     setDepartment("all");
     setPage(1);
+    setRecords([]);
+    setTotal(0);
+    setTotalPages(1);
+    setDepartmentsList([]);
+    setSummary({
+      totalRecords: 0,
+      totalRegistered: 0,
+      totalNotRegistered: 0,
+      registrationRate: "0%"
+    });
+    fetchComparison(newCohort, "all", "", "all", 1);
   };
 
   const handleExport = async () => {

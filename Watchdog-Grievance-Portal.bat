@@ -5,7 +5,7 @@ cd /d "C:\nginx\nginx-1.27.4"
 
 echo ====================================================
 echo   Grievance Portal 24/7 Watchdog (rms.ctuniversity.in)
-echo   Active Auto-Recovery System for Nginx, Backend & Frontend
+echo   Active Auto-Recovery System for Nginx, Backend ^& Frontend
 echo   Keeps all portal services alive continuously.
 echo ====================================================
 echo.
