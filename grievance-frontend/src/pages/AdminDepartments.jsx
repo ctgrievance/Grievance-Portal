@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import ReactDOM from "react-dom";
 import {
   PlusIcon,
   TrashIcon,
@@ -14,6 +15,164 @@ import {
   ShieldIcon,
   ChevronDownIcon
 } from "../components/Icons";
+
+// Portal-powered floating permissions dropdown to avoid table overflow cutoff
+function DepartmentPermissionsDropdown({ dept, perms, isOpen, onToggle }) {
+  const buttonRef = useRef(null);
+  const menuRef = useRef(null);
+  const [coords, setCoords] = useState({
+    top: undefined,
+    bottom: undefined,
+    left: 0,
+    isDropup: false,
+    maxHeight: 300
+  });
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const dropdownWidth = 270;
+    const estimatedHeight = 240;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // Open upward if space below is insufficient and there is more space above
+    const shouldDropup = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+
+    let left = rect.left;
+    if (left + dropdownWidth > window.innerWidth - 12) {
+      left = Math.max(12, window.innerWidth - dropdownWidth - 12);
+    }
+
+    if (shouldDropup) {
+      setCoords({
+        bottom: window.innerHeight - rect.top + 6,
+        top: undefined,
+        left,
+        isDropup: true,
+        maxHeight: Math.min(320, spaceAbove - 20)
+      });
+    } else {
+      setCoords({
+        top: rect.bottom + 6,
+        bottom: undefined,
+        left,
+        isDropup: false,
+        maxHeight: Math.min(320, spaceBelow - 20)
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePosition();
+
+    const handleClickOutside = (e) => {
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target) &&
+        menuRef.current &&
+        !menuRef.current.contains(e.target)
+      ) {
+        onToggle(null);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onToggle(null);
+    };
+
+    const handleScroll = (e) => {
+      // Keep open if user scrolls inside the dropdown menu list itself
+      if (menuRef.current && menuRef.current.contains(e.target)) return;
+      onToggle(null);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [isOpen, onToggle, updatePosition]);
+
+  return (
+    <div className="dept-perm-dropdown-wrap">
+      <button
+        ref={buttonRef}
+        type="button"
+        className={`dept-perm-badge-btn ${isOpen ? "active" : ""}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(isOpen ? null : dept._id);
+        }}
+        title="Click to view granted permissions"
+      >
+        <ShieldIcon width="12" height="12" />
+        <span>
+          {perms.length} {perms.length === 1 ? "Permission" : "Permissions"}
+        </span>
+        <ChevronDownIcon
+          width="11"
+          height="11"
+          className={`dept-perm-chevron ${isOpen ? "open" : ""}`}
+        />
+      </button>
+
+      {isOpen &&
+        ReactDOM.createPortal(
+          <div
+            ref={menuRef}
+            className={`dept-perm-menu ${coords.isDropup ? "dropup" : ""}`}
+            style={{
+              position: "fixed",
+              top: coords.top !== undefined ? `${coords.top}px` : "auto",
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : "auto",
+              left: `${coords.left}px`,
+              width: "270px",
+              maxHeight: `${coords.maxHeight}px`,
+              zIndex: 99999,
+              display: "flex",
+              flexDirection: "column"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="dept-perm-menu-header">
+              <span className="dept-perm-menu-title">
+                Active Permissions ({perms.length})
+              </span>
+            </div>
+            <div
+              className="dept-perm-menu-list"
+              style={{
+                overflowY: "auto",
+                maxHeight: `${Math.max(120, coords.maxHeight - 45)}px`
+              }}
+            >
+              {perms.map((p) => (
+                <div key={p.id} className="dept-perm-menu-item">
+                  <span className={`dept-perm-pill ${p.type}`}>
+                    {p.icon}
+                    <span>{p.badge}</span>
+                  </span>
+                  <div className="dept-perm-item-info">
+                    <div className="dept-perm-item-label">{p.label}</div>
+                    <div className="dept-perm-item-desc">{p.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
 
 function AdminDepartments() {
   const [departments, setDepartments] = useState([]);
@@ -74,19 +233,6 @@ function AdminDepartments() {
     fetchDepartments();
   }, [fetchDepartments]);
 
-  // Close active permissions dropdown when clicking outside
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (!e.target.closest(".dept-perm-dropdown-wrap")) {
-        setOpenPermDropdownId(null);
-      }
-    };
-    document.addEventListener("click", handleOutsideClick);
-    return () => {
-      document.removeEventListener("click", handleOutsideClick);
-    };
-  }, []);
-
   // Helper to extract granted permissions with clean metadata
   const getDepartmentPermissions = (dept) => {
     const perms = [];
@@ -110,7 +256,7 @@ function AdminDepartments() {
         icon: <UsersIcon width="11" height="11" />
       });
     }
-    if (dept.allowStudentRecords || dept.name === "Student Section") {
+    if (dept.allowStudentRecords) {
       perms.push({
         id: "student-records",
         label: "Student Records Access",
@@ -120,7 +266,7 @@ function AdminDepartments() {
         icon: <FileIcon width="11" height="11" />
       });
     }
-    if (dept.allowStaffRecords || dept.name === "HR") {
+    if (dept.allowStaffRecords) {
       perms.push({
         id: "staff-records",
         label: "Staff Records Access",
@@ -175,8 +321,8 @@ function AdminDepartments() {
       targetAudience: dept.targetAudience || "both",
       isAcademic: !!dept.isAcademic,
       isActive: dept.isActive !== false,
-      allowStudentRecords: dept.allowStudentRecords !== undefined ? !!dept.allowStudentRecords : dept.name.toLowerCase() === "student section",
-      allowStaffRecords: dept.allowStaffRecords !== undefined ? !!dept.allowStaffRecords : dept.name.toLowerCase() === "hr",
+      allowStudentRecords: !!dept.allowStudentRecords,
+      allowStaffRecords: !!dept.allowStaffRecords,
       allowRegisteredStudents: !!dept.allowRegisteredStudents,
       allowRegisteredStaff: !!dept.allowRegisteredStaff,
       programs: Array.isArray(dept.programs) ? [...dept.programs] : []
@@ -517,56 +663,14 @@ function AdminDepartments() {
                           if (perms.length === 0) {
                             return <span className="dept-perm-empty">None</span>;
                           }
-                          const isOpen = openPermDropdownId === dept._id;
-                          const isNearBottom = index >= filteredDepartments.length - 2 && filteredDepartments.length > 2;
 
                           return (
-                            <div className="dept-perm-dropdown-wrap">
-                              <button
-                                type="button"
-                                className={`dept-perm-badge-btn ${isOpen ? "active" : ""}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenPermDropdownId(isOpen ? null : dept._id);
-                                }}
-                                title="Click to view granted permissions"
-                              >
-                                <ShieldIcon width="12" height="12" />
-                                <span>{perms.length} {perms.length === 1 ? "Permission" : "Permissions"}</span>
-                                <ChevronDownIcon
-                                  width="11"
-                                  height="11"
-                                  className={`dept-perm-chevron ${isOpen ? "open" : ""}`}
-                                />
-                              </button>
-
-                              {isOpen && (
-                                <div
-                                  className={`dept-perm-menu ${isNearBottom ? "dropup" : ""}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <div className="dept-perm-menu-header">
-                                    <span className="dept-perm-menu-title">
-                                      Active Permissions ({perms.length})
-                                    </span>
-                                  </div>
-                                  <div className="dept-perm-menu-list">
-                                    {perms.map((p) => (
-                                      <div key={p.id} className="dept-perm-menu-item">
-                                        <span className={`dept-perm-pill ${p.type}`}>
-                                          {p.icon}
-                                          <span>{p.badge}</span>
-                                        </span>
-                                        <div className="dept-perm-item-info">
-                                          <div className="dept-perm-item-label">{p.label}</div>
-                                          <div className="dept-perm-item-desc">{p.desc}</div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            <DepartmentPermissionsDropdown
+                              dept={dept}
+                              perms={perms}
+                              isOpen={openPermDropdownId === dept._id}
+                              onToggle={(id) => setOpenPermDropdownId(id)}
+                            />
                           );
                         })()}
                       </td>
@@ -655,50 +759,14 @@ function AdminDepartments() {
                   {(() => {
                     const perms = getDepartmentPermissions(dept);
                     if (perms.length === 0) return null;
-                    const isOpen = openPermDropdownId === `m_${dept._id}`;
                     return (
                       <div className="dept-mcard-perm-row">
-                        <div className="dept-perm-dropdown-wrap">
-                          <button
-                            type="button"
-                            className={`dept-perm-badge-btn ${isOpen ? "active" : ""}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenPermDropdownId(isOpen ? null : `m_${dept._id}`);
-                            }}
-                          >
-                            <ShieldIcon width="12" height="12" />
-                            <span>{perms.length} {perms.length === 1 ? "Permission" : "Permissions"}</span>
-                            <ChevronDownIcon
-                              width="11"
-                              height="11"
-                              className={`dept-perm-chevron ${isOpen ? "open" : ""}`}
-                            />
-                          </button>
-                          {isOpen && (
-                            <div className="dept-perm-menu" onClick={(e) => e.stopPropagation()}>
-                              <div className="dept-perm-menu-header">
-                                <span className="dept-perm-menu-title">
-                                  Active Permissions ({perms.length})
-                                </span>
-                              </div>
-                              <div className="dept-perm-menu-list">
-                                {perms.map((p) => (
-                                  <div key={p.id} className="dept-perm-menu-item">
-                                    <span className={`dept-perm-pill ${p.type}`}>
-                                      {p.icon}
-                                      <span>{p.badge}</span>
-                                    </span>
-                                    <div className="dept-perm-item-info">
-                                      <div className="dept-perm-item-label">{p.label}</div>
-                                      <div className="dept-perm-item-desc">{p.desc}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <DepartmentPermissionsDropdown
+                          dept={dept}
+                          perms={perms}
+                          isOpen={openPermDropdownId === `m_${dept._id}`}
+                          onToggle={(id) => setOpenPermDropdownId(id ? `m_${dept._id}` : null)}
+                        />
                       </div>
                     );
                   })()}

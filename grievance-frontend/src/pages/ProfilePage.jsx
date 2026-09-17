@@ -679,29 +679,6 @@ function ProfilePage() {
                   </div>
                 </div>
 
-                {isStudent && (
-                  <div
-                    style={{
-                      margin: "0 0 16px 0",
-                      padding: "12px 16px",
-                      borderRadius: "8px",
-                      backgroundColor: "#eff6ff",
-                      border: "1px solid #bfdbfe",
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "10px",
-                      color: "#1e40af",
-                      fontSize: "0.85rem",
-                      lineHeight: "1.45"
-                    }}
-                  >
-                    <AlertCircleIcon width="18" height="18" style={{ flexShrink: 0, marginTop: "2px", color: "#2563eb" }} />
-                    <div>
-                      <strong>Official Student Record Notice:</strong> Email address and mobile phone number cannot be modified directly from this portal. To update your registered contact details, please contact the <strong>Student Section</strong>.
-                    </div>
-                  </div>
-                )}
-
                 {/* EMAIL ITEM */}
                 <div className="profile-contact-item">
                   <div className="profile-contact-row">
@@ -751,26 +728,7 @@ function ProfilePage() {
                           Cancel
                         </button>
                       )
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: "0.78rem",
-                          fontWeight: "600",
-                          color: "#475569",
-                          backgroundColor: "#f1f5f9",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                          whiteSpace: "nowrap"
-                        }}
-                        title="Contact the Student Section to update your verified email address"
-                      >
-                        🔒 Contact Student Section
-                      </span>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Email Edit OTP Drawer */}
@@ -901,26 +859,7 @@ function ProfilePage() {
                           Cancel
                         </button>
                       )
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: "0.78rem",
-                          fontWeight: "600",
-                          color: "#475569",
-                          backgroundColor: "#f1f5f9",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                          whiteSpace: "nowrap"
-                        }}
-                        title="Contact the Student Section to update your verified mobile number"
-                      >
-                        🔒 Contact Student Section
-                      </span>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Phone Edit OTP Drawer */}

@@ -136,7 +136,7 @@ router.get("/user/:id", async (req, res) => {
     }
 
     // 4️⃣ User not found
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json({ message: "User not found, please register yourself.", notRegistered: true });
 
   } catch (err) {
     console.error(err);

@@ -423,9 +423,14 @@ export const loginUser = async (req, res) => {
     ]);
 
     const user = staffUser || studentUser || legacyUser;
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found, please register yourself.",
+        notRegistered: true
+      });
+    }
 
-    if (!user.isVerified) return res.status(403).json({ message: "Account not verified" });
+    if (!user.isVerified) return res.status(403).json({ message: "Account not verified. Please complete your registration." });
 
     // Authoritatively determine user's actual role from database records
     const actualRole = getAuthoritativeUserRole(staffUser, studentUser, legacyUser);
@@ -531,7 +536,7 @@ export const verifyLogin = async (req, res) => {
     ]);
 
     const user = staffUser || studentUser || legacyUser;
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ message: "User not found, please register yourself.", notRegistered: true });
 
     if (user.otp !== otp || user.otpExpires < Date.now()) {
       return res.status(400).json({ message: "Invalid or expired Login OTP" });

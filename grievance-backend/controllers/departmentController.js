@@ -8,20 +8,8 @@ import AdminStaffModel from "../models/AdminStaffModel.js";
 
 let initializedDefaults = false;
 const ensureDefaultPermissions = async () => {
-  if (initializedDefaults) return;
-  try {
-    await Department.updateOne(
-      { name: { $regex: /^student section$/i }, allowStudentRecords: { $exists: false } },
-      { $set: { allowStudentRecords: true } }
-    );
-    await Department.updateOne(
-      { name: { $regex: /^hr$/i }, allowStaffRecords: { $exists: false } },
-      { $set: { allowStaffRecords: true } }
-    );
-    initializedDefaults = true;
-  } catch (e) {
-    console.warn("Could not ensure default permissions:", e.message);
-  }
+  // Permissions are strictly driven by database configuration without hardcoded overrides
+  return;
 };
 
 // =====================================================
@@ -388,12 +376,10 @@ export const getDepartmentPermissions = async (req, res) => {
     }
 
     if (!dept) {
-      const isStudentSection = cleanName.toLowerCase() === "student section";
-      const isHR = cleanName.toLowerCase() === "hr";
       return res.status(200).json({
         name: cleanName,
-        allowStudentRecords: isStudentSection,
-        allowStaffRecords: isHR,
+        allowStudentRecords: false,
+        allowStaffRecords: false,
         allowRegisteredStudents: false,
         allowRegisteredStaff: false
       });
@@ -401,8 +387,8 @@ export const getDepartmentPermissions = async (req, res) => {
 
     res.status(200).json({
       name: dept.name,
-      allowStudentRecords: dept.allowStudentRecords !== undefined ? dept.allowStudentRecords : (dept.name.toLowerCase() === "student section"),
-      allowStaffRecords: dept.allowStaffRecords !== undefined ? dept.allowStaffRecords : (dept.name.toLowerCase() === "hr"),
+      allowStudentRecords: !!dept.allowStudentRecords,
+      allowStaffRecords: !!dept.allowStaffRecords,
       allowRegisteredStudents: !!dept.allowRegisteredStudents,
       allowRegisteredStaff: !!dept.allowRegisteredStaff
     });

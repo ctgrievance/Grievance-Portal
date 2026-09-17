@@ -47,10 +47,9 @@ export const useDepartmentPermissions = (deptName) => {
 
       // Graceful fallback if offline or request fails
       if (isMounted) {
-        const clean = deptName.toLowerCase();
         setPermissions({
-          allowStudentRecords: clean === "student section",
-          allowStaffRecords: clean === "hr",
+          allowStudentRecords: false,
+          allowStaffRecords: false,
           allowRegisteredStudents: false,
           allowRegisteredStaff: false,
           loading: false,

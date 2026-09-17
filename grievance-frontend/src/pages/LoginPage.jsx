@@ -166,7 +166,11 @@ function LoginPage() {
         if (data.actualRole) {
           setSelectedRole(data.actualRole);
         }
-        throw new Error(data.message || "Login failed");
+        let errMsg = data.message || "Login failed";
+        if (errMsg.toLowerCase().trim() === "user not found" || data.notRegistered) {
+          errMsg = "User not found, please register yourself.";
+        }
+        throw new Error(errMsg);
       }
 
       if (data.requires2FA) {
@@ -186,7 +190,11 @@ function LoginPage() {
       } else if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
         setMessage("Network connection error. Please check your internet connection.");
       } else {
-        setMessage(err.message || "Login failed. Please verify your credentials.");
+        let displayMsg = err.message || "Login failed. Please verify your credentials.";
+        if (displayMsg.toLowerCase().trim() === "user not found") {
+          displayMsg = "User not found, please register yourself.";
+        }
+        setMessage(displayMsg);
       }
       setStatusType("error");
     }
@@ -294,7 +302,11 @@ function LoginPage() {
                 <p>Please login to access your dashboard</p>
               </div>
 
-              {message && <div className={`alert-box ${statusType}`}>{message}</div>}
+              {message && (
+                <div className={`alert-box ${statusType}`}>
+                  <span>{message}</span>
+                </div>
+              )}
 
               {!otpSent ? (
                 /* STEP 1: CREDENTIALS */

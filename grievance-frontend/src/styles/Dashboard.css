@@ -8052,29 +8052,37 @@ textarea:focus {
 }
 
 .dept-perm-menu {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  z-index: 120;
+  z-index: 99999;
   min-width: 260px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.14), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.18), 0 8px 12px -6px rgba(15, 23, 42, 0.1);
   padding: 8px;
-  animation: fadeInDropdown 0.12s ease-out;
+  animation: fadeInDropdown 0.14s ease-out;
+  box-sizing: border-box;
 }
 
 .dept-perm-menu.dropup {
-  top: auto;
-  bottom: calc(100% + 5px);
-  box-shadow: 0 -10px 25px -5px rgba(15, 23, 42, 0.14), 0 -8px 10px -6px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 -12px 28px -4px rgba(15, 23, 42, 0.18), 0 -8px 12px -6px rgba(15, 23, 42, 0.1);
+  animation: fadeInDropup 0.14s ease-out;
 }
 
 @keyframes fadeInDropdown {
   from {
     opacity: 0;
     transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDropup {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -8103,6 +8111,18 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.dept-perm-menu-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dept-perm-menu-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .dept-perm-menu-item {
