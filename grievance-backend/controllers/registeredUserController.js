@@ -560,6 +560,7 @@ export const getRecordsComparison = async (req, res) => {
       status = "all", // "all" | "registered" | "not_registered"
       search = "",
       department = "all",
+      staffType = "all", // "all" | "Teaching" | "Non-Teaching"
       page = 1,
       limit = 50,
       export: isExport = "false"
@@ -710,12 +711,25 @@ export const getRecordsComparison = async (req, res) => {
       }
       const registeredIds = Array.from(registeredMap.keys());
 
-      const totalRecords = await StaffRecord.countDocuments({});
-      const totalRegistered = await StaffRecord.countDocuments({ id: { $in: registeredIds } });
+      // Base category filter
+      const baseStaffFilter = {};
+      const cleanStaffType = (staffType || "all").toString().trim();
+      if (cleanStaffType.toLowerCase() === "teaching") {
+        baseStaffFilter.staffType = "Teaching";
+      } else if (cleanStaffType.toLowerCase() === "non-teaching" || cleanStaffType.toLowerCase() === "non_teaching") {
+        baseStaffFilter.staffType = { $ne: "Teaching" };
+      }
+
+      const [totalRecords, totalRegistered, totalTeaching, totalNonTeaching] = await Promise.all([
+        StaffRecord.countDocuments(baseStaffFilter),
+        StaffRecord.countDocuments({ ...baseStaffFilter, id: { $in: registeredIds } }),
+        StaffRecord.countDocuments({ staffType: "Teaching" }),
+        StaffRecord.countDocuments({ staffType: { $ne: "Teaching" } })
+      ]);
       const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
       const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
 
-      const query = {};
+      const query = { ...baseStaffFilter };
 
       if (status === "registered") {
         query.id = { $in: registeredIds };
@@ -830,6 +844,7 @@ export const getRecordsComparison = async (req, res) => {
       return res.status(200).json({
         type: "staff",
         statusFilter: status,
+        staffTypeFilter: cleanStaffType,
         total: totalFiltered,
         page: pageNum,
         totalPages: Math.ceil(totalFiltered / limitNum) || 1,
@@ -837,6 +852,8 @@ export const getRecordsComparison = async (req, res) => {
           totalRecords,
           totalRegistered,
           totalNotRegistered,
+          totalTeaching,
+          totalNonTeaching,
           registrationRate
         },
         departments: cleanDepartments,

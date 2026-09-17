@@ -27,7 +27,7 @@ if errorlevel 1 (
     echo [%date% %time%] [ALERT] Backend Server unresponsive or down on port 5000! Auto-recovering...
     powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }" >nul 2>&1
     ping 127.0.0.1 -n 2 >nul
-    powershell -NoProfile -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'cmd.exe /c \"node server.js\"'; CurrentDirectory = 'C:\Users\admin\Desktop\Grievance-Portal\grievance-backend'}" >nul 2>&1
+    powershell -NoProfile -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'cmd.exe /c node server.js'; CurrentDirectory = 'C:\Users\admin\Desktop\Grievance-Portal\grievance-backend'}" >nul 2>&1
     ping 127.0.0.1 -n 4 >nul
     echo [%date% %time%] [SUCCESS] Backend Server restarted on port 5000.
 )
@@ -36,7 +36,7 @@ if errorlevel 1 (
 netstat -ano | findstr "LISTENING" | findstr "3000" >nul
 if errorlevel 1 (
     echo [%date% %time%] [ALERT] Frontend App down on port 3000! Auto-recovering...
-    powershell -NoProfile -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'cmd.exe /c \"set BROWSER=none && npm start\"'; CurrentDirectory = 'C:\Users\admin\Desktop\Grievance-Portal\grievance-frontend'}" >nul 2>&1
+    powershell -NoProfile -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'cmd.exe /c set BROWSER=none && npm start'; CurrentDirectory = 'C:\Users\admin\Desktop\Grievance-Portal\grievance-frontend'}" >nul 2>&1
     ping 127.0.0.1 -n 6 >nul
     echo [%date% %time%] [SUCCESS] Frontend App restarted on port 3000.
 )

@@ -16,6 +16,7 @@ import {
 export default function RecordsComparisonTab() {
   const [cohort, setCohort] = useState("students"); // "students" | "staff"
   const [statusFilter, setStatusFilter] = useState("all"); // "all" | "registered" | "not_registered"
+  const [staffType, setStaffType] = useState("all"); // "all" | "Teaching" | "Non-Teaching"
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
   const [page, setPage] = useState(1);
@@ -33,6 +34,8 @@ export default function RecordsComparisonTab() {
     totalRecords: 0,
     totalRegistered: 0,
     totalNotRegistered: 0,
+    totalTeaching: 0,
+    totalNonTeaching: 0,
     registrationRate: "0%"
   });
   const [departmentsList, setDepartmentsList] = useState([]);
@@ -57,6 +60,7 @@ export default function RecordsComparisonTab() {
     targetStatus = statusFilter,
     targetSearch = search,
     targetDept = department,
+    targetStaffType = staffType,
     targetPage = page
   ) => {
     // Abort previous in-flight comparison request
@@ -73,6 +77,7 @@ export default function RecordsComparisonTab() {
         status: targetStatus,
         search: (targetSearch || "").trim(),
         department: targetDept || "all",
+        staffType: targetCohort === "staff" ? (targetStaffType || "all") : "all",
         page: (targetPage || 1).toString(),
         limit: limit.toString(),
         _t: Date.now().toString()
@@ -111,7 +116,7 @@ export default function RecordsComparisonTab() {
         setLoading(false);
       }
     }
-  }, [statusFilter, search, department, page, limit, BASE_URL]);
+  }, [statusFilter, search, department, staffType, page, limit, BASE_URL]);
 
   useEffect(() => {
     fetchComparison();
@@ -120,7 +125,7 @@ export default function RecordsComparisonTab() {
         abortControllerRef.current.abort();
       }
     };
-  }, [cohort, statusFilter, search, department, page]);
+  }, [cohort, statusFilter, search, department, staffType, page]);
 
   // Cohort switch resets filters and page immediately and fetches new cohort
   const handleCohortChange = (newCohort) => {
@@ -128,6 +133,7 @@ export default function RecordsComparisonTab() {
     cohortRef.current = newCohort;
     setCohort(newCohort);
     setStatusFilter("all");
+    setStaffType("all");
     setSearch("");
     setDepartment("all");
     setPage(1);
@@ -139,9 +145,11 @@ export default function RecordsComparisonTab() {
       totalRecords: 0,
       totalRegistered: 0,
       totalNotRegistered: 0,
+      totalTeaching: 0,
+      totalNonTeaching: 0,
       registrationRate: "0%"
     });
-    fetchComparison(newCohort, "all", "", "all", 1);
+    fetchComparison(newCohort, "all", "", "all", "all", 1);
   };
 
   const handleExport = async () => {
@@ -152,6 +160,7 @@ export default function RecordsComparisonTab() {
         status: statusFilter,
         search: search.trim(),
         department,
+        staffType: cohort === "staff" ? staffType : "all",
         export: "true"
       });
 
@@ -163,7 +172,8 @@ export default function RecordsComparisonTab() {
       const a = document.createElement("a");
       a.href = url;
       const dateStr = new Date().toISOString().split("T")[0];
-      a.download = `${cohort === "students" ? "Students" : "Staff"}_Comparison_${statusFilter}_${dateStr}.xlsx`;
+      const catSuffix = cohort === "staff" && staffType !== "all" ? `_${staffType}` : "";
+      a.download = `${cohort === "students" ? "Students" : "Staff"}_Comparison_${statusFilter}${catSuffix}_${dateStr}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -282,7 +292,7 @@ export default function RecordsComparisonTab() {
 
       {/* ── KPI EXECUTIVE SUMMARY STATS ── */}
       <div className="reg-compare-kpi-grid">
-        {/* Card 1: Master Records */}
+        {/* Card 1: Total Master Records */}
         <div
           style={{
             background: "#ffffff",
@@ -294,7 +304,11 @@ export default function RecordsComparisonTab() {
           }}
         >
           <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Total Master Records
+            {cohort === "staff" && staffType === "Teaching"
+              ? "Total Teaching Records"
+              : cohort === "staff" && staffType === "Non-Teaching"
+              ? "Total Non-Teaching Records"
+              : "Total Master Records"}
           </span>
           <div className="kpi-num" style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", marginTop: "3px" }}>
             {summary.totalRecords.toLocaleString()}
@@ -374,7 +388,11 @@ export default function RecordsComparisonTab() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
             <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
-              Cohort Adoption
+              {cohort === "staff" && staffType === "Teaching"
+                ? "Faculty Adoption"
+                : cohort === "staff" && staffType === "Non-Teaching"
+                ? "Staff Adoption"
+                : "Cohort Adoption"}
             </span>
             <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2563eb" }}>
               {summary.registrationRate}
@@ -475,6 +493,108 @@ export default function RecordsComparisonTab() {
             </span>
           </button>
         </div>
+
+        {/* Staff Category Filter: Teaching vs Non-Teaching */}
+        {cohort === "staff" && (
+          <div
+            className="reg-compare-category-filter-group"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              background: "#f1f5f9",
+              borderRadius: "8px",
+              padding: "3px",
+              border: "1px solid #cbd5e1",
+              gap: "2px"
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { setStaffType("all"); setPage(1); }}
+              style={{
+                padding: "4px 10px",
+                borderRadius: "6px",
+                border: "none",
+                fontSize: "0.78rem",
+                fontWeight: staffType === "all" ? 700 : 500,
+                cursor: "pointer",
+                background: staffType === "all" ? "#ffffff" : "transparent",
+                color: staffType === "all" ? "#0f172a" : "#64748b",
+                boxShadow: staffType === "all" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.15s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+              title="View all teaching and non-teaching staff"
+            >
+              <span>All Staff</span>
+              {summary.totalTeaching !== undefined && summary.totalNonTeaching !== undefined && (
+                <span style={{ fontSize: "0.68rem", background: staffType === "all" ? "#f1f5f9" : "#e2e8f0", padding: "1px 5px", borderRadius: "10px", fontWeight: 700 }}>
+                  {(summary.totalTeaching + summary.totalNonTeaching).toLocaleString()}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setStaffType("Teaching"); setPage(1); }}
+              style={{
+                padding: "4px 10px",
+                borderRadius: "6px",
+                border: "none",
+                fontSize: "0.78rem",
+                fontWeight: staffType === "Teaching" ? 700 : 500,
+                cursor: "pointer",
+                background: staffType === "Teaching" ? "#ecfdf5" : "transparent",
+                color: staffType === "Teaching" ? "#047857" : "#64748b",
+                boxShadow: staffType === "Teaching" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.15s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+              title="Filter by teaching faculty records"
+            >
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }} />
+              <span>Teaching (Faculty)</span>
+              {summary.totalTeaching !== undefined && (
+                <span style={{ fontSize: "0.68rem", background: staffType === "Teaching" ? "#a7f3d0" : "#e2e8f0", color: staffType === "Teaching" ? "#065f46" : "inherit", padding: "1px 5px", borderRadius: "10px", fontWeight: 700 }}>
+                  {summary.totalTeaching.toLocaleString()}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setStaffType("Non-Teaching"); setPage(1); }}
+              style={{
+                padding: "4px 10px",
+                borderRadius: "6px",
+                border: "none",
+                fontSize: "0.78rem",
+                fontWeight: staffType === "Non-Teaching" ? 700 : 500,
+                cursor: "pointer",
+                background: staffType === "Non-Teaching" ? "#f8fafc" : "transparent",
+                color: staffType === "Non-Teaching" ? "#334155" : "#64748b",
+                boxShadow: staffType === "Non-Teaching" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.15s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+              title="Filter by non-teaching administrative staff records"
+            >
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#64748b" }} />
+              <span>Non-Teaching (Admin)</span>
+              {summary.totalNonTeaching !== undefined && (
+                <span style={{ fontSize: "0.68rem", background: staffType === "Non-Teaching" ? "#cbd5e1" : "#e2e8f0", color: staffType === "Non-Teaching" ? "#1e293b" : "inherit", padding: "1px 5px", borderRadius: "10px", fontWeight: 700 }}>
+                  {summary.totalNonTeaching.toLocaleString()}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Search Box */}
         <div className="reg-users-search-box reg-compare-search-box" style={{ maxWidth: "260px" }}>

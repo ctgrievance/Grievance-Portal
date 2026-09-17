@@ -147,6 +147,23 @@ conn.once("open", async () => {
     console.log("ℹ️ adminstaffs index check skipped:", err.message);
   }
 
+  // ⚠️ AUTO-FIX: Drop any legacy collegeId indexes from multi-tenant attempts
+  try {
+    const collectionsToCheck = ["staffusers", "users", "departments", "adminstaffs"];
+    for (const collName of collectionsToCheck) {
+      const coll = conn.db.collection(collName);
+      const indexes = await coll.indexes();
+      for (const idx of indexes) {
+        if (idx.name !== "_id_" && Object.keys(idx.key).some(k => k.includes("college"))) {
+          await coll.dropIndex(idx.name);
+          console.log(`🔥 FIX APPLIED: Dropped legacy multi-college index '${idx.name}' on ${collName}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.log("ℹ️ Legacy multi-college index check skipped:", err.message);
+  }
+
   // ✅ SEEDING: Ensure Master Admin Exists
   try {
     const User = mongoose.model("User");
@@ -156,7 +173,7 @@ conn.once("open", async () => {
       const defaultMasterParams = { id: "10001" };
       const updated = await User.findOneAndUpdate(
         defaultMasterParams,
-        { $set: { isMasterAdmin: true, role: "admin" } },
+        { $set: { isMasterAdmin: true, role: "admin", isVerified: true } },
         { new: true }
       );
       if (updated) {
@@ -167,6 +184,21 @@ conn.once("open", async () => {
     } else {
       console.log(`✅ Master Admin Policy check passed.`);
     }
+
+    // Sync Master Admin to StaffUser as well
+    await StaffUser.findOneAndUpdate(
+      { id: "10001" },
+      {
+        $set: {
+          id: "10001",
+          role: "admin",
+          fullName: "CT University Super Admin",
+          isMasterAdmin: true,
+          isVerified: true
+        }
+      },
+      { upsert: true }
+    );
   } catch (err) {
     console.error("❌ Seeding Error:", err);
   }
