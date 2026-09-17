@@ -1261,3 +1261,27 @@ export const rejectGrievanceByStaff = async (req, res) => {
   }
 };
 
+/* =====================================================
+   🗑️ CLEAR ALL GRIEVANCES (ADMIN / DEV)
+===================================================== */
+export const clearAllGrievances = async (req, res) => {
+  try {
+    const Message = (await import("../models/MessageModel.js")).default;
+    const StaffPool = (await import("../models/StaffPool.js")).default;
+
+    const grievanceResult = await Grievance.deleteMany({});
+    const messageResult = await Message.deleteMany({});
+    await StaffPool.updateMany({}, { $set: { assignedGrievanceIds: [], currentLoad: 0 } });
+
+    res.json({
+      message: `✅ Cleared all grievances (${grievanceResult.deletedCount}) and chat messages (${messageResult.deletedCount}).`,
+      deletedGrievances: grievanceResult.deletedCount,
+      deletedMessages: messageResult.deletedCount
+    });
+  } catch (err) {
+    console.error("Clear All Grievances Error:", err);
+    res.status(500).json({ message: "Failed to clear grievances", error: err.message });
+  }
+};
+
+
