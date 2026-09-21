@@ -255,7 +255,7 @@ export const registerRequest = async (req, res) => {
         school: userRole === "student" ? studentSchool : "",
         department: userRole === "student" ? studentSchool : staffDeptBackup,
         program: userRole === "student" ? studentProgram : "",
-        staffDepartment: staffDeptBackup,
+        staffDepartment: userRole === "student" ? "" : staffDeptBackup,
         staffType: userRole === "student" ? "Non-Teaching" : staffCategoryBackup,
         isDeptAdmin: false,
         adminDepartment: "",
@@ -949,7 +949,7 @@ export const updateUserProfile = async (req, res) => {
     // Sync with User model
     const userUpdate = {};
     if (fullName && fullName.trim()) userUpdate.fullName = fullName.trim();
-    if (newDept) {
+    if (!isStudent && newDept) {
       userUpdate.staffDepartment = newDept;
       if (user.isDeptAdmin || user.isMasterAdmin) {
         userUpdate.adminDepartment = newDept;

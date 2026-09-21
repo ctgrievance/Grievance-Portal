@@ -133,6 +133,19 @@ conn.once("open", async () => {
     console.log("ℹ️ Index check skipped:", err.message);
   }
 
+  // 🛡️ AUTO-FIX: Ensure students never have staffDepartment set
+  try {
+    const cleaned = await User.updateMany(
+      { role: "student", staffDepartment: { $ne: "" } },
+      { $set: { staffDepartment: "" } }
+    );
+    if (cleaned.modifiedCount > 0) {
+      console.log(`🧹 Sanitized ${cleaned.modifiedCount} student records with staffDepartment.`);
+    }
+  } catch (err) {
+    console.warn("Student staffDepartment sanitization error:", err.message);
+  }
+
   // ⚠️ AUTO-FIX: Drop stale 'staffId_1_department_1' index on adminstaffs
   try {
     const adminStaffColl = conn.db.collection("adminstaffs");
@@ -942,9 +955,9 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         subject: `🎉 Role Notification - ${newRole}`,
         html: emailBody
       }).then(() => console.log(`✅ Promotion email sent to ${targetMember.email}`))
-        .catch(emailErr => console.error("⚠️ Email sending failed:", emailErr));
-
       const title = targetMember.isDeptAdmin ? "Admin" : "Team Member";
+      io.emit("departments:updated", { action: "role_assigned", staffId: targetMember.id, department });
+      io.emit("staff:updated");
       res.json({ message: `✅ ${targetMember.fullName} is now ${title} of ${department}` });
 
     } else if (action === "demote") {
@@ -1066,6 +1079,8 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
         ? `✅ Removed ${removedDept} from ${targetMember.fullName}. Remaining department(s): ${targetMember.adminDepartments.join(", ")}.`
         : `✅ ${targetMember.fullName} removed from department role. ${updateResult.modifiedCount} grievances reset to Pending.`;
 
+      io.emit("departments:updated", { action: "role_demoted", staffId: targetMember.id, department: removedDept });
+      io.emit("staff:updated");
       res.json({ message: resultMsg });
     } else if (action === "update_permissions") {
       const permissions = req.body.delegatedPermissions || req.body.permissions;
@@ -1127,6 +1142,9 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       );
 
       console.log(`✅ Updated delegated permissions for ${targetMember.fullName} (${safeTargetId}):`, sanitizedPermissions);
+
+      io.emit("departments:updated", { action: "permissions_updated" });
+      io.emit("staff:updated");
 
       return res.json({
         message: `✅ Permissions successfully updated for ${targetMember.fullName}.`,

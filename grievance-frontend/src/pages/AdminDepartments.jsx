@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
+import { getSocket } from "../services/socket";
 import {
   PlusIcon,
   TrashIcon,
@@ -211,9 +212,9 @@ function AdminDepartments() {
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch all departments with live stats for Super Admin
-  const fetchDepartments = useCallback(async () => {
+  const fetchDepartments = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch(
         `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments/all`
       );
@@ -222,15 +223,47 @@ function AdminDepartments() {
       setDepartments(data);
     } catch (err) {
       console.error(err);
-      setMsg("Failed to load departments");
-      setStatusType("error");
+      if (!silent) {
+        setMsg("Failed to load departments");
+        setStatusType("error");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchDepartments();
+  }, [fetchDepartments]);
+
+  // 🔌 Real-Time Socket.IO updates (reflects changes live without manual page refresh)
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleRealtimeUpdate = () => {
+      fetchDepartments(true);
+    };
+
+    socket.on("departments:updated", handleRealtimeUpdate);
+    socket.on("staff:updated", handleRealtimeUpdate);
+    socket.on("grievance:created", handleRealtimeUpdate);
+    socket.on("grievance:updated", handleRealtimeUpdate);
+
+    return () => {
+      socket.off("departments:updated", handleRealtimeUpdate);
+      socket.off("staff:updated", handleRealtimeUpdate);
+      socket.off("grievance:created", handleRealtimeUpdate);
+      socket.off("grievance:updated", handleRealtimeUpdate);
+    };
+  }, [fetchDepartments]);
+
+  // ⏱️ Auto background polling fallback every 8 seconds (silent, zero UI flicker)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDepartments(true);
+    }, 8000);
+    return () => clearInterval(interval);
   }, [fetchDepartments]);
 
   // Helper to extract granted permissions with clean metadata

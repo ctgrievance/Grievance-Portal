@@ -55,10 +55,22 @@ export const getAllDepartmentsAdmin = async (req, res) => {
       departments.map(async (dept) => {
         const deptObj = dept.toObject();
         const deptName = dept.name ? dept.name.trim() : "";
-        const deptEscaped = deptName.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-        const deptRegex = new RegExp("^" + deptEscaped + "$", "i");
+        const deptPattern = deptName
+          .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+          .replace(/\s+/g, "\\s+");
+        const deptRegex = new RegExp(`^${deptPattern}$`, "i");
 
         const adminQuery = {
+          role: { $in: ["staff", "admin"], $ne: "student" },
+          $or: [
+            { adminDepartment: deptRegex },
+            { adminDepartments: deptRegex }
+          ],
+          isDeptAdmin: true
+        };
+
+        const adminStaffModelQuery = {
           $or: [
             { adminDepartment: deptRegex },
             { adminDepartments: deptRegex }
@@ -67,6 +79,8 @@ export const getAllDepartmentsAdmin = async (req, res) => {
         };
 
         const staffCountQuery = {
+          role: { $in: ["staff", "admin"], $ne: "student" },
+          isMasterAdmin: { $ne: true },
           $or: [
             { adminDepartment: deptRegex },
             { adminDepartments: deptRegex },
@@ -81,18 +95,26 @@ export const getAllDepartmentsAdmin = async (req, res) => {
               category: deptRegex,
               status: { $in: ["Pending", "In Progress", "Assigned"] }
             }),
-            StaffUser.find(staffCountQuery).select("id").lean(),
-            User.find(staffCountQuery).select("id").lean(),
+            StaffUser.find(staffCountQuery).select("id role").lean(),
+            User.find(staffCountQuery).select("id role").lean(),
             StaffUser.find(adminQuery).select("id fullName email isDeptAdmin").lean(),
             User.find(adminQuery).select("id fullName email isDeptAdmin").lean(),
-            AdminStaffModel.find(adminQuery).select("id fullName isDeptAdmin").lean(),
+            AdminStaffModel.find(adminStaffModelQuery).select("id fullName isDeptAdmin").lean(),
             IssueType.countDocuments({ department: deptRegex, isActive: true })
           ]);
 
-        // Merge assigned staff to count distinct staff
+        // Merge assigned staff to count distinct staff (strictly excluding students)
         const uniqueStaffIds = new Set();
-        (staffMembers || []).forEach(s => s && s.id && uniqueStaffIds.add(String(s.id).trim().toUpperCase()));
-        (userMembers || []).forEach(u => u && u.id && uniqueStaffIds.add(String(u.id).trim().toUpperCase()));
+        (staffMembers || []).forEach(s => {
+          if (s && s.id && s.role !== "student") {
+            uniqueStaffIds.add(String(s.id).trim().toUpperCase());
+          }
+        });
+        (userMembers || []).forEach(u => {
+          if (u && u.id && u.role !== "student") {
+            uniqueStaffIds.add(String(u.id).trim().toUpperCase());
+          }
+        });
         const assignedStaffCount = uniqueStaffIds.size;
 
         // Merge admins across StaffUser, User, and AdminStaffModel
@@ -202,6 +224,11 @@ export const createDepartment = async (req, res) => {
       console.warn("Could not auto-create Others issue type for new dept:", err.message);
     }
 
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("departments:updated", { action: "create", department: newDept });
+    }
+
     res.status(201).json({
       message: `✅ Department "${newDept.name}" created successfully`,
       department: newDept
@@ -270,6 +297,11 @@ export const updateDepartment = async (req, res) => {
 
     await dept.save();
 
+    const ioUpdate = req.app.get("io");
+    if (ioUpdate) {
+      ioUpdate.emit("departments:updated", { action: "update", department: dept });
+    }
+
     res.status(200).json({
       message: `✅ Department "${dept.name}" updated successfully`,
       department: dept
@@ -294,6 +326,11 @@ export const toggleDepartmentStatus = async (req, res) => {
 
     dept.isActive = !dept.isActive;
     await dept.save();
+
+    const ioToggle = req.app.get("io");
+    if (ioToggle) {
+      ioToggle.emit("departments:updated", { action: "toggle", department: dept });
+    }
 
     res.status(200).json({
       message: `Department "${dept.name}" is now ${dept.isActive ? "ACTIVE" : "INACTIVE"}`,
@@ -344,6 +381,11 @@ export const deleteDepartment = async (req, res) => {
     ]);
 
     await Department.findByIdAndDelete(id);
+
+    const ioDel = req.app.get("io");
+    if (ioDel) {
+      ioDel.emit("departments:updated", { action: "delete", id });
+    }
 
     res.status(200).json({
       message: `✅ Department "${dept.name}" and its empty configurations were permanently deleted.`

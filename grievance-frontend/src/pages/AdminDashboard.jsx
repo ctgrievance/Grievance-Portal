@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Dashboard.css";
 import StaffRoleManager from "../components/StaffRoleManager";
 import AdminDepartments from "./AdminDepartments";
@@ -7,6 +7,7 @@ import RegisteredUsersView from "../components/RegisteredUsersView";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
+import { getSocket } from "../services/socket";
 import {
   ShieldIcon,
   PaperclipIcon,
@@ -46,6 +47,7 @@ const ReadOnlyStars = ({ stars = 0 }) => (
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
   const isDeptAdmin = localStorage.getItem("is_dept_admin") === "true";
@@ -60,7 +62,49 @@ function AdminDashboard() {
     }
   }, [isMasterAdmin, isDeptAdmin, myDept, navigate]);
 
-  const [activeTab, setActiveTab] = useState("triage");
+  // Determine initial tab from URL query (?tab=departments), then localStorage, fallback to "triage"
+  const getInitialTab = () => {
+    const urlTab = searchParams.get("tab")?.toLowerCase();
+    const validTabs = ["triage", "staff", "departments", "registered_users"];
+    if (urlTab && validTabs.includes(urlTab)) {
+      return urlTab;
+    }
+    const savedTab = localStorage.getItem("admin_dashboard_active_tab")?.toLowerCase();
+    if (savedTab && validTabs.includes(savedTab)) {
+      return savedTab;
+    }
+    return "triage";
+  };
+
+  const [activeTab, setActiveTabState] = useState(getInitialTab);
+
+  const setActiveTab = useCallback((newTab) => {
+    setActiveTabState(newTab);
+    localStorage.setItem("admin_dashboard_active_tab", newTab);
+    setSearchParams((prev) => {
+      const updated = new URLSearchParams(prev);
+      updated.set("tab", newTab);
+      return updated;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Keep URL search params and activeTab synced
+  useEffect(() => {
+    const urlTab = searchParams.get("tab")?.toLowerCase();
+    const validTabs = ["triage", "staff", "departments", "registered_users"];
+    if (urlTab && validTabs.includes(urlTab)) {
+      if (urlTab !== activeTab) {
+        setActiveTabState(urlTab);
+        localStorage.setItem("admin_dashboard_active_tab", urlTab);
+      }
+    } else {
+      setSearchParams((prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.set("tab", activeTab);
+        return updated;
+      }, { replace: true });
+    }
+  }, [searchParams, activeTab, setSearchParams]);
   const [grievances, setGrievances] = useState([]);
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
@@ -160,6 +204,37 @@ function AdminDashboard() {
       fetchStaffNames(); // Fetch staff details
     }
   }, [navigate, isMasterAdmin, isDeptAdmin, fetchAllGrievances, fetchStaffNames]);
+
+  // 🔌 Real-Time Socket.IO updates for grievances, triage, and staff
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleRealtimeUpdate = () => {
+      fetchAllGrievances();
+      fetchStaffNames();
+    };
+
+    socket.on("grievance:created", handleRealtimeUpdate);
+    socket.on("grievance:updated", handleRealtimeUpdate);
+    socket.on("departments:updated", handleRealtimeUpdate);
+    socket.on("staff:updated", handleRealtimeUpdate);
+
+    return () => {
+      socket.off("grievance:created", handleRealtimeUpdate);
+      socket.off("grievance:updated", handleRealtimeUpdate);
+      socket.off("departments:updated", handleRealtimeUpdate);
+      socket.off("staff:updated", handleRealtimeUpdate);
+    };
+  }, [fetchAllGrievances, fetchStaffNames]);
+
+  // ⏱️ Auto background polling fallback every 10 seconds (silent update)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAllGrievances();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fetchAllGrievances]);
 
   const handleLogout = () => {
     localStorage.clear();

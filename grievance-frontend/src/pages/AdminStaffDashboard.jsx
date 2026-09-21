@@ -1,7 +1,7 @@
 import ActionDropdown from "../components/ActionDropdown";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Dashboard.css";
 // IMPORT CHAT COMPONENT
 import ChatPopup from "../components/ChatPopup";
@@ -98,7 +98,43 @@ function AdminStaffDashboard() {
   const canRegisteredUsers = canRegisteredStudents || canRegisteredStaff;
 
   // UI State
-  const [activeTab, setActiveTab] = useState("assigned"); // "assigned" | "submit" | "mine" | "pool"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const getInitialTab = () => {
+    const urlTab = searchParams.get("tab")?.toLowerCase();
+    const validTabs = ["assigned", "submit", "mine", "pool", "student_records", "staff_records", "registered_users"];
+    if (urlTab && validTabs.includes(urlTab)) return urlTab;
+    const saved = localStorage.getItem("staff_admin_active_tab")?.toLowerCase();
+    if (saved && validTabs.includes(saved)) return saved;
+    return "assigned";
+  };
+  const [activeTab, setActiveTabState] = useState(getInitialTab);
+
+  const setActiveTab = useCallback((newTab) => {
+    setActiveTabState(newTab);
+    localStorage.setItem("staff_admin_active_tab", newTab);
+    setSearchParams((prev) => {
+      const updated = new URLSearchParams(prev);
+      updated.set("tab", newTab);
+      return updated;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const urlTab = searchParams.get("tab")?.toLowerCase();
+    const validTabs = ["assigned", "submit", "mine", "pool", "student_records", "staff_records", "registered_users"];
+    if (urlTab && validTabs.includes(urlTab)) {
+      if (urlTab !== activeTab) {
+        setActiveTabState(urlTab);
+        localStorage.setItem("staff_admin_active_tab", urlTab);
+      }
+    } else {
+      setSearchParams((prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.set("tab", activeTab);
+        return updated;
+      }, { replace: true });
+    }
+  }, [searchParams, activeTab, setSearchParams]);
   const [staffName, setStaffName] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
 

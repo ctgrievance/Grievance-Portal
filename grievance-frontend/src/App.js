@@ -194,7 +194,7 @@ function App() {
 
           {/* --- ADMIN ROUTES (Bosses) --- */}
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDepartments /></ProtectedRoute>} />
+          <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><Navigate to="/admin/dashboard?tab=departments" replace /></ProtectedRoute>} />
           <Route path="/admin/manage-staff" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><AdminManageStaff /></ProtectedRoute>} />
           <Route path="/admin/smart-assignment" element={<ProtectedRoute allowedRoles={["admin", "staff"]}><IssueManagementPage /></ProtectedRoute>} /> {/* NEW: Smart Assignment Config */}
 
