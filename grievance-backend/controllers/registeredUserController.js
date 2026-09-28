@@ -579,18 +579,30 @@ export const getRecordsComparison = async (req, res) => {
     if (isStudents) {
       // 1️⃣ Fetch all registered student IDs and their metadata map
       const registeredStudents = await StudentUser.find(verifiedCondition)
-        .select("id fullName email phone createdAt updatedAt isVerified")
+        .select("id ctuId fullName email phone createdAt updatedAt isVerified")
         .lean();
       
       const registeredMap = new Map();
+      const registeredIdsSet = new Set();
       for (const u of registeredStudents) {
-        if (u.id) registeredMap.set(u.id.toUpperCase(), u);
+        if (u.id) {
+          const upId = u.id.toUpperCase();
+          registeredMap.set(upId, u);
+          registeredIdsSet.add(upId);
+        }
+        if (u.ctuId) {
+          const upCtu = u.ctuId.toUpperCase();
+          registeredMap.set(upCtu, u);
+          registeredIdsSet.add(upCtu);
+        }
       }
-      const registeredIds = Array.from(registeredMap.keys());
+      const registeredIds = Array.from(registeredIdsSet);
 
       // 2️⃣ Base counts for StudentRecord
       const totalRecords = await StudentRecord.countDocuments({});
-      const totalRegistered = await StudentRecord.countDocuments({ id: { $in: registeredIds } });
+      const totalRegistered = await StudentRecord.countDocuments({
+        $or: [{ id: { $in: registeredIds } }, { ctuId: { $in: registeredIds } }]
+      });
       const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
       const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
 
@@ -598,9 +610,10 @@ export const getRecordsComparison = async (req, res) => {
       const query = {};
 
       if (status === "registered") {
-        query.id = { $in: registeredIds };
+        query.$or = [{ id: { $in: registeredIds } }, { ctuId: { $in: registeredIds } }];
       } else if (status === "not_registered") {
         query.id = { $nin: registeredIds };
+        query.ctuId = { $nin: registeredIds };
       }
 
       if (department && department !== "all") {
@@ -637,7 +650,9 @@ export const getRecordsComparison = async (req, res) => {
       if (isExport === "true" || isExport === true) {
         const allMatching = await StudentRecord.find(query).sort({ id: 1 }).lean();
         const exportData = allMatching.map((rec, idx) => {
-          const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+          const recId = rec.id ? rec.id.toUpperCase() : "";
+          const recCtu = rec.ctuId ? rec.ctuId.toUpperCase() : "";
+          const regInfo = (recId && registeredMap.get(recId)) || (recCtu && registeredMap.get(recCtu));
           return {
             "S.No": idx + 1,
             "Student ID": rec.id || "",
@@ -674,7 +689,9 @@ export const getRecordsComparison = async (req, res) => {
         .lean();
 
       const records = rawRecords.map(rec => {
-        const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+        const recId = rec.id ? rec.id.toUpperCase() : "";
+        const recCtu = rec.ctuId ? rec.ctuId.toUpperCase() : "";
+        const regInfo = (recId && registeredMap.get(recId)) || (recCtu && registeredMap.get(recCtu));
         return {
           ...rec,
           isRegistered: !!regInfo,
@@ -706,10 +723,18 @@ export const getRecordsComparison = async (req, res) => {
         .lean();
 
       const registeredMap = new Map();
+      const registeredIdsSet = new Set();
       for (const u of registeredStaff) {
-        if (u.id) registeredMap.set(u.id.toUpperCase(), u);
+        if (u.id) {
+          const upId = u.id.toUpperCase();
+          registeredMap.set(upId, u);
+          registeredIdsSet.add(upId);
+        }
+        if (u.email) {
+          registeredMap.set(u.email.toLowerCase(), u);
+        }
       }
-      const registeredIds = Array.from(registeredMap.keys());
+      const registeredIds = Array.from(registeredIdsSet);
 
       // Base category filter
       const baseStaffFilter = {};
@@ -794,7 +819,9 @@ export const getRecordsComparison = async (req, res) => {
       if (isExport === "true" || isExport === true) {
         const allMatching = await StaffRecord.find(query).sort({ id: 1 }).lean();
         const exportData = allMatching.map((rec, idx) => {
-          const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+          const recId = rec.id ? rec.id.toUpperCase() : "";
+          const recEmail = rec.email ? rec.email.toLowerCase() : "";
+          const regInfo = (recId && registeredMap.get(recId)) || (recEmail && registeredMap.get(recEmail));
           return {
             "S.No": idx + 1,
             "Staff ID": rec.id || "",
@@ -830,7 +857,9 @@ export const getRecordsComparison = async (req, res) => {
         .lean();
 
       const records = rawRecords.map(rec => {
-        const regInfo = registeredMap.get(rec.id ? rec.id.toUpperCase() : "");
+        const recId = rec.id ? rec.id.toUpperCase() : "";
+        const recEmail = rec.email ? rec.email.toLowerCase() : "";
+        const regInfo = (recId && registeredMap.get(recId)) || (recEmail && registeredMap.get(recEmail));
         return {
           ...rec,
           isRegistered: !!regInfo,

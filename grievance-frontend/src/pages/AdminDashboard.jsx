@@ -4,6 +4,8 @@ import "../styles/Dashboard.css";
 import StaffRoleManager from "../components/StaffRoleManager";
 import AdminDepartments from "./AdminDepartments";
 import RegisteredUsersView from "../components/RegisteredUsersView";
+import AdminStudentRecords from "../components/AdminStudentRecords";
+import StaffRecordsTab from "../components/StaffRecordsTab";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ctLogo from "../assets/ct-logo.png";
@@ -18,7 +20,8 @@ import {
   ClipboardIcon,
   UsersIcon,
   BuildingIcon,
-  UserIcon
+  UserIcon,
+  GraduationCapIcon
 } from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
@@ -91,7 +94,7 @@ function AdminDashboard() {
   // Keep URL search params and activeTab synced
   useEffect(() => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["triage", "staff", "departments", "registered_users"];
+    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users"];
     if (urlTab && validTabs.includes(urlTab)) {
       if (urlTab !== activeTab) {
         setActiveTabState(urlTab);
@@ -144,6 +147,18 @@ function AdminDashboard() {
       : []),
     ...(isMasterAdmin
       ? [
+          {
+            id: "student_records",
+            label: "Student Records",
+            IconComponent: GraduationCapIcon,
+            description: "Search, add & upload student master records"
+          },
+          {
+            id: "staff_records",
+            label: "Staff Records",
+            IconComponent: UsersIcon,
+            description: "Search, add & upload staff master records"
+          },
           {
             id: "departments",
             label: "Departments",
@@ -484,6 +499,8 @@ function AdminDashboard() {
       <main className="dashboard-body admin-dashboard-body">
         {isMasterAdmin && <MaintenanceControlPanel />}
         {activeTab === "staff" && canManageStaff && <StaffRoleManager />}
+        {activeTab === "student_records" && isMasterAdmin && <AdminStudentRecords />}
+        {activeTab === "staff_records" && isMasterAdmin && <StaffRecordsTab />}
         {activeTab === "departments" && isMasterAdmin && <AdminDepartments />}
         {activeTab === "registered_users" && isMasterAdmin && (
           <RegisteredUsersView
