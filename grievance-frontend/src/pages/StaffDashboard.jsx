@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Dashboard.css";
 import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon, LockIcon } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
@@ -38,12 +38,47 @@ const schools = [
 
 function StaffDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isMaintenanceActive } = useMaintenance();
   const role = localStorage.getItem("grievance_role");
   const userId = localStorage.getItem("grievance_id"); // e.g. STF001
 
-  // UI State
-  const [activeTab, setActiveTab] = useState("submit"); // "submit" | "mine"
+  // UI State with persistence
+  const VALID_STAFF_TABS = ["submit", "mine", "ratings", "transferred"];
+  const getInitialTab = () => {
+    const urlTab = searchParams.get("tab")?.toLowerCase();
+    if (urlTab && VALID_STAFF_TABS.includes(urlTab)) return urlTab;
+    const saved = localStorage.getItem("staff_general_active_tab")?.toLowerCase();
+    if (saved && VALID_STAFF_TABS.includes(saved)) return saved;
+    return "submit";
+  };
+  const [activeTab, setActiveTabState] = useState(getInitialTab);
+
+  const setActiveTab = useCallback((newTab) => {
+    setActiveTabState(newTab);
+    localStorage.setItem("staff_general_active_tab", newTab);
+    setSearchParams((prev) => {
+      const updated = new URLSearchParams(prev);
+      updated.set("tab", newTab);
+      return updated;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const urlTab = searchParams.get("tab")?.toLowerCase();
+    if (urlTab && VALID_STAFF_TABS.includes(urlTab)) {
+      if (urlTab !== activeTab) {
+        setActiveTabState(urlTab);
+        localStorage.setItem("staff_general_active_tab", urlTab);
+      }
+    } else if (urlTab && !VALID_STAFF_TABS.includes(urlTab)) {
+      setSearchParams((prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.set("tab", activeTab);
+        return updated;
+      }, { replace: true });
+    }
+  }, [searchParams, activeTab, setSearchParams]);
 
   // Staff Info
   const [staffName, setStaffName] = useState("");
@@ -159,6 +194,11 @@ function StaffDashboard() {
     fetchStaffNames();
     fetchTransferredGrievances();
   }, [fetchMyRatings, fetchStaffNames, fetchTransferredGrievances]);
+
+  useEffect(() => {
+    if (activeTab === "transferred") fetchTransferredGrievances();
+    if (activeTab === "ratings") fetchMyRatings();
+  }, [activeTab, fetchTransferredGrievances, fetchMyRatings]);
 
   // Route protection
   useEffect(() => {
@@ -1059,12 +1099,12 @@ function StaffDashboard() {
                 </div>
               ) : (
                 <div className="table-container">
-                  <table className="grievance-table">
+                  <table className="grievance-table" style={{ width: "100%", minWidth: "950px" }}>
                     <thead>
                       <tr>
                         <th>Grievance ID</th>
                         <th>Forwarded To</th>
-                        <th>Target Handler</th>
+                        <th>Current Custodian (Dept & Staff)</th>
                         <th>Reason for Transfer</th>
                         <th>Live Status</th>
                         <th>Forwarded Date</th>
@@ -1073,6 +1113,9 @@ function StaffDashboard() {
                     <tbody>
                       {transferredGrievances.map((g) => {
                         const myTransfer = g.transferHistory && [...g.transferHistory].reverse().find(t => t.transferredBy === userId);
+                        const currentDept = g.currentCustodian?.department || g.category || g.school;
+                        const currentHolder = g.currentCustodian?.staffName || (g.assignedTo ? (staffMap[g.assignedTo] || g.assignedTo) : "Unassigned (With Dept Admin)");
+
                         return (
                           <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
                             <td data-label="Grievance ID" style={{ fontWeight: "700", color: "#334155" }}>
@@ -1086,22 +1129,22 @@ function StaffDashboard() {
                                 padding: "3px 8px",
                                 borderRadius: "6px"
                               }}>
-                                <BuildingIcon width="14" height="14" style={{ verticalAlign: "middle", marginRight: "4px" }} />{myTransfer?.toDepartment || g.category || g.school}
+                                {g.forwardedDepartments && g.forwardedDepartments.length > 1 ? (
+                                  `🔀 Multi-Dept: ${g.forwardedDepartments.join(", ")}`
+                                ) : (
+                                  <><BuildingIcon width="14" height="14" style={{ verticalAlign: "middle", marginRight: "4px" }} />{myTransfer?.toDepartment || g.category || g.school}</>
+                                )}
                               </span>
                             </td>
-                            <td data-label="Target Handler">
-                              {myTransfer?.assignedToNameInNewDept ? (
-                                <div>
-                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{myTransfer.assignedToNameInNewDept}</span>
-                                  <span style={{ fontSize: "0.8rem", color: "#64748b", display: "block" }}>({myTransfer.assignedToInNewDept})</span>
-                                </div>
-                              ) : g.assignedTo ? (
-                                <div>
-                                  <span style={{ fontWeight: "600", color: "#1e293b" }}>{staffMap[g.assignedTo] || g.assignedTo}</span>
-                                </div>
-                              ) : (
-                                <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Auto-routing...</span>
-                              )}
+                            <td data-label="Current Custodian">
+                              <div>
+                                <span style={{ fontWeight: "700", color: "#1d4ed8", display: "block" }}>
+                                  {currentDept}
+                                </span>
+                                <span style={{ fontSize: "0.82rem", color: "#334155" }}>
+                                  {currentHolder}
+                                </span>
+                              </div>
                             </td>
                             <td data-label="Reason" style={{ maxWidth: "220px" }}>
                               <span style={{
@@ -1141,6 +1184,7 @@ function StaffDashboard() {
         <GrievanceDetailsModal
           grievance={selectedGrievance}
           staffMap={staffMap}
+          canTransfer={false}
           onClose={() => setSelectedGrievance(null)}
           onDelete={handleDeleteGrievance}
           onReject={(g) => {

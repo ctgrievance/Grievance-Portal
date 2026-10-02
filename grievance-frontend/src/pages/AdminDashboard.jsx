@@ -68,7 +68,7 @@ function AdminDashboard() {
   // Determine initial tab from URL query (?tab=departments), then localStorage, fallback to "triage"
   const getInitialTab = () => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["triage", "staff", "departments", "registered_users"];
+    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users"];
     if (urlTab && validTabs.includes(urlTab)) {
       return urlTab;
     }

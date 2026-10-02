@@ -98,13 +98,25 @@ function AdminStaffDashboard() {
   const canRegisteredUsers = canRegisteredStudents || canRegisteredStaff;
 
   // UI State
+  const VALID_STAFF_ADMIN_TABS = [
+    "assigned",
+    "pool",
+    "ratings",
+    "records_users_group",
+    "student_records",
+    "staff_records",
+    "registered_users",
+    "submit",
+    "mine",
+    "transferred"
+  ];
+
   const [searchParams, setSearchParams] = useSearchParams();
   const getInitialTab = () => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["assigned", "submit", "mine", "pool", "student_records", "staff_records", "registered_users"];
-    if (urlTab && validTabs.includes(urlTab)) return urlTab;
+    if (urlTab && VALID_STAFF_ADMIN_TABS.includes(urlTab)) return urlTab;
     const saved = localStorage.getItem("staff_admin_active_tab")?.toLowerCase();
-    if (saved && validTabs.includes(saved)) return saved;
+    if (saved && VALID_STAFF_ADMIN_TABS.includes(saved)) return saved;
     return "assigned";
   };
   const [activeTab, setActiveTabState] = useState(getInitialTab);
@@ -121,13 +133,13 @@ function AdminStaffDashboard() {
 
   useEffect(() => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["assigned", "submit", "mine", "pool", "student_records", "staff_records", "registered_users"];
-    if (urlTab && validTabs.includes(urlTab)) {
+    if (urlTab && VALID_STAFF_ADMIN_TABS.includes(urlTab)) {
       if (urlTab !== activeTab) {
         setActiveTabState(urlTab);
         localStorage.setItem("staff_admin_active_tab", urlTab);
       }
-    } else {
+    } else if (urlTab && !VALID_STAFF_ADMIN_TABS.includes(urlTab)) {
+      // Invalid tab in URL, sync back to current activeTab
       setSearchParams((prev) => {
         const updated = new URLSearchParams(prev);
         updated.set("tab", activeTab);
@@ -721,6 +733,11 @@ function AdminStaffDashboard() {
 
   // Load my submissions when tab changes
   useEffect(() => { if (activeTab === "mine") fetchMySubmissions(); }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "transferred") fetchTransferredGrievances();
+    if (activeTab === "ratings") fetchMyRatings();
+  }, [activeTab, fetchTransferredGrievances, fetchMyRatings]);
 
   //  Fetch Pool Accept Grievances
   useEffect(() => {
@@ -1944,18 +1961,18 @@ function AdminStaffDashboard() {
                 </div>
               ) : transferredGrievances.length > 0 ? (
                 <>
-                <div className="table-responsive staff-desktop-only">
-                  <table className="grievance-table">
+                <div className="table-container staff-desktop-only" style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "10px", background: "#ffffff", marginBottom: "16px" }}>
+                  <table className="grievance-table" style={{ width: "100%", minWidth: "1150px", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
-                        <th>Grievance ID</th>
-                        <th>Student</th>
-                        <th>Forwarded To</th>
-                        <th>Forwarded Date</th>
-                        <th>Transfer Reason</th>
-                        <th>Current Status</th>
-                        <th>Current Staff</th>
-                        <th>Action</th>
+                        <th style={{ width: "110px", minWidth: "110px", padding: "12px 14px", whiteSpace: "nowrap" }}>Grievance ID</th>
+                        <th style={{ minWidth: "180px", padding: "12px 14px" }}>Student</th>
+                        <th style={{ minWidth: "180px", padding: "12px 14px" }}>Forwarded To</th>
+                        <th style={{ minWidth: "160px", padding: "12px 14px", whiteSpace: "nowrap" }}>Forwarded Date</th>
+                        <th style={{ minWidth: "200px", maxWidth: "260px", padding: "12px 14px" }}>Transfer Reason</th>
+                        <th style={{ width: "130px", minWidth: "120px", textAlign: "center", padding: "12px 14px" }}>Current Status</th>
+                        <th style={{ minWidth: "170px", padding: "12px 16px", whiteSpace: "nowrap" }}>Current Staff</th>
+                        <th style={{ width: "120px", minWidth: "120px", textAlign: "center", padding: "12px 14px" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1965,38 +1982,49 @@ function AdminStaffDashboard() {
                         ).slice(-1)[0] || g.transferHistory?.slice(-1)[0];
 
                         return (
-                          <tr key={g._id}>
-                            <td>
-                              <span style={{ fontWeight: "700", fontFamily: "monospace", color: "#2563eb" }}>
+                          <tr key={g._id} style={{ verticalAlign: "middle" }}>
+                            <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
+                              <span style={{ fontWeight: "700", fontFamily: "monospace", color: "#2563eb", fontSize: "0.88rem" }}>
                                 #{g._id.slice(-6)}
                               </span>
                             </td>
-                            <td>
-                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
-                                <strong>{g.name}</strong>
+                            <td style={{ padding: "12px 14px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
+                                <strong style={{ color: "#0f172a" }}>{g.name}</strong>
                                 <UserRoleBadge grievance={g} />
                               </div>
-                              <span style={{ display: "block", fontSize: "0.8rem", color: "#64748b" }}>
+                              <span style={{ display: "block", fontSize: "0.78rem", color: "#64748b" }}>
                                 {g.userId || g.regid} • {g.studentProgram}
                               </span>
                             </td>
-                            <td>
+                            <td style={{ padding: "12px 14px" }}>
                               <span
                                 style={{
                                   background: "#eff6ff",
                                   color: "#1d4ed8",
                                   border: "1px solid #bfdbfe",
-                                  padding: "3px 8px",
+                                  padding: "4px 9px",
                                   borderRadius: "6px",
                                   fontWeight: "700",
                                   fontSize: "0.8rem",
                                   display: "inline-block"
                                 }}
                               >
-                                {myTransfer?.toDepartment || g.category}
+                                {g.forwardedDepartments && g.forwardedDepartments.length > 1 ? (
+                                  <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                    <span style={{ fontWeight: "800", color: "#4338ca", background: "#e0e7ff", border: "1px solid #c7d2fe", padding: "1px 6px", borderRadius: "4px", fontSize: "0.72rem" }}>
+                                      🔀 Multi-Dept ({g.forwardedDepartments.length})
+                                    </span>
+                                    <span style={{ fontSize: "0.78rem", color: "#1e40af" }}>
+                                      {g.forwardedDepartments.join(", ")}
+                                    </span>
+                                  </span>
+                                ) : (
+                                  myTransfer?.toDepartment || g.category
+                                )}
                               </span>
                             </td>
-                            <td style={{ fontSize: "0.85rem", color: "#475569" }}>
+                            <td style={{ fontSize: "0.84rem", color: "#475569", padding: "12px 14px", whiteSpace: "nowrap" }}>
                               {myTransfer?.transferredAt
                                 ? new Date(myTransfer.transferredAt).toLocaleDateString("en-US", {
                                     month: "short",
@@ -2007,38 +2035,60 @@ function AdminStaffDashboard() {
                                   })
                                 : "N/A"}
                             </td>
-                            <td style={{ maxWidth: "220px", fontSize: "0.85rem" }}>
-                              <div style={{ background: "#f8fafc", padding: "6px 8px", borderRadius: "6px", border: "1px dashed #cbd5e1", fontStyle: "italic", color: "#334155", wordBreak: "break-word" }}>
+                            <td style={{ maxWidth: "260px", fontSize: "0.84rem", padding: "12px 14px" }}>
+                              <div style={{
+                                background: "#f8fafc",
+                                padding: "6px 10px",
+                                borderRadius: "6px",
+                                border: "1px dashed #cbd5e1",
+                                fontStyle: "italic",
+                                color: "#334155",
+                                lineHeight: "1.35",
+                                whiteSpace: "normal",
+                                wordBreak: "break-word"
+                              }}>
                                 “{myTransfer?.reason || "Re-routed to correct department"}”
                               </div>
                             </td>
-                            <td>
+                            <td style={{ textAlign: "center", padding: "12px 14px" }}>
                               <span className={`status-badge status-${g.status.toLowerCase()}`}>
                                 {g.status}
                               </span>
                             </td>
-                            <td style={{ fontSize: "0.85rem", color: "#334155" }}>
-                              {g.assignedTo ? (
-                                <span>
-                                  <strong>{staffMap[g.assignedTo] || g.assignedTo}</strong>
-                                </span>
+                            <td style={{ fontSize: "0.84rem", color: "#334155", padding: "12px 16px", whiteSpace: "nowrap" }}>
+                              {g.currentCustodian?.staffName ? (
+                                <div>
+                                  <strong style={{ color: "#1e293b", display: "block" }}>{g.currentCustodian.staffName}</strong>
+                                  {g.currentCustodian.staffId && (
+                                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>ID: {g.currentCustodian.staffId}</span>
+                                  )}
+                                </div>
+                              ) : g.assignedTo ? (
+                                <div>
+                                  <strong style={{ color: "#1e293b", display: "block" }}>{staffMap[g.assignedTo] || g.assignedTo}</strong>
+                                  <span style={{ fontSize: "0.75rem", color: "#64748b" }}>ID: {g.assignedTo}</span>
+                                </div>
                               ) : (
                                 <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Unassigned</span>
                               )}
                             </td>
-                            <td>
+                            <td style={{ textAlign: "center", padding: "12px 14px", whiteSpace: "nowrap" }}>
                               <button
                                 onClick={() => setSelectedGrievance(g)}
                                 style={{
-                                  padding: "6px 12px",
+                                  padding: "6px 14px",
                                   backgroundColor: "#2563eb",
                                   color: "white",
                                   border: "none",
                                   borderRadius: "6px",
                                   fontWeight: "600",
                                   fontSize: "0.8rem",
-                                  cursor: "pointer"
+                                  cursor: "pointer",
+                                  transition: "background 0.15s",
+                                  whiteSpace: "nowrap"
                                 }}
+                                onMouseEnter={(e) => (e.target.style.backgroundColor = "#1d4ed8")}
+                                onMouseLeave={(e) => (e.target.style.backgroundColor = "#2563eb")}
                               >
                                 View Details
                               </button>
@@ -2077,7 +2127,11 @@ function AdminStaffDashboard() {
                         <div className="staff-mcard-meta-grid">
                           <div className="staff-mcard-meta-item">
                             <span className="staff-mcard-meta-label">Forwarded To</span>
-                            <span className="staff-mcard-meta-value" style={{ color: "#1d4ed8", fontWeight: "700" }}>{myTransfer?.toDepartment || g.category}</span>
+                            <span className="staff-mcard-meta-value" style={{ color: "#1d4ed8", fontWeight: "700" }}>
+                              {g.forwardedDepartments && g.forwardedDepartments.length > 1
+                                ? `🔀 Multi-Dept: ${g.forwardedDepartments.join(", ")}`
+                                : myTransfer?.toDepartment || g.category}
+                            </span>
                           </div>
                           <div className="staff-mcard-meta-item">
                             <span className="staff-mcard-meta-label">Forwarded Date</span>
@@ -2142,6 +2196,7 @@ function AdminStaffDashboard() {
             <GrievanceDetailsModal
               grievance={selectedGrievance}
               staffMap={staffMap}
+              canTransfer={activeTab !== "transferred" && activeTab !== "mine"}
               onClose={() => setSelectedGrievance(null)}
               onDelete={handleDeleteGrievance}
               onReject={(g) => {

@@ -19,6 +19,7 @@ import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
 import ActionDropdown from "../components/ActionDropdown";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import DepartmentGrievanceList from "../components/DepartmentGrievanceList";
+import InterDepartmentTracker from "../components/InterDepartmentTracker";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -267,6 +268,13 @@ function SchoolAdminDashboard() {
           />
         )}
         {activeTab === "manage_staff" && <StaffRoleManager />}
+        {activeTab === "inter_department" && (
+          <InterDepartmentTracker
+            departmentName={mySchoolName}
+            staffMap={staffMap}
+            onSelectGrievance={setSelectedGrievance}
+          />
+        )}
         {activeTab === "grievances" && (
           <div className="card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
@@ -315,6 +323,7 @@ function SchoolAdminDashboard() {
         <GrievanceDetailsModal
           grievance={selectedGrievance}
           staffMap={staffMap}
+          canTransfer={true}
           onClose={() => setSelectedGrievance(null)}
           onDelete={handleDeleteGrievance}
           onResolveExtension={handleResolveExtension}

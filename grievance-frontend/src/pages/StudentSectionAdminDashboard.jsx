@@ -19,6 +19,7 @@ import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
 import ActionDropdown from "../components/ActionDropdown";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import DepartmentGrievanceList from "../components/DepartmentGrievanceList";
+import InterDepartmentTracker from "../components/InterDepartmentTracker";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -280,7 +281,15 @@ function StudentSectionAdminDashboard() {
           />
         )}
         {activeTab === "manage_staff" && <StaffRoleManager />}
-        {activeTab === "grievances" && <div className="card">
+        {activeTab === "inter_department" && (
+          <InterDepartmentTracker
+            departmentName="Student Section"
+            staffMap={staffMap}
+            onSelectGrievance={setSelectedGrievance}
+          />
+        )}
+        {activeTab === "grievances" && (
+          <div className="card">
           <h2>Incoming Grievances</h2>
           {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
@@ -317,21 +326,24 @@ function StudentSectionAdminDashboard() {
             />
           )}
 
-          {/* Details Modal */}
-          {selectedGrievance && (
-            <GrievanceDetailsModal
-              grievance={selectedGrievance}
-              staffMap={staffMap}
-              onClose={() => setSelectedGrievance(null)}
-              onDelete={handleDeleteGrievance}
-              onResolveExtension={handleResolveExtension}
-              onTransferred={() => {
-                fetchGrievances();
-                setSelectedGrievance(null);
-              }}
-            />
-          )}
-        </div>}
+          </div>
+        )}
+
+        {/* Details Modal */}
+        {selectedGrievance && (
+          <GrievanceDetailsModal
+            grievance={selectedGrievance}
+            staffMap={staffMap}
+            canTransfer={true}
+            onClose={() => setSelectedGrievance(null)}
+            onDelete={handleDeleteGrievance}
+            onResolveExtension={handleResolveExtension}
+            onTransferred={() => {
+              fetchGrievances();
+              setSelectedGrievance(null);
+            }}
+          />
+        )}
       </main>
 
       <AssignStaffPopup

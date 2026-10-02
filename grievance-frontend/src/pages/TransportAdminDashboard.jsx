@@ -19,6 +19,7 @@ import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
 import ActionDropdown from "../components/ActionDropdown";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import DepartmentGrievanceList from "../components/DepartmentGrievanceList";
+import InterDepartmentTracker from "../components/InterDepartmentTracker";
 
 const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -289,6 +290,13 @@ function TransportAdminDashboard() {
                     />
                 )}
                 {activeTab === "manage_staff" && <StaffRoleManager />}
+                {activeTab === "inter_department" && (
+                  <InterDepartmentTracker
+                    departmentName="Transport"
+                    staffMap={staffMap}
+                    onSelectGrievance={setSelectedGrievance}
+                  />
+                )}
                 {activeTab === "grievances" && (
                     <div className="card">
                     <h2>Incoming Grievances</h2>
@@ -335,6 +343,7 @@ function TransportAdminDashboard() {
                 <GrievanceDetailsModal
                     grievance={selectedGrievance}
                     staffMap={staffMap}
+                    canTransfer={true}
                     onClose={() => setSelectedGrievance(null)}
                     onDelete={handleDeleteGrievance}
                     onResolveExtension={handleResolveExtension}

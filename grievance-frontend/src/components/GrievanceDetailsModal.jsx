@@ -124,11 +124,102 @@ const GrievanceDetailsModal = ({
       return {};
     }
   })();
+
+  const currentUserId = (
+    localStorage.getItem("grievance_id") ||
+    storedUser.id ||
+    ""
+  ).toString().trim().toUpperCase();
+
+  const userRole = (
+    localStorage.getItem("grievance_role") ||
+    storedUser.role ||
+    ""
+  ).toLowerCase();
+
   const isMasterAdmin =
     localStorage.getItem("is_master_admin") === "true" ||
     storedUser.isMasterAdmin === true ||
-    localStorage.getItem("grievance_id")?.toUpperCase() === "10001";
-  const allowTransfer = canTransfer && !isMasterAdmin;
+    currentUserId === "10001";
+
+  const userDept = (
+    localStorage.getItem("admin_department") ||
+    storedUser.adminDepartment ||
+    ""
+  ).toString().trim().toLowerCase();
+
+  const userDepts = (() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("admin_departments") || "[]");
+      return Array.isArray(parsed) ? parsed.map((d) => (d || "").toString().trim().toLowerCase()) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const isDeptAdminFlag =
+    localStorage.getItem("is_dept_admin") === "true" ||
+    storedUser.isDeptAdmin === true ||
+    userRole === "admin";
+
+  const grievanceDept = (
+    grievance?.currentCustodian?.department ||
+    grievance?.category ||
+    ""
+  ).toString().trim().toLowerCase();
+
+  const isSameDept = Boolean(
+    grievanceDept &&
+    (
+      (userDept && userDept === grievanceDept) ||
+      (userDepts.length > 0 && userDepts.includes(grievanceDept))
+    )
+  );
+
+  const isDeptAdmin = isDeptAdminFlag && (isSameDept || !grievanceDept);
+
+  // Extract assigned staff ID safely whether string or object
+  const assignedStaffId = (
+    typeof grievance?.assignedTo === "object" && grievance?.assignedTo !== null
+      ? (grievance.assignedTo.id || grievance.assignedTo._id || grievance.assignedTo.staffId || "")
+      : (grievance?.assignedTo || "")
+  ).toString().trim().toUpperCase();
+
+  const custodianStaffId = (
+    grievance?.currentCustodian?.staffId || ""
+  ).toString().trim().toUpperCase();
+
+  // Current assignee check (matches faculty/staff ID)
+  const isCurrentAssignee = Boolean(
+    currentUserId &&
+    (
+      (assignedStaffId && assignedStaffId === currentUserId) ||
+      (custodianStaffId && custodianStaffId === currentUserId)
+    )
+  );
+
+  // Faculty or staff member of the department holding the grievance
+  const isDepartmentStaff = Boolean(
+    (userRole === "staff" || userRole === "admin" || isDeptAdminFlag) &&
+    (isSameDept || (!assignedStaffId && !custodianStaffId))
+  );
+
+  // Rule 1: A faculty member who already forwarded this grievance can ONLY view the journey
+  const hasAlreadyForwarded = Boolean(
+    currentUserId &&
+    grievance?.transferHistory?.some(
+      (t) => t.transferredBy && t.transferredBy.toString().trim().toUpperCase() === currentUserId
+    )
+  );
+
+  const isStaffOrAdmin = userRole === "staff" || userRole === "admin" || isDeptAdminFlag;
+
+  const allowTransfer =
+    canTransfer &&
+    !isMasterAdmin &&
+    !hasAlreadyForwarded &&
+    isStaffOrAdmin &&
+    (isCurrentAssignee || isDeptAdmin || isDepartmentStaff || userRole === "staff");
 
   if (!grievance) return null;
 
@@ -720,29 +811,191 @@ const GrievanceDetailsModal = ({
             </div>
           </div>
 
-          {/* 🔁 RE-ROUTING & TRANSFER AUDIT TRAIL */}
+          {/* 🔁 LIVE CUSTODY & INTER-DEPARTMENT TRANSFER JOURNEY STEPPER */}
           {(grievance.isRerouted || (grievance.transferHistory && grievance.transferHistory.length > 0)) && (
             <div
               style={{
                 background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
                 border: "1.5px solid #cbd5e1",
-                borderRadius: "12px",
-                padding: "16px 18px",
+                borderRadius: "14px",
+                padding: "18px 20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px"
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px" }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <RerouteIcon width="20" height="20" style={{ color: "#6366f1" }} />
-                  <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#1e293b", fontWeight: "700" }}>
-                    Department Re-routing & Transfer Trail ({grievance.transferHistory?.length || 1})
-                  </h4>
+                  <RerouteIcon width="22" height="22" style={{ color: "#4f46e5" }} />
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: "1rem", color: "#0f172a", fontWeight: "700" }}>
+                      Inter-Department Communication & Custody Journey
+                    </h4>
+                    <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                      Multi-hop audit record tracking every department and faculty handoff
+                    </span>
+                  </div>
                 </div>
-                <span style={{ fontSize: "0.75rem", background: "#e0e7ff", color: "#3730a3", padding: "3px 8px", borderRadius: "6px", fontWeight: "700" }}>
-                  RE-ROUTED TICKET
+                <span style={{ fontSize: "0.75rem", background: "#e0e7ff", color: "#3730a3", padding: "4px 10px", borderRadius: "8px", fontWeight: "700", letterSpacing: "0.5px" }}>
+                  {grievance.transferHistory?.length || 1} HOP(S) COMPLETED
                 </span>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {/* 📌 CURRENT CUSTODIAN CARD */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  border: "1.5px solid #93c5fd",
+                  borderRadius: "10px",
+                  padding: "14px 16px",
+                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.08)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.6px", display: "flex", alignItems: "center", gap: "5px" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#2563eb", display: "inline-block", animation: "pulse 1.5s infinite" }}></span>
+                    Current Live Custodian
+                  </span>
+                  <span className={`status-badge status-${(grievance.status || "pending").toLowerCase().replace(" ", "")}`}>
+                    {grievance.status}
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", marginTop: "2px" }}>
+                  <div style={{ background: "#eff6ff", padding: "8px 12px", borderRadius: "8px", border: "1px solid #bfdbfe" }}>
+                    <span style={{ fontSize: "0.75rem", color: "#1e40af", display: "block", fontWeight: "600" }}>Active Department</span>
+                    <strong style={{ fontSize: "0.95rem", color: "#1e3a8a" }}>
+                      {grievance.currentCustodian?.department || grievance.category}
+                    </strong>
+                  </div>
+
+                  <div style={{ background: "#f0fdf4", padding: "8px 12px", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                    <span style={{ fontSize: "0.75rem", color: "#166534", display: "block", fontWeight: "600" }}>Holding Faculty / Assignee</span>
+                    <strong style={{ fontSize: "0.95rem", color: "#14532d" }}>
+                      {grievance.currentCustodian?.staffName ||
+                        staffMap[grievance.assignedTo] ||
+                        (grievance.assignedTo ? `Faculty (${grievance.assignedTo})` : "Unassigned (With Dept Admin)")}
+                    </strong>
+                  </div>
+
+                  <div style={{ background: "#f8fafc", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block", fontWeight: "600" }}>Last Handover / Update</span>
+                    <span style={{ fontSize: "0.85rem", color: "#334155", fontWeight: "600" }}>
+                      {formatDateTime(grievance.updatedAt || grievance.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🔀 MULTI-DEPARTMENT CONCURRENT FORWARDING CARD */}
+              {(grievance.isMultiForwarded || (grievance.forwardedDepartments && grievance.forwardedDepartments.length > 1)) && (
+                <div
+                  style={{
+                    background: "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
+                    border: "1.5px solid #c7d2fe",
+                    borderRadius: "10px",
+                    padding: "14px 16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                    boxShadow: "0 2px 6px rgba(99, 102, 241, 0.08)"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: "800", color: "#3730a3", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>🔀</span> Multi-Department Forwarded Ticket
+                    </span>
+                    <span style={{ background: "#4f46e5", color: "#ffffff", padding: "2px 8px", borderRadius: "10px", fontSize: "0.72rem", fontWeight: "700" }}>
+                      {grievance.forwardedDepartments?.length || (grievance.linkedGrievances?.length ? grievance.linkedGrievances.length + 1 : 2)} Departments
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.84rem", color: "#4338ca", lineHeight: "1.4" }}>
+                    This grievance was forwarded concurrently to multiple departments for synchronized resolution across domains.
+                  </p>
+
+                  {/* Department pills & statuses */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
+                    {/* Current department branch */}
+                    <div style={{
+                      background: "#ffffff",
+                      border: "1.5px solid #93c5fd",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      fontSize: "0.82rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}>
+                      <strong style={{ color: "#1e3a8a" }}>{grievance.category}</strong>
+                      <span className={`status-badge status-${(grievance.status || "pending").toLowerCase().replace(" ", "")}`} style={{ fontSize: "0.72rem", padding: "1px 6px" }}>
+                        {grievance.status}
+                      </span>
+                      <span style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: "700" }}>(This Branch)</span>
+                    </div>
+
+                    {/* Linked grievance branches */}
+                    {grievance.linkedGrievances && grievance.linkedGrievances.map((linked, lIdx) => {
+                      const linkedDept = linked.category || "Department";
+                      const linkedStatus = linked.status || "Pending";
+                      return (
+                        <div key={lIdx} style={{
+                          background: "#ffffff",
+                          border: "1.5px solid #c7d2fe",
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          fontSize: "0.82rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}>
+                          <strong style={{ color: "#3730a3" }}>{linkedDept}</strong>
+                          <span className={`status-badge status-${linkedStatus.toLowerCase().replace(" ", "")}`} style={{ fontSize: "0.72rem", padding: "1px 6px" }}>
+                            {linkedStatus}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 📍 STEP-BY-STEP AUDIT TRAIL */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "4px" }}>
+                <span style={{ fontSize: "0.8rem", fontWeight: "700", color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Complete Transfer & Custody Trail
+                </span>
+
+                {/* Step 0: Origination */}
+                <div
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    borderLeft: "4px solid #64748b",
+                    borderRadius: "8px",
+                    padding: "10px 14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                    <span style={{ fontWeight: "700", fontSize: "0.83rem", color: "#334155" }}>
+                      Step 0: Grievance Originated
+                    </span>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      {formatDateTime(grievance.createdAt)}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569" }}>
+                    Submitted by <strong>{grievance.name}</strong> to department: <span style={{ fontWeight: "700", color: "#1e293b" }}>{grievance.originatingDepartment || grievance.category}</span>
+                  </p>
+                </div>
+
+                {/* Steps 1..N */}
                 {grievance.transferHistory && grievance.transferHistory.length > 0 ? (
                   grievance.transferHistory.map((item, idx) => (
                     <div
@@ -750,34 +1003,58 @@ const GrievanceDetailsModal = ({
                       style={{
                         background: "#ffffff",
                         border: "1px solid #e2e8f0",
+                        borderLeft: `4px solid ${idx === grievance.transferHistory.length - 1 ? "#2563eb" : "#94a3b8"}`,
                         borderRadius: "8px",
                         padding: "12px 14px",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px"
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
                         <span style={{ fontWeight: "700", fontSize: "0.85rem", color: "#2563eb", display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                          <span>Step {idx + 1}:</span>
-                          <span style={{ color: "#dc2626" }}>{item.fromDepartment}</span>
-                          <span>➔</span>
-                          <span style={{ color: "#16a34a" }}>{item.toDepartment}</span>
+                          <span>Step {item.hop || idx + 1}:</span>
+                          {item.actionType === "MULTI_DEPARTMENT_TRANSFER" ? (
+                            <span style={{ color: "#4338ca", background: "#e0e7ff", border: "1px solid #c7d2fe", padding: "1px 8px", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                              🔀 Multi-Dept Forward: {item.fromDepartment} ➔ {item.toDepartment}
+                            </span>
+                          ) : item.fromDepartment === item.toDepartment ? (
+                            <span style={{ color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 8px", borderRadius: "6px" }}>
+                              🔄 Internal Handover in {item.toDepartment}
+                            </span>
+                          ) : (
+                            <>
+                              <span style={{ color: "#dc2626", background: "#fee2e2", padding: "1px 6px", borderRadius: "4px" }}>{item.fromDepartment}</span>
+                              <span>➔</span>
+                              <span style={{ color: "#16a34a", background: "#dcfce7", padding: "1px 6px", borderRadius: "4px" }}>{item.toDepartment}</span>
+                            </>
+                          )}
                         </span>
                         <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
                           {formatDateTime(item.transferredAt)}
                         </span>
                       </div>
 
-                      <p style={{ margin: "0 0 6px 0", fontSize: "0.83rem", color: "#475569" }}>
-                        <strong>Transferred By:</strong> {item.transferredByName || "Staff Member"} <span style={{ color: "#94a3b8" }}>({item.transferredBy})</span>
-                      </p>
-
-                      <div style={{ background: "#f8fafc", padding: "8px 10px", borderRadius: "6px", border: "1px dashed #cbd5e1", fontSize: "0.85rem", color: "#334155", fontStyle: "italic" }}>
-                        “{item.reason}”
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", fontSize: "0.82rem", color: "#475569" }}>
+                        <span>
+                          <strong>{item.fromDepartment === item.toDepartment ? "Reassigned By:" : "Forwarded By:"}</strong> {item.transferredByName || "Staff Member"} <span style={{ color: "#94a3b8" }}>({item.transferredBy})</span>
+                        </span>
+                        <span style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: "4px", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                          Role: {item.transferredByRole || "Staff"}
+                        </span>
                       </div>
 
+                      {item.reason && (
+                        <div style={{ background: "#f8fafc", padding: "8px 10px", borderRadius: "6px", border: "1px dashed #cbd5e1", fontSize: "0.84rem", color: "#334155", fontStyle: "italic" }}>
+                          “{item.reason}”
+                        </div>
+                      )}
+
                       {(item.assignedToNameInNewDept || item.assignedToInNewDept) && (
-                        <div style={{ marginTop: "6px", fontSize: "0.8rem", color: "#15803d", fontWeight: "600" }}>
-                          <UserIcon width="14" height="14" style={{ verticalAlign: "middle", marginRight: "4px" }} /> Assigned in {item.toDepartment}: {item.assignedToNameInNewDept || item.assignedToInNewDept}
+                        <div style={{ fontSize: "0.8rem", color: "#15803d", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <UserIcon width="14" height="14" />
+                          <span>Assigned to: <strong>{item.assignedToNameInNewDept || item.assignedToInNewDept}</strong></span>
                         </div>
                       )}
                     </div>
@@ -1153,6 +1430,26 @@ const GrievanceDetailsModal = ({
               >
                 <RerouteIcon width="16" height="16" style={{ verticalAlign: "middle", marginRight: "6px" }} /> Forward to Department
               </button>
+            )}
+
+            {hasAlreadyForwarded && !isResolved && !isRejected && (
+              <div
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#f1f5f9",
+                  border: "1.5px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: "700",
+                  color: "#475569",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "0.82rem",
+                }}
+                title="You have already forwarded this grievance once. You can view its live journey."
+              >
+                <span style={{ fontSize: "0.95rem" }}>🔒</span> Forwarded by You &bull; View Journey Only
+              </div>
             )}
 
             {!isResolved && !isRejected && onReject && (

@@ -51,6 +51,7 @@ function LoginPage() {
   };
 
   const handleDirectLogin = (data) => {
+    localStorage.setItem("user", JSON.stringify(data.user));
     localStorage.setItem("grievance_id", data.user.id.toUpperCase());
     if (data.user.fullName) localStorage.setItem("grievance_user_name", data.user.fullName);
     localStorage.setItem("grievance_role", data.user.role.toLowerCase());

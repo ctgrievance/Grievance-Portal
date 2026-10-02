@@ -104,30 +104,85 @@ const grievanceSchema = new mongoose.Schema(
       default: []
     },
 
-    // ================= DEPARTMENT RE-ROUTING & TRANSFER =================
+    // ================= DEPARTMENT RE-ROUTING & MULTI-HOP TRANSFER =================
+    originatingDepartment: {
+      type: String,
+      default: null
+    },
+    involvedDepartments: {
+      type: [String],
+      default: []
+    },
+    involvedStaff: {
+      type: [String],
+      default: []
+    },
+    currentCustodian: {
+      department: { type: String, default: null },
+      staffId: { type: String, default: null },
+      staffName: { type: String, default: null },
+      assignedAt: { type: Date, default: Date.now },
+      role: { type: String, default: null }
+    },
     isRerouted: {
       type: Boolean,
       default: false
     },
+    isMultiForwarded: {
+      type: Boolean,
+      default: false
+    },
+    forwardedDepartments: {
+      type: [String],
+      default: []
+    },
+    parentGrievanceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Grievance",
+      default: null
+    },
+    linkedGrievances: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Grievance"
+      }
+    ],
     transferHistory: [
       {
+        hop: { type: Number, default: 1 },
+        actionType: {
+          type: String,
+          enum: [
+            "DEPARTMENT_TRANSFER",
+            "FACULTY_ASSIGNMENT",
+            "FACULTY_REASSIGNMENT",
+            "MULTI_DEPARTMENT_TRANSFER"
+          ],
+          default: "DEPARTMENT_TRANSFER"
+        },
         fromDepartment: { type: String, required: true },
         toDepartment: { type: String, required: true },
         transferredBy: { type: String, required: true }, // Staff / Admin ID
         transferredByName: { type: String, default: "" },
         transferredByRole: { type: String, default: "staff" },
-        reason: { type: String, required: true },
+        reason: { type: String, default: "" },
         transferredAt: { type: Date, default: Date.now },
         assignedToInNewDept: { type: String, default: null },
-        assignedToNameInNewDept: { type: String, default: null }
+        assignedToNameInNewDept: { type: String, default: null },
+        statusAtTransfer: { type: String, default: "Pending" }
       }
     ]
   },
   { timestamps: true }
 );
 
-// Index to speed lookups for staff-assigned grievances
+// Index to speed lookups for staff-assigned grievances and interdepartment queries
 grievanceSchema.index({ assignedTo: 1, createdAt: -1 });
+grievanceSchema.index({ involvedDepartments: 1 });
+grievanceSchema.index({ involvedStaff: 1 });
+grievanceSchema.index({ "transferHistory.transferredBy": 1 });
+grievanceSchema.index({ parentGrievanceId: 1 });
+grievanceSchema.index({ linkedGrievances: 1 });
 
 const Grievance =
   mongoose.models.Grievance ||

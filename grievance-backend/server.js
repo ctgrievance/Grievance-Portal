@@ -1313,19 +1313,22 @@ app.get("/api/admin-staff/all", async (req, res) => {
   }
 });
 
-// D. Get Department Specific Staff (Only Team Member Staff, NOT Department Admins)
 app.get("/api/admin/staff/:department", verifyToken, async (req, res) => {
   try {
     const { department } = req.params;
     const cleanDept = decodeURIComponent(department).trim();
+    const deptRegex = new RegExp(`^${cleanDept}$`, "i");
     
-    // Fetch only worker staff in that department (exclude Dept Admins and Master Admin)
+    // Fetch faculty & staff belonging to that department (exclude Master Admin)
     const staff = await User.find({
       role: "staff",
-      adminDepartment: cleanDept,
-      isDeptAdmin: { $ne: true },
+      $or: [
+        { adminDepartment: { $regex: deptRegex } },
+        { staffDepartment: { $regex: deptRegex } },
+        { department: { $regex: deptRegex } }
+      ],
       isMasterAdmin: { $ne: true }
-    }).select("id fullName email");
+    }).select("id fullName email staffDepartment adminDepartment isDeptAdmin");
 
     res.json(staff);
   } catch (err) {

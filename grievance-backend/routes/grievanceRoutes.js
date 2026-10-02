@@ -23,6 +23,7 @@ import {
   getGrievanceDetail,
   transferGrievance,
   getStaffTransferHistory,
+  getDepartmentTransferHistory,
   rejectGrievanceByStaff,
   clearAllGrievances
 } from "../controllers/grievanceController.js";
@@ -73,6 +74,7 @@ router.put("/extension/resolve/:id", resolveExtension);
 
 router.post("/transfer/:id", transferGrievance);
 router.get("/staff-transfers/:staffId", getStaffTransferHistory);
+router.get("/department-transfers/:department", getDepartmentTransferHistory);
 
 /* ================= ⭐ RATING ================= */
 

@@ -6,7 +6,8 @@ import {
   StaffIcon, 
   UsersIcon, 
   ShieldIcon, 
-  SparklesIcon 
+  SparklesIcon,
+  RerouteIcon
 } from './Icons';
 
 /**
@@ -31,6 +32,13 @@ function DepartmentAdminNavbar({
       label: `${departmentName} Grievances`, 
       description: "Manage incoming grievances", 
       IconComponent: ClipboardIcon, 
+      isVisible: true 
+    },
+    { 
+      id: "inter_department", 
+      label: "Inter-Dept Tracker", 
+      description: "Track grievances transferred across departments", 
+      IconComponent: RerouteIcon, 
       isVisible: true 
     },
     { 

@@ -19,6 +19,7 @@ import DepartmentAdminNavbar from "../components/DepartmentAdminNavbar";
 import ActionDropdown from "../components/ActionDropdown";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import DepartmentGrievanceList from "../components/DepartmentGrievanceList";
+import InterDepartmentTracker from "../components/InterDepartmentTracker";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -278,6 +279,13 @@ function ExaminationAdminDashboard() {
           />
         )}
         {activeTab === "manage_staff" && <StaffRoleManager />}
+        {activeTab === "inter_department" && (
+          <InterDepartmentTracker
+            departmentName="Examination"
+            staffMap={staffMap}
+            onSelectGrievance={setSelectedGrievance}
+          />
+        )}
         {activeTab === "grievances" && (
           <div className="card">
           <h2>Incoming Grievances</h2>
@@ -314,21 +322,23 @@ function ExaminationAdminDashboard() {
             />
           )}
 
-          {/* Details Modal */}
-          {selectedGrievance && (
-            <GrievanceDetailsModal
-              grievance={selectedGrievance}
-              staffMap={staffMap}
-              onClose={() => setSelectedGrievance(null)}
-              onDelete={handleDeleteGrievance}
-              onResolveExtension={handleResolveExtension}
-              onTransferred={() => {
-                fetchGrievances();
-                setSelectedGrievance(null);
-              }}
-            />
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Details Modal */}
+        {selectedGrievance && (
+          <GrievanceDetailsModal
+            grievance={selectedGrievance}
+            staffMap={staffMap}
+            canTransfer={true}
+            onClose={() => setSelectedGrievance(null)}
+            onDelete={handleDeleteGrievance}
+            onResolveExtension={handleResolveExtension}
+            onTransferred={() => {
+              fetchGrievances();
+              setSelectedGrievance(null);
+            }}
+          />
         )}
       </main>
 

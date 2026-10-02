@@ -129,6 +129,18 @@ export const submitGrievance = async (req, res) => {
       deadlineDate: (assignedStaff && assignedStaff.staffId) ? calculateDeadline() : null,
 
       status: (assignedStaff && assignedStaff.staffId) ? "Assigned" : "Pending",
+
+      // Inter-department tracking & Custody
+      originatingDepartment: category,
+      involvedDepartments: [category],
+      involvedStaff: (assignedStaff && assignedStaff.staffId) ? [assignedStaff.staffId] : [],
+      currentCustodian: {
+        department: category,
+        staffId: (assignedStaff && assignedStaff.staffId) ? assignedStaff.staffId : null,
+        staffName: (assignedStaff && assignedStaff.staffName) ? assignedStaff.staffName : null,
+        assignedAt: new Date(),
+        role: (assignedStaff && assignedStaff.staffId) ? "staff" : "admin"
+      }
     });
 
     // 📧 Send email notification to staff if auto-assigned
@@ -407,6 +419,7 @@ export const getAllGrievances = async (req, res) => {
 
     const grievances = await Grievance.find(query)
       .populate("issueTypeId", "issueName description")
+      .populate("linkedGrievances", "category status currentCustodian assignedTo updatedAt")
       .sort({ createdAt: -1 });
     res.json(grievances);
   } catch (err) {
@@ -433,6 +446,7 @@ export const getCategoryGrievances = async (req, res) => {
       hiddenFor: { $ne: userId } // 🔍 Filter hidden
     })
       .populate("issueTypeId", "issueName description")
+      .populate("linkedGrievances", "category status currentCustodian assignedTo updatedAt")
       .sort({ createdAt: -1 });
 
     res.json(grievances);
@@ -484,17 +498,57 @@ export const assignToStaff = async (req, res) => {
       deadlineDate = parsed;
     }
 
+    // Resolve staff full name
+    let staffFullName = staffId;
+    try {
+      const staffUser = await StaffUser.findOne({ id: staffId })
+        || await User.findOne({ id: staffId })
+        || await StaffRecord.findOne({ id: staffId });
+      if (staffUser && staffUser.fullName) staffFullName = staffUser.fullName;
+    } catch (_) {}
+
+    const isReassign = existingGrievance.assignedTo && existingGrievance.assignedTo !== staffId;
+    const isAfterTransfer = existingGrievance.isRerouted && (!existingGrievance.assignedTo || isReassign);
+
     const update = {
       assignedTo: staffId,
       assignedRole: "staff",
       assignedBy: adminId,
       status: "Assigned",
       deadlineDate: deadlineDate || calculateDeadline(),
+      currentCustodian: {
+        department: existingGrievance.category,
+        staffId: staffId,
+        staffName: staffFullName,
+        assignedAt: new Date(),
+        role: "staff"
+      },
+      $addToSet: {
+        involvedStaff: staffId,
+        involvedDepartments: existingGrievance.category
+      },
       updatedAt: Date.now(),
     };
 
-    // Debug: log the update object that will be applied
-    // console.log('Assign update object:', update);
+    if (isAfterTransfer || isReassign) {
+      const hopNum = (existingGrievance.transferHistory?.length || 0) + 1;
+      update.$push = {
+        transferHistory: {
+          hop: hopNum,
+          actionType: isReassign ? "FACULTY_REASSIGNMENT" : "FACULTY_ASSIGNMENT",
+          fromDepartment: existingGrievance.category,
+          toDepartment: existingGrievance.category,
+          transferredBy: adminId || "DEPT_ADMIN",
+          transferredByName: "Department Admin",
+          transferredByRole: "admin",
+          reason: isReassign ? `Re-assigned to faculty member ${staffFullName}` : `Assigned to faculty member ${staffFullName}`,
+          transferredAt: new Date(),
+          assignedToInNewDept: staffId,
+          assignedToNameInNewDept: staffFullName,
+          statusAtTransfer: "Assigned"
+        }
+      };
+    }
 
     const grievance = await Grievance.findByIdAndUpdate(id, update, { new: true });
 
@@ -533,6 +587,7 @@ export const getAssignedGrievances = async (req, res) => {
       ...hiddenFilter
     })
       .populate("issueTypeId", "issueName description")
+      .populate("linkedGrievances", "category status currentCustodian assignedTo updatedAt")
       .sort({ createdAt: -1 });
 
     res.json(grievances);
@@ -971,22 +1026,64 @@ export const hideGrievance = async (req, res) => {
 };
 
 /* =====================================================
-   🔁 DEPARTMENT RE-ROUTING & TRANSFER
+   🔁 DEPARTMENT RE-ROUTING & MULTI-HOP TRANSFER
 ===================================================== */
 export const transferGrievance = async (req, res) => {
   try {
     const { id } = req.params;
     const {
       targetDepartment,
+      targetDepartments, // array of strings for multi-department forwarding
+      departmentAssignments, // array of { department, staffId, staffName, issueTypeId }
+      staffAssignments, // map of { [dept]: { staffId, staffName, issueTypeId } }
       targetIssueTypeId,
+      targetStaffId,
+      targetStaffName,
       reason,
       transferredBy,
       transferredByName,
       transferredByRole = "staff"
     } = req.body;
 
-    if (!targetDepartment || !reason || !reason.trim()) {
-      return res.status(400).json({ message: "Target department and transfer reason are mandatory." });
+    // Build department -> staff assignment lookup map
+    const assignmentsMap = {};
+    if (Array.isArray(departmentAssignments)) {
+      departmentAssignments.forEach((da) => {
+        if (da && da.department) {
+          assignmentsMap[da.department.trim().toLowerCase()] = {
+            staffId: da.staffId || null,
+            staffName: da.staffName || null,
+            issueTypeId: da.issueTypeId || null
+          };
+        }
+      });
+    }
+    if (staffAssignments && typeof staffAssignments === "object") {
+      Object.entries(staffAssignments).forEach(([dept, a]) => {
+        if (dept && a) {
+          assignmentsMap[dept.trim().toLowerCase()] = {
+            staffId: a.staffId || null,
+            staffName: a.staffName || null,
+            issueTypeId: a.issueTypeId || null
+          };
+        }
+      });
+    }
+
+    // Normalize target departments list
+    let deptsToForward = [];
+    if (Array.isArray(departmentAssignments) && departmentAssignments.length > 0) {
+      deptsToForward = departmentAssignments.map(da => da.department?.trim()).filter(Boolean);
+    } else if (Array.isArray(targetDepartments) && targetDepartments.length > 0) {
+      deptsToForward = targetDepartments
+        .map((d) => (typeof d === "string" ? d.trim() : (d?.department?.trim() || "")))
+        .filter(Boolean);
+    } else if (targetDepartment && typeof targetDepartment === "string" && targetDepartment.trim()) {
+      deptsToForward = [targetDepartment.trim()];
+    }
+
+    if (deptsToForward.length === 0 || !reason || !reason.trim()) {
+      return res.status(400).json({ message: "At least one target department and a transfer reason are mandatory." });
     }
 
     if (transferredByRole === "master_admin" || transferredBy?.toString().toUpperCase() === "10001") {
@@ -1002,104 +1099,450 @@ export const transferGrievance = async (req, res) => {
       return res.status(400).json({ message: "Cannot transfer a resolved or rejected grievance." });
     }
 
-    if (grievance.category === targetDepartment) {
-      return res.status(400).json({ message: "Target department must be different from current department." });
+    const senderStaffId = (transferredBy || req.user?.id || "STAFF").toString().trim().toUpperCase();
+
+    // 🔒 REQUIREMENT 1: One faculty can forward the grievance ONLY ONCE
+    if (transferredByRole !== "master_admin" && senderStaffId) {
+      const alreadyForwarded = grievance.transferHistory?.some(
+        (t) => t.transferredBy && t.transferredBy.toString().trim().toUpperCase() === senderStaffId
+      );
+      if (alreadyForwarded) {
+        return res.status(400).json({
+          message: "You have already forwarded this grievance once. You can only view its journey and cannot forward it again."
+        });
+      }
+    }
+
+    // Authorization check: Only current assignee, department admin, or department faculty of current category can forward
+    const isAssignee = Boolean(
+      senderStaffId &&
+      ((grievance.assignedTo && grievance.assignedTo.toString().trim().toUpperCase() === senderStaffId) ||
+       (grievance.currentCustodian?.staffId && grievance.currentCustodian.staffId.toString().trim().toUpperCase() === senderStaffId))
+    );
+    const isDeptAdmin = transferredByRole === "admin" || req.user?.isDeptAdmin;
+
+    let isDeptStaff = false;
+    if (senderStaffId && !isAssignee && !isDeptAdmin) {
+      try {
+        const staffUser = await StaffUser.findOne({ id: senderStaffId }) || await User.findOne({ id: senderStaffId });
+        if (staffUser) {
+          const staffDepts = Array.isArray(staffUser.adminDepartments) && staffUser.adminDepartments.length > 0
+            ? staffUser.adminDepartments.map(d => (d || "").toLowerCase())
+            : (staffUser.adminDepartment ? [staffUser.adminDepartment.toLowerCase()] : (staffUser.department ? [staffUser.department.toLowerCase()] : []));
+          const currentDept = (grievance.category || grievance.currentCustodian?.department || "").toLowerCase();
+          if (staffDepts.includes(currentDept)) {
+            isDeptStaff = true;
+          }
+        }
+      } catch (staffErr) {
+        console.warn("Could not verify department staff membership during transfer:", staffErr.message);
+      }
+    }
+
+    if (!isAssignee && !isDeptAdmin && !isDeptStaff && transferredByRole !== "master_admin") {
+      return res.status(403).json({
+        message: "You are not authorized to forward this grievance. Only the current assigned faculty or department admin can forward it."
+      });
     }
 
     const oldDepartment = grievance.category;
+    const isMultiTransfer = deptsToForward.length > 1;
 
-    // Determine issue type in the target department
-    let finalIssueTypeId = targetIssueTypeId || null;
-    if (!finalIssueTypeId) {
-      // Find default / "Others" / first issue type in target department
-      const defaultIssue = await IssueType.findOne({
-        department: targetDepartment,
-        isActive: true,
-        $or: [
-          { issueName: { $regex: /other/i } },
-          { issueName: { $regex: /general/i } }
-        ]
-      }) || await IssueType.findOne({ department: targetDepartment, isActive: true });
+    // Remove duplicates
+    const uniqueDepts = Array.from(new Set(deptsToForward));
 
-      if (defaultIssue) {
-        finalIssueTypeId = defaultIssue._id;
-      }
-    }
+    // ==========================================
+    // CASE A: SINGLE DEPARTMENT TRANSFER / INTERNAL REASSIGNMENT
+    // ==========================================
+    if (!isMultiTransfer) {
+      const targetDept = uniqueDepts[0];
+      const isSameDepartment = oldDepartment === targetDept;
+      const deptAssign = assignmentsMap[targetDept.toLowerCase()];
+      const resolvedStaffId = deptAssign?.staffId || targetStaffId || null;
+      const resolvedStaffName = deptAssign?.staffName || targetStaffName || resolvedStaffId;
 
-    // Attempt Smart Auto-Assignment in Target Department
-    let assignedStaff = null;
-    let assignmentMode = "manual";
-    if (finalIssueTypeId) {
-      try {
-        const autoAssignment = await autoAssignGrievance(finalIssueTypeId, targetDepartment);
-        if (autoAssignment) {
-          assignedStaff = autoAssignment;
-          assignmentMode = autoAssignment.assignmentMode;
+      if (isSameDepartment) {
+        if (resolvedStaffId && resolvedStaffId === grievance.assignedTo) {
+          return res.status(400).json({
+            message: "The grievance is already assigned to this faculty member. Please select a different faculty member to reassign."
+          });
         }
-      } catch (assignErr) {
-        console.warn("Auto-assignment lookup failed during transfer:", assignErr.message);
+        if (!resolvedStaffId && !grievance.assignedTo) {
+          return res.status(400).json({
+            message: "The grievance is already unassigned in this department. Please select a faculty member to assign."
+          });
+        }
+      }
+
+      let finalIssueTypeId = deptAssign?.issueTypeId || targetIssueTypeId || (isSameDepartment ? grievance.issueTypeId : null);
+      if (!finalIssueTypeId) {
+        const defaultIssue = await IssueType.findOne({
+          department: targetDept,
+          isActive: true,
+          $or: [
+            { issueName: { $regex: /other/i } },
+            { issueName: { $regex: /general/i } }
+          ]
+        }) || await IssueType.findOne({ department: targetDept, isActive: true });
+
+        if (defaultIssue) finalIssueTypeId = defaultIssue._id;
+      }
+
+      let assignedStaff = null;
+      let assignmentMode = "manual";
+
+      if (resolvedStaffId) {
+        assignedStaff = {
+          staffId: resolvedStaffId,
+          staffName: resolvedStaffName || resolvedStaffId,
+          assignmentMode: "manual"
+        };
+        assignmentMode = "manual";
+      } else if (finalIssueTypeId && !isSameDepartment) {
+        try {
+          const autoAssignment = await autoAssignGrievance(finalIssueTypeId, targetDept);
+          if (autoAssignment) {
+            assignedStaff = autoAssignment;
+            assignmentMode = autoAssignment.assignmentMode;
+          }
+        } catch (assignErr) {
+          console.warn("Auto-assignment lookup failed during transfer:", assignErr.message);
+        }
+      }
+
+      const newAssignedTo = (assignedStaff && assignedStaff.staffId) ? assignedStaff.staffId : null;
+      const newAssignedName = (assignedStaff && assignedStaff.staffName) ? assignedStaff.staffName : null;
+      const newDeadline = calculateDeadline();
+      const currentHop = (grievance.transferHistory?.length || 0) + 1;
+
+      const transferEntry = {
+        hop: currentHop,
+        actionType: isSameDepartment ? "FACULTY_REASSIGNMENT" : "DEPARTMENT_TRANSFER",
+        fromDepartment: oldDepartment,
+        toDepartment: targetDept,
+        transferredBy: senderStaffId,
+        transferredByName: transferredByName || "Staff Member",
+        transferredByRole: transferredByRole || "staff",
+        reason: reason.trim(),
+        transferredAt: new Date(),
+        assignedToInNewDept: newAssignedTo,
+        assignedToNameInNewDept: newAssignedName,
+        statusAtTransfer: grievance.status
+      };
+
+      grievance.category = targetDept;
+      grievance.issueTypeId = finalIssueTypeId;
+      grievance.assignedTo = newAssignedTo;
+      grievance.assignedRole = newAssignedTo ? "staff" : null;
+      grievance.assignedBy = newAssignedTo ? (targetStaffId ? senderStaffId : "SYSTEM_REROUTED") : null;
+      grievance.assignmentMode = assignmentMode;
+      grievance.status = newAssignedTo ? "Assigned" : "Pending";
+      grievance.deadlineDate = newDeadline;
+      grievance.isRerouted = true;
+      grievance.transferHistory.push(transferEntry);
+
+      grievance.originatingDepartment = grievance.originatingDepartment || oldDepartment;
+      if (!grievance.involvedDepartments.includes(oldDepartment)) {
+        grievance.involvedDepartments.push(oldDepartment);
+      }
+      if (!grievance.involvedDepartments.includes(targetDept)) {
+        grievance.involvedDepartments.push(targetDept);
+      }
+
+      if (senderStaffId && !grievance.involvedStaff.map(s => s.toUpperCase()).includes(senderStaffId)) {
+        grievance.involvedStaff.push(senderStaffId);
+      }
+      if (newAssignedTo) {
+        const receiverStaffId = newAssignedTo.toString().trim().toUpperCase();
+        if (!grievance.involvedStaff.map(s => s.toUpperCase()).includes(receiverStaffId)) {
+          grievance.involvedStaff.push(receiverStaffId);
+        }
+      }
+
+      grievance.currentCustodian = {
+        department: targetDept,
+        staffId: newAssignedTo,
+        staffName: newAssignedName,
+        assignedAt: new Date(),
+        role: newAssignedTo ? "staff" : "admin"
+      };
+
+      grievance.extensionRequest = {
+        requestedDate: null,
+        reason: "",
+        status: "None"
+      };
+
+      await grievance.save();
+
+      if (assignedStaff && assignedStaff.staffId) {
+        try {
+          await sendAssignmentNotification(grievance, assignedStaff, true);
+        } catch (emailError) {
+          console.error("Transfer assignment email notification failed:", emailError.message);
+        }
+      }
+
+      try {
+        if (req.app && req.app.get("io")) {
+          const io = req.app.get("io");
+          io.emit("grievanceTransferred", {
+            grievanceId: grievance._id,
+            fromDepartment: oldDepartment,
+            toDepartment: targetDept,
+            assignedTo: newAssignedTo,
+            transferEntry,
+            currentCustodian: grievance.currentCustodian
+          });
+        }
+      } catch (socketErr) {
+        console.warn("Socket notification warning:", socketErr.message);
+      }
+
+      return res.json({
+        message: isSameDepartment
+          ? `✅ Grievance successfully reassigned within ${targetDept}${newAssignedName ? ` to ${newAssignedName}` : ' (unassigned)'}.`
+          : `✅ Grievance successfully forwarded to ${targetDept}${newAssignedName ? ` and assigned to ${newAssignedName}` : ''}.`,
+        grievance
+      });
+    }
+
+    // ==========================================
+    // CASE B: MULTI-DEPARTMENT FORWARDING (2+ DEPARTMENTS)
+    // ==========================================
+    // Primary department is the first destination, secondary departments are the others
+    const destinationDepts = uniqueDepts.filter(d => d !== oldDepartment);
+    const primaryDept = destinationDepts[0] || uniqueDepts[0];
+    const secondaryDepts = destinationDepts.slice(1);
+
+    // Primary Department Setup
+    let primaryIssueTypeId = null;
+    const primaryDefaultIssue = await IssueType.findOne({
+      department: primaryDept,
+      isActive: true,
+      $or: [{ issueName: { $regex: /other/i } }, { issueName: { $regex: /general/i } }]
+    }) || await IssueType.findOne({ department: primaryDept, isActive: true });
+    if (primaryDefaultIssue) primaryIssueTypeId = primaryDefaultIssue._id;
+
+    const primaryAssign = assignmentsMap[primaryDept.toLowerCase()];
+    const primaryResolvedStaffId = primaryAssign?.staffId || null;
+    const primaryResolvedStaffName = primaryAssign?.staffName || primaryResolvedStaffId;
+
+    let primaryAssignedStaff = null;
+    let primaryAssignmentMode = "manual";
+
+    if (primaryResolvedStaffId) {
+      primaryAssignedStaff = {
+        staffId: primaryResolvedStaffId,
+        staffName: primaryResolvedStaffName,
+        assignmentMode: "manual"
+      };
+      primaryAssignmentMode = "manual";
+    } else if (primaryIssueTypeId) {
+      try {
+        const auto = await autoAssignGrievance(primaryIssueTypeId, primaryDept);
+        if (auto) {
+          primaryAssignedStaff = auto;
+          primaryAssignmentMode = auto.assignmentMode;
+        }
+      } catch (e) {
+        console.warn("Auto-assignment failed for primary dept:", e.message);
       }
     }
 
-    const newAssignedTo = (assignedStaff && assignedStaff.staffId) ? assignedStaff.staffId : null;
-    const newAssignedName = (assignedStaff && assignedStaff.staffName) ? assignedStaff.staffName : null;
+    const primaryAssignedTo = primaryAssignedStaff?.staffId || null;
+    const primaryAssignedName = primaryAssignedStaff?.staffName || null;
+    const currentHop = (grievance.transferHistory?.length || 0) + 1;
 
-    // Reset SLA deadline: Fresh standard 7 days from transfer
-    const newDeadline = calculateDeadline();
-
-    // Create transfer audit record
-    const transferEntry = {
+    const primaryTransferEntry = {
+      hop: currentHop,
+      actionType: "MULTI_DEPARTMENT_TRANSFER",
       fromDepartment: oldDepartment,
-      toDepartment: targetDepartment,
-      transferredBy: transferredBy || (req.user?.id || "STAFF"),
+      toDepartment: primaryDept,
+      transferredBy: senderStaffId,
       transferredByName: transferredByName || "Staff Member",
       transferredByRole: transferredByRole || "staff",
-      reason: reason.trim(),
+      reason: `${reason.trim()} [Simultaneously forwarded to: ${uniqueDepts.join(", ")}]`,
       transferredAt: new Date(),
-      assignedToInNewDept: newAssignedTo,
-      assignedToNameInNewDept: newAssignedName
+      assignedToInNewDept: primaryAssignedTo,
+      assignedToNameInNewDept: primaryAssignedName,
+      statusAtTransfer: grievance.status
     };
 
-    // Update grievance document
-    grievance.category = targetDepartment;
-    grievance.issueTypeId = finalIssueTypeId;
-    grievance.assignedTo = newAssignedTo;
-    grievance.assignedRole = newAssignedTo ? "staff" : null;
-    grievance.assignedBy = newAssignedTo ? "SYSTEM_REROUTED" : null;
-    grievance.assignmentMode = assignmentMode;
-    grievance.status = newAssignedTo ? "Assigned" : "Pending";
-    grievance.deadlineDate = newDeadline;
+    grievance.category = primaryDept;
+    grievance.issueTypeId = primaryIssueTypeId;
+    grievance.assignedTo = primaryAssignedTo;
+    grievance.assignedRole = primaryAssignedTo ? "staff" : null;
+    grievance.assignedBy = primaryAssignedTo ? "SYSTEM_REROUTED" : null;
+    grievance.assignmentMode = primaryAssignmentMode;
+    grievance.status = primaryAssignedTo ? "Assigned" : "Pending";
+    grievance.deadlineDate = calculateDeadline();
     grievance.isRerouted = true;
-    grievance.transferHistory.push(transferEntry);
+    grievance.isMultiForwarded = true;
+    grievance.forwardedDepartments = uniqueDepts;
+    grievance.originatingDepartment = grievance.originatingDepartment || oldDepartment;
+    grievance.transferHistory.push(primaryTransferEntry);
 
-    // Clear any previous extension request from old department
-    grievance.extensionRequest = {
-      requestedDate: null,
-      reason: "",
-      status: "None"
-    };
-
-    await grievance.save();
-
-    // Send assignment notification to the newly assigned staff member
-    if (assignedStaff && assignedStaff.staffId) {
-      try {
-        await sendAssignmentNotification(grievance, assignedStaff, true);
-      } catch (emailError) {
-        console.error("Transfer assignment email notification failed (non-blocking):", emailError.message);
+    // Track all involved departments
+    for (const d of [oldDepartment, ...uniqueDepts]) {
+      if (!grievance.involvedDepartments.includes(d)) {
+        grievance.involvedDepartments.push(d);
+      }
+    }
+    if (senderStaffId && !grievance.involvedStaff.map(s => s.toUpperCase()).includes(senderStaffId)) {
+      grievance.involvedStaff.push(senderStaffId);
+    }
+    if (primaryAssignedTo) {
+      const pId = primaryAssignedTo.toString().trim().toUpperCase();
+      if (!grievance.involvedStaff.map(s => s.toUpperCase()).includes(pId)) {
+        grievance.involvedStaff.push(pId);
       }
     }
 
-    // Try sending socket notification if available
+    grievance.currentCustodian = {
+      department: primaryDept,
+      staffId: primaryAssignedTo,
+      staffName: primaryAssignedName,
+      assignedAt: new Date(),
+      role: primaryAssignedTo ? "staff" : "admin"
+    };
+
+    grievance.extensionRequest = { requestedDate: null, reason: "", status: "None" };
+
+    // Create linked child instances for secondary departments
+    const createdChildren = [];
+    const allLinkedIds = [];
+
+    for (const secDept of secondaryDepts) {
+      let secIssueTypeId = null;
+      const secDefaultIssue = await IssueType.findOne({
+        department: secDept,
+        isActive: true,
+        $or: [{ issueName: { $regex: /other/i } }, { issueName: { $regex: /general/i } }]
+      }) || await IssueType.findOne({ department: secDept, isActive: true });
+      if (secDefaultIssue) secIssueTypeId = secDefaultIssue._id;
+
+      const secAssign = assignmentsMap[secDept.toLowerCase()];
+      const secResolvedStaffId = secAssign?.staffId || null;
+      const secResolvedStaffName = secAssign?.staffName || secResolvedStaffId;
+
+      let secAssignedStaff = null;
+      let secAssignmentMode = "manual";
+
+      if (secResolvedStaffId) {
+        secAssignedStaff = {
+          staffId: secResolvedStaffId,
+          staffName: secResolvedStaffName,
+          assignmentMode: "manual"
+        };
+        secAssignmentMode = "manual";
+      } else if (secIssueTypeId) {
+        try {
+          const autoSec = await autoAssignGrievance(secIssueTypeId, secDept);
+          if (autoSec) {
+            secAssignedStaff = autoSec;
+            secAssignmentMode = autoSec.assignmentMode;
+          }
+        } catch (e) {
+          console.warn("Auto-assignment failed for sec dept:", secDept, e.message);
+        }
+      }
+
+      const secAssignedTo = secAssignedStaff?.staffId || null;
+      const secAssignedName = secAssignedStaff?.staffName || null;
+
+      const child = new Grievance({
+        userId: grievance.userId,
+        userType: grievance.userType,
+        name: grievance.name,
+        email: grievance.email,
+        phone: grievance.phone,
+        regid: grievance.regid,
+        studentProgram: grievance.studentProgram,
+        category: secDept,
+        issueTypeId: secIssueTypeId,
+        assignmentMode: secAssignmentMode,
+        message: grievance.message,
+        attachment: grievance.attachment,
+        assignedTo: secAssignedTo,
+        assignedRole: secAssignedTo ? "staff" : null,
+        assignedBy: secAssignedTo ? "SYSTEM_REROUTED" : null,
+        status: secAssignedTo ? "Assigned" : "Pending",
+        deadlineDate: calculateDeadline(),
+        originatingDepartment: grievance.originatingDepartment || oldDepartment,
+        involvedDepartments: Array.from(new Set([oldDepartment, ...uniqueDepts])),
+        involvedStaff: [senderStaffId, ...(secAssignedTo ? [secAssignedTo] : [])],
+        currentCustodian: {
+          department: secDept,
+          staffId: secAssignedTo,
+          staffName: secAssignedName,
+          assignedAt: new Date(),
+          role: secAssignedTo ? "staff" : "admin"
+        },
+        isRerouted: true,
+        isMultiForwarded: true,
+        forwardedDepartments: uniqueDepts,
+        parentGrievanceId: grievance._id,
+        linkedGrievances: [grievance._id],
+        transferHistory: [
+          {
+            hop: 1,
+            actionType: "MULTI_DEPARTMENT_TRANSFER",
+            fromDepartment: oldDepartment,
+            toDepartment: secDept,
+            transferredBy: senderStaffId,
+            transferredByName: transferredByName || "Staff Member",
+            transferredByRole: transferredByRole || "staff",
+            reason: `${reason.trim()} [Simultaneously forwarded to: ${uniqueDepts.join(", ")}]`,
+            transferredAt: new Date(),
+            assignedToInNewDept: secAssignedTo,
+            assignedToNameInNewDept: secAssignedName,
+            statusAtTransfer: "Pending"
+          }
+        ]
+      });
+
+      await child.save();
+      createdChildren.push(child);
+      allLinkedIds.push(child._id);
+
+      if (secAssignedStaff && secAssignedStaff.staffId) {
+        try {
+          await sendAssignmentNotification(child, secAssignedStaff, true);
+        } catch (emailError) {
+          console.error("Multi-transfer email notification error for", secDept, emailError.message);
+        }
+      }
+    }
+
+    // Link all child tickets to primary and to each other
+    grievance.linkedGrievances = Array.from(new Set([...(grievance.linkedGrievances || []), ...allLinkedIds]));
+    await grievance.save();
+
+    for (const child of createdChildren) {
+      child.linkedGrievances = Array.from(
+        new Set([grievance._id, ...allLinkedIds.filter((id) => id.toString() !== child._id.toString())])
+      );
+      await child.save();
+    }
+
+    if (primaryAssignedStaff && primaryAssignedStaff.staffId) {
+      try {
+        await sendAssignmentNotification(grievance, primaryAssignedStaff, true);
+      } catch (emailError) {
+        console.error("Multi-transfer primary email notification failed:", emailError.message);
+      }
+    }
+
     try {
       if (req.app && req.app.get("io")) {
         const io = req.app.get("io");
         io.emit("grievanceTransferred", {
           grievanceId: grievance._id,
           fromDepartment: oldDepartment,
-          toDepartment: targetDepartment,
-          assignedTo: newAssignedTo,
-          transferEntry
+          forwardedDepartments: uniqueDepts,
+          isMultiForwarded: true,
+          currentCustodian: grievance.currentCustodian
         });
       }
     } catch (socketErr) {
@@ -1107,8 +1550,10 @@ export const transferGrievance = async (req, res) => {
     }
 
     res.json({
-      message: `✅ Grievance successfully re-routed to ${targetDepartment}${newAssignedName ? ` and assigned to ${newAssignedName}` : ''}.`,
-      grievance
+      message: `✅ Grievance successfully forwarded to ${uniqueDepts.length} departments: ${uniqueDepts.join(", ")}.`,
+      grievance,
+      linkedCount: createdChildren.length,
+      forwardedDepartments: uniqueDepts
     });
   } catch (err) {
     console.error("Transfer Grievance Error:", err);
@@ -1117,7 +1562,36 @@ export const transferGrievance = async (req, res) => {
 };
 
 /* =====================================================
-   🔁 GET STAFF'S TRANSFERRED OUT GRIEVANCES
+   🔁 GET DEPARTMENT'S INTER-DEPARTMENT / FORWARDED GRIEVANCES
+   → Grievances that passed through this department at any point
+===================================================== */
+export const getDepartmentTransferHistory = async (req, res) => {
+  try {
+    const { department } = req.params;
+    const deptName = decodeURIComponent(department).trim();
+
+    const grievances = await Grievance.find({
+      $or: [
+        { category: deptName, isRerouted: true },
+        { involvedDepartments: deptName },
+        { forwardedDepartments: deptName },
+        { "transferHistory.fromDepartment": deptName },
+        { "transferHistory.toDepartment": deptName }
+      ]
+    })
+      .populate("issueTypeId", "issueName description")
+      .populate("linkedGrievances", "category status currentCustodian assignedTo updatedAt")
+      .sort({ updatedAt: -1 });
+
+    res.json(grievances);
+  } catch (err) {
+    console.error("Get Department Transfer History Error:", err);
+    res.status(500).json({ message: "Failed to fetch department transfer history" });
+  }
+};
+
+/* =====================================================
+   🔁 GET STAFF'S TRANSFERRED OUT / HANDLED GRIEVANCES
 ===================================================== */
 export const getStaffTransferHistory = async (req, res) => {
   try {
@@ -1125,9 +1599,13 @@ export const getStaffTransferHistory = async (req, res) => {
     const sId = staffId.trim().toUpperCase();
 
     const grievances = await Grievance.find({
-      "transferHistory.transferredBy": { $regex: new RegExp(`^${sId}$`, "i") }
+      $or: [
+        { "transferHistory.transferredBy": { $regex: new RegExp(`^${sId}$`, "i") } },
+        { involvedStaff: { $regex: new RegExp(`^${sId}$`, "i") } }
+      ]
     })
       .populate("issueTypeId", "issueName description")
+      .populate("linkedGrievances", "category status currentCustodian assignedTo updatedAt")
       .sort({ updatedAt: -1 });
 
     res.json(grievances);
