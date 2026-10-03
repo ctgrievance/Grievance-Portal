@@ -365,20 +365,20 @@ function StaffRoleManager() {
   // Matches registered department, profile department, or assigned admin department
   const isStaffInDepartment = (staff, targetDept) => {
     if (!staff || !targetDept) return false;
-    const target = targetDept.trim().toLowerCase();
+    const target = targetDept.trim().toLowerCase().replace(/\s+/g, ' ');
 
     // 1. Registered or profile department
-    const registeredDept = (staff.staffDepartment || staff.department || "").trim().toLowerCase();
+    const registeredDept = (staff.staffDepartment || staff.department || "").trim().toLowerCase().replace(/\s+/g, ' ');
 
     // 2. Assigned admin departments
     const assignedDepts = [
       ...(Array.isArray(staff.adminDepartments) ? staff.adminDepartments : []),
       staff.adminDepartment
-    ].filter(Boolean).map((d) => d.trim().toLowerCase());
+    ].filter(Boolean).map((d) => d.trim().toLowerCase().replace(/\s+/g, ' '));
 
     const checkMatch = (deptStr) => {
       if (!deptStr) return false;
-      const d = deptStr.toLowerCase();
+      const d = deptStr.toLowerCase().replace(/\s+/g, ' ');
       if (d === target) return true;
 
       // Normalize '&' to 'and' for robust matching

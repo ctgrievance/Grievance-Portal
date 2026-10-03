@@ -8,11 +8,13 @@ const GrievanceModel = require("../models/GrievanceModel");
  */
 exports.getAllStaff = async (req, res) => {
   try {
-    const users = await UserModel.find({ role: "staff" }).select("-password");
+    const users = await UserModel.find({ role: { $in: ["staff", "admin"] }, id: { $ne: "10001" }, isMasterAdmin: { $ne: true } }).select("-password");
 
     // 🔥 Fix: Filter out students (Student IDs are exactly 8 digits)
-    // Sometimes students might have 'role: staff' due to data errors, so we exclude them by ID length.
-    const validStaffUsers = users.filter((user) => user.id.length !== 8);
+    const validStaffUsers = users.filter((user) => {
+      const idStr = String(user.id || "").trim();
+      return !/^\d{8}$/.test(idStr); // Only exclude if exactly 8 digits
+    });
 
     // Fetch rated grievances
     const ratedGrievances = await GrievanceModel.find({
@@ -54,6 +56,8 @@ exports.getAllStaff = async (req, res) => {
           fullName: user.fullName,
           email: user.email,
           department: user.department,
+          staffDepartment: user.staffDepartment, // Added missing field
+          staffType: user.staffType, // Added missing field
           role: user.role, // ✅ Necessary for frontend filtering
           adminDepartment: adminRecord ? adminRecord.adminDepartment : "",
           isDeptAdmin: adminRecord ? adminRecord.isDeptAdmin : false,
