@@ -17,9 +17,11 @@ import {
   FileIcon
 } from "./Icons";
 import ExcelUploadModeModal from "./ExcelUploadModeModal";
+import AuditLogsModal from "./AuditLogsModal";
 
 function StaffRecordsTab() {
   const [records, setRecords]       = useState([]);
+  const [showLogs, setShowLogs]     = useState(false);
   const [total, setTotal]           = useState(0);
   const [totalTeaching, setTotalTeaching] = useState(0);
   const [totalNonTeaching, setTotalNonTeaching] = useState(0);
@@ -59,7 +61,9 @@ function StaffRecordsTab() {
     setLoading(true);
     try {
       const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/staff-records?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&staffType=${staffTypeFilter}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = await res.json();
 
       if (res.ok) {
@@ -76,7 +80,7 @@ function StaffRecordsTab() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, limit, staffTypeFilter]);
+  }, [page, search, limit, staffTypeFilter, token]);
 
   useEffect(() => {
     fetchRecords();
@@ -329,18 +333,35 @@ function StaffRecordsTab() {
           </p>
         </div>
 
-        <button 
-          type="button"
-          onClick={() => setIsAdding(!isAdding)}
-          className={`records-add-btn ${isAdding ? "active" : ""}`}
-        >
-          {isAdding ? (
-            <><XIcon width="15" height="15" /> Cancel</>
-          ) : (
-            <><PlusIcon width="15" height="15" /> Add New Staff</>
-          )}
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button 
+            type="button"
+            onClick={() => setShowLogs(true)}
+            style={{ backgroundColor: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1", padding: "9px 18px", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", flexShrink: 0 }}
+          >
+            <FileIcon width="15" height="15" /> View Logs
+          </button>
+          
+          <button 
+            type="button"
+            onClick={() => setIsAdding(!isAdding)}
+            className={`records-add-btn ${isAdding ? "active" : ""}`}
+          >
+            {isAdding ? (
+              <><XIcon width="15" height="15" /> Cancel</>
+            ) : (
+              <><PlusIcon width="15" height="15" /> Add New Staff</>
+            )}
+          </button>
+        </div>
       </div>
+
+      {showLogs && (
+        <AuditLogsModal 
+          collectionName="StaffRecord" 
+          onClose={() => setShowLogs(false)} 
+        />
+      )}
 
       {/* ── NOTIFICATION MESSAGE ── */}
       {msg && (

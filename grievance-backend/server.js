@@ -28,7 +28,8 @@ import grievanceRoutes from "./routes/grievanceRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import staffRecordRoutes from "./routes/staffRecordRoutes.js"; // NEW: Staff Records Routes
-import studentRecordRoutes from "./routes/studentRecordRoutes.js"; // NEW: Student Records Routes
+import studentRecordRoutes from "./routes/studentRecordRoutes.js";
+import auditRoutes from "./routes/auditRoutes.js"; // NEW: Student Records Routes
 import issueRoutes from "./routes/issueRoutes.js"; // NEW: Issue Type Routes
 import routingRuleRoutes from "./routes/routingRuleRoutes.js"; // NEW: Routing Rule Routes
 import staffPoolRoutes from "./routes/staffPoolRoutes.js"; // NEW: Staff Pool Routes
@@ -102,7 +103,8 @@ app.use("/api/routing-rules", routingRuleRoutes); // NEW: Routing Rule Routes
 app.use("/api/staff-pool", staffPoolRoutes); // NEW: Staff Pool Routes
 app.use("/api/departments", departmentRoutes); // NEW: Dynamic Departments Routes
 app.use("/api/registered-users", registeredUserRoutes); // NEW: Live Registered Students and Staff Routes
-app.use("/api/system", systemRoutes); // NEW: System & Maintenance Routes
+app.use("/api/system", systemRoutes);
+app.use("/api/audit-logs", auditRoutes); // NEW: System & Maintenance Routes
 
 // ------------------ 2️⃣ Database & GridFS Init ------------------
 connectDB();

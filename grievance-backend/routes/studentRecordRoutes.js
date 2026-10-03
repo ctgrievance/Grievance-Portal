@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { verifyToken } from "../middleware/verifyToken.js";
 import {
   getAllStudentRecords,
   uploadStudentRecords,
@@ -44,24 +45,24 @@ const upload = multer({
 });
 
 // GET /api/student-records  — list with pagination + search
-router.get("/", getAllStudentRecords);
+router.get("/", verifyToken, getAllStudentRecords);
 
 // POST /api/student-records/upload  — Excel bulk upload (returns jobId instantly)
-router.post("/upload", upload.single("file"), uploadStudentRecords);
+router.post("/upload", verifyToken, upload.single("file"), uploadStudentRecords);
 
 // GET /api/student-records/progress/:jobId  — real-time progress polling
-router.get("/progress/:jobId", getUploadProgress);
+router.get("/progress/:jobId", verifyToken, getUploadProgress);
 
 // POST /api/student-records  — add single record
-router.post("/", addStudentRecord);
+router.post("/", verifyToken, addStudentRecord);
 
 // DELETE /api/student-records/clear-all — wipe ALL records (must be BEFORE /:id)
-router.delete("/clear-all", clearAllStudentRecords);
+router.delete("/clear-all", verifyToken, clearAllStudentRecords);
 
 // DELETE /api/student-records/:id
-router.delete("/:id", deleteStudentRecord);
+router.delete("/:id", verifyToken, deleteStudentRecord);
 
 // PUT /api/student-records/:id  — update single record
-router.put("/:id", updateStudentRecord);
+router.put("/:id", verifyToken, updateStudentRecord);
 
 export default router;

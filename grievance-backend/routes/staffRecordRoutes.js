@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { verifyToken } from "../middleware/verifyToken.js";
 import {
   getAllRecords,
   addRecord,
@@ -54,13 +55,13 @@ router.post("/", addRecord);
 router.put("/:id", updateRecord);
 
 // POST /api/staff-records/upload  — Excel bulk upload
-router.post("/upload", upload.single("file"), uploadStaffRecords);
+router.post("/upload", verifyToken, upload.single("file"), uploadStaffRecords);
 
 // GET /api/staff-records/progress/:jobId  — real-time progress polling
-router.get("/progress/:jobId", getUploadProgress);
+router.get("/progress/:jobId", verifyToken, getUploadProgress);
 
 // DELETE /api/staff-records/clear-all — wipe ALL records (must be BEFORE /:id)
-router.delete("/clear-all", clearAllStaffRecords);
+router.delete("/clear-all", verifyToken, clearAllStaffRecords);
 
 // DELETE /api/staff-records/:id
 router.delete("/:id", deleteRecord);

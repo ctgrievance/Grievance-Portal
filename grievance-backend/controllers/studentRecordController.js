@@ -3,6 +3,7 @@ import StudentUser from "../models/StudentUser.js";
 import User from "../models/UserModel.js";
 import xlsx from "xlsx";
 import fs from "fs";
+import { logAuditAction } from "../utils/AuditService.js";
 
 // ─── In-memory job tracker ────────────────────────────────────────────────
 const uploadJobs = new Map();
@@ -34,7 +35,7 @@ const findField = (row, ...keywords) => {
 // ─────────────────────────────────────────────────────────────────────────
 
 // ─── Background processor (batch insertMany) ─────────────────────────────
-const processUpload = async (jobId, rows, mode = "add") => {
+const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
   const job = uploadJobs.get(jobId);
   const BATCH = 200; // rows per batch
 

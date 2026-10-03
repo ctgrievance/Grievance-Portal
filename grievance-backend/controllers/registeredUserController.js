@@ -351,13 +351,24 @@ export const getLiveStaff = async (req, res) => {
       });
     }
 
-    const allDeptsMap = new Map(deptCanonicalMap);
+    const allDeptsMap = new Map();
     const candidateDepts = [...(staffDepts || []), ...(adminDepts || [])];
     candidateDepts.forEach(d => {
       const cleanName = (d || "").replace(/\s+/g, " ").trim();
-      if (cleanName) {
+      if (cleanName && !/^\d+$/.test(cleanName)) { // Ignore purely numeric ones
         const k = normalizeKey(cleanName);
-        if (!allDeptsMap.has(k)) allDeptsMap.set(k, cleanName);
+        if (!allDeptsMap.has(k)) {
+          if (deptCanonicalMap.has(k)) {
+            allDeptsMap.set(k, deptCanonicalMap.get(k));
+          } else {
+            // Title case it because it's not in official depts
+            const titleCased = cleanName.replace(
+              /\w\S*/g,
+              (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+            );
+            allDeptsMap.set(k, titleCased);
+          }
+        }
       }
     });
 
@@ -617,7 +628,13 @@ export const getRecordsComparison = async (req, res) => {
       }
 
       if (department && department !== "all") {
-        query.$or = [{ school: department }, { program: department }];
+        const cleanDept = department.toString().trim();
+        const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const pattern = escaped
+          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+          .replace(/\s+/g, "\\s+");
+        const regexPattern = new RegExp(`^${pattern}$`, "i");
+        query.$or = [{ school: { $regex: regexPattern } }, { program: { $regex: regexPattern } }];
       }
 
       if (search.trim()) {
@@ -643,8 +660,42 @@ export const getRecordsComparison = async (req, res) => {
       }
 
       // Distinct schools for dropdown
-      const schools = await StudentRecord.distinct("school");
-      const cleanSchools = schools.filter(s => s && s.trim()).sort();
+      const [schools, officialDepts] = await Promise.all([
+        StudentRecord.distinct("school"),
+        Department.find({ isActive: true }).select("name").sort({ name: 1 })
+      ]);
+      const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+      
+      const officialMap = new Map();
+      if (Array.isArray(officialDepts)) {
+        officialDepts.forEach(d => {
+          const c = (d.name || "").replace(/\s+/g, " ").trim();
+          if (c) officialMap.set(normKey(c), c);
+        });
+      }
+
+      const compMap = new Map();
+      if (Array.isArray(schools)) {
+        schools.forEach(d => {
+          const c = (d || "").replace(/\s+/g, " ").trim();
+          if (c && !/^\d+$/.test(c)) { // Ignore purely numeric schools
+            const k = normKey(c);
+            if (!compMap.has(k)) {
+              if (officialMap.has(k)) {
+                compMap.set(k, officialMap.get(k));
+              } else {
+                // Title case it because it's not in official depts
+                const titleCased = c.replace(
+                  /\w\S*/g,
+                  (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+                );
+                compMap.set(k, titleCased);
+              }
+            }
+          }
+        });
+      }
+      const cleanSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
 
       // Export to Excel
       if (isExport === "true" || isExport === true) {
@@ -795,22 +846,33 @@ export const getRecordsComparison = async (req, res) => {
         Department.find({ isActive: true }).select("name").sort({ name: 1 })
       ]);
       const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
-      const compMap = new Map();
+      
+      const officialMap = new Map();
       if (Array.isArray(officialDepts)) {
         officialDepts.forEach(d => {
           const c = (d.name || "").replace(/\s+/g, " ").trim();
-          if (c) {
-            const k = normKey(c);
-            if (!compMap.has(k)) compMap.set(k, c);
-          }
+          if (c) officialMap.set(normKey(c), c);
         });
       }
+
+      const compMap = new Map();
       if (Array.isArray(allDistinctDepts)) {
         allDistinctDepts.forEach(d => {
           const c = (d || "").replace(/\s+/g, " ").trim();
-          if (c) {
+          if (c && !/^\d+$/.test(c)) { // Ignore purely numeric ones
             const k = normKey(c);
-            if (!compMap.has(k)) compMap.set(k, c);
+            if (!compMap.has(k)) {
+              if (officialMap.has(k)) {
+                compMap.set(k, officialMap.get(k));
+              } else {
+                // Title case it because it's not in official depts
+                const titleCased = c.replace(
+                  /\w\S*/g,
+                  (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+                );
+                compMap.set(k, titleCased);
+              }
+            }
           }
         });
       }
