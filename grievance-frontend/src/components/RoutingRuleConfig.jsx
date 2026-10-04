@@ -78,7 +78,34 @@ function RoutingRuleConfig({ department }) {
     }
   };
 
+  const handleModeChange = (newMode) => {
+    let updatedStaff = [...formData.assignedStaff];
+    if (newMode === "single" && updatedStaff.length > 1) {
+      updatedStaff = [updatedStaff[0]]; // keep only first selected
+    }
+    setFormData({
+      ...formData,
+      assignmentMode: newMode,
+      assignedStaff: updatedStaff
+    });
+  };
+
   const handleStaffToggle = (staffId, staffName, staffEmail) => {
+    if (formData.assignmentMode === "single") {
+      // In Single Assign, exactly 1 staff member is selected at a time
+      const isAlreadySelected = formData.assignedStaff.some(s => s.staffId === staffId);
+      if (isAlreadySelected) {
+        setFormData({ ...formData, assignedStaff: [] });
+      } else {
+        setFormData({
+          ...formData,
+          assignedStaff: [{ staffId, staffName, staffEmail: staffEmail || "", isAvailable: true }]
+        });
+      }
+      return;
+    }
+
+    // In Round Robin & Team Pool, multi-select is enabled
     const currentStaff = formData.assignedStaff.find(s => s.staffId === staffId);
     if (currentStaff) {
       setFormData({
@@ -96,8 +123,14 @@ function RoutingRuleConfig({ department }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (formData.assignedStaff.length === 0) {
-      setMessage("Please select at least one staff member");
+    if (formData.assignmentMode === "single") {
+      if (formData.assignedStaff.length !== 1) {
+        setMessage("For Single Assign mode, please select exactly 1 dedicated staff member.");
+        setMessageType("error");
+        return;
+      }
+    } else if (formData.assignedStaff.length === 0) {
+      setMessage("Please select at least one staff member.");
       setMessageType("error");
       return;
     }
@@ -109,7 +142,7 @@ function RoutingRuleConfig({ department }) {
         body: JSON.stringify({
           issueTypeId: formData.issueTypeId,
           department,
-          assignedStaff: formData.assignedStaff,
+          assignedStaff: formData.assignmentMode === "single" ? [formData.assignedStaff[0]] : formData.assignedStaff,
           assignmentMode: formData.assignmentMode,
           targetAudience: targetAudience
         })
@@ -164,9 +197,9 @@ function RoutingRuleConfig({ department }) {
 
   const getAssignmentModeLabel = (mode) => {
     switch (mode) {
-      case "single": return "Single Assign (First Available)";
-      case "round_robin": return "Round Robin (Load Balance)";
-      case "pool_accept": return "Pool Accept (First to Accept)";
+      case "single": return "🎯 Single (1 Dedicated)";
+      case "round_robin": return "🔄 Round Robin (Series Rotation)";
+      case "pool_accept": return "👥 Team Pool (First-to-Claim)";
       default: return mode;
     }
   };
@@ -283,7 +316,7 @@ function RoutingRuleConfig({ department }) {
               </label>
               <select
                 value={formData.assignmentMode}
-                onChange={(e) => setFormData({ ...formData, assignmentMode: e.target.value })}
+                onChange={(e) => handleModeChange(e.target.value)}
                 style={{
                   width: "100%",
                   padding: "10px 14px",
@@ -294,50 +327,117 @@ function RoutingRuleConfig({ department }) {
                   position: "relative"
                 }}
               >
-                <option value="single">Single Assign (First Available)</option>
-                <option value="round_robin">Round Robin (Load Balance)</option>
-                <option value="pool_accept">Pool Accept (First to Accept)</option>
+                <option value="single">🎯 Single Assign (Direct to 1 Dedicated Staff)</option>
+                <option value="round_robin">🔄 Round Robin (Series Rotation / Load Balance)</option>
+                <option value="pool_accept">👥 Team Pool Queue (Open for Team to Claim)</option>
               </select>
               <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "8px 0 0 8px" }}>
-                {formData.assignmentMode === "single" && "Grievances will always be assigned to the first available staff in the list."}
-                {formData.assignmentMode === "round_robin" && "Grievances will be distributed evenly among all selected staff."}
-                {formData.assignmentMode === "pool_accept" && "All selected staff will see the grievance, and the first to accept gets assigned."}
+                {formData.assignmentMode === "single" && "🎯 Direct: Every complaint for this issue will go directly to the 1 selected staff member."}
+                {formData.assignmentMode === "round_robin" && "🔄 Series Rotation: Complaints will cycle 1-by-1 across all selected staff in series to balance workload."}
+                {formData.assignmentMode === "pool_accept" && "👥 Open Queue: Stays in the 'Pool Accept Queue' for all selected staff; the first staff member to click 'Accept' takes it."}
               </p>
             </div>
 
             <div style={{ marginBottom: "15px" }}>
               <label style={{ display: "block", marginBottom: "10px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
-                Assign Staff ({formData.assignedStaff.length} selected)
+                {formData.assignmentMode === "single" ? (
+                  <>
+                    Select 1 Dedicated Staff Member{" "}
+                    <span style={{ color: formData.assignedStaff.length === 1 ? "#16a34a" : "#dc2626", fontWeight: "700" }}>
+                      ({formData.assignedStaff.length}/1 selected)
+                    </span>
+                    <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", fontWeight: "400", marginTop: "2px" }}>
+                      Single Assign requires exactly 1 staff member. Clicking a card will select only that person.
+                    </span>
+                  </>
+                ) : formData.assignmentMode === "round_robin" ? (
+                  <>
+                    Select Staff Team for Series Rotation & Load Balance{" "}
+                    <span style={{ color: formData.assignedStaff.length > 0 ? "#2563eb" : "#dc2626", fontWeight: "700" }}>
+                      ({formData.assignedStaff.length} selected)
+                    </span>
+                    <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", fontWeight: "400", marginTop: "2px" }}>
+                      Tickets will automatically rotate across these staff members (1-by-1 in series) to balance the load.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Select Staff Members for Open Pool Queue{" "}
+                    <span style={{ color: formData.assignedStaff.length > 0 ? "#059669" : "#dc2626", fontWeight: "700" }}>
+                      ({formData.assignedStaff.length} selected)
+                    </span>
+                    <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", fontWeight: "400", marginTop: "2px" }}>
+                      All selected staff will see incoming complaints in their Pool Queue and can accept them on first-come basis.
+                    </span>
+                  </>
+                )}
               </label>
               {departmentStaff.length === 0 ? (
                 <p style={{ color: "#64748b", fontSize: "0.9rem" }}>No staff available in this department</p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px" }}>
-                  {departmentStaff.map((staff) => (
-                    <div
-                      key={staff.id}
-                      onClick={() => handleStaffToggle(staff.id, staff.fullName, staff.email)}
-                      style={{
-                        padding: "10px 15px",
-                        borderRadius: "12px",
-                        border: formData.assignedStaff.find(s => s.staffId === staff.id)
-                          ? "2px solid #2563eb"
-                          : "1px solid #cbd5e1",
-                        background: formData.assignedStaff.find(s => s.staffId === staff.id)
-                          ? "#eff6ff"
-                          : "white",
-                        cursor: "pointer",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.9rem" }}>
-                        {staff.fullName}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "10px" }}>
+                  {departmentStaff.map((staff) => {
+                    const isSelected = !!formData.assignedStaff.find(s => s.staffId === staff.id);
+                    return (
+                      <div
+                        key={staff.id}
+                        onClick={() => handleStaffToggle(staff.id, staff.fullName, staff.email)}
+                        style={{
+                          padding: "10px 15px",
+                          borderRadius: "12px",
+                          border: isSelected
+                            ? "2px solid #2563eb"
+                            : "1px solid #cbd5e1",
+                          background: isSelected
+                            ? "#eff6ff"
+                            : "white",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center"
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.9rem" }}>
+                            {staff.fullName}
+                          </div>
+                          <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                            ID: {staff.id}
+                          </div>
+                        </div>
+                        {formData.assignmentMode === "single" ? (
+                          <div style={{
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            border: isSelected ? "5px solid #2563eb" : "2px solid #cbd5e1",
+                            background: "white",
+                            flexShrink: 0,
+                            transition: "all 0.15s ease"
+                          }} />
+                        ) : (
+                          <div style={{
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "4px",
+                            background: isSelected ? "#2563eb" : "white",
+                            border: isSelected ? "none" : "2px solid #cbd5e1",
+                            color: "white",
+                            fontSize: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            fontWeight: "bold",
+                            transition: "all 0.15s ease"
+                          }}>
+                            {isSelected ? "✓" : ""}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                        {staff.id}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

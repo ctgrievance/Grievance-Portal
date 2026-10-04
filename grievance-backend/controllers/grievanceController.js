@@ -336,28 +336,46 @@ async function sendAssignmentNotification(grievance, assignedStaff, isAuto = tru
 export const getPoolAcceptGrievances = async (req, res) => {
   try {
     const { staffId, department } = req.query;
-    
+    if (!department) return res.json([]);
+
+    const cleanDept = decodeURIComponent(department).trim();
+    const deptRegex = new RegExp(`^${cleanDept}$`, "i");
+
     // Find all routing rules with pool_accept mode for this department
     const RoutingRule = (await import("../models/RoutingRule.js")).default;
     const routingRules = await RoutingRule.find({
-      department,
+      department: { $regex: deptRegex },
       assignmentMode: "pool_accept",
       isActive: true
     }).populate('issueTypeId');
 
-    if (routingRules.length === 0) {
+    if (!routingRules || routingRules.length === 0) {
       return res.json([]);
     }
 
-    // Get all issue type IDs from routing rules
-    const issueTypeIds = routingRules.map(r => r.issueTypeId._id);
+    // Filter rules relevant to this staff member (if staffId provided)
+    const targetRules = staffId
+      ? routingRules.filter(r => r.assignedStaff?.some(s => String(s.staffId).trim() === String(staffId).trim() && s.isAvailable))
+      : routingRules;
+
+    // Get all valid issue type IDs from routing rules
+    const issueTypeIds = targetRules
+      .map(r => r.issueTypeId?._id || r.issueTypeId)
+      .filter(Boolean);
+
+    if (issueTypeIds.length === 0) {
+      return res.json([]);
+    }
 
     // Find grievances with these issue types that are still Pending
     const grievances = await Grievance.find({
+      category: { $regex: deptRegex },
       issueTypeId: { $in: issueTypeIds },
       status: "Pending",
       assignmentMode: "pool_accept"
-    }).sort({ createdAt: -1 });
+    })
+      .populate("issueTypeId", "issueName description")
+      .sort({ createdAt: -1 });
 
     res.json(grievances);
   } catch (err) {
@@ -374,14 +392,24 @@ export const acceptGrievance = async (req, res) => {
     const { grievanceId } = req.params;
     const { staffId, staffName } = req.body;
 
+    if (!staffId) {
+      return res.status(400).json({ message: "Staff ID is required to accept" });
+    }
+
     const grievance = await Grievance.findById(grievanceId);
     if (!grievance) {
       return res.status(404).json({ message: "Grievance not found" });
     }
 
     // Check if grievance is still available for acceptance
-    if (grievance.status !== "Pending" || grievance.assignmentMode !== "pool_accept") {
-      return res.status(400).json({ message: "Grievance is not available for acceptance" });
+    if (grievance.status !== "Pending" || grievance.assignmentMode !== "pool_accept" || grievance.assignedTo) {
+      return res.status(400).json({ message: "This grievance is no longer available in the pool (already accepted or resolved)." });
+    }
+
+    let resolvedName = staffName || "";
+    if (!resolvedName) {
+      const staffUser = await User.findOne({ id: staffId }) || await StaffUser.findOne({ id: staffId }) || await StaffRecord.findOne({ id: staffId });
+      if (staffUser) resolvedName = staffUser.fullName || staffUser.name || staffId;
     }
 
     // Assign to staff
@@ -390,15 +418,29 @@ export const acceptGrievance = async (req, res) => {
     grievance.assignedBy = "STAFF_ACCEPT";
     grievance.status = "Assigned";
     grievance.deadlineDate = calculateDeadline();
+    grievance.currentCustodian = {
+      department: grievance.category,
+      staffId: staffId,
+      staffName: resolvedName,
+      assignedAt: new Date(),
+      role: "staff"
+    };
+
+    if (!grievance.involvedStaff) grievance.involvedStaff = [];
+    if (!grievance.involvedStaff.includes(staffId)) {
+      grievance.involvedStaff.push(staffId);
+    }
 
     await grievance.save();
 
     // Update staff pool load
-    const StaffPool = (await import("../models/StaffPool.js")).default;
-    await StaffPool.findOneAndUpdate(
-      { staffId },
-      { $inc: { currentLoad: 1 } }
-    );
+    try {
+      const StaffPool = (await import("../models/StaffPool.js")).default;
+      await StaffPool.findOneAndUpdate(
+        { staffId },
+        { $inc: { currentLoad: 1 } }
+      );
+    } catch (_) {}
 
     res.json({ message: "Grievance accepted successfully", grievance });
   } catch (err) {

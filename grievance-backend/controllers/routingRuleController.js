@@ -3,6 +3,7 @@ import IssueType from "../models/IssueType.js";
 import StaffUser from "../models/StaffUser.js";
 import User from "../models/UserModel.js";
 import StaffRecord from "../models/StaffRecord.js";
+import Grievance from "../models/GrievanceModel.js";
 
 // Create Routing Rule
 export const createRoutingRule = async (req, res) => {
@@ -21,17 +22,23 @@ export const createRoutingRule = async (req, res) => {
 
     const audience = targetAudience || issueType.targetAudience || "student";
 
+    // For single assign mode, enforce exactly 1 staff member
+    const finalStaff = assignmentMode === "single" && Array.isArray(assignedStaff)
+      ? assignedStaff.slice(0, 1)
+      : assignedStaff;
+
     // Check if routing rule already exists for this issue type and department
-    const existingRule = await RoutingRule.findOne({ issueTypeId, department, isActive: true });
+    const deptRegex = new RegExp(`^${(department || "").trim()}$`, "i");
+    const existingRule = await RoutingRule.findOne({ issueTypeId, department: { $regex: deptRegex }, isActive: true });
     if (existingRule) {
-      return res.status(400).json({ message: "Routing rule already exists for this issue type and department" });
+      return res.status(400).json({ message: "An active routing rule already exists for this issue type in this department" });
     }
 
     const routingRule = new RoutingRule({
       issueTypeId,
-      department,
+      department: department.trim(),
       targetAudience: audience,
-      assignedStaff: assignedStaff.map(staff => ({
+      assignedStaff: finalStaff.map(staff => ({
         staffId: staff.staffId,
         staffName: staff.staffName,
         staffEmail: staff.staffEmail || "",
@@ -172,7 +179,13 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
   try {
     console.log(`🤖 Auto-assignment requested: issueTypeId=${issueTypeId}, department=${department}`);
     
-    const routingRule = await RoutingRule.findOne({ issueTypeId, department, isActive: true });
+    // Look up active routing rule with case-insensitive department matching
+    const deptRegex = new RegExp(`^${(department || "").trim()}$`, "i");
+    const routingRule = await RoutingRule.findOne({
+      issueTypeId,
+      department: { $regex: deptRegex },
+      isActive: true
+    });
     
     if (!routingRule) {
       console.log(`❌ No routing rule found for issueTypeId=${issueTypeId}, department=${department}`);
@@ -243,22 +256,43 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
     const mode = routingRule.assignmentMode;
 
     if (mode === "single") {
-      // Assign to first eligible available staff
+      // 🎯 1. SINGLE ASSIGN: Always assign directly to the 1 dedicated staff
       assignedStaff = validStaffCandidates[0];
     } else if (mode === "round_robin") {
-      // Find staff with lowest roundRobinIndex
-      assignedStaff = validStaffCandidates.reduce((min, staff) => 
-        staff.roundRobinIndex < min.roundRobinIndex ? staff : min
+      // 🔄 2. ROUND ROBIN (Series Rotation & Workload Balancing):
+      // Calculate current active ticket load for each candidate
+      const candidateStats = await Promise.all(
+        validStaffCandidates.map(async (candidate) => {
+          let activeCount = 0;
+          try {
+            activeCount = await Grievance.countDocuments({
+              assignedTo: candidate.staffId,
+              status: { $in: ["Pending", "Assigned", "In Progress", "In-Progress"] }
+            });
+          } catch (_) {}
+          return {
+            candidate,
+            rrIndex: Number(candidate.roundRobinIndex) || 0,
+            activeCount
+          };
+        })
       );
+
+      // Sort: 1st by lowest roundRobinIndex (series turn), 2nd by lowest activeCount (tie-breaker for load balance)
+      candidateStats.sort((a, b) => {
+        if (a.rrIndex !== b.rrIndex) return a.rrIndex - b.rrIndex;
+        return a.activeCount - b.activeCount;
+      });
+
+      assignedStaff = candidateStats[0].candidate;
       
-      // Increment roundRobinIndex for next assignment
+      // Increment roundRobinIndex for next assignment in series
       await RoutingRule.updateOne(
         { _id: routingRule._id, "assignedStaff.staffId": assignedStaff.staffId },
         { $inc: { "assignedStaff.$.roundRobinIndex": 1 } }
       );
     } else if (mode === "pool_accept") {
-      // In pool accept mode, we do NOT auto-assign to a specific staff.
-      // The grievance stays in a pool until a staff accepts it.
+      // 👥 3. OPEN TEAM POOL: Tickets stay in open queue for all assigned staff until one clicks Accept
       assignedStaff = { staffId: null, staffName: null };
     }
 

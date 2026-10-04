@@ -741,7 +741,7 @@ function AdminStaffDashboard() {
 
   //  Fetch Pool Accept Grievances
   useEffect(() => {
-    if (activeTab === "pool" && myDepartment) {
+    if (myDepartment) {
       fetchPoolGrievances();
     }
   }, [activeTab, myDepartment]);
@@ -991,7 +991,7 @@ function AdminStaffDashboard() {
         mobileTitle="Admin Staff Dashboard"
         tabs={[
           { id: "assigned", label: "My Assigned Tasks", IconComponent: ClipboardIcon, isVisible: true },
-          { id: "pool", label: "Pool Accept Queue", IconComponent: ClipboardIcon, isVisible: true },
+          { id: "pool", label: poolGrievances.length > 0 ? `Pool Accept Queue (${poolGrievances.length})` : "Pool Accept Queue", IconComponent: ClipboardIcon, isVisible: true },
           { id: "ratings", label: `My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
           { 
             id: "records_users_group", 
