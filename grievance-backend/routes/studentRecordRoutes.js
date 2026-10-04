@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { verifyToken } from "../middleware/verifyToken.js";
@@ -19,11 +20,17 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Temp storage for uploaded Excel files
+// Temp storage for uploaded Excel files (safe for local & serverless like Vercel/AWS Lambda)
 const tempStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const tempDir = path.join(__dirname, "../uploads/temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    const tempDir = path.join(os.tmpdir(), "uploads_temp");
+    if (!fs.existsSync(tempDir)) {
+      try {
+        fs.mkdirSync(tempDir, { recursive: true });
+      } catch (err) {
+        return cb(err);
+      }
+    }
     cb(null, tempDir);
   },
   filename: (req, file, cb) => {

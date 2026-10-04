@@ -557,11 +557,13 @@ app.post("/api/admin/upload-records", verifyToken, upload.single("file"), async 
 // A1. Get list of uploaded files (placeholder - needs file tracking implementation)
 app.get("/api/admin/uploaded-files", verifyToken, async (req, res) => {
   try {
-    const uploadsDir = path.join(__dirname, 'uploads');
+    const uploadsDir = process.env.VERCEL ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, 'uploads');
 
     // Create uploads directory if it doesn't exist
     if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+      try {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      } catch (_) {}
     }
 
     const files = fs.readdirSync(uploadsDir).map(filename => {
