@@ -1,6 +1,7 @@
 import StudentRecord from "../models/StudentRecord.js";
 import StudentUser from "../models/StudentUser.js";
 import User from "../models/UserModel.js";
+import UploadJob from "../models/UploadJob.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import { logAuditAction } from "../utils/AuditService.js";
@@ -78,6 +79,7 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
       job.deleted = deleted;
       job.processed = rows.length;
       uploadJobs.set(jobId, job);
+      UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
       console.log(`🗑️ [StudentRecord] Mode 'remove': Deleted ${deleted} student records.`);
       return;
     }
@@ -168,6 +170,7 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
       job.skipped = skipped;
       job.processed = Math.min(i + BATCH, rows.length);
       uploadJobs.set(jobId, job);
+      UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
     }
 
     job.status = "done";
@@ -181,12 +184,14 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
       console.log("⚠️ Skipped rows samples:", skippedRows.slice(0, 10));
     }
     uploadJobs.set(jobId, job);
+    await UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
   } catch (err) {
     const job = uploadJobs.get(jobId);
     if (job) {
       job.status = "error";
       job.errorMessage = err.message;
       uploadJobs.set(jobId, job);
+      UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
     }
   }
 };
@@ -260,7 +265,9 @@ export const uploadStudentRecords = async (req, res) => {
 
     // Create job
     const jobId = `job_${Date.now()}`;
-    uploadJobs.set(jobId, {
+    const jobData = {
+      jobId,
+      type: "student",
       status: "processing",
       mode,
       total: allRows.length,
@@ -274,7 +281,9 @@ export const uploadStudentRecords = async (req, res) => {
       errors: [],
       detectedHeaders,
       startedAt: Date.now(),
-    });
+    };
+    uploadJobs.set(jobId, jobData);
+    UploadJob.create(jobData).catch(err => console.error("UploadJob create error:", err.message));
 
     // Return immediately with jobId
     res.json({
@@ -295,27 +304,41 @@ export const uploadStudentRecords = async (req, res) => {
 };
 
 // ✅ GET progress for a specific upload job
-export const getUploadProgress = (req, res) => {
-  const { jobId } = req.params;
-  const job = uploadJobs.get(jobId);
-  if (!job) return res.status(404).json({ message: "Job not found" });
-  res.json(job);
+export const getUploadProgress = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    let job = uploadJobs.get(jobId);
+    if (!job) {
+      job = await UploadJob.findOne({ jobId }).lean();
+    }
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    res.json(job);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to get upload progress", error: error.message });
+  }
 };
 
 // ✅ Add a single student record
 export const addStudentRecord = async (req, res) => {
   try {
     const { id, ctuId, fullName, email, phone, program, studentType, school, batch } = req.body;
-    if (!id) return res.status(400).json({ message: "Student ID / Reg No is required" });
-    const exists = await StudentRecord.findOne({ id: id.trim().toUpperCase() });
+    const finalId = (id || ctuId || "").toString().trim().toUpperCase();
+    const finalCtuId = (ctuId || id || "").toString().trim().toUpperCase();
+    if (!finalId) return res.status(400).json({ message: "Student ID / Reg No is required" });
+    const exists = await StudentRecord.findOne({ id: finalId });
     if (exists) return res.status(400).json({ message: "Student ID / Reg No already exists" });
     const record = await StudentRecord.create({
-      id: id.trim().toUpperCase(), ctuId: ctuId || null,
-      fullName: fullName || "", email: (email || "").toLowerCase().trim(), phone: phone || "",
-      program: program || "", studentType: studentType || "", school: school || "",
-      batch: batch || "",
+      id: finalId,
+      ctuId: finalCtuId || null,
+      fullName: (fullName || "").trim(),
+      email: (email || "").toLowerCase().trim(),
+      phone: (phone || "").trim(),
+      program: (program || "").trim(),
+      studentType: (studentType || "").trim(),
+      school: (school || "").trim(),
+      batch: (batch || "").trim(),
     });
-    res.status(201).json({ message: "Student record added", record });
+    res.status(201).json({ message: "Student record added successfully", record });
   } catch (error) {
     res.status(500).json({ message: "Failed to add record", error: error.message });
   }

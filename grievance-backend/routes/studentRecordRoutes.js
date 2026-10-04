@@ -57,8 +57,8 @@ router.get("/", verifyToken, getAllStudentRecords);
 // POST /api/student-records/upload  — Excel bulk upload (returns jobId instantly)
 router.post("/upload", verifyToken, upload.single("file"), uploadStudentRecords);
 
-// GET /api/student-records/progress/:jobId  — real-time progress polling
-router.get("/progress/:jobId", verifyToken, getUploadProgress);
+// GET /api/student-records/progress/:jobId  — real-time progress polling (unrestricted by jobId)
+router.get("/progress/:jobId", getUploadProgress);
 
 // POST /api/student-records  — add single record
 router.post("/", verifyToken, addStudentRecord);

@@ -90,11 +90,25 @@ const AdminStudentRecords = () => {
 
   const startPolling = (jobId, totalRows) => {
     startRef.current = Date.now();
+    let consecutiveErrors = 0;
     pollRef.current = setInterval(async () => {
       try {
-        const res  = await fetch(`${BASE}/progress/${jobId}`);
+        const currentToken = localStorage.getItem("grievance_token") || token;
+        const res  = await fetch(`${BASE}/progress/${jobId}`, {
+          headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {}
+        });
+        
+        if (!res.ok) {
+          consecutiveErrors++;
+          if (consecutiveErrors >= 6) {
+            stopPoll();
+            fetchRecords();
+          }
+          return;
+        }
+
+        consecutiveErrors = 0;
         const data = await res.json();
-        if (!res.ok) { stopPoll(); return; }
 
         const elapsed = (Date.now() - startRef.current) / 1000;
         const speed   = elapsed > 0 ? Math.round(data.inserted / elapsed) : 0;
@@ -132,7 +146,13 @@ const AdminStudentRecords = () => {
             showMsg(`❌ Upload failed: ${data.errorMessage || "Unknown error"}`, "error");
           }
         }
-      } catch (_) { /* ignore poll errors */ }
+      } catch (_) {
+        consecutiveErrors++;
+        if (consecutiveErrors >= 6) {
+          stopPoll();
+          fetchRecords();
+        }
+      }
     }, 500);
   };
 
@@ -257,19 +277,22 @@ const AdminStudentRecords = () => {
   };
 
   const handleAddNew = async () => {
-    if (!newRow.id || !newRow.fullName) {
+    const finalId = (newRow.id || newRow.ctuId || "").trim();
+    const finalCtuId = (newRow.ctuId || newRow.id || "").trim();
+    if (!finalId || !newRow.fullName) {
       showMsg("Student ID and Full Name are required", "error");
       return;
     }
 
     try {
+      const currentToken = localStorage.getItem("grievance_token") || token;
       const res = await fetch(BASE, {
          method: "POST",
          headers: { 
            "Content-Type": "application/json",
-           Authorization: `Bearer ${token}`
+           ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {})
          },
-         body: JSON.stringify(newRow)
+         body: JSON.stringify({ ...newRow, id: finalId, ctuId: finalCtuId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to add");

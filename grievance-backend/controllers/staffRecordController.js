@@ -1,6 +1,7 @@
 import StaffRecord from "../models/StaffRecord.js";
 import StaffUser from "../models/StaffUser.js";
 import User from "../models/UserModel.js";
+import UploadJob from "../models/UploadJob.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import { logAuditAction } from "../utils/AuditService.js";
@@ -93,7 +94,9 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
       job.status = "done";
       job.deleted = deleted;
       job.processed = rows.length;
+      job.completedAt = Date.now();
       uploadJobs.set(jobId, job);
+      UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
       console.log(`🗑️ [StaffRecord] Mode 'remove': Deleted ${deleted} staff records.`);
       return;
     }
@@ -217,6 +220,7 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
       job.skipped = skipped;
       job.processed = Math.min(i + BATCH, rows.length);
       uploadJobs.set(jobId, job);
+      UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
     }
 
     job.status = "done";
@@ -227,12 +231,14 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
     job.skippedRows = skippedRows;
     console.log("⚠️ Skipped rows count:", skippedRows.length);
     uploadJobs.set(jobId, job);
+    await UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
   } catch (err) {
     const job = uploadJobs.get(jobId);
     if (job) {
       job.status = "error";
       job.errorMessage = err.message;
       uploadJobs.set(jobId, job);
+      UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
     }
   }
 };
@@ -302,24 +308,24 @@ export const getAllRecords = async (req, res) => {
 export const addRecord = async (req, res) => {
   try {
     const { id, fullName, email, phone, role, department, staffType } = req.body;
-    
-    if (!id || !role) {
-      return res.status(400).json({ message: "ID and Role are required" });
+    const cleanId = (id || "").toString().trim().toUpperCase();
+    const finalName = (fullName || req.body.name || "").toString().trim();
+    if (!cleanId || !finalName) {
+      return res.status(400).json({ message: "Staff ID and Full Name are required" });
     }
 
-    // Check if ID already exists
-    const existing = await StaffRecord.findOne({ id: id.toString().trim().toUpperCase() });
+    const existing = await StaffRecord.findOne({ id: cleanId });
     if (existing) {
       return res.status(400).json({ message: "Staff ID already exists" });
     }
 
     const record = new StaffRecord({
-      id: id.toString().trim().toUpperCase(),
-      fullName,
-      email,
-      phone,
-      role: role.toLowerCase(),
-      department,
+      id: cleanId,
+      fullName: finalName,
+      email: (email || "").toLowerCase().trim(),
+      phone: (phone || "").trim(),
+      role: (role || "staff").toLowerCase().trim(),
+      department: (department || "").trim(),
       staffType: staffType === "Teaching" ? "Teaching" : "Non-Teaching"
     });
 
@@ -327,7 +333,7 @@ export const addRecord = async (req, res) => {
     res.status(201).json({ message: "Staff record added successfully", record });
   } catch (error) {
     console.error("Add Record Error:", error);
-    res.status(500).json({ message: "Failed to add staff record", error });
+    res.status(500).json({ message: "Failed to add staff record", error: error.message || error });
   }
 };
 
@@ -464,7 +470,9 @@ export const uploadStaffRecords = async (req, res) => {
     console.log(`📊 Multi-Sheet Excel: ${sheetNames.length} tabs found (${sheetNames.join(", ")}). Total rows: ${allRows.length}. Mode: ${mode}`);
 
     const jobId = `job_${Date.now()}`;
-    uploadJobs.set(jobId, {
+    const jobData = {
+      jobId,
+      type: "staff",
       status: "processing",
       mode,
       total: allRows.length,
@@ -478,7 +486,9 @@ export const uploadStaffRecords = async (req, res) => {
       errors: [],
       detectedHeaders,
       startedAt: Date.now(),
-    });
+    };
+    uploadJobs.set(jobId, jobData);
+    UploadJob.create(jobData).catch(err => console.error("UploadJob create error:", err.message));
 
     res.json({
       jobId,
@@ -497,11 +507,18 @@ export const uploadStaffRecords = async (req, res) => {
 };
 
 // GET progress for a specific upload job
-export const getUploadProgress = (req, res) => {
-  const { jobId } = req.params;
-  const job = uploadJobs.get(jobId);
-  if (!job) return res.status(404).json({ message: "Job not found" });
-  res.json(job);
+export const getUploadProgress = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    let job = uploadJobs.get(jobId);
+    if (!job) {
+      job = await UploadJob.findOne({ jobId }).lean();
+    }
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    res.json(job);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to get upload progress", error: error.message });
+  }
 };
 
 // Clear ALL staff records

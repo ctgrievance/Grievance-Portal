@@ -112,11 +112,25 @@ function StaffRecordsTab() {
 
   const startPolling = (jobId, totalRows) => {
     startRef.current = Date.now();
+    let consecutiveErrors = 0;
     pollRef.current = setInterval(async () => {
       try {
-        const res  = await fetch(`${BASE}/progress/${jobId}`);
+        const currentToken = localStorage.getItem("grievance_token") || token;
+        const res  = await fetch(`${BASE}/progress/${jobId}`, {
+          headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {}
+        });
+        
+        if (!res.ok) {
+          consecutiveErrors++;
+          if (consecutiveErrors >= 6) {
+            stopPoll();
+            fetchRecords();
+          }
+          return;
+        }
+
+        consecutiveErrors = 0;
         const data = await res.json();
-        if (!res.ok) { stopPoll(); return; }
 
         const elapsed = (Date.now() - startRef.current) / 1000;
         const speed   = elapsed > 0 ? Math.round(data.inserted / elapsed) : 0;
@@ -154,7 +168,13 @@ function StaffRecordsTab() {
             showMsg(`❌ Upload failed: ${data.errorMessage || "Unknown error"}`, "error");
           }
         }
-      } catch (_) { /* ignore poll errors */ }
+      } catch (_) {
+        consecutiveErrors++;
+        if (consecutiveErrors >= 6) {
+          stopPoll();
+          fetchRecords();
+        }
+      }
     }, 500);
   };
 
@@ -269,26 +289,29 @@ function StaffRecordsTab() {
   };
 
   const handleAddNew = async () => {
-    if (!newRow.id || !newRow.fullName) {
+    const finalId = (newRow.id || "").trim().toUpperCase();
+    const finalName = (newRow.fullName || "").trim();
+    if (!finalId || !finalName) {
       showMsg("Staff ID and Full Name are required", "error");
       return;
     }
 
     try {
+      const currentToken = localStorage.getItem("grievance_token") || token;
       const res = await fetch(BASE, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {})
         },
-        body: JSON.stringify(newRow)
+        body: JSON.stringify({ ...newRow, id: finalId, fullName: finalName })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to add record");
 
       showMsg("New staff record added successfully", "success");
       setIsAdding(false);
-      setNewRow({ id: "", fullName: "", email: "", phone: "", role: "staff", department: "" });
+      setNewRow({ id: "", fullName: "", email: "", phone: "", role: "staff", department: "", staffType: "Non-Teaching" });
       fetchRecords();
     } catch (err) {
       showMsg(err.message, "error");
