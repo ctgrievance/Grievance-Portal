@@ -617,44 +617,73 @@ export const getRecordsComparison = async (req, res) => {
     };
 
     if (isStudents) {
-      // 1️⃣ Fetch all registered student IDs and their metadata map
+      // 1️⃣ Fetch all registered student IDs and emails
       const registeredStudents = await StudentUser.find(verifiedCondition)
         .select("id ctuId fullName email phone createdAt updatedAt isVerified")
         .lean();
-      
+
       const registeredMap = new Map();
       const registeredIdsSet = new Set();
+      const registeredEmailsSet = new Set();
+
       for (const u of registeredStudents) {
         if (u.id) {
-          const upId = u.id.toUpperCase();
-          registeredMap.set(upId, u);
-          registeredIdsSet.add(upId);
+          const raw = String(u.id).trim();
+          if (raw) {
+            registeredMap.set(raw.toUpperCase(), u);
+            registeredIdsSet.add(raw);
+            registeredIdsSet.add(raw.toUpperCase());
+            registeredIdsSet.add(raw.toLowerCase());
+          }
         }
         if (u.ctuId) {
-          const upCtu = u.ctuId.toUpperCase();
-          registeredMap.set(upCtu, u);
-          registeredIdsSet.add(upCtu);
+          const raw = String(u.ctuId).trim();
+          if (raw) {
+            registeredMap.set(raw.toUpperCase(), u);
+            registeredIdsSet.add(raw);
+            registeredIdsSet.add(raw.toUpperCase());
+            registeredIdsSet.add(raw.toLowerCase());
+          }
+        }
+        if (u.email) {
+          const cleanEmail = String(u.email).trim().toLowerCase();
+          if (cleanEmail) {
+            registeredMap.set(cleanEmail, u);
+            registeredEmailsSet.add(cleanEmail);
+          }
         }
       }
       const registeredIds = Array.from(registeredIdsSet);
+      const registeredEmails = Array.from(registeredEmailsSet);
 
-      // 2️⃣ Base counts for StudentRecord
-      const totalRecords = await StudentRecord.countDocuments({});
-      const totalRegistered = await StudentRecord.countDocuments({
-        $or: [{ id: { $in: registeredIds } }, { ctuId: { $in: registeredIds } }]
-      });
-      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
-      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
-
-      // 3️⃣ Build query filter for StudentRecord
-      const query = {};
-
-      if (status === "registered") {
-        query.$or = [{ id: { $in: registeredIds } }, { ctuId: { $in: registeredIds } }];
-      } else if (status === "not_registered") {
-        query.id = { $nin: registeredIds };
-        query.ctuId = { $nin: registeredIds };
+      // Student Registered and Not-Registered MongoDB query blocks
+      const studentRegisteredOr = [
+        { id: { $in: registeredIds } },
+        { ctuId: { $in: registeredIds } }
+      ];
+      if (registeredEmails.length > 0) {
+        studentRegisteredOr.push({ email: { $in: registeredEmails } });
       }
+      const studentRegisteredCondition = { $or: studentRegisteredOr };
+
+      const studentNotRegisteredAnd = [
+        { id: { $nin: registeredIds } },
+        { ctuId: { $nin: registeredIds } }
+      ];
+      if (registeredEmails.length > 0) {
+        studentNotRegisteredAnd.push({
+          $or: [
+            { email: { $exists: false } },
+            { email: null },
+            { email: "" },
+            { email: { $nin: registeredEmails } }
+          ]
+        });
+      }
+      const studentNotRegisteredCondition = { $and: studentNotRegisteredAnd };
+
+      // Context conditions (department/school + search)
+      const contextConditions = [];
 
       if (department && department !== "all") {
         const cleanDept = department.toString().trim();
@@ -663,30 +692,53 @@ export const getRecordsComparison = async (req, res) => {
           .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
           .replace(/\s+/g, "\\s+");
         const regexPattern = new RegExp(`^${pattern}$`, "i");
-        query.$or = [{ school: { $regex: regexPattern } }, { program: { $regex: regexPattern } }];
+        contextConditions.push({
+          $or: [
+            { school: { $regex: regexPattern } },
+            { program: { $regex: regexPattern } }
+          ]
+        });
       }
 
-      if (search.trim()) {
+      if (search && search.trim()) {
         const q = search.trim();
         const regex = new RegExp(q, "i");
-        const searchConditions = [
-          { id: regex },
-          { ctuId: regex },
-          { fullName: regex },
-          { email: regex },
-          { phone: regex },
-          { school: regex },
-          { program: regex },
-          { batch: regex },
-          { studentType: regex }
-        ];
-        if (query.$or) {
-          query.$and = [{ $or: query.$or }, { $or: searchConditions }];
-          delete query.$or;
-        } else {
-          query.$or = searchConditions;
-        }
+        contextConditions.push({
+          $or: [
+            { id: regex },
+            { ctuId: regex },
+            { fullName: regex },
+            { email: regex },
+            { phone: regex },
+            { school: regex },
+            { program: regex },
+            { batch: regex },
+            { studentType: regex }
+          ]
+        });
       }
+
+      const baseContextQuery = contextConditions.length > 0 ? { $and: contextConditions } : {};
+      const registeredContextQuery = contextConditions.length > 0
+        ? { $and: [...contextConditions, studentRegisteredCondition] }
+        : studentRegisteredCondition;
+
+      // Dynamic counts within current context (school + search)
+      const [totalRecords, totalRegistered] = await Promise.all([
+        StudentRecord.countDocuments(baseContextQuery),
+        StudentRecord.countDocuments(registeredContextQuery)
+      ]);
+      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
+      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
+
+      // Final query including status filter
+      const finalConditions = [...contextConditions];
+      if (status === "registered") {
+        finalConditions.push(studentRegisteredCondition);
+      } else if (status === "not_registered") {
+        finalConditions.push(studentNotRegisteredCondition);
+      }
+      const finalQuery = finalConditions.length > 0 ? { $and: finalConditions } : {};
 
       // Distinct schools for dropdown
       const [schools, officialDepts] = await Promise.all([
@@ -713,7 +765,6 @@ export const getRecordsComparison = async (req, res) => {
               if (officialMap.has(k)) {
                 compMap.set(k, officialMap.get(k));
               } else {
-                // Title case it because it's not in official depts
                 const titleCased = c.replace(
                   /\w\S*/g,
                   (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
@@ -728,11 +779,15 @@ export const getRecordsComparison = async (req, res) => {
 
       // Export to Excel
       if (isExport === "true" || isExport === true) {
-        const allMatching = await StudentRecord.find(query).sort({ id: 1 }).lean();
+        const allMatching = await StudentRecord.find(finalQuery).sort({ id: 1 }).lean();
         const exportData = allMatching.map((rec, idx) => {
-          const recId = rec.id ? rec.id.toUpperCase() : "";
-          const recCtu = rec.ctuId ? rec.ctuId.toUpperCase() : "";
-          const regInfo = (recId && registeredMap.get(recId)) || (recCtu && registeredMap.get(recCtu));
+          const recId = rec.id ? String(rec.id).trim().toUpperCase() : "";
+          const recCtu = rec.ctuId ? String(rec.ctuId).trim().toUpperCase() : "";
+          const recEmail = rec.email ? String(rec.email).trim().toLowerCase() : "";
+          const regInfo = (recId && registeredMap.get(recId)) ||
+                          (recCtu && registeredMap.get(recCtu)) ||
+                          (recEmail && registeredMap.get(recEmail)) ||
+                          null;
           return {
             "S.No": idx + 1,
             "Student ID": rec.id || "",
@@ -761,17 +816,21 @@ export const getRecordsComparison = async (req, res) => {
         return res.send(buffer);
       }
 
-      const totalFiltered = await StudentRecord.countDocuments(query);
-      const rawRecords = await StudentRecord.find(query)
+      const totalFiltered = await StudentRecord.countDocuments(finalQuery);
+      const rawRecords = await StudentRecord.find(finalQuery)
         .sort({ createdAt: -1, id: 1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .lean();
 
       const records = rawRecords.map(rec => {
-        const recId = rec.id ? rec.id.toUpperCase() : "";
-        const recCtu = rec.ctuId ? rec.ctuId.toUpperCase() : "";
-        const regInfo = (recId && registeredMap.get(recId)) || (recCtu && registeredMap.get(recCtu));
+        const recId = rec.id ? String(rec.id).trim().toUpperCase() : "";
+        const recCtu = rec.ctuId ? String(rec.ctuId).trim().toUpperCase() : "";
+        const recEmail = rec.email ? String(rec.email).trim().toLowerCase() : "";
+        const regInfo = (recId && registeredMap.get(recId)) ||
+                        (recCtu && registeredMap.get(recCtu)) ||
+                        (recEmail && registeredMap.get(recEmail)) ||
+                        null;
         return {
           ...rec,
           isRegistered: !!regInfo,
@@ -804,43 +863,54 @@ export const getRecordsComparison = async (req, res) => {
 
       const registeredMap = new Map();
       const registeredIdsSet = new Set();
+      const registeredEmailsSet = new Set();
+
       for (const u of registeredStaff) {
         if (u.id) {
-          const upId = u.id.toUpperCase();
-          registeredMap.set(upId, u);
-          registeredIdsSet.add(upId);
+          const raw = String(u.id).trim();
+          if (raw) {
+            registeredMap.set(raw.toUpperCase(), u);
+            registeredIdsSet.add(raw);
+            registeredIdsSet.add(raw.toUpperCase());
+            registeredIdsSet.add(raw.toLowerCase());
+          }
         }
         if (u.email) {
-          registeredMap.set(u.email.toLowerCase(), u);
+          const cleanEmail = String(u.email).trim().toLowerCase();
+          if (cleanEmail) {
+            registeredMap.set(cleanEmail, u);
+            registeredEmailsSet.add(cleanEmail);
+          }
         }
       }
       const registeredIds = Array.from(registeredIdsSet);
+      const registeredEmails = Array.from(registeredEmailsSet);
 
-      // Base category filter
-      const baseStaffFilter = {};
-      const cleanStaffType = (staffType || "all").toString().trim();
-      if (cleanStaffType.toLowerCase() === "teaching") {
-        baseStaffFilter.staffType = "Teaching";
-      } else if (cleanStaffType.toLowerCase() === "non-teaching" || cleanStaffType.toLowerCase() === "non_teaching") {
-        baseStaffFilter.staffType = { $ne: "Teaching" };
+      const staffRegisteredOr = [
+        { id: { $in: registeredIds } }
+      ];
+      if (registeredEmails.length > 0) {
+        staffRegisteredOr.push({ email: { $in: registeredEmails } });
       }
+      const staffRegisteredCondition = { $or: staffRegisteredOr };
 
-      const [totalRecords, totalRegistered, totalTeaching, totalNonTeaching] = await Promise.all([
-        StaffRecord.countDocuments(baseStaffFilter),
-        StaffRecord.countDocuments({ ...baseStaffFilter, id: { $in: registeredIds } }),
-        StaffRecord.countDocuments({ staffType: "Teaching" }),
-        StaffRecord.countDocuments({ staffType: { $ne: "Teaching" } })
-      ]);
-      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
-      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
-
-      const query = { ...baseStaffFilter };
-
-      if (status === "registered") {
-        query.id = { $in: registeredIds };
-      } else if (status === "not_registered") {
-        query.id = { $nin: registeredIds };
+      const staffNotRegisteredAnd = [
+        { id: { $nin: registeredIds } }
+      ];
+      if (registeredEmails.length > 0) {
+        staffNotRegisteredAnd.push({
+          $or: [
+            { email: { $exists: false } },
+            { email: null },
+            { email: "" },
+            { email: { $nin: registeredEmails } }
+          ]
+        });
       }
+      const staffNotRegisteredCondition = { $and: staffNotRegisteredAnd };
+
+      // Context conditions (department + search)
+      const deptSearchConditions = [];
 
       if (department && department !== "all") {
         const cleanDept = department.toString().trim();
@@ -848,27 +918,70 @@ export const getRecordsComparison = async (req, res) => {
         const pattern = escaped
           .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
           .replace(/\s+/g, "\\s+");
-        query.department = { $regex: new RegExp(`^${pattern}$`, "i") };
+        deptSearchConditions.push({ department: { $regex: new RegExp(`^${pattern}$`, "i") } });
       }
 
-      if (search.trim()) {
+      if (search && search.trim()) {
         const q = search.trim();
         const regex = new RegExp(q, "i");
-        const searchConditions = [
-          { id: regex },
-          { fullName: regex },
-          { email: regex },
-          { phone: regex },
-          { department: regex },
-          { role: regex }
-        ];
-        if (query.$or) {
-          query.$and = [{ $or: query.$or }, { $or: searchConditions }];
-          delete query.$or;
-        } else {
-          query.$or = searchConditions;
-        }
+        deptSearchConditions.push({
+          $or: [
+            { id: regex },
+            { fullName: regex },
+            { email: regex },
+            { phone: regex },
+            { department: regex },
+            { role: regex }
+          ]
+        });
       }
+
+      // Category filter condition
+      const cleanStaffType = (staffType || "all").toString().trim();
+      let categoryCondition = null;
+      if (cleanStaffType.toLowerCase() === "teaching") {
+        categoryCondition = { staffType: "Teaching" };
+      } else if (cleanStaffType.toLowerCase() === "non-teaching" || cleanStaffType.toLowerCase() === "non_teaching") {
+        categoryCondition = { staffType: { $ne: "Teaching" } };
+      }
+
+      // Dynamic counts for Category pills (Teaching vs Non-Teaching within active department & search)
+      const teachingQuery = deptSearchConditions.length > 0
+        ? { $and: [...deptSearchConditions, { staffType: "Teaching" }] }
+        : { staffType: "Teaching" };
+
+      const nonTeachingQuery = deptSearchConditions.length > 0
+        ? { $and: [...deptSearchConditions, { staffType: { $ne: "Teaching" } }] }
+        : { staffType: { $ne: "Teaching" } };
+
+      // Active category scope
+      const activeCategoryConditions = [...deptSearchConditions];
+      if (categoryCondition) {
+        activeCategoryConditions.push(categoryCondition);
+      }
+      const activeCategoryQuery = activeCategoryConditions.length > 0 ? { $and: activeCategoryConditions } : {};
+
+      const registeredCategoryQuery = activeCategoryConditions.length > 0
+        ? { $and: [...activeCategoryConditions, staffRegisteredCondition] }
+        : staffRegisteredCondition;
+
+      const [totalTeaching, totalNonTeaching, totalRecords, totalRegistered] = await Promise.all([
+        StaffRecord.countDocuments(teachingQuery),
+        StaffRecord.countDocuments(nonTeachingQuery),
+        StaffRecord.countDocuments(activeCategoryQuery),
+        StaffRecord.countDocuments(registeredCategoryQuery)
+      ]);
+      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
+      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
+
+      // Final query for staff table & export
+      const finalStaffConditions = [...activeCategoryConditions];
+      if (status === "registered") {
+        finalStaffConditions.push(staffRegisteredCondition);
+      } else if (status === "not_registered") {
+        finalStaffConditions.push(staffNotRegisteredCondition);
+      }
+      const finalStaffQuery = finalStaffConditions.length > 0 ? { $and: finalStaffConditions } : {};
 
       const [allDistinctDepts, officialDepts] = await Promise.all([
         StaffRecord.distinct("department"),
@@ -894,7 +1007,6 @@ export const getRecordsComparison = async (req, res) => {
               if (officialMap.has(k)) {
                 compMap.set(k, officialMap.get(k));
               } else {
-                // Title case it because it's not in official depts
                 const titleCased = c.replace(
                   /\w\S*/g,
                   (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
@@ -908,11 +1020,13 @@ export const getRecordsComparison = async (req, res) => {
       const cleanDepartments = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
 
       if (isExport === "true" || isExport === true) {
-        const allMatching = await StaffRecord.find(query).sort({ id: 1 }).lean();
+        const allMatching = await StaffRecord.find(finalStaffQuery).sort({ id: 1 }).lean();
         const exportData = allMatching.map((rec, idx) => {
-          const recId = rec.id ? rec.id.toUpperCase() : "";
-          const recEmail = rec.email ? rec.email.toLowerCase() : "";
-          const regInfo = (recId && registeredMap.get(recId)) || (recEmail && registeredMap.get(recEmail));
+          const recId = rec.id ? String(rec.id).trim().toUpperCase() : "";
+          const recEmail = rec.email ? String(rec.email).trim().toLowerCase() : "";
+          const regInfo = (recId && registeredMap.get(recId)) ||
+                          (recEmail && registeredMap.get(recEmail)) ||
+                          null;
           return {
             "S.No": idx + 1,
             "Staff ID": rec.id || "",
@@ -940,17 +1054,19 @@ export const getRecordsComparison = async (req, res) => {
         return res.send(buffer);
       }
 
-      const totalFiltered = await StaffRecord.countDocuments(query);
-      const rawRecords = await StaffRecord.find(query)
+      const totalFiltered = await StaffRecord.countDocuments(finalStaffQuery);
+      const rawRecords = await StaffRecord.find(finalStaffQuery)
         .sort({ createdAt: -1, id: 1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .lean();
 
       const records = rawRecords.map(rec => {
-        const recId = rec.id ? rec.id.toUpperCase() : "";
-        const recEmail = rec.email ? rec.email.toLowerCase() : "";
-        const regInfo = (recId && registeredMap.get(recId)) || (recEmail && registeredMap.get(recEmail));
+        const recId = rec.id ? String(rec.id).trim().toUpperCase() : "";
+        const recEmail = rec.email ? String(rec.email).trim().toLowerCase() : "";
+        const regInfo = (recId && registeredMap.get(recId)) ||
+                        (recEmail && registeredMap.get(recEmail)) ||
+                        null;
         return {
           ...rec,
           isRegistered: !!regInfo,
