@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import RegisteredStudentsTab from "./RegisteredStudentsTab";
 import RegisteredStaffTab from "./RegisteredStaffTab";
 import RecordsComparisonTab from "./RecordsComparisonTab";
-import { DownloadIcon, GraduationCapIcon, UsersIcon, AlertCircleIcon, CheckCircleIcon } from "./Icons";
+import { DownloadIcon, GraduationCapIcon, UsersIcon, AlertCircleIcon, CheckCircleIcon, FileIcon } from "./Icons";
+import AuditLogsModal from "./AuditLogsModal";
 
 /**
  * RegisteredUsersView
@@ -28,6 +29,7 @@ function RegisteredUsersView({
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState("");
   const [exportMsgType, setExportMsgType] = useState("success");
+  const [showLogs, setShowLogs] = useState(false);
 
   // Keep activeSubTab in sync if permissions change
   useEffect(() => {
@@ -120,22 +122,57 @@ function RegisteredUsersView({
           )}
         </div>
 
-        {/* Export Button (Available to Super Admin) */}
-        {isSuperAdmin && (
-          <div className="reg-users-export-wrapper">
+        {/* Top Right Actions */}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {isSuperAdmin && (
             <button
               type="button"
-              className="reg-users-export-btn"
-              onClick={handleExportUsers}
-              disabled={exporting}
-              title="Download full user directory as Excel spreadsheet"
+              onClick={() => setShowLogs(true)}
+              style={{
+                backgroundColor: "#f8fafc",
+                color: "#334155",
+                border: "1px solid #cbd5e1",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                fontSize: "0.85rem",
+                fontWeight: "600",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                cursor: "pointer",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+              }}
+              title="View data modification audit logs"
             >
-              <DownloadIcon width="15" height="15" />
-              <span>{exporting ? "Exporting..." : "Export Users (.xlsx)"}</span>
+              <FileIcon width="15" height="15" />
+              <span>View Logs</span>
             </button>
-          </div>
-        )}
+          )}
+
+          {/* Export Button (Available to Super Admin) */}
+          {isSuperAdmin && (
+            <div className="reg-users-export-wrapper">
+              <button
+                type="button"
+                className="reg-users-export-btn"
+                onClick={handleExportUsers}
+                disabled={exporting}
+                title="Download full user directory as Excel spreadsheet"
+              >
+                <DownloadIcon width="15" height="15" />
+                <span>{exporting ? "Exporting..." : "Export Users (.xlsx)"}</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {showLogs && (
+        <AuditLogsModal
+          collectionName={activeSubTab === "staff" ? "StaffRecord" : "StudentRecord"}
+          onClose={() => setShowLogs(false)}
+        />
+      )}
 
       {/* Export Notification Banner if triggered */}
       {exportMsg && (

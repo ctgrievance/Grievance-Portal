@@ -7,6 +7,7 @@ import Department from "../models/Department.js";
 import StudentRecord from "../models/StudentRecord.js";
 import StaffRecord from "../models/StaffRecord.js";
 import xlsx from "xlsx";
+import { logAuditAction } from "../utils/AuditService.js";
 
 // =========================================================================
 // 1️⃣ GET LIVE REGISTERED STUDENTS
@@ -156,6 +157,13 @@ export const updateLiveStudent = async (req, res) => {
     };
     await User.findOneAndUpdate({ id: safeId }, { $set: syncData });
 
+    await logAuditAction("UPDATE", "StudentRecord", req.user, {
+      recordId: safeId,
+      accountType: "Registered Live Student",
+      fullName: student.fullName,
+      changes: syncData
+    });
+
     res.status(200).json({
       message: `✅ Student ${safeId} updated successfully.`,
       student
@@ -184,6 +192,13 @@ export const deleteLiveStudent = async (req, res) => {
       StudentUser.deleteOne({ id: safeId }),
       User.deleteOne({ id: safeId })
     ]);
+
+    await logAuditAction("DELETE", "StudentRecord", req.user, {
+      recordId: safeId,
+      accountType: "Registered Live Student",
+      fullName: student.fullName || "Student",
+      email: student.email
+    });
 
     res.status(200).json({
       message: `✅ Registered student (${safeId} - ${student.fullName || "Student"}) deleted successfully.`
@@ -486,6 +501,13 @@ export const updateLiveStaff = async (req, res) => {
       await AdminStaffModel.deleteOne({ id: safeId });
     }
 
+    await logAuditAction("UPDATE", "StaffRecord", req.user, {
+      recordId: safeId,
+      accountType: "Registered Live Staff",
+      fullName: staff.fullName,
+      changes: userSync
+    });
+
     res.status(200).json({
       message: `✅ Staff member ${safeId} (${staff.fullName}) updated successfully.`,
       staff
@@ -545,6 +567,13 @@ export const deleteLiveStaff = async (req, res) => {
       User.deleteOne({ id: safeId }),
       AdminStaffModel.deleteOne({ id: safeId })
     ]);
+
+    await logAuditAction("DELETE", "StaffRecord", req.user, {
+      recordId: safeId,
+      accountType: "Registered Live Staff",
+      fullName: staffName,
+      resetGrievancesCount: resetCount
+    });
 
     res.status(200).json({
       message: `✅ Staff member ${staffName} (${safeId}) has been deleted successfully.`,

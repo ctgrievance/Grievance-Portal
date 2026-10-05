@@ -81,6 +81,14 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
       uploadJobs.set(jobId, job);
       UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
       console.log(`🗑️ [StudentRecord] Mode 'remove': Deleted ${deleted} student records.`);
+      if (reqUser) {
+        await logAuditAction("UPLOAD", "StudentRecord", reqUser, {
+          mode,
+          actionType: "BULK_DELETE",
+          totalRows: rows.length,
+          deleted
+        });
+      }
       return;
     }
 
@@ -185,6 +193,16 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
     }
     uploadJobs.set(jobId, job);
     await UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
+
+    if (reqUser) {
+      await logAuditAction("UPLOAD", "StudentRecord", reqUser, {
+        mode,
+        actionType: mode === "change" ? "BULK_REPLACE" : "BULK_INSERT",
+        totalRows: rows.length,
+        inserted,
+        skipped
+      });
+    }
   } catch (err) {
     const job = uploadJobs.get(jobId);
     if (job) {
@@ -296,7 +314,7 @@ export const uploadStudentRecords = async (req, res) => {
     });
 
     // Process in background (non-blocking)
-    setImmediate(() => processUpload(jobId, allRows, mode));
+    setImmediate(() => processUpload(jobId, allRows, mode, req.user));
   } catch (error) {
     console.error("Upload Error:", error);
     res.status(500).json({ message: "Failed to process Excel file", error: error.message });
@@ -338,6 +356,17 @@ export const addStudentRecord = async (req, res) => {
       school: (school || "").trim(),
       batch: (batch || "").trim(),
     });
+
+    await logAuditAction("ADD", "StudentRecord", req.user, {
+      recordId: finalId,
+      ctuId: finalCtuId || finalId,
+      fullName: record.fullName,
+      email: record.email,
+      school: record.school,
+      program: record.program,
+      batch: record.batch
+    });
+
     res.status(201).json({ message: "Student record added successfully", record });
   } catch (error) {
     res.status(500).json({ message: "Failed to add record", error: error.message });
@@ -350,6 +379,14 @@ export const deleteStudentRecord = async (req, res) => {
     const { id } = req.params;
     const record = await StudentRecord.findOneAndDelete({ id: id.trim().toUpperCase() });
     if (!record) return res.status(404).json({ message: "Record not found" });
+
+    await logAuditAction("DELETE", "StudentRecord", req.user, {
+      recordId: record.id,
+      fullName: record.fullName,
+      email: record.email,
+      program: record.program
+    });
+
     res.json({ message: "Record deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete record", error: error.message });
@@ -371,19 +408,46 @@ export const updateStudentRecord = async (req, res) => {
     
     if (!record) return res.status(404).json({ message: "Record not found" });
 
-    // 🔥 Sync updates to StudentUser and User
-    const studentSync = {};
-    if (fullName) studentSync.fullName = fullName.trim();
-    if (email) studentSync.email = email.toLowerCase().trim();
-    if (phone) studentSync.phone = phone.trim();
-    if (program) studentSync.program = program;
-    if (studentType) studentSync.studentType = studentType;
+    // 🔥 Sync updates to StudentUser and User safely
+    try {
+      const studentSync = {};
+      if (fullName) studentSync.fullName = fullName.trim();
+      if (email) {
+        const cleanEmail = email.toLowerCase().trim();
+        const existingUser = await StudentUser.findOne({ email: cleanEmail, id: { $ne: cleanId } });
+        if (!existingUser) {
+          studentSync.email = cleanEmail;
+        } else {
+          console.warn(`⚠️ Skipping email sync for StudentUser ${cleanId}: email ${cleanEmail} belongs to ${existingUser.id}`);
+        }
+      }
+      if (phone) studentSync.phone = phone.trim();
+      if (program) studentSync.program = program;
+      if (studentType) studentSync.studentType = studentType;
 
-    if (Object.keys(studentSync).length > 0) {
-      await StudentUser.findOneAndUpdate({ id: cleanId }, { $set: studentSync });
-      await User.findOneAndUpdate({ id: cleanId }, { $set: studentSync });
-      console.log(`🔄 Synced updated student details for ID ${cleanId} to StudentUser and User.`);
+      if (Object.keys(studentSync).length > 0) {
+        await StudentUser.findOneAndUpdate({ id: cleanId }, { $set: studentSync });
+        await User.findOneAndUpdate({ id: cleanId }, { $set: studentSync });
+        console.log(`🔄 Synced updated student details for ID ${cleanId} to StudentUser and User.`);
+      }
+    } catch (syncErr) {
+      console.warn(`⚠️ Non-fatal sync error for StudentUser ${cleanId}:`, syncErr.message);
     }
+
+    await logAuditAction("UPDATE", "StudentRecord", req.user, {
+      recordId: cleanId,
+      fullName: record.fullName,
+      changes: {
+        ...(fullName !== undefined && { fullName }),
+        ...(email !== undefined && { email }),
+        ...(phone !== undefined && { phone }),
+        ...(program !== undefined && { program }),
+        ...(studentType !== undefined && { studentType }),
+        ...(school !== undefined && { school }),
+        ...(batch !== undefined && { batch }),
+        ...(ctuId !== undefined && { ctuId })
+      }
+    });
 
     res.json({ message: "Record updated successfully", record });
   } catch (error) {
@@ -395,6 +459,11 @@ export const updateStudentRecord = async (req, res) => {
 export const clearAllStudentRecords = async (req, res) => {
   try {
     const result = await StudentRecord.deleteMany({});
+
+    await logAuditAction("CLEAR_ALL", "StudentRecord", req.user, {
+      deletedCount: result.deletedCount
+    });
+
     res.json({ message: `✅ Cleared ${result.deletedCount} records.`, deleted: result.deletedCount });
   } catch (error) {
     res.status(500).json({ message: "Failed to clear records", error: error.message });

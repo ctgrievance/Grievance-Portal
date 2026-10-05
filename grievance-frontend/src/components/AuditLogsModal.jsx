@@ -42,7 +42,7 @@ const AuditLogsModal = ({ onClose, collectionName }) => {
       <div style={{backgroundColor: "#fff", width: "80%", maxWidth: "900px", height: "80vh", borderRadius: "8px", display: "flex", flexDirection: "column", overflow: "hidden"}}>
         <div style={{padding: "20px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f9fafb"}}>
           <h2 style={{margin: 0, fontSize: "1.2rem", color: "#111827", fontWeight: "600"}}>
-            Data Modification Logs ({collectionName === "StudentRecord" ? "Students" : "Staff"})
+            Data Modification Logs ({collectionName === "StudentRecord" || collectionName === "StudentUser" ? "Students" : "Staff"})
           </h2>
           <div style={{display: "flex", gap: "10px"}}>
             <button onClick={fetchLogs} style={{background:"none", border:"1px solid #ccc", padding: "6px 12px", borderRadius:"6px", cursor: "pointer", display:"flex", alignItems:"center", gap:"5px"}}>

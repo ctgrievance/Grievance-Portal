@@ -8,6 +8,7 @@ import {
   deleteLiveStaff,
   getRecordsComparison
 } from "../controllers/registeredUserController.js";
+import { optionalVerifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
@@ -16,12 +17,12 @@ router.get("/compare", getRecordsComparison);
 
 // Student routes
 router.get("/students", getLiveStudents);
-router.put("/students/:id", updateLiveStudent);
-router.delete("/students/:id", deleteLiveStudent);
+router.put("/students/:id", optionalVerifyToken, updateLiveStudent);
+router.delete("/students/:id", optionalVerifyToken, deleteLiveStudent);
 
 // Staff / Faculty routes
 router.get("/staff", getLiveStaff);
-router.put("/staff/:id", updateLiveStaff);
-router.delete("/staff/:id", deleteLiveStaff);
+router.put("/staff/:id", optionalVerifyToken, updateLiveStaff);
+router.delete("/staff/:id", optionalVerifyToken, deleteLiveStaff);
 
 export default router;

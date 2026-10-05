@@ -191,9 +191,13 @@ function RegisteredStaffTab() {
 
     setSavingEdit(true);
     try {
+      const token = localStorage.getItem("grievance_token");
       const res = await fetch(`${BASE_URL}/${selectedStaff.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(editFormData)
       });
       const data = await res.json();
@@ -226,8 +230,12 @@ function RegisteredStaffTab() {
 
     setDeleting(true);
     try {
+      const token = localStorage.getItem("grievance_token");
       const res = await fetch(`${BASE_URL}/${staffToDelete.id}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to delete staff member");

@@ -8,7 +8,13 @@ export const getAuditLogs = async (req, res) => {
 
     const query = {};
     if (collectionName) {
-      query.collectionName = collectionName;
+      if (collectionName === "StudentRecord" || collectionName === "StudentUser") {
+        query.collectionName = { $in: ["StudentRecord", "StudentUser"] };
+      } else if (collectionName === "StaffRecord" || collectionName === "StaffUser") {
+        query.collectionName = { $in: ["StaffRecord", "StaffUser"] };
+      } else {
+        query.collectionName = collectionName;
+      }
     }
 
     const total = await AuditLog.countDocuments(query);

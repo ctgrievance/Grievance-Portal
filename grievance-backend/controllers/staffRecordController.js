@@ -98,6 +98,14 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
       uploadJobs.set(jobId, job);
       UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
       console.log(`🗑️ [StaffRecord] Mode 'remove': Deleted ${deleted} staff records.`);
+      if (reqUser) {
+        await logAuditAction("UPLOAD", "StaffRecord", reqUser, {
+          mode,
+          actionType: "BULK_DELETE",
+          totalRows: rows.length,
+          deleted
+        });
+      }
       return;
     }
 
@@ -232,6 +240,16 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
     console.log("⚠️ Skipped rows count:", skippedRows.length);
     uploadJobs.set(jobId, job);
     await UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
+
+    if (reqUser) {
+      await logAuditAction("UPLOAD", "StaffRecord", reqUser, {
+        mode,
+        actionType: mode === "change" ? "BULK_REPLACE" : "BULK_INSERT",
+        totalRows: rows.length,
+        inserted,
+        skipped
+      });
+    }
   } catch (err) {
     const job = uploadJobs.get(jobId);
     if (job) {
@@ -330,6 +348,16 @@ export const addRecord = async (req, res) => {
     });
 
     await record.save();
+
+    await logAuditAction("ADD", "StaffRecord", req.user, {
+      recordId: cleanId,
+      fullName: record.fullName,
+      email: record.email,
+      department: record.department,
+      role: record.role,
+      staffType: record.staffType
+    });
+
     res.status(201).json({ message: "Staff record added successfully", record });
   } catch (error) {
     console.error("Add Record Error:", error);
@@ -377,21 +405,31 @@ export const updateRecord = async (req, res) => {
     }
 
     if (Object.keys(syncFields).length > 0 || updateData.department) {
-      const staffUserUpdate = { ...syncFields };
-      if (updateData.department) staffUserUpdate.staffDepartment = updateData.department.trim();
-      await StaffUser.findOneAndUpdate(
-        { id: cleanId },
-        { $set: staffUserUpdate }
-      );
+      try {
+        const staffUserUpdate = { ...syncFields };
+        if (updateData.department) staffUserUpdate.staffDepartment = updateData.department.trim();
+        await StaffUser.findOneAndUpdate(
+          { id: cleanId },
+          { $set: staffUserUpdate }
+        );
 
-      const userUpdate = { ...syncFields };
-      if (updateData.department) userUpdate.department = updateData.department.trim();
-      await User.findOneAndUpdate(
-        { id: cleanId },
-        { $set: userUpdate }
-      );
-      console.log(`🔄 Synced updated staff details for ID ${cleanId} to StaffUser and User.`);
+        const userUpdate = { ...syncFields };
+        if (updateData.department) userUpdate.department = updateData.department.trim();
+        await User.findOneAndUpdate(
+          { id: cleanId },
+          { $set: userUpdate }
+        );
+        console.log(`🔄 Synced updated staff details for ID ${cleanId} to StaffUser and User.`);
+      } catch (syncErr) {
+        console.warn(`⚠️ Non-fatal sync error for StaffUser ${cleanId}:`, syncErr.message);
+      }
     }
+
+    await logAuditAction("UPDATE", "StaffRecord", req.user, {
+      recordId: cleanId,
+      fullName: record.fullName,
+      changes: updateData
+    });
 
     res.json({ message: "Record updated successfully", record });
   } catch (error) {
@@ -407,6 +445,13 @@ export const deleteRecord = async (req, res) => {
     const record = await StaffRecord.findOneAndDelete({ id: id.toString().trim().toUpperCase() });
     
     if (!record) return res.status(404).json({ message: "Record not found" });
+
+    await logAuditAction("DELETE", "StaffRecord", req.user, {
+      recordId: record.id,
+      fullName: record.fullName,
+      department: record.department
+    });
+
     res.json({ message: "Record deleted successfully" });
   } catch (error) {
     console.error("Delete Record Error:", error);
@@ -499,7 +544,8 @@ export const uploadStaffRecords = async (req, res) => {
       message: `Upload started in '${mode}' mode across ${sheetNames.length} sheet tab(s)`
     });
 
-    setImmediate(() => processUpload(jobId, allRows, mode));
+    // Process in background (non-blocking)
+    setImmediate(() => processUpload(jobId, allRows, mode, req.user));
   } catch (error) {
     console.error("Upload Error:", error);
     res.status(500).json({ message: "Failed to process Excel file", error: error.message });
@@ -525,6 +571,11 @@ export const getUploadProgress = async (req, res) => {
 export const clearAllStaffRecords = async (req, res) => {
   try {
     const result = await StaffRecord.deleteMany({});
+
+    await logAuditAction("CLEAR_ALL", "StaffRecord", req.user, {
+      deletedCount: result.deletedCount
+    });
+
     res.json({ message: `✅ Cleared ${result.deletedCount} staff records.`, deleted: result.deletedCount });
   } catch (error) {
     res.status(500).json({ message: "Failed to clear records", error: error.message });

@@ -20,3 +20,19 @@ export const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: "Invalid or expired token." });
   }
 };
+
+export const optionalVerifyToken = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const secretKey = process.env.JWT_SECRET || "fallback_secret_key_123";
+      const decoded = jwt.verify(token, secretKey);
+      req.user = decoded;
+    }
+  } catch (err) {
+    // Optional token, do not throw 401
+  }
+  next();
+};
+

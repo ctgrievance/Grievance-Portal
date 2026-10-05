@@ -9,7 +9,7 @@ const auditLogSchema = new mongoose.Schema({
   collectionName: {
     type: String,
     required: true,
-    enum: ["StudentRecord", "StaffRecord"] // You can expand this if needed
+    enum: ["StudentRecord", "StaffRecord", "StudentUser", "StaffUser"]
   },
   performedBy: {
     id: { type: String, required: true },
