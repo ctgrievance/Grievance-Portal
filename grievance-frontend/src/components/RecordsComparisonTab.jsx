@@ -12,13 +12,14 @@ import {
   PhoneIcon,
   SpinnerIcon
 } from "./Icons";
+import MultiSelectDropdown from "./MultiSelectDropdown";
 
 export default function RecordsComparisonTab() {
   const [cohort, setCohort] = useState("students"); // "students" | "staff"
   const [statusFilter, setStatusFilter] = useState("all"); // "all" | "registered" | "not_registered"
   const [staffType, setStaffType] = useState("all"); // "all" | "Teaching" | "Non-Teaching"
   const [search, setSearch] = useState("");
-  const [department, setDepartment] = useState("all");
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [page, setPage] = useState(1);
   const [limit] = useState(25);
 
@@ -59,7 +60,7 @@ export default function RecordsComparisonTab() {
     targetCohort = cohortRef.current,
     targetStatus = statusFilter,
     targetSearch = search,
-    targetDept = department,
+    targetDepts = selectedDepartments,
     targetStaffType = staffType,
     targetPage = page
   ) => {
@@ -72,11 +73,13 @@ export default function RecordsComparisonTab() {
 
     setLoading(true);
     try {
+      const deptsParam = (targetDepts || []).length > 0 ? (targetDepts || []).join(",") : "all";
       const queryParams = new URLSearchParams({
         type: targetCohort,
         status: targetStatus,
         search: (targetSearch || "").trim(),
-        department: targetDept || "all",
+        department: deptsParam,
+        departments: deptsParam,
         staffType: targetCohort === "staff" ? (targetStaffType || "all") : "all",
         page: (targetPage || 1).toString(),
         limit: limit.toString(),
@@ -116,7 +119,7 @@ export default function RecordsComparisonTab() {
         setLoading(false);
       }
     }
-  }, [statusFilter, search, department, staffType, page, limit, BASE_URL]);
+  }, [statusFilter, search, selectedDepartments, staffType, page, limit, BASE_URL]);
 
   useEffect(() => {
     fetchComparison();
@@ -125,7 +128,7 @@ export default function RecordsComparisonTab() {
         abortControllerRef.current.abort();
       }
     };
-  }, [cohort, statusFilter, search, department, staffType, page]);
+  }, [cohort, statusFilter, search, selectedDepartments, staffType, page]);
 
   // Cohort switch resets filters and page immediately and fetches new cohort
   const handleCohortChange = (newCohort) => {
@@ -135,7 +138,7 @@ export default function RecordsComparisonTab() {
     setStatusFilter("all");
     setStaffType("all");
     setSearch("");
-    setDepartment("all");
+    setSelectedDepartments([]);
     setPage(1);
     setRecords([]);
     setTotal(0);
@@ -149,17 +152,19 @@ export default function RecordsComparisonTab() {
       totalNonTeaching: 0,
       registrationRate: "0%"
     });
-    fetchComparison(newCohort, "all", "", "all", "all", 1);
+    fetchComparison(newCohort, "all", "", [], "all", 1);
   };
 
   const handleExport = async () => {
     setExporting(true);
     try {
+      const deptsParam = selectedDepartments.length > 0 ? selectedDepartments.join(",") : "all";
       const queryParams = new URLSearchParams({
         type: cohort,
         status: statusFilter,
         search: search.trim(),
-        department,
+        department: deptsParam,
+        departments: deptsParam,
         staffType: cohort === "staff" ? staffType : "all",
         export: "true"
       });
@@ -623,20 +628,19 @@ export default function RecordsComparisonTab() {
           )}
         </div>
 
-        {/* School/Department Dropdown */}
+        {/* School/Department Multi-Select Filter */}
         {departmentsList.length > 0 && (
-          <div className="reg-users-select-wrap dept reg-compare-dept-select" style={{ width: "170px" }}>
-            <select
-              className="reg-users-select"
-              value={department}
-              onChange={(e) => { setDepartment(e.target.value); setPage(1); }}
-            >
-              <option value="all">All {cohort === "students" ? "Schools" : "Departments"}</option>
-              {departmentsList.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectDropdown
+            options={departmentsList}
+            selected={selectedDepartments}
+            onChange={(newDepts) => {
+              setSelectedDepartments(newDepts);
+              setPage(1);
+            }}
+            placeholder={cohort === "students" ? "All Schools" : "All Departments"}
+            searchPlaceholder={cohort === "students" ? "Filter schools..." : "Filter departments..."}
+            width="210px"
+          />
         )}
 
         {/* Actions: Refresh & Export */}

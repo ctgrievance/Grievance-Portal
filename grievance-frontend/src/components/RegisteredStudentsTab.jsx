@@ -10,6 +10,7 @@ import {
   PhoneIcon,
   MailIcon
 } from "./Icons";
+import MultiSelectDropdown from "./MultiSelectDropdown";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -34,6 +35,8 @@ function RegisteredStudentsTab() {
   // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("registered");
+  const [selectedSchools, setSelectedSchools] = useState([]);
+  const [schoolsList, setSchoolsList] = useState([]);
 
   // Notification state
   const [msg, setMsg] = useState("");
@@ -78,6 +81,9 @@ function RegisteredStudentsTab() {
         page: page.toString(),
         limit: "25"
       });
+      if (selectedSchools.length > 0) {
+        queryParams.set("departments", selectedSchools.join(","));
+      }
 
       const res = await fetch(`${BASE_URL}?${queryParams.toString()}`);
       if (!res.ok) throw new Error("Failed to load registered students");
@@ -88,13 +94,16 @@ function RegisteredStudentsTab() {
       setTotalVerified(data.totalVerified || 0);
       setTotalPending(data.totalPending || 0);
       setTotalPages(data.totalPages || 1);
+      if (Array.isArray(data.departments) && data.departments.length > 0) {
+        setSchoolsList(data.departments);
+      }
     } catch (err) {
       console.error(err);
       showNotification(err.message, "error");
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, page, BASE_URL]);
+  }, [search, statusFilter, selectedSchools, page, BASE_URL]);
 
   useEffect(() => {
     fetchStudents();
@@ -228,6 +237,21 @@ function RegisteredStudentsTab() {
           )}
         </div>
 
+        {/* Multi-School Filter Dropdown */}
+        {schoolsList.length > 0 && (
+          <MultiSelectDropdown
+            options={schoolsList}
+            selected={selectedSchools}
+            onChange={(newSchools) => {
+              setSelectedSchools(newSchools);
+              setPage(1);
+            }}
+            placeholder="All Schools"
+            searchPlaceholder="Filter schools..."
+            width="210px"
+          />
+        )}
+
         <div className="reg-users-filter-controls">
           <div className="reg-users-btn-group">
             <button
@@ -235,9 +259,10 @@ function RegisteredStudentsTab() {
               className="reg-users-btn-reset"
               onClick={() => {
                 setSearch("");
+                setSelectedSchools([]);
                 setPage(1);
               }}
-              title="Reset search"
+              title="Reset search and filters"
             >
               Reset
             </button>

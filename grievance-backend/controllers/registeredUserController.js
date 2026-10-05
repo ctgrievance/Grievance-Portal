@@ -18,6 +18,14 @@ export const getLiveStudents = async (req, res) => {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 50;
 
+    const rawDeptParam = req.query.departments || req.query.department || req.query.school || req.query.schools || "all";
+    let selectedDepartments = [];
+    if (Array.isArray(rawDeptParam)) {
+      selectedDepartments = rawDeptParam.map(d => String(d).trim()).filter(d => d && d !== "all");
+    } else if (typeof rawDeptParam === "string" && rawDeptParam.trim() !== "all" && rawDeptParam.trim() !== "") {
+      selectedDepartments = rawDeptParam.split(",").map(d => d.trim()).filter(d => d && d !== "all");
+    }
+
     // Strict condition: A user is considered a registered student ONLY IF their OTP has been verified
     const verifiedCondition = {
       isVerified: true,
@@ -30,36 +38,54 @@ export const getLiveStudents = async (req, res) => {
       ]
     };
 
-    // Build query filter
-    const query = {};
+    const andConditions = [];
 
     // "registered" (default) or "verified" means strictly OTP-verified students
     if (status === "registered" || status === "verified") {
-      Object.assign(query, verifiedCondition);
+      andConditions.push(verifiedCondition);
     } else if (status === "pending" || status === "incomplete") {
-      Object.assign(query, pendingCondition);
+      andConditions.push(pendingCondition);
     }
     // if status === "all", query both
+
+    if (selectedDepartments.length > 0) {
+      const schoolOrConditions = selectedDepartments.map(d => {
+        const cleanDept = d.toString().trim();
+        const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const pattern = escaped
+          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+          .replace(/\s+/g, "\\s+");
+        const regexPattern = new RegExp(`^${pattern}$`, "i");
+        return {
+          $or: [
+            { school: { $regex: regexPattern } },
+            { department: { $regex: regexPattern } },
+            { program: { $regex: regexPattern } }
+          ]
+        };
+      });
+      andConditions.push({ $or: schoolOrConditions });
+    }
 
     if (search.trim()) {
       const q = search.trim();
       const regex = new RegExp(q, "i");
-      const searchOr = [
-        { id: regex },
-        { ctuId: regex },
-        { fullName: regex },
-        { email: regex },
-        { phone: regex },
-        { program: regex },
-        { studentType: regex }
-      ];
-      if (query.$or) {
-        query.$and = [{ $or: query.$or }, { $or: searchOr }];
-        delete query.$or;
-      } else {
-        query.$or = searchOr;
-      }
+      andConditions.push({
+        $or: [
+          { id: regex },
+          { ctuId: regex },
+          { fullName: regex },
+          { email: regex },
+          { phone: regex },
+          { school: regex },
+          { department: regex },
+          { program: regex },
+          { studentType: regex }
+        ]
+      });
     }
+
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
 
     const total = await StudentUser.countDocuments(query);
     const rawStudents = await StudentUser.find(query)
@@ -82,10 +108,43 @@ export const getLiveStudents = async (req, res) => {
     });
 
     // Counts: Total truly registered (OTP verified) vs Incomplete/Pending OTP
-    const [totalRegistered, totalPending] = await Promise.all([
+    const [totalRegistered, totalPending, schools, officialDepts] = await Promise.all([
       StudentUser.countDocuments(verifiedCondition),
-      StudentUser.countDocuments(pendingCondition)
+      StudentUser.countDocuments(pendingCondition),
+      StudentRecord.distinct("school"),
+      Department.find({ isActive: true }).select("name").sort({ name: 1 })
     ]);
+
+    const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+    const officialMap = new Map();
+    if (Array.isArray(officialDepts)) {
+      officialDepts.forEach(d => {
+        const c = (d.name || "").replace(/\s+/g, " ").trim();
+        if (c) officialMap.set(normKey(c), c);
+      });
+    }
+
+    const compMap = new Map();
+    if (Array.isArray(schools)) {
+      schools.forEach(d => {
+        const c = (d || "").replace(/\s+/g, " ").trim();
+        if (c && !/^\d+$/.test(c)) {
+          const k = normKey(c);
+          if (!compMap.has(k)) {
+            if (officialMap.has(k)) {
+              compMap.set(k, officialMap.get(k));
+            } else {
+              const titleCased = c.replace(
+                /\w\S*/g,
+                (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+              );
+              compMap.set(k, titleCased);
+            }
+          }
+        }
+      });
+    }
+    const cleanSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
 
     res.status(200).json({
       total,
@@ -94,6 +153,7 @@ export const getLiveStudents = async (req, res) => {
       totalPending,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
+      departments: cleanSchools,
       students
     });
   } catch (err) {
@@ -616,6 +676,14 @@ export const getRecordsComparison = async (req, res) => {
       $or: [{ otp: { $exists: false } }, { otp: null }, { otp: "" }]
     };
 
+    const rawDeptParam = req.query.departments || req.query.department || "all";
+    let selectedDepartments = [];
+    if (Array.isArray(rawDeptParam)) {
+      selectedDepartments = rawDeptParam.map(d => String(d).trim()).filter(d => d && d !== "all");
+    } else if (typeof rawDeptParam === "string" && rawDeptParam.trim() !== "all" && rawDeptParam.trim() !== "") {
+      selectedDepartments = rawDeptParam.split(",").map(d => d.trim()).filter(d => d && d !== "all");
+    }
+
     if (isStudents) {
       // 1️⃣ Fetch all registered student IDs and emails
       const registeredStudents = await StudentUser.find(verifiedCondition)
@@ -685,19 +753,21 @@ export const getRecordsComparison = async (req, res) => {
       // Context conditions (department/school + search)
       const contextConditions = [];
 
-      if (department && department !== "all") {
-        const cleanDept = department.toString().trim();
-        const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const pattern = escaped
-          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
-          .replace(/\s+/g, "\\s+");
-        const regexPattern = new RegExp(`^${pattern}$`, "i");
-        contextConditions.push({
-          $or: [
-            { school: { $regex: regexPattern } },
-            { program: { $regex: regexPattern } }
-          ]
+      if (selectedDepartments.length > 0) {
+        const schoolOrConditions = selectedDepartments.map(cleanDept => {
+          const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const pattern = escaped
+            .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+            .replace(/\s+/g, "\\s+");
+          const regexPattern = new RegExp(`^${pattern}$`, "i");
+          return {
+            $or: [
+              { school: { $regex: regexPattern } },
+              { program: { $regex: regexPattern } }
+            ]
+          };
         });
+        contextConditions.push({ $or: schoolOrConditions });
       }
 
       if (search && search.trim()) {
@@ -912,13 +982,15 @@ export const getRecordsComparison = async (req, res) => {
       // Context conditions (department + search)
       const deptSearchConditions = [];
 
-      if (department && department !== "all") {
-        const cleanDept = department.toString().trim();
-        const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const pattern = escaped
-          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
-          .replace(/\s+/g, "\\s+");
-        deptSearchConditions.push({ department: { $regex: new RegExp(`^${pattern}$`, "i") } });
+      if (selectedDepartments.length > 0) {
+        const staffDeptOrConditions = selectedDepartments.map(cleanDept => {
+          const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const pattern = escaped
+            .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+            .replace(/\s+/g, "\\s+");
+          return { department: { $regex: new RegExp(`^${pattern}$`, "i") } };
+        });
+        deptSearchConditions.push({ $or: staffDeptOrConditions });
       }
 
       if (search && search.trim()) {
