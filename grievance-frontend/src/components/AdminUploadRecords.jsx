@@ -51,10 +51,15 @@ const AdminUploadRecords = () => {
     setShowExportModal(true);
   };
 
-  const handleExportSelected = async (selectedData, selectedColumns) => {
+  const handleExportSelected = async (selectedData, selectedColumns, customName) => {
     setExportingUsers(true);
     try {
-      const fileName = `users_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const dateStr = new Date().toISOString().split('T')[0];
+      const rawName = (customName && customName.trim()) ? customName.trim() : "Users";
+      const safeBase = rawName.replace(/[*?:/\\\[\]]/g, "").trim().replace(/\s+/g, "_") || "Users";
+      const fileName = `${safeBase}_${dateStr}.xlsx`;
+      const sheetName = rawName;
+
       const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-custom`, {
         method: "POST",
         headers: {
@@ -63,7 +68,7 @@ const AdminUploadRecords = () => {
         },
         body: JSON.stringify({
           fileName,
-          sheetName: "Users",
+          sheetName,
           columns: selectedColumns,
           records: selectedData
         })

@@ -9,6 +9,7 @@ import {
     FileIcon
 } from "./Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
+import MultiSelectDropdown from "./MultiSelectDropdown";
 
 // Default column definitions for Grievances
 const defaultGrievanceColumns = [
@@ -68,6 +69,7 @@ const ExportPreviewModal = ({
         if (item.id) return item.id;
         if (item["Student ID"]) return item["Student ID"];
         if (item["Staff ID"]) return item["Staff ID"];
+        if (item["CTU ID"]) return item["CTU ID"];
         if (item["ID"]) return item["ID"];
         if (item["S.No"]) return `sno_${item["S.No"]}`;
         return `row_${idx}`;
@@ -83,10 +85,19 @@ const ExportPreviewModal = ({
     const [previewPage, setPreviewPage] = useState(1);
     const [previewPageSize, setPreviewPageSize] = useState(50);
 
+    // Dynamic report / sheet name defaults
+    const defaultSheetName = useMemo(() => {
+        if (title && title !== "Export Preview") return title;
+        if (isGrievanceMode) return "Grievances Export";
+        return "Export Data";
+    }, [title, isGrievanceMode]);
+
+    const [customSheetName, setCustomSheetName] = useState(defaultSheetName);
+
     // Filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("All");
-    const [filterDepartment, setFilterDepartment] = useState("All");
+    const [filterDepartments, setFilterDepartments] = useState([]);
     const [filterMonth, setFilterMonth] = useState("");
     const [internalExtraFilter, setInternalExtraFilter] = useState("All");
 
@@ -112,23 +123,28 @@ const ExportPreviewModal = ({
         return itemList.filter((item) => {
             // Status filter
             if (filterStatus !== "All") {
-                const s = item.status || item["Portal Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+                const s = item.status || item.Status || item["Portal Status"] || item["Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
                 if (String(s).toLowerCase() !== String(filterStatus).toLowerCase()) {
                     return false;
                 }
             }
 
-            // Department / School filter
-            if (filterDepartment !== "All") {
+            // Department / School filter (Multi-select)
+            if (filterDepartments && filterDepartments.length > 0) {
                 const dept = item.category || item.school || item.department || item["School"] || item["Department"] || "";
-                if (normKey(dept) !== normKey(filterDepartment)) return false;
+                const itemNorm = normKey(dept);
+                const matchesAny = filterDepartments.some(d => {
+                    const dNorm = normKey(d);
+                    return itemNorm === dNorm || itemNorm.includes(dNorm) || dNorm.includes(itemNorm);
+                });
+                if (!matchesAny) return false;
             }
 
             // Extra Filter (Category / Staff Type / Role)
             if (extraFilter) {
                 const activeExtraVal = extraFilter.value !== undefined ? extraFilter.value : internalExtraFilter;
                 if (activeExtraVal && activeExtraVal !== "All") {
-                    const candidate = item.staffType || item["Staff Category"] || item.role || item["Role"] || item.userType || "";
+                    const candidate = item.staffType || item["Staff Category"] || item["Category"] || item.role || item["Role"] || item.userType || "";
                     if (String(candidate).toLowerCase() !== String(activeExtraVal).toLowerCase()) {
                         return false;
                     }
@@ -137,7 +153,7 @@ const ExportPreviewModal = ({
 
             // Month / Date filter
             if (filterMonth) {
-                const rawDate = item.createdAt || item.registeredAt || item["Registered On"];
+                const rawDate = item.createdAt || item.registeredAt || item["Registered On"] || item["Joined Date"];
                 if (rawDate) {
                     const d = new Date(rawDate);
                     if (!isNaN(d.getTime())) {
@@ -173,7 +189,7 @@ const ExportPreviewModal = ({
 
             return true;
         });
-    }, [itemList, filterStatus, filterDepartment, filterMonth, searchQuery, extraFilter, internalExtraFilter, isGrievanceMode]);
+    }, [itemList, filterStatus, filterDepartments, filterMonth, searchQuery, extraFilter, internalExtraFilter, isGrievanceMode]);
 
     // Active selected count strictly scoped to currently filtered records
     const activeSelectedCount = useMemo(() => {
@@ -191,12 +207,13 @@ const ExportPreviewModal = ({
         if (isOpen && itemList.length > 0) {
             const initStatus = initialStatus || "All";
             setFilterStatus(initStatus);
-            setFilterDepartment("All");
+            setFilterDepartments([]);
             setFilterMonth("");
             setSearchQuery("");
             setInternalExtraFilter("All");
             setPreviewPage(1);
             setSelectedColumns(activeColumns.map((col) => col.key));
+            setCustomSheetName(defaultSheetName);
 
             // Select initial records matching the active status
             const initialFiltered = itemList.filter(item => {
@@ -210,7 +227,7 @@ const ExportPreviewModal = ({
             });
             setSelectedRowIds(new Set(initialFiltered.map((item, idx) => getItemId(item, idx))));
         }
-    }, [isOpen, itemList, activeColumns, initialStatus, getItemId]);
+    }, [isOpen, itemList, activeColumns, initialStatus, getItemId, defaultSheetName]);
 
     // Calculate preview page slice
     const totalPreviewPages = Math.max(1, Math.ceil(filteredData.length / previewPageSize));
@@ -265,21 +282,29 @@ const ExportPreviewModal = ({
     };
 
     // Helper to evaluate if item matches a set of filters
-    const matchesFilters = (item, status, dept, extraVal, monthVal, queryVal) => {
+    const matchesFilters = (item, status, depts, extraVal, monthVal, queryVal) => {
         if (status !== "All") {
-            const s = item.status || item["Portal Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+            const s = item.status || item.Status || item["Portal Status"] || item["Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
             if (String(s).toLowerCase() !== String(status).toLowerCase()) return false;
         }
-        if (dept !== "All") {
+        if (depts && Array.isArray(depts) && depts.length > 0) {
             const d = item.category || item.school || item.department || item["School"] || item["Department"] || "";
-            if (normKey(d) !== normKey(dept)) return false;
+            const itemNorm = normKey(d);
+            const matchesAny = depts.some(targetDept => {
+                const targetNorm = normKey(targetDept);
+                return itemNorm === targetNorm || itemNorm.includes(targetNorm) || targetNorm.includes(itemNorm);
+            });
+            if (!matchesAny) return false;
+        } else if (depts && typeof depts === "string" && depts !== "All") {
+            const d = item.category || item.school || item.department || item["School"] || item["Department"] || "";
+            if (normKey(d) !== normKey(depts)) return false;
         }
         if (extraVal && extraVal !== "All") {
-            const candidate = item.staffType || item["Staff Category"] || item.role || item["Role"] || item.userType || "";
+            const candidate = item.staffType || item["Staff Category"] || item["Category"] || item.role || item["Role"] || item.userType || "";
             if (String(candidate).toLowerCase() !== String(extraVal).toLowerCase()) return false;
         }
         if (monthVal) {
-            const rawDate = item.createdAt || item.registeredAt || item["Registered On"];
+            const rawDate = item.createdAt || item.registeredAt || item["Registered On"] || item["Joined Date"];
             if (rawDate) {
                 const d = new Date(rawDate);
                 if (!isNaN(d.getTime())) {
@@ -302,15 +327,15 @@ const ExportPreviewModal = ({
         setFilterStatus(newStatus);
         setPreviewPage(1);
         const extraVal = extraFilter ? (extraFilter.value !== undefined ? extraFilter.value : internalExtraFilter) : "All";
-        const nextFiltered = itemList.filter(item => matchesFilters(item, newStatus, filterDepartment, extraVal, filterMonth, searchQuery));
+        const nextFiltered = itemList.filter(item => matchesFilters(item, newStatus, filterDepartments, extraVal, filterMonth, searchQuery));
         setSelectedRowIds(new Set(nextFiltered.map((item, idx) => getItemId(item, idx))));
     };
 
-    const handleDepartmentFilterChange = (newDept) => {
-        setFilterDepartment(newDept);
+    const handleDepartmentsFilterChange = (newDepts) => {
+        setFilterDepartments(newDepts);
         setPreviewPage(1);
         const extraVal = extraFilter ? (extraFilter.value !== undefined ? extraFilter.value : internalExtraFilter) : "All";
-        const nextFiltered = itemList.filter(item => matchesFilters(item, filterStatus, newDept, extraVal, filterMonth, searchQuery));
+        const nextFiltered = itemList.filter(item => matchesFilters(item, filterStatus, newDepts, extraVal, filterMonth, searchQuery));
         setSelectedRowIds(new Set(nextFiltered.map((item, idx) => getItemId(item, idx))));
     };
 
@@ -475,14 +500,17 @@ const ExportPreviewModal = ({
             alert("Please select at least one record to export.");
             return;
         }
-        onExport(selectedData, selectedColumns);
+        const finalSheetName = (customSheetName && customSheetName.trim())
+            ? customSheetName.trim()
+            : defaultSheetName;
+        onExport(selectedData, selectedColumns, finalSheetName);
         onClose();
     };
 
     const resetFilters = () => {
         setSearchQuery("");
         setFilterStatus("All");
-        setFilterDepartment("All");
+        setFilterDepartments([]);
         setFilterMonth("");
         setInternalExtraFilter("All");
         setPreviewPage(1);
@@ -519,6 +547,9 @@ const ExportPreviewModal = ({
 
     const computedSubtitle = subtitle || (isGrievanceMode ? "Filter and select grievance data to export" : "Filter and select data to export");
     const computedSearchPlaceholder = searchPlaceholder || (isGrievanceMode ? "Search Student ID, Message..." : "Search records by ID, Name...");
+    const isStudentCohort = /student/i.test(title || "");
+    const deptPlaceholder = isStudentCohort ? "All Schools" : "All Departments";
+    const deptSearchPlaceholder = isStudentCohort ? "Filter schools..." : "Filter departments...";
 
     return (
         <div
@@ -683,18 +714,27 @@ const ExportPreviewModal = ({
                         })}
                     </select>
 
-                    {/* Department / School Dropdown */}
+                    {/* Department / School Multi-Select Dropdown */}
                     {uniqueDepartments.length > 0 && (
-                        <select
-                            value={filterDepartment}
-                            onChange={(e) => handleDepartmentFilterChange(e.target.value)}
-                            style={{ ...selectStyle, flex: "1 1 180px" }}
-                        >
-                            <option value="All">All Departments</option>
-                            {uniqueDepartments.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
-                            ))}
-                        </select>
+                        <div style={{ flex: "1 1 200px", minWidth: "180px", maxWidth: "340px" }}>
+                            <MultiSelectDropdown
+                                options={uniqueDepartments}
+                                selected={filterDepartments}
+                                onChange={handleDepartmentsFilterChange}
+                                placeholder={deptPlaceholder}
+                                searchPlaceholder={deptSearchPlaceholder}
+                                width="100%"
+                                showDoneButton={false}
+                                buttonStyle={{
+                                    height: "38px",
+                                    borderRadius: "6px",
+                                    fontSize: "0.85rem",
+                                    background: filterDepartments.length > 0 ? "#eff6ff" : "#ffffff",
+                                    border: filterDepartments.length > 0 ? "1.5px solid #3b82f6" : "1px solid #cbd5e1",
+                                    color: filterDepartments.length > 0 ? "#1e40af" : "#0f172a",
+                                }}
+                            />
+                        </div>
                     )}
 
                     {/* Optional Extra Filter (Category / Role) */}
@@ -1102,15 +1142,92 @@ const ExportPreviewModal = ({
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        padding: "14px 24px",
+                        padding: "12px 24px",
                         borderTop: "1px solid #f1f5f9",
                         background: "#ffffff",
+                        gap: "16px",
                     }}
                 >
-                    <p style={{ margin: 0, color: "#64748b", fontSize: "0.8rem" }}>
-                        Click rows or use checkboxes to select records to include in the exported spreadsheet
-                    </p>
-                    <div style={{ display: "flex", gap: "10px" }}>
+                    {/* Sheet / File Name Input (User customizable) */}
+                    <div
+                        className="export-sheetname-wrap"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            flex: "1 1 auto",
+                            maxWidth: "460px",
+                        }}
+                    >
+                        <label
+                            htmlFor="export-custom-sheet-name-input"
+                            style={{
+                                fontSize: "0.82rem",
+                                fontWeight: "600",
+                                color: "#1e293b",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            <FileIcon width="15" height="15" style={{ color: "#2563eb" }} />
+                            Sheet / File Name:
+                        </label>
+                        <div style={{ position: "relative", width: "100%" }}>
+                            <input
+                                id="export-custom-sheet-name-input"
+                                type="text"
+                                value={customSheetName}
+                                onChange={(e) => setCustomSheetName(e.target.value)}
+                                placeholder="Enter sheet / report name..."
+                                style={{
+                                    width: "100%",
+                                    height: "36px",
+                                    padding: "0 50px 0 12px",
+                                    borderRadius: "6px",
+                                    border: "1.5px solid #cbd5e1",
+                                    background: "#f8fafc",
+                                    fontSize: "0.84rem",
+                                    fontWeight: "500",
+                                    color: "#0f172a",
+                                    boxSizing: "border-box",
+                                    outline: "none",
+                                    transition: "all 0.15s ease",
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.borderColor = "#2563eb";
+                                    e.target.style.background = "#ffffff";
+                                    e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.12)";
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.borderColor = "#cbd5e1";
+                                    e.target.style.background = "#f8fafc";
+                                    e.target.style.boxShadow = "none";
+                                }}
+                            />
+                            <span
+                                style={{
+                                    position: "absolute",
+                                    right: "8px",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    fontSize: "0.72rem",
+                                    fontWeight: "600",
+                                    color: "#64748b",
+                                    pointerEvents: "none",
+                                    userSelect: "none",
+                                    background: "#e2e8f0",
+                                    padding: "2px 6px",
+                                    borderRadius: "4px",
+                                }}
+                            >
+                                .xlsx
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center", flexShrink: 0 }}>
                         <button
                             onClick={onClose}
                             style={{
@@ -1245,20 +1362,29 @@ const ExportPreviewModal = ({
           .export-footer {
             padding: 14px 16px !important;
             flex-direction: column !important;
-            gap: 10px !important;
+            gap: 12px !important;
+            align-items: stretch !important;
           }
           
-          .export-footer > div {
+          .export-sheetname-wrap {
+            max-width: 100% !important;
+            width: 100% !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 6px !important;
+          }
+
+          .export-sheetname-wrap > div {
+            width: 100% !important;
+          }
+
+          .export-footer > div:last-child {
             width: 100% !important;
           }
           
           .export-footer button {
             flex: 1 !important;
             justify-content: center !important;
-          }
-          
-          .export-footer p {
-            text-align: center !important;
           }
         }
       `}</style>

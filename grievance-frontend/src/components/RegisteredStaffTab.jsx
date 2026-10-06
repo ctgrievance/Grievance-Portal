@@ -10,13 +10,27 @@ import {
   RefreshIcon,
   PhoneIcon,
   MailIcon,
-  UserIcon
+  UserIcon,
+  DownloadIcon
 } from "./Icons";
+import ExportPreviewModal from "./ExportPreviewModal";
 import {
   getCleanDepartmentList,
   canonicalizeDepartment,
   buildOfficialDeptMap
 } from "../utils/departmentNormalizer";
+
+const staffExportColumns = [
+  { key: "Staff ID", label: "Staff ID" },
+  { key: "Full Name", label: "Full Name" },
+  { key: "Category", label: "Category" },
+  { key: "Email", label: "Email" },
+  { key: "Phone", label: "Phone" },
+  { key: "Department", label: "Department" },
+  { key: "Role & Authority", label: "Role & Authority" },
+  { key: "Status", label: "Status" },
+  { key: "Joined Date", label: "Joined Date" },
+];
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -95,6 +109,11 @@ function RegisteredStaffTab() {
   const [staffToDelete, setStaffToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Export Preview Modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportPreviewData, setExportPreviewData] = useState([]);
+  const [exporting, setExporting] = useState(false);
+
   const BASE_URL = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/registered-users/staff`;
 
   const showNotification = (message, type = "success") => {
@@ -154,6 +173,81 @@ function RegisteredStaffTab() {
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
+
+  // Export handlers
+  const handleOpenExportPreview = async () => {
+    setExporting(true);
+    try {
+      const queryParams = new URLSearchParams({
+        search: search.trim(),
+        department: deptFilter,
+        role: roleFilter,
+        status: "all",
+        staffType: staffTypeFilter,
+        export: "preview"
+      });
+
+      const token = localStorage.getItem("grievance_token");
+      const res = await fetch(`${BASE_URL}?${queryParams.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!res.ok) throw new Error("Failed to load registered staff for export");
+      const data = await res.json();
+      setExportPreviewData(data.records || []);
+      setShowExportModal(true);
+    } catch (err) {
+      console.error("Export preview error:", err);
+      showNotification(err.message || "Failed to load export preview", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportSelected = async (selectedData, selectedColumns, customName) => {
+    try {
+      const token = localStorage.getItem("grievance_token");
+      const dateStr = new Date().toISOString().split("T")[0];
+      const catSuffix = staffTypeFilter !== "all" ? `_${staffTypeFilter}` : "";
+      const rawName = (customName && customName.trim()) ? customName.trim() : `Registered_Staff${catSuffix}`;
+      const safeBase = rawName.replace(/[*?:/\\[\]]/g, "").trim().replace(/\s+/g, "_") || "Registered_Staff";
+      const fileName = `${safeBase}_${dateStr}.xlsx`;
+      const sheetName = rawName;
+
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-custom`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          fileName,
+          sheetName,
+          columns: selectedColumns,
+          records: selectedData
+        })
+      });
+
+      if (!res.ok) {
+        const errPayload = await res.json().catch(() => null);
+        throw new Error(errPayload?.message || `Failed to generate Excel export (HTTP ${res.status})`);
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      showNotification(`Excel report downloaded successfully (${selectedData.length} staff members).`, "success");
+    } catch (err) {
+      console.error("Export download error:", err);
+      showNotification(err.message || "Failed to export Excel report", "error");
+    }
+  };
 
   // Dynamic fetch of active departments
   useEffect(() => {
@@ -477,6 +571,32 @@ function RegisteredStaffTab() {
             >
               <RefreshIcon width="14" height="14" />
               <span>Refresh</span>
+            </button>
+
+            <button
+              type="button"
+              className="reg-users-btn-export"
+              onClick={handleOpenExportPreview}
+              disabled={exporting || loading}
+              style={{
+                padding: "0 13px",
+                height: "36px",
+                borderRadius: "7px",
+                border: "1px solid #0f172a",
+                background: "#0f172a",
+                color: "#ffffff",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.15s ease"
+              }}
+              title="Preview & Export Registered Staff"
+            >
+              <DownloadIcon width="14" height="14" />
+              <span>{exporting ? "Preparing..." : "Export"}</span>
             </button>
           </div>
         </div>
@@ -962,6 +1082,34 @@ function RegisteredStaffTab() {
           </div>
         </div>
       )}
+
+      {/* EXPORT PREVIEW MODAL */}
+      <ExportPreviewModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        data={exportPreviewData}
+        columns={staffExportColumns}
+        title="Export Preview - Registered Staff"
+        subtitle="Filter and select registered staff records to export"
+        searchPlaceholder="Search Staff ID, Name, Email, Department..."
+        initialStatus={statusFilter === "registered" ? "VERIFIED" : statusFilter === "pending" ? "PENDING OTP" : "All"}
+        statusOptions={[
+          { value: "All", label: "All Status" },
+          { value: "VERIFIED", label: "Verified" },
+          { value: "PENDING OTP", label: "Pending OTP" }
+        ]}
+        departmentOptions={["All", ...departments]}
+        extraFilter={{
+          label: "Category",
+          options: [
+            { value: "All", label: "All Categories" },
+            { value: "Teaching", label: "Teaching" },
+            { value: "Non-Teaching", label: "Non-Teaching" }
+          ]
+        }}
+        getRowId={(item, idx) => item["Staff ID"] || idx}
+        onExport={handleExportSelected}
+      />
     </div>
   );
 }

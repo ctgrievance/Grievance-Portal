@@ -236,15 +236,21 @@ function CRCAdminDashboard() {
 
   const resetFilters = () => { setSearchId(""); setSearchStaffId(""); setStatusFilter("All"); setFilterMonth(""); };
   const handleOpenExportModal = () => setShowExportModal(true);
-  const handleExportSelected = (selectedData, selectedColumns) => {
+  const handleExportSelected = (selectedData, selectedColumns, customName) => {
     const token = localStorage.getItem("grievance_token");
+    const dateStr = new Date().toISOString().split('T')[0];
+    const rawName = (customName && customName.trim()) ? customName.trim() : "CRC_Grievances";
+    const safeBase = rawName.replace(/[*?:/\\\[\]]/g, "").trim().replace(/\s+/g, "_") || "CRC_Grievances";
+    const fileName = `${safeBase}_${dateStr}.xlsx`;
+    const sheetName = rawName;
+
     fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-selected`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ grievanceIds: selectedData.map((g) => g._id), columns: selectedColumns }),
+      body: JSON.stringify({ grievanceIds: selectedData.map((g) => g._id), columns: selectedColumns, sheetName, fileName }),
     }).then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
       .then((blob) => {
         const url = window.URL.createObjectURL(blob); const a = document.createElement("a");
-        a.href = url; a.download = `crc_grievances_${new Date().toISOString().split('T')[0]}.xlsx`;
+        a.href = url; a.download = fileName;
         document.body.appendChild(a); a.click(); a.remove();
         setMsg("Export successful!"); setStatusType("success"); setTimeout(() => setMsg(""), 3000);
       }).catch(() => alert("Excel export failed"));

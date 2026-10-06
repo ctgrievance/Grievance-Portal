@@ -148,6 +148,52 @@ export const getLiveStudents = async (req, res) => {
     }
     const cleanSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
 
+    const isExport = req.query.isExport || req.query.export;
+    if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
+      const allMatching = await StudentUser.find(query)
+        .select("-password -phoneOtp -resetOtp")
+        .sort({ createdAt: -1 });
+
+      const exportData = allMatching.map((s, idx) => {
+        const sObj = s.toObject ? s.toObject() : s;
+        const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
+        const isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
+        return {
+          "S.No": idx + 1,
+          "CTU ID": sObj.ctuId || sObj.id || "",
+          "Student ID": sObj.id || "",
+          "Full Name": sObj.fullName || "",
+          "Email": sObj.email || "",
+          "Phone": sObj.phone || "",
+          "School": sObj.school || sObj.department || "",
+          "Program": sObj.program || "",
+          "Batch": sObj.batch || "",
+          "Student Type": sObj.studentType || "Regular",
+          "Status": isOtpVerified ? "VERIFIED" : "PENDING OTP",
+          "Registered On": sObj.createdAt ? new Date(sObj.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—"
+        };
+      });
+
+      if (isExport === "preview" || req.query.preview === "true") {
+        return res.json({
+          success: true,
+          type: "live_students",
+          count: exportData.length,
+          records: exportData,
+          departments: cleanSchools
+        });
+      }
+
+      const wb = xlsx.utils.book_new();
+      const ws = xlsx.utils.json_to_sheet(exportData);
+      xlsx.utils.book_append_sheet(wb, ws, "Registered_Students");
+      const buffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+
+      res.setHeader("Content-Disposition", `attachment; filename="Registered_Students_${status}_${new Date().toISOString().split("T")[0]}.xlsx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      return res.send(buffer);
+    }
+
     res.status(200).json({
       total,
       totalRegistered,
@@ -470,6 +516,48 @@ export const getLiveStaff = async (req, res) => {
     });
 
     const departments = Array.from(allDeptsMap.values()).sort((a, b) => a.localeCompare(b));
+
+    const isExport = req.query.isExport || req.query.export;
+    if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
+      const exportData = enriched.map((s, idx) => {
+        let authorityRole = "Staff Member";
+        if (s.isMasterAdmin) authorityRole = "Master Admin";
+        else if (s.isDeptAdmin) authorityRole = "Dept Admin";
+        else if (s.role === "admin") authorityRole = "Admin";
+
+        return {
+          "S.No": idx + 1,
+          "Staff ID": s.id || "",
+          "Full Name": s.fullName || "",
+          "Category": s.staffType || "Non-Teaching",
+          "Email": s.email || "",
+          "Phone": s.phone || "",
+          "Department": s.staffDepartment || s.adminDepartment || s.department || "",
+          "Role & Authority": authorityRole,
+          "Status": s.isOtpVerified ? "VERIFIED" : "PENDING OTP",
+          "Joined Date": s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"
+        };
+      });
+
+      if (isExport === "preview" || req.query.preview === "true") {
+        return res.status(200).json({
+          success: true,
+          type: "live_staff",
+          count: exportData.length,
+          records: exportData,
+          departments
+        });
+      }
+
+      const wb = xlsx.utils.book_new();
+      const ws = xlsx.utils.json_to_sheet(exportData);
+      xlsx.utils.book_append_sheet(wb, ws, "Registered_Staff");
+      const buffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+
+      res.setHeader("Content-Disposition", `attachment; filename="Registered_Staff_${status}_${new Date().toISOString().split("T")[0]}.xlsx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      return res.send(buffer);
+    }
 
     res.status(200).json({
       total,

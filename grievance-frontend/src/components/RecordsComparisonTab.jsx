@@ -217,12 +217,15 @@ export default function RecordsComparisonTab() {
     }
   };
 
-  const handleExportSelected = async (selectedData, selectedColumns) => {
+  const handleExportSelected = async (selectedData, selectedColumns, customName) => {
     try {
       const token = localStorage.getItem("grievance_token");
       const dateStr = new Date().toISOString().split("T")[0];
-      const catSuffix = cohort === "staff" && staffType !== "all" ? `_${staffType}` : "";
-      const fileName = `${cohort === "students" ? "Students" : "Staff"}_Comparison_${statusFilter}${catSuffix}_${dateStr}.xlsx`;
+      const defaultPrefix = `${cohort === "students" ? "Students" : "Staff"}_Comparison`;
+      const rawName = (customName && customName.trim()) ? customName.trim() : defaultPrefix;
+      const safeBase = rawName.replace(/[*?:/\\[\]]/g, "").trim().replace(/\s+/g, "_") || defaultPrefix;
+      const fileName = `${safeBase}_${dateStr}.xlsx`;
+      const sheetName = rawName;
 
       const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-custom`, {
         method: "POST",
@@ -232,7 +235,7 @@ export default function RecordsComparisonTab() {
         },
         body: JSON.stringify({
           fileName,
-          sheetName: `${cohort === "students" ? "Students" : "Staff"}_Comparison`,
+          sheetName,
           columns: selectedColumns,
           records: selectedData
         })

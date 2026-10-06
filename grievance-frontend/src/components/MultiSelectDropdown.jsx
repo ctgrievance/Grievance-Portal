@@ -14,7 +14,9 @@ export default function MultiSelectDropdown({
   placeholder = "All Schools",
   searchPlaceholder = "Filter schools...",
   width = "200px",
-  className = ""
+  className = "",
+  showDoneButton = false,
+  buttonStyle = {},
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -149,7 +151,8 @@ export default function MultiSelectDropdown({
   if (selected.length === 1) {
     displayLabel = selected[0];
   } else if (selected.length > 1) {
-    displayLabel = `${selected.length} Selected`;
+    const isDept = /department/i.test(placeholder);
+    displayLabel = `${selected.length} ${isDept ? "Depts" : "Schools"} Selected`;
   }
 
   return (
@@ -185,7 +188,8 @@ export default function MultiSelectDropdown({
           gap: "6px",
           boxShadow: isOpen ? "0 0 0 3px rgba(37, 99, 235, 0.12)" : "none",
           transition: "all 0.15s ease",
-          userSelect: "none"
+          userSelect: "none",
+          ...buttonStyle
         }}
         title={selected.length > 0 ? selected.join(", ") : placeholder}
       >
@@ -403,17 +407,26 @@ export default function MultiSelectDropdown({
               filteredOptions.map((opt) => {
                 const isChecked = selected.includes(opt);
                 return (
-                  <label
+                  <div
                     key={opt}
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       toggleOption(opt);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleOption(opt);
+                      }
                     }}
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
                       gap: "8px",
-                      padding: "6px 8px",
+                      padding: "7px 8px",
                       borderRadius: "6px",
                       fontSize: "0.8rem",
                       cursor: "pointer",
@@ -474,7 +487,7 @@ export default function MultiSelectDropdown({
                     >
                       {opt}
                     </span>
-                  </label>
+                  </div>
                 );
               })
             )}
@@ -495,25 +508,45 @@ export default function MultiSelectDropdown({
               width: "100%"
             }}
           >
-            <span>
+            <span style={{ fontWeight: 500, color: "#64748b" }}>
               {selected.length === 0 ? "All included" : `${selected.length} of ${options.length} selected`}
             </span>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              style={{
-                border: "none",
-                background: "#0f172a",
-                color: "#ffffff",
-                padding: "4px 12px",
-                borderRadius: "5px",
-                fontSize: "0.74rem",
-                fontWeight: 600,
-                cursor: "pointer"
-              }}
-            >
-              Done
-            </button>
+            {selected.length > 0 && !showDoneButton && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "#2563eb",
+                  fontSize: "0.74rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  padding: "2px 4px",
+                  borderRadius: "4px"
+                }}
+              >
+                Clear all
+              </button>
+            )}
+            {showDoneButton && (
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                style={{
+                  border: "none",
+                  background: "#0f172a",
+                  color: "#ffffff",
+                  padding: "4px 12px",
+                  borderRadius: "5px",
+                  fontSize: "0.74rem",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Done
+              </button>
+            )}
           </div>
         </div>
       )}

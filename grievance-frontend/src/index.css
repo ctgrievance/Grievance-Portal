@@ -28,3 +28,40 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* =========================================================================
+   GLOBAL MODAL SCROLL LOCK (Freezes background across all project modals)
+   ========================================================================= */
+html.modal-open,
+body.modal-open,
+html:has([class*="modal-overlay"]),
+body:has([class*="modal-overlay"]),
+html:has([class*="popup-overlay"]),
+body:has([class*="popup-overlay"]) {
+  overflow: hidden !important;
+  height: 100% !important;
+  overscroll-behavior: none !important;
+}
+
+/* Ensure all modal overlays contain touch events and don't bleed scroll */
+[class*="modal-overlay"],
+[class*="popup-overlay"] {
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Ensure all modal content cards are scrollable inside without bleeding */
+[class*="modal-overlay"] > div,
+[class*="popup-overlay"] > div,
+.reg-users-modal-box,
+.staff-modal-card,
+.dept-modal-card,
+.student-modal-card,
+.export-modal-container,
+.g-details-modal-card,
+.transfer-modal-card,
+.assign-modal,
+.chat-modal {
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+}

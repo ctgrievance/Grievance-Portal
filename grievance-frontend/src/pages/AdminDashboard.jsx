@@ -317,8 +317,13 @@ function AdminDashboard() {
   };
 
   // ✅ EXPORT SELECTED DATA TO EXCEL
-  const handleExportSelected = (selectedData, selectedColumns) => {
+  const handleExportSelected = (selectedData, selectedColumns, customName) => {
     const token = localStorage.getItem("grievance_token");
+    const dateStr = new Date().toISOString().split("T")[0];
+    const rawName = (customName && customName.trim()) ? customName.trim() : "Grievances_Export";
+    const safeBase = rawName.replace(/[*?:/\\[\]]/g, "").trim().replace(/\s+/g, "_") || "Grievances_Export";
+    const fileName = `${safeBase}_${dateStr}.xlsx`;
+    const sheetName = rawName;
 
     // Send selected IDs and columns to backend
     fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-selected`, {
@@ -330,6 +335,8 @@ function AdminDashboard() {
       body: JSON.stringify({
         grievanceIds: selectedData.map((g) => g._id),
         columns: selectedColumns,
+        sheetName,
+        fileName,
       }),
     })
       .then((res) => {
@@ -340,7 +347,7 @@ function AdminDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `grievances_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         a.remove();

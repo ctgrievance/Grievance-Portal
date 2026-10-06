@@ -222,8 +222,14 @@ function AccountAdminDashboard() {
   // Export Functions
   const handleOpenExportModal = () => setShowExportModal(true);
 
-  const handleExportSelected = (selectedData, selectedColumns) => {
+  const handleExportSelected = (selectedData, selectedColumns, customName) => {
     const token = localStorage.getItem("grievance_token");
+    const dateStr = new Date().toISOString().split('T')[0];
+    const rawName = (customName && customName.trim()) ? customName.trim() : "Accounts_Grievances";
+    const safeBase = rawName.replace(/[*?:/\\\[\]]/g, "").trim().replace(/\s+/g, "_") || "Accounts_Grievances";
+    const fileName = `${safeBase}_${dateStr}.xlsx`;
+    const sheetName = rawName;
+
     fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-selected`, {
       method: "POST",
       headers: {
@@ -233,6 +239,8 @@ function AccountAdminDashboard() {
       body: JSON.stringify({
         grievanceIds: selectedData.map((g) => g._id),
         columns: selectedColumns,
+        sheetName,
+        fileName,
       }),
     })
       .then((res) => {
@@ -243,7 +251,7 @@ function AccountAdminDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `accounts_grievances_${new Date().toISOString().split('T')[0]}.xlsx`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         a.remove();
