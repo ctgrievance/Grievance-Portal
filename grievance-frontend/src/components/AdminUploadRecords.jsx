@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Dashboard.css";
 import { DownloadIcon, UsersIcon } from "./Icons";
+import ExportPreviewModal from "./ExportPreviewModal";
+
+const userColumns = [
+  { key: "id", label: "User ID" },
+  { key: "fullName", label: "Full Name" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone" },
+  { key: "role", label: "Role" },
+  { key: "department", label: "Department" },
+  { key: "program", label: "Program" },
+];
 
 const AdminUploadRecords = () => {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [exportingUsers, setExportingUsers] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [message, setMessage] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
 
@@ -35,11 +47,26 @@ const AdminUploadRecords = () => {
     }
   };
 
-  const handleExportUsers = async () => {
+  const handleOpenExportPreview = () => {
+    setShowExportModal(true);
+  };
+
+  const handleExportSelected = async (selectedData, selectedColumns) => {
     setExportingUsers(true);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/export-users`, {
-        headers: { "Authorization": `Bearer ${token}` }
+      const fileName = `users_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-custom`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          fileName,
+          sheetName: "Users",
+          columns: selectedColumns,
+          records: selectedData
+        })
       });
 
       if (res.ok) {
@@ -47,7 +74,7 @@ const AdminUploadRecords = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `users_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -88,7 +115,7 @@ const AdminUploadRecords = () => {
           <p style={{ color: '#64748b', margin: 0 }}>View all registered users and export them to Excel.</p>
         </div>
         <button
-          onClick={handleExportUsers}
+          onClick={handleOpenExportPreview}
           disabled={exportingUsers}
           className="action-btn"
           style={{
@@ -210,6 +237,19 @@ const AdminUploadRecords = () => {
           </div>
         )}
       </div>
+
+      <ExportPreviewModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        data={filteredUsers}
+        columns={userColumns}
+        title="Export Preview"
+        subtitle="Filter and select users data to export"
+        searchPlaceholder="Search ID, Name, Email..."
+        statusOptions={["All", "student", "staff", "admin"]}
+        getRowId={(item, idx) => item.id || idx}
+        onExport={handleExportSelected}
+      />
     </div>
   );
 };

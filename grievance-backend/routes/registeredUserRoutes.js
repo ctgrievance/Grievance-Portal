@@ -21,7 +21,7 @@ router.put("/students/:id", optionalVerifyToken, updateLiveStudent);
 router.delete("/students/:id", optionalVerifyToken, deleteLiveStudent);
 
 // Staff / Faculty routes
-router.get("/staff", getLiveStaff);
+router.get("/staff", optionalVerifyToken, getLiveStaff);
 router.put("/staff/:id", optionalVerifyToken, updateLiveStaff);
 router.delete("/staff/:id", optionalVerifyToken, deleteLiveStaff);
 

@@ -7,6 +7,8 @@ import AdminStaffModel from "../models/AdminStaffModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendEmailOtp } from "../utils/emailService.js";
+import { syncSingleStudentRegistration, syncSingleStaffRegistration } from "../utils/registrationSyncService.js";
+import { invalidateComparisonCache } from "./registeredUserController.js";
 
 
 const sendSms = async (phone, otp, customMessage = null) => {
@@ -353,6 +355,18 @@ export const verifyRegistration = async (req, res) => {
       userQuery,
       { isVerified: true, otp: undefined, otpExpires: undefined, phoneOtp: undefined, phoneOtpExpires: undefined }
     );
+
+    // 🔥 Immediate sync to StudentRecord / StaffRecord for instant zero-lag comparison
+    try {
+      if (user.role === "student" || isStudent === true) {
+        await syncSingleStudentRegistration(user, true);
+      } else {
+        await syncSingleStaffRegistration(user, true);
+      }
+      invalidateComparisonCache();
+    } catch (syncErr) {
+      console.warn("Non-fatal registration sync error:", syncErr.message);
+    }
 
     res.status(200).json({ message: "Account verified successfully! You can now login." });
 

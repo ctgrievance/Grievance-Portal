@@ -388,14 +388,14 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
     }
   }, []);
 
-  // Whenever selectedDepartments changes, fetch staff for any new department
+  // Whenever selectedDepartments changes, fetch staff ONLY for current dept if internal reassignment
   useEffect(() => {
     selectedDepartments.forEach((dept) => {
-      if (dept && !deptStaffMap[dept] && !loadingStaffMap[dept]) {
+      if (dept && dept === currentDept && !deptStaffMap[dept] && !loadingStaffMap[dept]) {
         fetchStaffForDept(dept);
       }
     });
-  }, [selectedDepartments, deptStaffMap, loadingStaffMap, fetchStaffForDept]);
+  }, [selectedDepartments, currentDept, deptStaffMap, loadingStaffMap, fetchStaffForDept]);
 
   // Toggle department selection (single or multiple seamlessly)
   const toggleDepartment = (dept) => {
@@ -467,23 +467,25 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
 
     try {
       const departmentAssignments = selectedDepartments.map((dept) => {
+        const isCurrent = dept === currentDept;
         const assign = deptAssignments[dept];
         return {
           department: dept,
-          staffId: assign?.staffId || null,
-          staffName: assign?.staffName || null
+          staffId: isCurrent ? (assign?.staffId || null) : null,
+          staffName: isCurrent ? (assign?.staffName || null) : null
         };
       });
 
       const primaryDept = selectedDepartments[0];
+      const isPrimaryCurrent = primaryDept === currentDept;
       const primaryAssign = deptAssignments[primaryDept];
 
       const payload = {
         targetDepartments: selectedDepartments,
         targetDepartment: primaryDept,
         departmentAssignments,
-        targetStaffId: primaryAssign?.staffId || null,
-        targetStaffName: primaryAssign?.staffName || null,
+        targetStaffId: isPrimaryCurrent ? (primaryAssign?.staffId || null) : null,
+        targetStaffName: isPrimaryCurrent ? (primaryAssign?.staffName || null) : null,
         reason: reason.trim(),
         transferredBy: currentUserId,
         transferredByName: currentUserName,
@@ -588,7 +590,7 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
                 Forward Grievance
               </h3>
               <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                Select destination department(s) and faculty
+                Select destination department(s) to forward grievance
               </span>
             </div>
           </div>
@@ -995,12 +997,19 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
           </div>
 
           {/* ========================================================
-              SECTION 2: FACULTY ASSIGNMENT
+              SECTION 2: ROUTING & FACULTY ASSIGNMENT
              ======================================================== */}
           <div>
-            <label style={{ display: "block", marginBottom: "8px", fontSize: "0.88rem", fontWeight: "600", color: "#0f172a" }}>
-              Faculty Assignment
-            </label>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+              <label style={{ margin: 0, fontSize: "0.88rem", fontWeight: "600", color: "#0f172a" }}>
+                {isOnlySameDept ? "Faculty Assignment" : "Destination Department Routing"}
+              </label>
+              {!isOnlySameDept && selectedDepartments.length > 0 && (
+                <span style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                  Destination admin will assign faculty
+                </span>
+              )}
+            </div>
 
             {selectedDepartments.length === 0 ? (
               <div
@@ -1014,7 +1023,7 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
                   fontSize: "0.84rem"
                 }}
               >
-                Select destination department(s) above to assign faculty.
+                Select destination department(s) above to forward grievance.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1035,7 +1044,7 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
                         boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
                         borderLeft: selectedDepartments.length > 1
                           ? index === 0 ? "3px solid #2563eb" : "3px solid #10b981"
-                          : "1px solid #e2e8f0"
+                          : "3px solid #2563eb"
                       }}
                     >
                       {/* Department Card Header */}
@@ -1065,33 +1074,58 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
                           <strong style={{ fontSize: "0.88rem", color: "#0f172a" }}>
                             {dept}
                           </strong>
-                          {isCurrent && (
+                          {isCurrent ? (
                             <span style={{ fontSize: "0.7rem", padding: "1px 5px", background: "#fef2f2", color: "#dc2626", borderRadius: "4px", fontWeight: "600" }}>
                               Internal Reassign
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "#f0fdf4", color: "#166534", borderRadius: "4px", fontWeight: "700" }}>
+                              Department Pool
                             </span>
                           )}
                         </div>
 
-                        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                          {isLoadingStaff
-                            ? "Loading..."
-                            : `${staffList.length} faculty`}
-                        </span>
+                        {isCurrent && (
+                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                            {isLoadingStaff
+                              ? "Loading..."
+                              : `${staffList.length} faculty`}
+                          </span>
+                        )}
                       </div>
 
-                      {/* Searchable Faculty Select */}
-                      {isLoadingStaff ? (
-                        <div style={{ fontSize: "0.8rem", color: "#64748b", padding: "6px 0" }}>
-                          Loading faculty for {dept}...
-                        </div>
+                      {/* Content: Faculty Select for internal reassignment, Department Pool card for external forwards */}
+                      {isCurrent ? (
+                        isLoadingStaff ? (
+                          <div style={{ fontSize: "0.8rem", color: "#64748b", padding: "6px 0" }}>
+                            Loading faculty for {dept}...
+                          </div>
+                        ) : (
+                          <SearchableFacultySelect
+                            dept={dept}
+                            staffList={staffList}
+                            selectedStaffId={currentAssignment.staffId}
+                            onSelect={(staffId) => handleFacultyChange(dept, staffId)}
+                            isCurrentDept={isCurrent}
+                          />
+                        )
                       ) : (
-                        <SearchableFacultySelect
-                          dept={dept}
-                          staffList={staffList}
-                          selectedStaffId={currentAssignment.staffId}
-                          onSelect={(staffId) => handleFacultyChange(dept, staffId)}
-                          isCurrentDept={isCurrent}
-                        />
+                        <div
+                          style={{
+                            background: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "6px",
+                            padding: "10px 12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px"
+                          }}
+                        >
+                          <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>🏢</span>
+                          <div style={{ fontSize: "0.8rem", color: "#475569", lineHeight: "1.35" }}>
+                            This grievance will be forwarded directly to <strong>{dept}</strong> (Unassigned Pool). The {dept} department administrator will manually assign faculty.
+                          </div>
+                        </div>
                       )}
                     </div>
                   );

@@ -2,11 +2,13 @@ import React from "react";
 import ActionDropdown from "./ActionDropdown";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import { AlertCircleIcon, RerouteIcon } from "./Icons";
+import { getIncomingTransferInfo } from "../utils/grievanceClassification";
 
 /**
  * Reusable Department Grievance List Component:
  * - Desktop View: Clean, full-featured data table.
  * - Mobile View: Touch-friendly, zero-overflow compact cards.
+ * - Supports Direct Grievances and Forwarded Grievances sections.
  */
 function DepartmentGrievanceList({
   grievances = [],
@@ -17,7 +19,9 @@ function DepartmentGrievanceList({
   onReject,
   updateStatus,
   getDeadlineStatus,
-  formatDate
+  formatDate,
+  isForwardedSection = false,
+  currentDepartment = ""
 }) {
   if (!grievances || grievances.length === 0) {
     return null;
@@ -41,6 +45,13 @@ function DepartmentGrievanceList({
     }
   };
 
+  // Check if grievance is currently held by this department
+  const isHeldByThisDept = (g) => {
+    if (!currentDepartment) return true;
+    const holdingDept = (g?.currentCustodian?.department || g?.category || "").trim().toLowerCase();
+    const myDept = currentDepartment.trim().toLowerCase();
+    return holdingDept === myDept || holdingDept.includes(myDept) || myDept.includes(holdingDept);
+  };
 
   return (
     <>
@@ -51,8 +62,18 @@ function DepartmentGrievanceList({
             <tr>
               <th>ID</th>
               <th>Name</th>
-              <th>Assigned To</th>
-              <th>Message</th>
+              {isForwardedSection ? (
+                <>
+                  <th>Forwarded From</th>
+                  <th>Forward Reason</th>
+                  <th>Assigned Faculty</th>
+                </>
+              ) : (
+                <>
+                  <th>Assigned To</th>
+                  <th>Message</th>
+                </>
+              )}
               <th>Date</th>
               <th>Deadline</th>
               <th>Status</th>
@@ -65,6 +86,7 @@ function DepartmentGrievanceList({
               const ds = getDeadlineStatus
                 ? getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status)
                 : null;
+              const fwdInfo = isForwardedSection ? getIncomingTransferInfo(g, currentDepartment) : null;
 
               return (
                 <tr
@@ -80,39 +102,130 @@ function DepartmentGrievanceList({
                     </div>
                   </td>
 
-                  {/* Assigned To */}
-                  <td>
-                    {g.assignedTo ? (
-                      <div>
-                        <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
-                          {staffName || "Staff"}
-                        </span>
-                        <span style={{ fontSize: "0.85rem", color: "#64748b" }}>({g.assignedTo})</span>
-                      </div>
-                    ) : (
-                      <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned Yet</span>
-                    )}
-                  </td>
+                  {/* Forwarded Columns vs Direct Columns */}
+                  {isForwardedSection ? (
+                    <>
+                      {/* Forwarded From */}
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <span style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.85rem" }}>
+                            {fwdInfo.fromDepartment}
+                          </span>
+                          <span style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                            By: {fwdInfo.transferredByName}
+                          </span>
+                        </div>
+                      </td>
 
-                  {/* Message */}
-                  <td className="message-cell" style={{ maxWidth: "200px" }}>
-                    <div
-                      style={{ padding: "4px", borderRadius: "4px", transition: "background 0.2s" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      <span
-                        style={{
-                          wordBreak: "break-word",
-                          lineHeight: "1.3",
-                          color: "#334155",
-                          fontWeight: "500"
-                        }}
-                      >
-                        {g.message ? (g.message.length > 40 ? `${g.message.substring(0, 40)}...` : g.message) : "-"}
-                      </span>
-                    </div>
-                  </td>
+                      {/* Forward Reason */}
+                      <td className="message-cell" style={{ maxWidth: "200px" }}>
+                        <div
+                          style={{ padding: "4px", borderRadius: "4px", transition: "background 0.2s" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          title={fwdInfo.reason}
+                        >
+                          <span
+                            style={{
+                              wordBreak: "break-word",
+                              lineHeight: "1.3",
+                              color: "#475569",
+                              fontWeight: "500",
+                              fontSize: "0.82rem",
+                              fontStyle: "italic"
+                            }}
+                          >
+                            {fwdInfo.reason ? (fwdInfo.reason.length > 45 ? `${fwdInfo.reason.substring(0, 45)}...` : fwdInfo.reason) : "-"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Assigned Faculty */}
+                      <td>
+                        {g.assignedTo ? (
+                          <div>
+                            <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                              {staffName || "Staff"}
+                            </span>
+                            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>({g.assignedTo})</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span
+                              style={{
+                                background: "#fef3c7",
+                                color: "#92400e",
+                                padding: "2px 7px",
+                                borderRadius: "4px",
+                                fontSize: "0.75rem",
+                                fontWeight: "700"
+                              }}
+                            >
+                              ⚡ Unassigned
+                            </span>
+                            {openAssignPopup && isHeldByThisDept(g) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openAssignPopup(g._id);
+                                }}
+                                style={{
+                                  padding: "3px 8px",
+                                  background: "#2563eb",
+                                  color: "#ffffff",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  fontSize: "0.72rem",
+                                  fontWeight: "600",
+                                  cursor: "pointer"
+                                }}
+                                title="Assign faculty to this forwarded grievance"
+                              >
+                                Assign
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      {/* Assigned To */}
+                      <td>
+                        {g.assignedTo ? (
+                          <div>
+                            <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                              {staffName || "Staff"}
+                            </span>
+                            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>({g.assignedTo})</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned Yet</span>
+                        )}
+                      </td>
+
+                      {/* Message */}
+                      <td className="message-cell" style={{ maxWidth: "200px" }}>
+                        <div
+                          style={{ padding: "4px", borderRadius: "4px", transition: "background 0.2s" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <span
+                            style={{
+                              wordBreak: "break-word",
+                              lineHeight: "1.3",
+                              color: "#334155",
+                              fontWeight: "500"
+                            }}
+                          >
+                            {g.message ? (g.message.length > 40 ? `${g.message.substring(0, 40)}...` : g.message) : "-"}
+                          </span>
+                        </div>
+                      </td>
+                    </>
+                  )}
 
                   {/* Date */}
                   <td>{formatDate ? formatDate(g.createdAt) : new Date(g.createdAt).toLocaleDateString()}</td>
@@ -168,52 +281,60 @@ function DepartmentGrievanceList({
                   {/* Action */}
                   <td className="action-cell" onClick={(e) => e.stopPropagation()}>
                     <ActionDropdown>
-                      {openAssignPopup && (
-                        <button
-                          type="button"
-                          className="action-btn assign-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openAssignPopup(g._id);
-                          }}
-                          disabled={g.status === "Resolved" || g.assignedTo}
-                          style={{
-                            opacity: g.status === "Resolved" || g.assignedTo ? 0.5 : 1,
-                            cursor: g.status === "Resolved" || g.assignedTo ? "not-allowed" : "pointer"
-                          }}
-                        >
-                          Assign
-                        </button>
-                      )}
-                      {onResolve && (
-                        <button
-                          type="button"
-                          className="action-btn resolve-btn"
-                          onClick={(e) => handleResolve(e, g)}
-                          disabled={g.status === "Resolved"}
-                          style={{
-                            opacity: g.status === "Resolved" ? 0.5 : 1,
-                            cursor: g.status === "Resolved" ? "not-allowed" : "pointer",
-                            marginLeft: "5px"
-                          }}
-                        >
-                          Resolve
-                        </button>
-                      )}
-                      {(onReject || updateStatus) && (
-                        <button
-                          type="button"
-                          className="action-btn reject-btn"
-                          onClick={(e) => handleReject(e, g)}
-                          disabled={g.status === "Resolved" || g.status === "Rejected"}
-                          style={{
-                            opacity: g.status === "Resolved" || g.status === "Rejected" ? 0.5 : 1,
-                            cursor: g.status === "Resolved" || g.status === "Rejected" ? "not-allowed" : "pointer",
-                            marginLeft: "5px"
-                          }}
-                        >
-                          Reject
-                        </button>
+                      {!isHeldByThisDept(g) ? (
+                        <div style={{ padding: "8px 12px", fontSize: "0.78rem", color: "#64748b", fontStyle: "italic", whiteSpace: "nowrap" }}>
+                          🔒 Assigned to {g.category}
+                        </div>
+                      ) : (
+                        <>
+                          {openAssignPopup && (
+                            <button
+                              type="button"
+                              className="action-btn assign-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openAssignPopup(g._id);
+                              }}
+                              disabled={g.status === "Resolved"}
+                              style={{
+                                opacity: g.status === "Resolved" ? 0.5 : 1,
+                                cursor: g.status === "Resolved" ? "not-allowed" : "pointer"
+                              }}
+                            >
+                              {g.assignedTo ? "Reassign" : "Assign"}
+                            </button>
+                          )}
+                          {onResolve && (
+                            <button
+                              type="button"
+                              className="action-btn resolve-btn"
+                              onClick={(e) => handleResolve(e, g)}
+                              disabled={g.status === "Resolved"}
+                              style={{
+                                opacity: g.status === "Resolved" ? 0.5 : 1,
+                                cursor: g.status === "Resolved" ? "not-allowed" : "pointer",
+                                marginLeft: "5px"
+                              }}
+                            >
+                              Resolve
+                            </button>
+                          )}
+                          {(onReject || updateStatus) && (
+                            <button
+                              type="button"
+                              className="action-btn reject-btn"
+                              onClick={(e) => handleReject(e, g)}
+                              disabled={g.status === "Resolved" || g.status === "Rejected"}
+                              style={{
+                                opacity: g.status === "Resolved" || g.status === "Rejected" ? 0.5 : 1,
+                                cursor: g.status === "Resolved" || g.status === "Rejected" ? "not-allowed" : "pointer",
+                                marginLeft: "5px"
+                              }}
+                            >
+                              Reject
+                            </button>
+                          )}
+                        </>
                       )}
                     </ActionDropdown>
                   </td>
@@ -231,6 +352,7 @@ function DepartmentGrievanceList({
           const ds = getDeadlineStatus
             ? getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status)
             : null;
+          const fwdInfo = isForwardedSection ? getIncomingTransferInfo(g, currentDepartment) : null;
 
           return (
             <div
@@ -259,6 +381,34 @@ function DepartmentGrievanceList({
                 </div>
               </div>
 
+              {/* Forwarded Info Callout for Mobile */}
+              {isForwardedSection && fwdInfo && (
+                <div
+                  style={{
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: "8px",
+                    padding: "8px 10px",
+                    marginBottom: "8px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#1d4ed8" }}>
+                      🔁 From: {fwdInfo.fromDepartment}
+                    </span>
+                    <span style={{ fontSize: "0.7rem", color: "#64748b" }}>
+                      {fwdInfo.transferredByName}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#334155", fontStyle: "italic", marginTop: "2px" }}>
+                    "{fwdInfo.reason}"
+                  </div>
+                </div>
+              )}
+
               {/* Message Snippet */}
               <div className="dept-mcard-msg">
                 {g.message || "No message content provided."}
@@ -268,11 +418,34 @@ function DepartmentGrievanceList({
               <div className="dept-mcard-meta">
                 <div className="dept-mcard-meta-row">
                   <span className="dept-mcard-meta-label">Assigned Staff</span>
-                  <span className="dept-mcard-meta-val">
+                  <span className="dept-mcard-meta-val" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     {g.assignedTo ? (
                       <strong>{staffName || "Staff"} ({g.assignedTo})</strong>
                     ) : (
-                      <em style={{ color: "#94a3b8" }}>Not Assigned Yet</em>
+                      <>
+                        <span style={{ color: "#d97706", fontWeight: "700", fontSize: "0.78rem" }}>⚡ Unassigned (Pool)</span>
+                        {openAssignPopup && isHeldByThisDept(g) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openAssignPopup(g._id);
+                            }}
+                            style={{
+                              padding: "2px 7px",
+                              background: "#2563eb",
+                              color: "#ffffff",
+                              border: "none",
+                              borderRadius: "4px",
+                              fontSize: "0.72rem",
+                              fontWeight: "600",
+                              cursor: "pointer"
+                            }}
+                          >
+                            Assign
+                          </button>
+                        )}
+                      </>
                     )}
                   </span>
                 </div>
@@ -319,52 +492,60 @@ function DepartmentGrievanceList({
 
                 <div className="dept-mcard-actions">
                   <ActionDropdown>
-                    {openAssignPopup && (
-                      <button
-                        type="button"
-                        className="action-btn assign-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openAssignPopup(g._id);
-                        }}
-                        disabled={g.status === "Resolved" || g.assignedTo}
-                        style={{
-                          opacity: g.status === "Resolved" || g.assignedTo ? 0.5 : 1,
-                          cursor: g.status === "Resolved" || g.assignedTo ? "not-allowed" : "pointer"
-                        }}
-                      >
-                        Assign
-                      </button>
-                    )}
-                    {onResolve && (
-                      <button
-                        type="button"
-                        className="action-btn resolve-btn"
-                        onClick={(e) => handleResolve(e, g)}
-                        disabled={g.status === "Resolved"}
-                        style={{
-                          opacity: g.status === "Resolved" ? 0.5 : 1,
-                          cursor: g.status === "Resolved" ? "not-allowed" : "pointer",
-                          marginLeft: "5px"
-                        }}
-                      >
-                        Resolve
-                      </button>
-                    )}
-                    {(onReject || updateStatus) && (
-                      <button
-                        type="button"
-                        className="action-btn reject-btn"
-                        onClick={(e) => handleReject(e, g)}
-                        disabled={g.status === "Resolved" || g.status === "Rejected"}
-                        style={{
-                          opacity: g.status === "Resolved" || g.status === "Rejected" ? 0.5 : 1,
-                          cursor: g.status === "Resolved" || g.status === "Rejected" ? "not-allowed" : "pointer",
-                          marginLeft: "5px"
-                        }}
-                      >
-                        Reject
-                      </button>
+                    {!isHeldByThisDept(g) ? (
+                      <div style={{ padding: "8px 12px", fontSize: "0.78rem", color: "#64748b", fontStyle: "italic", whiteSpace: "nowrap" }}>
+                        🔒 Assigned to {g.category}
+                      </div>
+                    ) : (
+                      <>
+                        {openAssignPopup && (
+                          <button
+                            type="button"
+                            className="action-btn assign-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openAssignPopup(g._id);
+                            }}
+                            disabled={g.status === "Resolved"}
+                            style={{
+                              opacity: g.status === "Resolved" ? 0.5 : 1,
+                              cursor: g.status === "Resolved" ? "not-allowed" : "pointer"
+                            }}
+                          >
+                            {g.assignedTo ? "Reassign" : "Assign"}
+                          </button>
+                        )}
+                        {onResolve && (
+                          <button
+                            type="button"
+                            className="action-btn resolve-btn"
+                            onClick={(e) => handleResolve(e, g)}
+                            disabled={g.status === "Resolved"}
+                            style={{
+                              opacity: g.status === "Resolved" ? 0.5 : 1,
+                              cursor: g.status === "Resolved" ? "not-allowed" : "pointer",
+                              marginLeft: "5px"
+                            }}
+                          >
+                            Resolve
+                          </button>
+                        )}
+                        {(onReject || updateStatus) && (
+                          <button
+                            type="button"
+                            className="action-btn reject-btn"
+                            onClick={(e) => handleReject(e, g)}
+                            disabled={g.status === "Resolved" || g.status === "Rejected"}
+                            style={{
+                              opacity: g.status === "Resolved" || g.status === "Rejected" ? 0.5 : 1,
+                              cursor: g.status === "Resolved" || g.status === "Rejected" ? "not-allowed" : "pointer",
+                              marginLeft: "5px"
+                            }}
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </>
                     )}
                   </ActionDropdown>
                 </div>

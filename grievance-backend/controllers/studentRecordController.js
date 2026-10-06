@@ -5,6 +5,8 @@ import UploadJob from "../models/UploadJob.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import { logAuditAction } from "../utils/AuditService.js";
+import { syncAllRegistrationStatuses, syncSingleStudentRegistration } from "../utils/registrationSyncService.js";
+import { invalidateComparisonCache } from "./registeredUserController.js";
 
 // ─── In-memory job tracker ────────────────────────────────────────────────
 const uploadJobs = new Map();
@@ -194,6 +196,11 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
     uploadJobs.set(jobId, job);
     await UploadJob.updateOne({ jobId }, { $set: job }).catch(() => {});
 
+    // 🔥 Background registration sync so comparison reflects newly uploaded matches immediately
+    syncAllRegistrationStatuses()
+      .then(() => invalidateComparisonCache())
+      .catch((err) => console.warn("Background bulk sync error:", err.message));
+
     if (reqUser) {
       await logAuditAction("UPLOAD", "StudentRecord", reqUser, {
         mode,
@@ -356,6 +363,18 @@ export const addStudentRecord = async (req, res) => {
       school: (school || "").trim(),
       batch: (batch || "").trim(),
     });
+
+    // 🔥 Check if matching verified StudentUser already exists
+    try {
+      const verifiedStudent = await StudentUser.findOne({
+        $or: [{ id: finalId }, { ctuId: finalCtuId }],
+        isVerified: true
+      });
+      if (verifiedStudent) {
+        await syncSingleStudentRegistration(verifiedStudent, true);
+        invalidateComparisonCache();
+      }
+    } catch (e) {}
 
     await logAuditAction("ADD", "StudentRecord", req.user, {
       recordId: finalId,

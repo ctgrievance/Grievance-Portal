@@ -7,7 +7,9 @@ import Department from "../models/Department.js";
 import StudentRecord from "../models/StudentRecord.js";
 import StaffRecord from "../models/StaffRecord.js";
 import xlsx from "xlsx";
+import jwt from "jsonwebtoken";
 import { logAuditAction } from "../utils/AuditService.js";
+import { syncSingleStudentRegistration, syncSingleStaffRegistration } from "../utils/registrationSyncService.js";
 
 // =========================================================================
 // 1️⃣ GET LIVE REGISTERED STUDENTS
@@ -253,6 +255,10 @@ export const deleteLiveStudent = async (req, res) => {
       User.deleteOne({ id: safeId })
     ]);
 
+    // 🔥 Sync registration status to StudentRecord immediately
+    await syncSingleStudentRegistration(student, false);
+    invalidateComparisonCache();
+
     await logAuditAction("DELETE", "StudentRecord", req.user, {
       recordId: safeId,
       accountType: "Registered Live Student",
@@ -278,6 +284,17 @@ export const getLiveStaff = async (req, res) => {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 50;
 
+    let requesterId = "";
+    if (req.user && req.user.id) {
+      requesterId = String(req.user.id).trim().toUpperCase();
+    } else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_fallback_secret_key_12345");
+        requesterId = String(decoded.id || "").trim().toUpperCase();
+      } catch (e) {}
+    }
+
     // Strict condition: A user is considered registered staff ONLY IF their OTP has been verified
     const verifiedCondition = {
       isVerified: true,
@@ -291,6 +308,11 @@ export const getLiveStaff = async (req, res) => {
     };
 
     const query = {};
+
+    // Hide 10001 from anyone whose ID is NOT 10001
+    if (requesterId !== "10001") {
+      query.id = { $ne: "10001" };
+    }
 
     if (status === "registered" || status === "verified") {
       Object.assign(query, verifiedCondition);
@@ -561,6 +583,10 @@ export const updateLiveStaff = async (req, res) => {
       await AdminStaffModel.deleteOne({ id: safeId });
     }
 
+    // 🔥 Sync registration status to StaffRecord immediately
+    await syncSingleStaffRegistration(staff, staff.isVerified);
+    invalidateComparisonCache();
+
     await logAuditAction("UPDATE", "StaffRecord", req.user, {
       recordId: safeId,
       accountType: "Registered Live Staff",
@@ -628,6 +654,10 @@ export const deleteLiveStaff = async (req, res) => {
       AdminStaffModel.deleteOne({ id: safeId })
     ]);
 
+    // 🔥 Sync registration status to StaffRecord immediately
+    await syncSingleStaffRegistration(staff, false);
+    invalidateComparisonCache();
+
     await logAuditAction("DELETE", "StaffRecord", req.user, {
       recordId: safeId,
       accountType: "Registered Live Staff",
@@ -643,6 +673,212 @@ export const deleteLiveStaff = async (req, res) => {
     console.error("Error deleting live staff:", err);
     res.status(500).json({ message: "Failed to delete staff member", error: err.message });
   }
+};
+
+// =========================================================================
+// CACHING UTILITIES FOR COMPARISON (Zero-Lag Cohort Audits)
+// =========================================================================
+let cachedStudentsData = null;
+let cachedStudentsTimestamp = 0;
+let cachedStaffData = null;
+let cachedStaffTimestamp = 0;
+let cachedSchools = null;
+let cachedSchoolsTimestamp = 0;
+let cachedDepts = null;
+let cachedDeptsTimestamp = 0;
+
+const USER_CACHE_TTL = 30 * 1000; // 30 seconds
+const DROPDOWN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export const invalidateComparisonCache = () => {
+  cachedStudentsData = null;
+  cachedStudentsTimestamp = 0;
+  cachedStaffData = null;
+  cachedStaffTimestamp = 0;
+  cachedSchools = null;
+  cachedSchoolsTimestamp = 0;
+  cachedDepts = null;
+  cachedDeptsTimestamp = 0;
+};
+
+const getRegisteredStudentsData = async () => {
+  const now = Date.now();
+  if (cachedStudentsData && (now - cachedStudentsTimestamp < USER_CACHE_TTL)) {
+    return cachedStudentsData;
+  }
+
+  const verifiedCondition = {
+    isVerified: true,
+    $or: [{ otp: { $exists: false } }, { otp: null }, { otp: "" }]
+  };
+
+  const registeredStudents = await StudentUser.find(verifiedCondition)
+    .select("id ctuId fullName email phone createdAt updatedAt isVerified")
+    .lean();
+
+  const registeredMap = new Map();
+  const registeredIdsSet = new Set();
+  const registeredEmailsSet = new Set();
+
+  for (const u of registeredStudents) {
+    if (u.id) {
+      const raw = String(u.id).trim();
+      if (raw) {
+        registeredMap.set(raw.toUpperCase(), u);
+        registeredIdsSet.add(raw);
+        registeredIdsSet.add(raw.toUpperCase());
+        registeredIdsSet.add(raw.toLowerCase());
+      }
+    }
+    if (u.ctuId) {
+      const raw = String(u.ctuId).trim();
+      if (raw) {
+        registeredMap.set(raw.toUpperCase(), u);
+        registeredIdsSet.add(raw);
+        registeredIdsSet.add(raw.toUpperCase());
+        registeredIdsSet.add(raw.toLowerCase());
+      }
+    }
+    if (u.email) {
+      const cleanEmail = String(u.email).trim().toLowerCase();
+      if (cleanEmail) {
+        registeredMap.set(cleanEmail, u);
+        registeredEmailsSet.add(cleanEmail);
+      }
+    }
+  }
+
+  const studentRegisteredCondition = { isRegistered: true };
+  const studentNotRegisteredCondition = { isRegistered: false };
+
+  cachedStudentsData = {
+    registeredMap,
+    studentRegisteredCondition,
+    studentNotRegisteredCondition
+  };
+  cachedStudentsTimestamp = now;
+  return cachedStudentsData;
+};
+
+const getRegisteredStaffData = async () => {
+  const now = Date.now();
+  if (cachedStaffData && (now - cachedStaffTimestamp < USER_CACHE_TTL)) {
+    return cachedStaffData;
+  }
+
+  const verifiedCondition = {
+    isVerified: true,
+    $or: [{ otp: { $exists: false } }, { otp: null }, { otp: "" }]
+  };
+
+  const registeredStaff = await StaffUser.find(verifiedCondition)
+    .select("id fullName email phone role staffDepartment adminDepartment isDeptAdmin isMasterAdmin createdAt updatedAt isVerified")
+    .lean();
+
+  const registeredMap = new Map();
+  for (const u of registeredStaff) {
+    if (u.id) {
+      const raw = String(u.id).trim();
+      if (raw) {
+        registeredMap.set(raw.toUpperCase(), u);
+      }
+    }
+    if (u.email) {
+      const cleanEmail = String(u.email).trim().toLowerCase();
+      if (cleanEmail) {
+        registeredMap.set(cleanEmail, u);
+      }
+    }
+  }
+
+  const staffRegisteredCondition = { isRegistered: true };
+  const staffNotRegisteredCondition = { isRegistered: false };
+
+  cachedStaffData = {
+    registeredMap,
+    staffRegisteredCondition,
+    staffNotRegisteredCondition
+  };
+  cachedStaffTimestamp = now;
+  return cachedStaffData;
+};
+
+const getCleanSchools = async () => {
+  const now = Date.now();
+  if (cachedSchools && (now - cachedSchoolsTimestamp < DROPDOWN_CACHE_TTL)) {
+    return cachedSchools;
+  }
+  const [schools, officialDepts] = await Promise.all([
+    StudentRecord.distinct("school"),
+    Department.find({ isActive: true }).select("name").sort({ name: 1 })
+  ]);
+  const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+  const officialMap = new Map();
+  if (Array.isArray(officialDepts)) {
+    officialDepts.forEach(d => {
+      const c = (d.name || "").replace(/\s+/g, " ").trim();
+      if (c) officialMap.set(normKey(c), c);
+    });
+  }
+  const compMap = new Map();
+  if (Array.isArray(schools)) {
+    schools.forEach(d => {
+      const c = (d || "").replace(/\s+/g, " ").trim();
+      if (c && !/^\d+$/.test(c)) {
+        const k = normKey(c);
+        if (!compMap.has(k)) {
+          if (officialMap.has(k)) {
+            compMap.set(k, officialMap.get(k));
+          } else {
+            const titleCased = c.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            compMap.set(k, titleCased);
+          }
+        }
+      }
+    });
+  }
+  cachedSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
+  cachedSchoolsTimestamp = now;
+  return cachedSchools;
+};
+
+const getCleanDepartments = async () => {
+  const now = Date.now();
+  if (cachedDepts && (now - cachedDeptsTimestamp < DROPDOWN_CACHE_TTL)) {
+    return cachedDepts;
+  }
+  const [allDistinctDepts, officialDepts] = await Promise.all([
+    StaffRecord.distinct("department"),
+    Department.find({ isActive: true }).select("name").sort({ name: 1 })
+  ]);
+  const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+  const officialMap = new Map();
+  if (Array.isArray(officialDepts)) {
+    officialDepts.forEach(d => {
+      const c = (d.name || "").replace(/\s+/g, " ").trim();
+      if (c) officialMap.set(normKey(c), c);
+    });
+  }
+  const compMap = new Map();
+  if (Array.isArray(allDistinctDepts)) {
+    allDistinctDepts.forEach(d => {
+      const c = (d || "").replace(/\s+/g, " ").trim();
+      if (c && !/^\d+$/.test(c)) {
+        const k = normKey(c);
+        if (!compMap.has(k)) {
+          if (officialMap.has(k)) {
+            compMap.set(k, officialMap.get(k));
+          } else {
+            const titleCased = c.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            compMap.set(k, titleCased);
+          }
+        }
+      }
+    });
+  }
+  cachedDepts = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
+  cachedDeptsTimestamp = now;
+  return cachedDepts;
 };
 
 // =========================================================================
@@ -671,11 +907,6 @@ export const getRecordsComparison = async (req, res) => {
     const reqType = (type || "").toString().trim().toLowerCase();
     const isStudents = reqType === "students" || reqType === "student";
 
-    const verifiedCondition = {
-      isVerified: true,
-      $or: [{ otp: { $exists: false } }, { otp: null }, { otp: "" }]
-    };
-
     const rawDeptParam = req.query.departments || req.query.department || "all";
     let selectedDepartments = [];
     if (Array.isArray(rawDeptParam)) {
@@ -685,70 +916,12 @@ export const getRecordsComparison = async (req, res) => {
     }
 
     if (isStudents) {
-      // 1️⃣ Fetch all registered student IDs and emails
-      const registeredStudents = await StudentUser.find(verifiedCondition)
-        .select("id ctuId fullName email phone createdAt updatedAt isVerified")
-        .lean();
-
-      const registeredMap = new Map();
-      const registeredIdsSet = new Set();
-      const registeredEmailsSet = new Set();
-
-      for (const u of registeredStudents) {
-        if (u.id) {
-          const raw = String(u.id).trim();
-          if (raw) {
-            registeredMap.set(raw.toUpperCase(), u);
-            registeredIdsSet.add(raw);
-            registeredIdsSet.add(raw.toUpperCase());
-            registeredIdsSet.add(raw.toLowerCase());
-          }
-        }
-        if (u.ctuId) {
-          const raw = String(u.ctuId).trim();
-          if (raw) {
-            registeredMap.set(raw.toUpperCase(), u);
-            registeredIdsSet.add(raw);
-            registeredIdsSet.add(raw.toUpperCase());
-            registeredIdsSet.add(raw.toLowerCase());
-          }
-        }
-        if (u.email) {
-          const cleanEmail = String(u.email).trim().toLowerCase();
-          if (cleanEmail) {
-            registeredMap.set(cleanEmail, u);
-            registeredEmailsSet.add(cleanEmail);
-          }
-        }
-      }
-      const registeredIds = Array.from(registeredIdsSet);
-      const registeredEmails = Array.from(registeredEmailsSet);
-
-      // Student Registered and Not-Registered MongoDB query blocks
-      const studentRegisteredOr = [
-        { id: { $in: registeredIds } },
-        { ctuId: { $in: registeredIds } }
-      ];
-      if (registeredEmails.length > 0) {
-        studentRegisteredOr.push({ email: { $in: registeredEmails } });
-      }
-      const studentRegisteredCondition = { $or: studentRegisteredOr };
-
-      const studentNotRegisteredAnd = [
-        { id: { $nin: registeredIds } },
-        { ctuId: { $nin: registeredIds } }
-      ];
-      if (registeredEmails.length > 0) {
-        studentNotRegisteredAnd.push({
-          $or: [
-            { email: { $exists: false } },
-            { email: null },
-            { email: "" },
-            { email: { $nin: registeredEmails } }
-          ]
-        });
-      }
-      const studentNotRegisteredCondition = { $and: studentNotRegisteredAnd };
+      // 1️⃣ Fetch cached registered students mapping
+      const {
+        registeredMap,
+        studentRegisteredCondition,
+        studentNotRegisteredCondition
+      } = await getRegisteredStudentsData();
 
       // Context conditions (department/school + search)
       const contextConditions = [];
@@ -793,10 +966,11 @@ export const getRecordsComparison = async (req, res) => {
         ? { $and: [...contextConditions, studentRegisteredCondition] }
         : studentRegisteredCondition;
 
-      // Dynamic counts within current context (school + search)
-      const [totalRecords, totalRegistered] = await Promise.all([
+      // Dynamic counts and clean schools in parallel
+      const [totalRecords, totalRegistered, cleanSchools] = await Promise.all([
         StudentRecord.countDocuments(baseContextQuery),
-        StudentRecord.countDocuments(registeredContextQuery)
+        StudentRecord.countDocuments(registeredContextQuery),
+        getCleanSchools()
       ]);
       const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
       const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
@@ -810,45 +984,8 @@ export const getRecordsComparison = async (req, res) => {
       }
       const finalQuery = finalConditions.length > 0 ? { $and: finalConditions } : {};
 
-      // Distinct schools for dropdown
-      const [schools, officialDepts] = await Promise.all([
-        StudentRecord.distinct("school"),
-        Department.find({ isActive: true }).select("name").sort({ name: 1 })
-      ]);
-      const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
-      
-      const officialMap = new Map();
-      if (Array.isArray(officialDepts)) {
-        officialDepts.forEach(d => {
-          const c = (d.name || "").replace(/\s+/g, " ").trim();
-          if (c) officialMap.set(normKey(c), c);
-        });
-      }
-
-      const compMap = new Map();
-      if (Array.isArray(schools)) {
-        schools.forEach(d => {
-          const c = (d || "").replace(/\s+/g, " ").trim();
-          if (c && !/^\d+$/.test(c)) { // Ignore purely numeric schools
-            const k = normKey(c);
-            if (!compMap.has(k)) {
-              if (officialMap.has(k)) {
-                compMap.set(k, officialMap.get(k));
-              } else {
-                const titleCased = c.replace(
-                  /\w\S*/g,
-                  (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-                );
-                compMap.set(k, titleCased);
-              }
-            }
-          }
-        });
-      }
-      const cleanSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
-
-      // Export to Excel
-      if (isExport === "true" || isExport === true) {
+      // Export to Excel / Preview
+      if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
         const allMatching = await StudentRecord.find(finalQuery).sort({ id: 1 }).lean();
         const exportData = allMatching.map((rec, idx) => {
           const recId = rec.id ? String(rec.id).trim().toUpperCase() : "";
@@ -869,12 +1006,22 @@ export const getRecordsComparison = async (req, res) => {
             "Program": rec.program || "",
             "Batch": rec.batch || "",
             "Type": rec.studentType || "",
-            "Portal Status": regInfo ? "REGISTERED" : "NOT REGISTERED",
-            "Registered Email": regInfo?.email || "—",
-            "Registered Phone": regInfo?.phone || "—",
-            "Registered On": regInfo?.createdAt ? new Date(regInfo.createdAt).toLocaleDateString("en-US") : "—"
+            "Portal Status": (rec.isRegistered === true || !!regInfo) ? "REGISTERED" : "NOT REGISTERED",
+            "Registered Email": rec.registeredEmail || regInfo?.email || "—",
+            "Registered Phone": rec.registeredPhone || regInfo?.phone || "—",
+            "Registered On": (rec.registeredAt || regInfo?.createdAt) ? new Date(rec.registeredAt || regInfo.createdAt).toLocaleDateString("en-US") : "—"
           };
         });
+
+        if (isExport === "preview" || req.query.preview === "true") {
+          return res.json({
+            success: true,
+            type: "students",
+            count: exportData.length,
+            records: exportData,
+            departments: cleanSchools
+          });
+        }
 
         const wb = xlsx.utils.book_new();
         const ws = xlsx.utils.json_to_sheet(exportData);
@@ -886,7 +1033,8 @@ export const getRecordsComparison = async (req, res) => {
         return res.send(buffer);
       }
 
-      const totalFiltered = await StudentRecord.countDocuments(finalQuery);
+      // Mathematical totalFiltered without duplicate countDocuments query
+      const totalFiltered = status === "registered" ? totalRegistered : status === "not_registered" ? totalNotRegistered : totalRecords;
       const rawRecords = await StudentRecord.find(finalQuery)
         .sort({ createdAt: -1, id: 1 })
         .skip((pageNum - 1) * limitNum)
@@ -903,10 +1051,10 @@ export const getRecordsComparison = async (req, res) => {
                         null;
         return {
           ...rec,
-          isRegistered: !!regInfo,
-          registeredAt: regInfo?.createdAt || null,
-          registeredEmail: regInfo?.email || null,
-          registeredPhone: regInfo?.phone || null
+          isRegistered: rec.isRegistered === true || !!regInfo,
+          registeredAt: rec.registeredAt || regInfo?.createdAt || null,
+          registeredEmail: rec.registeredEmail || regInfo?.email || null,
+          registeredPhone: rec.registeredPhone || regInfo?.phone || null
         };
       });
 
@@ -927,57 +1075,11 @@ export const getRecordsComparison = async (req, res) => {
       });
     } else {
       // 2️⃣ STAFF COMPARISON
-      const registeredStaff = await StaffUser.find(verifiedCondition)
-        .select("id fullName email phone role staffDepartment adminDepartment isDeptAdmin isMasterAdmin createdAt updatedAt isVerified")
-        .lean();
-
-      const registeredMap = new Map();
-      const registeredIdsSet = new Set();
-      const registeredEmailsSet = new Set();
-
-      for (const u of registeredStaff) {
-        if (u.id) {
-          const raw = String(u.id).trim();
-          if (raw) {
-            registeredMap.set(raw.toUpperCase(), u);
-            registeredIdsSet.add(raw);
-            registeredIdsSet.add(raw.toUpperCase());
-            registeredIdsSet.add(raw.toLowerCase());
-          }
-        }
-        if (u.email) {
-          const cleanEmail = String(u.email).trim().toLowerCase();
-          if (cleanEmail) {
-            registeredMap.set(cleanEmail, u);
-            registeredEmailsSet.add(cleanEmail);
-          }
-        }
-      }
-      const registeredIds = Array.from(registeredIdsSet);
-      const registeredEmails = Array.from(registeredEmailsSet);
-
-      const staffRegisteredOr = [
-        { id: { $in: registeredIds } }
-      ];
-      if (registeredEmails.length > 0) {
-        staffRegisteredOr.push({ email: { $in: registeredEmails } });
-      }
-      const staffRegisteredCondition = { $or: staffRegisteredOr };
-
-      const staffNotRegisteredAnd = [
-        { id: { $nin: registeredIds } }
-      ];
-      if (registeredEmails.length > 0) {
-        staffNotRegisteredAnd.push({
-          $or: [
-            { email: { $exists: false } },
-            { email: null },
-            { email: "" },
-            { email: { $nin: registeredEmails } }
-          ]
-        });
-      }
-      const staffNotRegisteredCondition = { $and: staffNotRegisteredAnd };
+      const {
+        registeredMap,
+        staffRegisteredCondition,
+        staffNotRegisteredCondition
+      } = await getRegisteredStaffData();
 
       // Context conditions (department + search)
       const deptSearchConditions = [];
@@ -1037,11 +1139,12 @@ export const getRecordsComparison = async (req, res) => {
         ? { $and: [...activeCategoryConditions, staffRegisteredCondition] }
         : staffRegisteredCondition;
 
-      const [totalTeaching, totalNonTeaching, totalRecords, totalRegistered] = await Promise.all([
+      const [totalTeaching, totalNonTeaching, totalRecords, totalRegistered, cleanDepartments] = await Promise.all([
         StaffRecord.countDocuments(teachingQuery),
         StaffRecord.countDocuments(nonTeachingQuery),
         StaffRecord.countDocuments(activeCategoryQuery),
-        StaffRecord.countDocuments(registeredCategoryQuery)
+        StaffRecord.countDocuments(registeredCategoryQuery),
+        getCleanDepartments()
       ]);
       const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
       const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
@@ -1055,43 +1158,7 @@ export const getRecordsComparison = async (req, res) => {
       }
       const finalStaffQuery = finalStaffConditions.length > 0 ? { $and: finalStaffConditions } : {};
 
-      const [allDistinctDepts, officialDepts] = await Promise.all([
-        StaffRecord.distinct("department"),
-        Department.find({ isActive: true }).select("name").sort({ name: 1 })
-      ]);
-      const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
-      
-      const officialMap = new Map();
-      if (Array.isArray(officialDepts)) {
-        officialDepts.forEach(d => {
-          const c = (d.name || "").replace(/\s+/g, " ").trim();
-          if (c) officialMap.set(normKey(c), c);
-        });
-      }
-
-      const compMap = new Map();
-      if (Array.isArray(allDistinctDepts)) {
-        allDistinctDepts.forEach(d => {
-          const c = (d || "").replace(/\s+/g, " ").trim();
-          if (c && !/^\d+$/.test(c)) { // Ignore purely numeric ones
-            const k = normKey(c);
-            if (!compMap.has(k)) {
-              if (officialMap.has(k)) {
-                compMap.set(k, officialMap.get(k));
-              } else {
-                const titleCased = c.replace(
-                  /\w\S*/g,
-                  (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-                );
-                compMap.set(k, titleCased);
-              }
-            }
-          }
-        });
-      }
-      const cleanDepartments = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
-
-      if (isExport === "true" || isExport === true) {
+      if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
         const allMatching = await StaffRecord.find(finalStaffQuery).sort({ id: 1 }).lean();
         const exportData = allMatching.map((rec, idx) => {
           const recId = rec.id ? String(rec.id).trim().toUpperCase() : "";
@@ -1108,13 +1175,23 @@ export const getRecordsComparison = async (req, res) => {
             "Role": rec.role || "staff",
             "Staff Category": rec.staffType || "Non-Teaching",
             "Department": rec.department || "",
-            "Portal Status": regInfo ? "REGISTERED" : "NOT REGISTERED",
-            "Portal Role": regInfo?.role || (regInfo?.isDeptAdmin ? "Dept Admin" : "—"),
-            "Registered Email": regInfo?.email || "—",
-            "Registered Phone": regInfo?.phone || "—",
-            "Registered On": regInfo?.createdAt ? new Date(regInfo.createdAt).toLocaleDateString("en-US") : "—"
+            "Portal Status": (rec.isRegistered === true || !!regInfo) ? "REGISTERED" : "NOT REGISTERED",
+            "Portal Role": rec.registeredRole || regInfo?.role || (regInfo?.isDeptAdmin ? "Dept Admin" : "—"),
+            "Registered Email": rec.registeredEmail || regInfo?.email || "—",
+            "Registered Phone": rec.registeredPhone || regInfo?.phone || "—",
+            "Registered On": (rec.registeredAt || regInfo?.createdAt) ? new Date(rec.registeredAt || regInfo.createdAt).toLocaleDateString("en-US") : "—"
           };
         });
+
+        if (isExport === "preview" || req.query.preview === "true") {
+          return res.json({
+            success: true,
+            type: "staff",
+            count: exportData.length,
+            records: exportData,
+            departments: cleanDepartments
+          });
+        }
 
         const wb = xlsx.utils.book_new();
         const ws = xlsx.utils.json_to_sheet(exportData);
@@ -1126,7 +1203,8 @@ export const getRecordsComparison = async (req, res) => {
         return res.send(buffer);
       }
 
-      const totalFiltered = await StaffRecord.countDocuments(finalStaffQuery);
+      // Mathematical totalFiltered without duplicate countDocuments query
+      const totalFiltered = status === "registered" ? totalRegistered : status === "not_registered" ? totalNotRegistered : totalRecords;
       const rawRecords = await StaffRecord.find(finalStaffQuery)
         .sort({ createdAt: -1, id: 1 })
         .skip((pageNum - 1) * limitNum)
@@ -1141,11 +1219,11 @@ export const getRecordsComparison = async (req, res) => {
                         null;
         return {
           ...rec,
-          isRegistered: !!regInfo,
-          registeredAt: regInfo?.createdAt || null,
-          registeredEmail: regInfo?.email || null,
-          registeredPhone: regInfo?.phone || null,
-          registeredRole: regInfo?.role || (regInfo?.isDeptAdmin ? "dept_admin" : null)
+          isRegistered: rec.isRegistered === true || !!regInfo,
+          registeredAt: rec.registeredAt || regInfo?.createdAt || null,
+          registeredEmail: rec.registeredEmail || regInfo?.email || null,
+          registeredPhone: rec.registeredPhone || regInfo?.phone || null,
+          registeredRole: rec.registeredRole || regInfo?.role || (regInfo?.isDeptAdmin ? "dept_admin" : null)
         };
       });
 

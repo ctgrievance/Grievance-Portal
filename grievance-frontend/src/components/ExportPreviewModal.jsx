@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
     SearchIcon,
     DownloadIcon,
@@ -10,8 +10,8 @@ import {
 } from "./Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
-// Column definitions
-const allColumns = [
+// Default column definitions for Grievances
+const defaultGrievanceColumns = [
     { key: "userId", label: "User ID" },
     { key: "name", label: "User Name" },
     { key: "category", label: "Department" },
@@ -23,83 +23,206 @@ const allColumns = [
     { key: "rating", label: "Rating" },
 ];
 
-const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport }) => {
+const ExportPreviewModal = ({
+    isOpen,
+    onClose,
+    grievances = [],
+    data = null,
+    staffMap = {},
+    onExport,
+    title = "Export Preview",
+    subtitle,
+    columns = null,
+    statusOptions = null,
+    departmentOptions = null,
+    extraFilter = null,
+    searchPlaceholder,
+    getRowId = null,
+    renderCell = null,
+    initialStatus = "All",
+}) => {
+    // Determine dataset & columns
+    const isGrievanceMode = !columns && (!data || grievances.length > 0);
+    const itemList = useMemo(() => {
+        if (data && Array.isArray(data)) return data;
+        if (grievances && Array.isArray(grievances)) return grievances;
+        return [];
+    }, [data, grievances]);
+
+    const activeColumns = useMemo(() => {
+        if (columns && Array.isArray(columns) && columns.length > 0) return columns;
+        return defaultGrievanceColumns;
+    }, [columns]);
+
+    // Department and String normalization helper
+    const normKey = (s) => String(s || "")
+        .toLowerCase()
+        .replace(/\s*(?:&|and)\s*/g, " and ")
+        .replace(/[^a-z0-9]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const getItemId = useCallback((item, idx = 0) => {
+        if (getRowId) return getRowId(item, idx);
+        if (item._id) return item._id;
+        if (item.id) return item.id;
+        if (item["Student ID"]) return item["Student ID"];
+        if (item["Staff ID"]) return item["Staff ID"];
+        if (item["ID"]) return item["ID"];
+        if (item["S.No"]) return `sno_${item["S.No"]}`;
+        return `row_${idx}`;
+    }, [getRowId]);
 
     const [selectedColumns, setSelectedColumns] = useState(
-        allColumns.map((col) => col.key)
+        activeColumns.map((col) => col.key)
     );
-    const [selectedRows, setSelectedRows] = useState([]);
-    const [selectAll, setSelectAll] = useState(true);
+    // Use Set for O(1) row selection lookups to eliminate click lag on large cohorts
+    const [selectedRowIds, setSelectedRowIds] = useState(() => new Set());
+
+    // Preview table pagination states
+    const [previewPage, setPreviewPage] = useState(1);
+    const [previewPageSize, setPreviewPageSize] = useState(50);
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("All");
     const [filterDepartment, setFilterDepartment] = useState("All");
     const [filterMonth, setFilterMonth] = useState("");
+    const [internalExtraFilter, setInternalExtraFilter] = useState("All");
 
-    // Get unique departments from grievances
+    // Dynamic departments list
     const uniqueDepartments = useMemo(() => {
-        return [...new Set(grievances.map(g => g.category || g.school).filter(Boolean))];
-    }, [grievances]);
+        if (departmentOptions && Array.isArray(departmentOptions)) {
+            return departmentOptions.filter(d => d !== "All");
+        }
+        return [...new Set(itemList.map(g => g.category || g.school || g.department || g["School"] || g["Department"]).filter(Boolean))];
+    }, [itemList, departmentOptions]);
 
-    // Filtered data based on filters
+    // Active status dropdown options
+    const activeStatusOptions = useMemo(() => {
+        if (statusOptions && Array.isArray(statusOptions)) return statusOptions;
+        if (isGrievanceMode) {
+            return ["All", "Pending", "Assigned", "Resolved", "Rejected"];
+        }
+        return ["All", "REGISTERED", "NOT REGISTERED"];
+    }, [statusOptions, isGrievanceMode]);
+
+    // Filtered data based on toolbar selections
     const filteredData = useMemo(() => {
-        return grievances.filter((g) => {
+        return itemList.filter((item) => {
             // Status filter
-            if (filterStatus !== "All" && g.status !== filterStatus) return false;
-
-            // Department filter
-            const categoryOrSchool = g.category || g.school || "";
-            if (filterDepartment !== "All" && categoryOrSchool !== filterDepartment) return false;
-
-            // Month filter
-            if (filterMonth) {
-                const gDate = new Date(g.createdAt);
-                const [year, month] = filterMonth.split("-");
-                if (gDate.getFullYear() !== parseInt(year) || (gDate.getMonth() + 1) !== parseInt(month)) {
+            if (filterStatus !== "All") {
+                const s = item.status || item["Portal Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+                if (String(s).toLowerCase() !== String(filterStatus).toLowerCase()) {
                     return false;
+                }
+            }
+
+            // Department / School filter
+            if (filterDepartment !== "All") {
+                const dept = item.category || item.school || item.department || item["School"] || item["Department"] || "";
+                if (normKey(dept) !== normKey(filterDepartment)) return false;
+            }
+
+            // Extra Filter (Category / Staff Type / Role)
+            if (extraFilter) {
+                const activeExtraVal = extraFilter.value !== undefined ? extraFilter.value : internalExtraFilter;
+                if (activeExtraVal && activeExtraVal !== "All") {
+                    const candidate = item.staffType || item["Staff Category"] || item.role || item["Role"] || item.userType || "";
+                    if (String(candidate).toLowerCase() !== String(activeExtraVal).toLowerCase()) {
+                        return false;
+                    }
+                }
+            }
+
+            // Month / Date filter
+            if (filterMonth) {
+                const rawDate = item.createdAt || item.registeredAt || item["Registered On"];
+                if (rawDate) {
+                    const d = new Date(rawDate);
+                    if (!isNaN(d.getTime())) {
+                        const [year, month] = filterMonth.split("-");
+                        if (d.getFullYear() !== parseInt(year) || (d.getMonth() + 1) !== parseInt(month)) {
+                            return false;
+                        }
+                    }
                 }
             }
 
             // Search filter
             if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                const role = getSubmitterRole(g);
-                const matchesId = (g.userId || "").toLowerCase().includes(query) || 
-                    (g.name || "").toLowerCase().includes(query) ||
-                    role.includes(query);
-                const matchesMsg = (g.message || "").toLowerCase().includes(query);
-                const matchesStaff = (g.assignedTo || "").toLowerCase().includes(query);
-                const matchesDept = (g.category || g.school || "").toLowerCase().includes(query);
-                if (!matchesId && !matchesMsg && !matchesStaff && !matchesDept) return false;
+                const query = searchQuery.toLowerCase().trim();
+                if (isGrievanceMode) {
+                    const role = getSubmitterRole(item);
+                    const matchesId = (item.userId || "").toLowerCase().includes(query) || 
+                        (item.name || "").toLowerCase().includes(query) ||
+                        role.includes(query);
+                    const matchesMsg = (item.message || "").toLowerCase().includes(query);
+                    const matchesStaff = (item.assignedTo || "").toLowerCase().includes(query);
+                    const matchesDept = (item.category || item.school || "").toLowerCase().includes(query);
+                    if (!matchesId && !matchesMsg && !matchesStaff && !matchesDept) return false;
+                } else {
+                    const values = Object.values(item);
+                    const hasMatch = values.some(val => {
+                        if (val === null || val === undefined) return false;
+                        return String(val).toLowerCase().includes(query);
+                    });
+                    if (!hasMatch) return false;
+                }
             }
 
             return true;
         });
-    }, [grievances, filterStatus, filterDepartment, filterMonth, searchQuery]);
+    }, [itemList, filterStatus, filterDepartment, filterMonth, searchQuery, extraFilter, internalExtraFilter, isGrievanceMode]);
 
-    // Reset selections when modal opens
+    // Active selected count strictly scoped to currently filtered records
+    const activeSelectedCount = useMemo(() => {
+        let count = 0;
+        for (let i = 0; i < filteredData.length; i++) {
+            if (selectedRowIds.has(getItemId(filteredData[i], i))) {
+                count++;
+            }
+        }
+        return count;
+    }, [filteredData, selectedRowIds, getItemId]);
+
+    // Reset and initialize when modal opens or dataset changes
     useEffect(() => {
-        if (isOpen && grievances.length > 0) {
-            setSelectedRows(grievances.map((g) => g._id));
-            setSelectAll(true);
-            setSelectedColumns(allColumns.map((col) => col.key));
-            setFilterStatus("All");
+        if (isOpen && itemList.length > 0) {
+            const initStatus = initialStatus || "All";
+            setFilterStatus(initStatus);
             setFilterDepartment("All");
             setFilterMonth("");
             setSearchQuery("");
-        }
-    }, [isOpen, grievances]);
+            setInternalExtraFilter("All");
+            setPreviewPage(1);
+            setSelectedColumns(activeColumns.map((col) => col.key));
 
-    // Update selected rows when filter changes
-    useEffect(() => {
-        if (selectAll) {
-            setSelectedRows(filteredData.map((g) => g._id));
+            // Select initial records matching the active status
+            const initialFiltered = itemList.filter(item => {
+                if (initStatus !== "All") {
+                    const s = item.status || item["Portal Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+                    if (String(s).toLowerCase() !== String(initStatus).toLowerCase()) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+            setSelectedRowIds(new Set(initialFiltered.map((item, idx) => getItemId(item, idx))));
         }
-    }, [filteredData, selectAll]);
+    }, [isOpen, itemList, activeColumns, initialStatus, getItemId]);
+
+    // Calculate preview page slice
+    const totalPreviewPages = Math.max(1, Math.ceil(filteredData.length / previewPageSize));
+    const currentPreviewPage = Math.min(previewPage, totalPreviewPages);
+    const paginatedPreviewData = useMemo(() => {
+        const start = (currentPreviewPage - 1) * previewPageSize;
+        return filteredData.slice(start, start + previewPageSize);
+    }, [filteredData, currentPreviewPage, previewPageSize]);
 
     if (!isOpen) return null;
 
+    // Fast column selection toggle
     const toggleColumn = (key) => {
         if (selectedColumns.includes(key)) {
             if (selectedColumns.length > 1) {
@@ -110,32 +233,102 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         }
     };
 
+    // Instant O(1) single row selection toggle
     const toggleRow = (id) => {
-        if (selectedRows.includes(id)) {
-            setSelectedRows(selectedRows.filter((rId) => rId !== id));
-            setSelectAll(false);
-        } else {
-            const next = [...selectedRows, id];
-            setSelectedRows(next);
-            if (next.length === filteredData.length) {
-                setSelectAll(true);
+        setSelectedRowIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
             }
+            return next;
+        });
+    };
+
+    // Fast select/deselect all toggle (scoped to current filtered view)
+    const isAllFilteredSelected = filteredData.length > 0 && activeSelectedCount === filteredData.length;
+    const toggleSelectAll = () => {
+        if (isAllFilteredSelected || activeSelectedCount > 0) {
+            setSelectedRowIds(prev => {
+                const next = new Set(prev);
+                filteredData.forEach((item, idx) => next.delete(getItemId(item, idx)));
+                return next;
+            });
+        } else {
+            setSelectedRowIds(prev => {
+                const next = new Set(prev);
+                filteredData.forEach((item, idx) => next.add(getItemId(item, idx)));
+                return next;
+            });
         }
     };
 
-    const toggleSelectAll = () => {
-        if (selectAll) {
-            setSelectedRows([]);
-            setSelectAll(false);
-        } else {
-            setSelectedRows(filteredData.map((g) => g._id));
-            setSelectAll(true);
+    // Helper to evaluate if item matches a set of filters
+    const matchesFilters = (item, status, dept, extraVal, monthVal, queryVal) => {
+        if (status !== "All") {
+            const s = item.status || item["Portal Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+            if (String(s).toLowerCase() !== String(status).toLowerCase()) return false;
         }
+        if (dept !== "All") {
+            const d = item.category || item.school || item.department || item["School"] || item["Department"] || "";
+            if (normKey(d) !== normKey(dept)) return false;
+        }
+        if (extraVal && extraVal !== "All") {
+            const candidate = item.staffType || item["Staff Category"] || item.role || item["Role"] || item.userType || "";
+            if (String(candidate).toLowerCase() !== String(extraVal).toLowerCase()) return false;
+        }
+        if (monthVal) {
+            const rawDate = item.createdAt || item.registeredAt || item["Registered On"];
+            if (rawDate) {
+                const d = new Date(rawDate);
+                if (!isNaN(d.getTime())) {
+                    const [year, month] = monthVal.split("-");
+                    if (d.getFullYear() !== parseInt(year) || (d.getMonth() + 1) !== parseInt(month)) return false;
+                }
+            }
+        }
+        if (queryVal) {
+            const q = queryVal.toLowerCase().trim();
+            const values = Object.values(item);
+            const hasMatch = values.some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(q));
+            if (!hasMatch) return false;
+        }
+        return true;
+    };
+
+    // Filter change handlers that immediately sync selections to new view
+    const handleStatusFilterChange = (newStatus) => {
+        setFilterStatus(newStatus);
+        setPreviewPage(1);
+        const extraVal = extraFilter ? (extraFilter.value !== undefined ? extraFilter.value : internalExtraFilter) : "All";
+        const nextFiltered = itemList.filter(item => matchesFilters(item, newStatus, filterDepartment, extraVal, filterMonth, searchQuery));
+        setSelectedRowIds(new Set(nextFiltered.map((item, idx) => getItemId(item, idx))));
+    };
+
+    const handleDepartmentFilterChange = (newDept) => {
+        setFilterDepartment(newDept);
+        setPreviewPage(1);
+        const extraVal = extraFilter ? (extraFilter.value !== undefined ? extraFilter.value : internalExtraFilter) : "All";
+        const nextFiltered = itemList.filter(item => matchesFilters(item, filterStatus, newDept, extraVal, filterMonth, searchQuery));
+        setSelectedRowIds(new Set(nextFiltered.map((item, idx) => getItemId(item, idx))));
+    };
+
+    const handleSearchQueryChange = (val) => {
+        setSearchQuery(val);
+        setPreviewPage(1);
+    };
+
+    const handleMonthFilterChange = (val) => {
+        setFilterMonth(val);
+        setPreviewPage(1);
     };
 
     const formatDate = (dateString) => {
         if (!dateString) return "—";
-        return new Date(dateString).toLocaleDateString("en-US", {
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return String(dateString);
+        return d.toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
             day: "numeric",
@@ -163,7 +356,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
             case "message":
                 return grievance.message?.substring(0, 40) + (grievance.message?.length > 40 ? "..." : "");
             default:
-                return grievance[key] || "N/A";
+                return grievance[key] !== undefined && grievance[key] !== null ? grievance[key] : "—";
         }
     };
 
@@ -172,8 +365,116 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         return `status-badge status-${s}`;
     };
 
+    const renderCellContent = (item, colKey) => {
+        if (renderCell) {
+            const custom = renderCell(item, colKey);
+            if (custom !== undefined) return custom;
+        }
+
+        if (isGrievanceMode) {
+            if (colKey === "status") {
+                return (
+                    <span className={getStatusClass(item.status)}>
+                        {item.status}
+                    </span>
+                );
+            }
+            if (colKey === "name") {
+                return (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ fontWeight: "500" }}>
+                            {item.name || (getSubmitterRole(item) === "staff" ? "Staff Member" : "Student")}
+                        </span>
+                        <UserRoleBadge grievance={item} />
+                    </div>
+                );
+            }
+            return getCellValue(item, colKey);
+        }
+
+        // Generic mode cell value extraction
+        const val = item[colKey] !== undefined 
+            ? item[colKey] 
+            : (item[activeColumns.find(c => c.key === colKey)?.label]);
+
+        // Status badge formatting
+        if (colKey === "Portal Status" || colKey === "status" || colKey === "Status") {
+            const strVal = String(val || "").toUpperCase();
+            if (strVal.includes("REGISTERED") && !strVal.includes("NOT")) {
+                return (
+                    <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        background: "#dcfce7",
+                        color: "#15803d",
+                        border: "1px solid #86efac"
+                    }}>
+                        <CheckCircleIcon width="11" height="11" />
+                        REGISTERED
+                    </span>
+                );
+            }
+            if (strVal.includes("NOT REGISTERED") || strVal === "UNREGISTERED") {
+                return (
+                    <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        background: "#fee2e2",
+                        color: "#dc2626",
+                        border: "1px solid #fca5a5"
+                    }}>
+                        NOT REGISTERED
+                    </span>
+                );
+            }
+            return <span className={getStatusClass(val)}>{val || "—"}</span>;
+        }
+
+        // Role badge formatting
+        if (colKey === "Role" || colKey === "role" || colKey === "Portal Role") {
+            const roleStr = String(val || "").toLowerCase();
+            const isStaff = roleStr.includes("staff");
+            const isAdmin = roleStr.includes("admin");
+            return (
+                <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "2px 7px",
+                    borderRadius: "4px",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: isAdmin ? "#fef3c7" : isStaff ? "#e0f2fe" : "#f1f5f9",
+                    color: isAdmin ? "#92400e" : isStaff ? "#0369a1" : "#475569",
+                    border: isAdmin ? "1px solid #fde68a" : isStaff ? "1px solid #bae6fd" : "1px solid #cbd5e1",
+                    textTransform: "capitalize"
+                }}>
+                    {val || "—"}
+                </span>
+            );
+        }
+
+        if (val === true) return "Yes";
+        if (val === false) return "No";
+        if (val === null || val === undefined || val === "") return "—";
+        return String(val);
+    };
+
     const handleExport = () => {
-        const selectedData = filteredData.filter((g) => selectedRows.includes(g._id));
+        const selectedData = filteredData.filter((item, idx) => selectedRowIds.has(getItemId(item, idx)));
+        if (selectedData.length === 0) {
+            alert("Please select at least one record to export.");
+            return;
+        }
         onExport(selectedData, selectedColumns);
         onClose();
     };
@@ -183,6 +484,12 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         setFilterStatus("All");
         setFilterDepartment("All");
         setFilterMonth("");
+        setInternalExtraFilter("All");
+        setPreviewPage(1);
+        setSelectedRowIds(new Set(itemList.map(getItemId)));
+        if (extraFilter && extraFilter.onChange) {
+            extraFilter.onChange("All");
+        }
     };
 
     // Executive Styles matching Super Admin
@@ -209,6 +516,9 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
         backgroundPosition: "right 12px center",
         paddingRight: "32px",
     };
+
+    const computedSubtitle = subtitle || (isGrievanceMode ? "Filter and select grievance data to export" : "Filter and select data to export");
+    const computedSearchPlaceholder = searchPlaceholder || (isGrievanceMode ? "Search Student ID, Message..." : "Search records by ID, Name...");
 
     return (
         <div
@@ -283,10 +593,10 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                 color: "#0f172a",
                                 letterSpacing: "-0.02em",
                             }}>
-                                Export Preview
+                                {title}
                             </h2>
                             <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
-                                Filter and select grievance data to export
+                                {computedSubtitle}
                             </p>
                         </div>
                     </div>
@@ -347,9 +657,9 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                         />
                         <input
                             type="text"
-                            placeholder="Search Student ID, Message..."
+                            placeholder={computedSearchPlaceholder}
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => handleSearchQueryChange(e.target.value)}
                             style={{
                                 ...inputStyle,
                                 paddingLeft: "36px",
@@ -361,34 +671,58 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                     {/* Status Dropdown */}
                     <select
                         value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
+                        onChange={(e) => handleStatusFilterChange(e.target.value)}
                         style={selectStyle}
                     >
-                        <option value="All">All Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Assigned">Assigned</option>
-                        <option value="Resolved">Resolved</option>
-                        <option value="Rejected">Rejected</option>
+                        {activeStatusOptions.map((opt) => {
+                            const val = typeof opt === "string" ? opt : opt.value;
+                            const lbl = typeof opt === "string" ? (opt === "All" ? "All Status" : opt) : opt.label;
+                            return (
+                                <option key={val} value={val}>{lbl}</option>
+                            );
+                        })}
                     </select>
 
-                    {/* Department Dropdown */}
-                    <select
-                        value={filterDepartment}
-                        onChange={(e) => setFilterDepartment(e.target.value)}
-                        style={{ ...selectStyle, flex: "1 1 180px" }}
-                    >
-                        <option value="All">All Departments</option>
-                        {uniqueDepartments.map(dept => (
-                            <option key={dept} value={dept}>{dept}</option>
-                        ))}
-                    </select>
+                    {/* Department / School Dropdown */}
+                    {uniqueDepartments.length > 0 && (
+                        <select
+                            value={filterDepartment}
+                            onChange={(e) => handleDepartmentFilterChange(e.target.value)}
+                            style={{ ...selectStyle, flex: "1 1 180px" }}
+                        >
+                            <option value="All">All Departments</option>
+                            {uniqueDepartments.map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                    )}
+
+                    {/* Optional Extra Filter (Category / Role) */}
+                    {extraFilter && extraFilter.options && (
+                        <select
+                            value={extraFilter.value !== undefined ? extraFilter.value : internalExtraFilter}
+                            onChange={(e) => {
+                                setInternalExtraFilter(e.target.value);
+                                setPreviewPage(1);
+                                if (extraFilter.onChange) extraFilter.onChange(e.target.value);
+                            }}
+                            style={{ ...selectStyle, flex: "1 1 160px" }}
+                        >
+                            {extraFilter.options.map(opt => {
+                                const val = typeof opt === "string" ? opt : opt.value;
+                                const lbl = typeof opt === "string" ? opt : opt.label;
+                                return <option key={val} value={val}>{lbl}</option>;
+                            })}
+                        </select>
+                    )}
 
                     {/* Month Filter */}
                     <input
                         type="month"
                         value={filterMonth}
-                        onChange={(e) => setFilterMonth(e.target.value)}
+                        onChange={(e) => handleMonthFilterChange(e.target.value)}
                         style={{ ...inputStyle, cursor: "pointer", flex: "0 0 auto", width: "auto" }}
+                        title="Filter by creation/registration month"
                     />
 
                     {/* Reset Button */}
@@ -445,7 +779,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                         <GridIcon width="13" height="13" /> Select Columns
                     </p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                        {allColumns.map((col) => {
+                        {activeColumns.map((col) => {
                             const isSelected = selectedColumns.includes(col.key);
                             return (
                                 <label
@@ -495,11 +829,11 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                     <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
                         <span style={{ color: "#64748b", fontWeight: "500", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
                             <ChartBarIcon width="14" height="14" style={{ color: "#94a3b8" }} />
-                            Filtered: <strong style={{ color: "#0f172a", fontWeight: "700" }}>{filteredData.length}</strong>
+                            Filtered: <strong style={{ color: "#0f172a", fontWeight: "700" }}>{filteredData.length.toLocaleString()}</strong>
                         </span>
                         <span style={{ color: "#64748b", fontWeight: "500", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
                             <CheckCircleIcon width="14" height="14" style={{ color: "#16a34a" }} />
-                            Selected: <strong style={{ color: "#16a34a", fontWeight: "700" }}>{selectedRows.length}</strong>
+                            Selected to Export: <strong style={{ color: "#16a34a", fontWeight: "700" }}>{activeSelectedCount.toLocaleString()}</strong>
                         </span>
                         <span style={{ color: "#64748b", fontWeight: "500", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
                             <GridIcon width="14" height="14" style={{ color: "#94a3b8" }} />
@@ -518,7 +852,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                     }}>
                         <input
                             type="checkbox"
-                            checked={selectAll}
+                            checked={isAllFilteredSelected}
                             onChange={toggleSelectAll}
                             style={{
                                 width: "16px",
@@ -527,7 +861,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                 accentColor: "#0f172a",
                             }}
                         />
-                        Select All
+                        {isAllFilteredSelected ? "Deselect All" : "Select All"}
                     </label>
                 </div>
 
@@ -564,12 +898,12 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                 }}>
                                     <input
                                         type="checkbox"
-                                        checked={selectAll}
+                                        checked={isAllFilteredSelected}
                                         onChange={toggleSelectAll}
                                         style={{ width: "15px", height: "15px", cursor: "pointer", accentColor: "#0f172a" }}
                                     />
                                 </th>
-                                {allColumns
+                                {activeColumns
                                     .filter((col) => selectedColumns.includes(col.key))
                                     .map((col) => (
                                         <th
@@ -612,12 +946,14 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                     </td>
                                 </tr>
                             ) : (
-                                filteredData.map((g) => {
-                                    const isRowSelected = selectedRows.includes(g._id);
+                                paginatedPreviewData.map((item, idx) => {
+                                    const globalIdx = (currentPreviewPage - 1) * previewPageSize + idx;
+                                    const rowId = getItemId(item, globalIdx);
+                                    const isRowSelected = selectedRowIds.has(rowId);
                                     return (
                                         <tr
-                                            key={g._id}
-                                            onClick={() => toggleRow(g._id)}
+                                            key={rowId}
+                                            onClick={() => toggleRow(rowId)}
                                             style={{
                                                 cursor: "pointer",
                                                 background: isRowSelected ? "#f8fafc" : "white",
@@ -643,12 +979,12 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                                 <input
                                                     type="checkbox"
                                                     checked={isRowSelected}
-                                                    onChange={() => toggleRow(g._id)}
+                                                    onChange={() => toggleRow(rowId)}
                                                     onClick={(e) => e.stopPropagation()}
                                                     style={{ width: "15px", height: "15px", cursor: "pointer", accentColor: "#0f172a" }}
                                                 />
                                             </td>
-                                            {allColumns
+                                            {activeColumns
                                                 .filter((col) => selectedColumns.includes(col.key))
                                                 .map((col) => (
                                                     <td
@@ -664,18 +1000,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                                                             fontSize: "0.82rem",
                                                         }}
                                                     >
-                                                        {col.key === "status" ? (
-                                                            <span className={getStatusClass(g.status)}>
-                                                                {g.status}
-                                                            </span>
-                                                        ) : col.key === "name" ? (
-                                                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                                                                <span style={{ fontWeight: "500" }}>{g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}</span>
-                                                                <UserRoleBadge grievance={g} />
-                                                            </div>
-                                                        ) : (
-                                                            getCellValue(g, col.key)
-                                                        )}
+                                                        {renderCellContent(item, col.key)}
                                                     </td>
                                                 ))}
                                         </tr>
@@ -685,6 +1010,90 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                         </tbody>
                     </table>
                 </div>
+
+                {/* Preview Pagination Toolbar */}
+                {filteredData.length > 0 && (
+                    <div style={{
+                        padding: "10px 24px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#f8fafc",
+                        borderTop: "1px solid #e2e8f0",
+                        fontSize: "0.82rem",
+                        color: "#64748b",
+                        flexWrap: "wrap",
+                        gap: "10px"
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                            <span>
+                                Showing <strong>{((currentPreviewPage - 1) * previewPageSize) + 1}</strong> – <strong>{Math.min(currentPreviewPage * previewPageSize, filteredData.length)}</strong> of <strong>{filteredData.length.toLocaleString()}</strong> preview records
+                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ fontSize: "0.78rem" }}>Preview rows:</span>
+                                <select
+                                    value={previewPageSize}
+                                    onChange={(e) => {
+                                        setPreviewPageSize(Number(e.target.value));
+                                        setPreviewPage(1);
+                                    }}
+                                    style={{
+                                        padding: "3px 8px",
+                                        borderRadius: "6px",
+                                        border: "1px solid #cbd5e1",
+                                        fontSize: "0.78rem",
+                                        background: "#ffffff",
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
+                                disabled={currentPreviewPage <= 1}
+                                style={{
+                                    padding: "4px 10px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #cbd5e1",
+                                    background: currentPreviewPage <= 1 ? "#f1f5f9" : "#ffffff",
+                                    color: currentPreviewPage <= 1 ? "#94a3b8" : "#0f172a",
+                                    cursor: currentPreviewPage <= 1 ? "not-allowed" : "pointer",
+                                    fontWeight: "600",
+                                    fontSize: "0.78rem"
+                                }}
+                            >
+                                Previous
+                            </button>
+                            <span style={{ padding: "0 6px", fontWeight: "600", color: "#0f172a" }}>
+                                Page {currentPreviewPage} of {totalPreviewPages}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewPage(p => Math.min(totalPreviewPages, p + 1))}
+                                disabled={currentPreviewPage >= totalPreviewPages}
+                                style={{
+                                    padding: "4px 10px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #cbd5e1",
+                                    background: currentPreviewPage >= totalPreviewPages ? "#f1f5f9" : "#ffffff",
+                                    color: currentPreviewPage >= totalPreviewPages ? "#94a3b8" : "#0f172a",
+                                    cursor: currentPreviewPage >= totalPreviewPages ? "not-allowed" : "pointer",
+                                    fontWeight: "600",
+                                    fontSize: "0.78rem"
+                                }}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Footer */}
                 <div
@@ -699,7 +1108,7 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                     }}
                 >
                     <p style={{ margin: 0, color: "#64748b", fontSize: "0.8rem" }}>
-                        Click rows or use checkboxes to select records
+                        Click rows or use checkboxes to select records to include in the exported spreadsheet
                     </p>
                     <div style={{ display: "flex", gap: "10px" }}>
                         <button
@@ -728,38 +1137,38 @@ const ExportPreviewModal = ({ isOpen, onClose, grievances, staffMap, onExport })
                         </button>
                         <button
                             onClick={handleExport}
-                            disabled={selectedRows.length === 0 || selectedColumns.length === 0}
+                            disabled={activeSelectedCount === 0 || selectedColumns.length === 0}
                             style={{
                                 padding: "8px 22px",
                                 borderRadius: "6px",
                                 border: "none",
-                                background: selectedRows.length === 0 || selectedColumns.length === 0
+                                background: activeSelectedCount === 0 || selectedColumns.length === 0
                                     ? "#cbd5e1"
                                     : "#0f172a",
-                                color: selectedRows.length === 0 || selectedColumns.length === 0
+                                color: activeSelectedCount === 0 || selectedColumns.length === 0
                                     ? "#94a3b8"
                                     : "#ffffff",
                                 fontWeight: "600",
                                 fontSize: "0.84rem",
-                                cursor: selectedRows.length === 0 || selectedColumns.length === 0 ? "not-allowed" : "pointer",
+                                cursor: activeSelectedCount === 0 || selectedColumns.length === 0 ? "not-allowed" : "pointer",
                                 transition: "all 0.15s ease",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "6px",
                             }}
                             onMouseOver={(e) => {
-                                if (selectedRows.length > 0 && selectedColumns.length > 0) {
+                                if (activeSelectedCount > 0 && selectedColumns.length > 0) {
                                     e.currentTarget.style.background = "#1e293b";
                                 }
                             }}
                             onMouseOut={(e) => {
-                                if (selectedRows.length > 0 && selectedColumns.length > 0) {
+                                if (activeSelectedCount > 0 && selectedColumns.length > 0) {
                                     e.currentTarget.style.background = "#0f172a";
                                 }
                             }}
                         >
                             <DownloadIcon width="15" height="15" />
-                            Export {selectedRows.length} Records
+                            Export {activeSelectedCount.toLocaleString()} Records
                         </button>
                     </div>
                 </div>

@@ -20,6 +20,8 @@ import ActionDropdown from "../components/ActionDropdown";
 import DepartmentFilterBar from "../components/DepartmentFilterBar";
 import DepartmentGrievanceList from "../components/DepartmentGrievanceList";
 import InterDepartmentTracker from "../components/InterDepartmentTracker";
+import DepartmentGrievanceSectionTabs from "../components/DepartmentGrievanceSectionTabs";
+import { splitGrievancesByOrigin } from "../utils/grievanceClassification";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -63,6 +65,7 @@ function CRCAdminDashboard() {
   const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
 
   const [grievances, setGrievances] = useState([]);
+  const [grievanceSection, setGrievanceSection] = useState("direct");
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
   const [loading, setLoading] = useState(true);
@@ -163,7 +166,15 @@ function CRCAdminDashboard() {
   };
 
   const openAssignPopup = (id) => {
-    setAssignGrievanceId(id);
+    const targetG = typeof id === "object" ? id : (selectedGrievance?._id === id ? selectedGrievance : grievances.find(g => g._id === id));
+    if (targetG) {
+      const targetDept = (targetG.currentCustodian?.department || targetG.category || "").trim().toLowerCase();
+      if (targetDept && targetDept !== "crc" && !targetDept.includes("crc")) {
+        alert(`❌ This grievance has been assigned to ${targetG.currentCustodian?.department || targetG.category}. You cannot assign faculty to it.`);
+        return;
+      }
+    }
+    setAssignGrievanceId(typeof id === "object" ? id._id : id);
     setIsAssignPopupOpen(true);
   };
 
@@ -203,8 +214,12 @@ function CRCAdminDashboard() {
     }
   };
 
+  // ✅ 2 SECTIONS: DIRECT GRIEVANCES vs FORWARDED GRIEVANCES
+  const { directGrievances, forwardedGrievances, unassignedForwardedCount } = splitGrievancesByOrigin(grievances, "CRC (Placement)");
+  const currentSectionGrievances = grievanceSection === "forwarded" ? forwardedGrievances : directGrievances;
+
   // ✅ FILTER LOGIC
-  const filteredGrievances = grievances.filter((g) => {
+  const filteredGrievances = currentSectionGrievances.filter((g) => {
     const matchId = (g.userId || "").toLowerCase().includes(searchId.toLowerCase());
     const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
     const matchStatus = statusFilter === "All" || g.status === statusFilter;
@@ -300,42 +315,59 @@ function CRCAdminDashboard() {
         )}
         {activeTab === "grievances" && (
           <div className="card">
-          <h2>Incoming Grievances</h2>
-          {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
-
-          {/* ✅ MODERN RESPONSIVE FILTER BAR */}
-          <DepartmentFilterBar
-            searchId={searchId}
-            setSearchId={setSearchId}
-            searchStaffId={searchStaffId}
-            setSearchStaffId={setSearchStaffId}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            filterMonth={filterMonth}
-            setFilterMonth={setFilterMonth}
-            onReset={resetFilters}
-            onExport={handleOpenExportModal}
-          />
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : filteredGrievances.length === 0 ? (
-            <div className="empty-state">
-              <p>{grievances.length === 0 ? "No grievances found." : "No grievances match your filters."}</p>
-            </div>
-          ) : (
-            <DepartmentGrievanceList
-              grievances={filteredGrievances}
-              staffMap={staffMap}
-              setSelectedGrievance={setSelectedGrievance}
-              openAssignPopup={openAssignPopup}
-              onResolve={resolveGrievance}
-              onReject={rejectGrievance}
-              getDeadlineStatus={getDeadlineStatus}
-              formatDate={formatDate}
+            <DepartmentGrievanceSectionTabs
+              grievanceSection={grievanceSection}
+              setGrievanceSection={setGrievanceSection}
+              directCount={directGrievances.length}
+              forwardedCount={forwardedGrievances.length}
+              unassignedForwardedCount={unassignedForwardedCount}
+              departmentName="CRC (Placement)"
+              onTabChange={() => resetFilters()}
             />
-          )}
-        </div>
+
+            {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
+
+            {/* ✅ MODERN RESPONSIVE FILTER BAR */}
+            <DepartmentFilterBar
+              searchId={searchId}
+              setSearchId={setSearchId}
+              searchStaffId={searchStaffId}
+              setSearchStaffId={setSearchStaffId}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              filterMonth={filterMonth}
+              setFilterMonth={setFilterMonth}
+              onReset={resetFilters}
+              onExport={handleOpenExportModal}
+            />
+
+            {loading ? (
+              <p>Loading...</p>
+            ) : filteredGrievances.length === 0 ? (
+              <div className="empty-state">
+                <p>
+                  {currentSectionGrievances.length === 0
+                    ? (grievanceSection === "forwarded"
+                        ? "No forwarded grievances received from other departments."
+                        : "No direct grievances received yet.")
+                    : "No grievances match your filters."}
+                </p>
+              </div>
+            ) : (
+              <DepartmentGrievanceList
+                grievances={filteredGrievances}
+                staffMap={staffMap}
+                setSelectedGrievance={setSelectedGrievance}
+                openAssignPopup={openAssignPopup}
+                onResolve={resolveGrievance}
+                onReject={rejectGrievance}
+                getDeadlineStatus={getDeadlineStatus}
+                formatDate={formatDate}
+                isForwardedSection={grievanceSection === "forwarded"}
+                currentDepartment="CRC (Placement)"
+              />
+            )}
+          </div>
         )}
       </main>
 
@@ -348,6 +380,7 @@ function CRCAdminDashboard() {
           onClose={() => setSelectedGrievance(null)}
           onDelete={handleDeleteGrievance}
           onResolveExtension={handleResolveExtension}
+          onAssign={openAssignPopup}
           onTransferred={() => {
             fetchGrievances();
             setSelectedGrievance(null);

@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { SearchIcon, XIcon } from "./Icons";
 
 /**
  * MultiSelectDropdown
  * Executive multi-select filter dropdown for Schools / Departments.
- * Supports live search, "Select All", "Clear", badges, and click-outside dismissal.
+ * Supports live search, "Select All", "Clear", badges, viewport-aware positioning,
+ * and zero-overflow mobile responsive layout.
  */
 export default function MultiSelectDropdown({
   options = [],
@@ -12,13 +13,82 @@ export default function MultiSelectDropdown({
   onChange,
   placeholder = "All Schools",
   searchPlaceholder = "Filter schools...",
-  width = "200px"
+  width = "200px",
+  className = ""
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
+  const popoverRef = useRef(null);
 
-  // Close on outside click
+  const [popoverPos, setPopoverPos] = useState({
+    left: 0,
+    width: "max-content",
+    minWidth: "260px",
+    maxWidth: "340px"
+  });
+
+  // Calculate popover position to prevent mobile overflow
+  const updatePosition = useCallback(() => {
+    if (!dropdownRef.current) return;
+    const rect = dropdownRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const isMobile = viewportWidth <= 768;
+
+    if (isMobile) {
+      // Safe padding on mobile: 10px on each side
+      const safePadding = 10;
+      const availableWidth = Math.min(viewportWidth - (safePadding * 2), 420);
+      // Center or clamp to viewport
+      const targetScreenLeft = Math.max(safePadding, (viewportWidth - availableWidth) / 2);
+      const offsetLeft = targetScreenLeft - rect.left;
+
+      setPopoverPos({
+        left: `${offsetLeft}px`,
+        width: `${availableWidth}px`,
+        minWidth: "0px",
+        maxWidth: `${availableWidth}px`,
+        boxSizing: "border-box"
+      });
+    } else {
+      // Desktop / Tablet
+      const defaultWidth = 320;
+      // Check if opening rightward will overflow screen
+      if (rect.left + defaultWidth > viewportWidth - 20) {
+        setPopoverPos({
+          right: 0,
+          left: "auto",
+          minWidth: "260px",
+          maxWidth: "340px",
+          width: "max-content",
+          boxSizing: "border-box"
+        });
+      } else {
+        setPopoverPos({
+          left: 0,
+          right: "auto",
+          minWidth: "260px",
+          maxWidth: "340px",
+          width: "max-content",
+          boxSizing: "border-box"
+        });
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener("resize", updatePosition);
+      window.addEventListener("scroll", updatePosition, true);
+    }
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  // Close on outside click or touch
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -27,9 +97,11 @@ export default function MultiSelectDropdown({
     }
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside, { passive: true });
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [isOpen]);
 
@@ -83,14 +155,17 @@ export default function MultiSelectDropdown({
   return (
     <div
       ref={dropdownRef}
+      className={`multi-select-dropdown-container ${className}`.trim()}
       style={{
         position: "relative",
         display: "inline-block",
-        width
+        width,
+        boxSizing: "border-box"
       }}
     >
       {/* Trigger Button */}
       <div
+        className="multi-select-dropdown-btn"
         onClick={() => setIsOpen((prev) => !prev)}
         style={{
           width: "100%",
@@ -161,7 +236,7 @@ export default function MultiSelectDropdown({
                 justifyContent: "center",
                 cursor: "pointer"
               }}
-              title="Clear school filters"
+              title="Clear filters"
             >
               <XIcon width="11" height="11" />
             </span>
@@ -191,20 +266,19 @@ export default function MultiSelectDropdown({
       {/* Popover Dropdown */}
       {isOpen && (
         <div
+          ref={popoverRef}
+          className="multi-select-dropdown-popover"
           style={{
             position: "absolute",
             top: "calc(100% + 4px)",
-            left: 0,
             zIndex: 1050,
-            minWidth: "260px",
-            maxWidth: "340px",
-            width: "max-content",
             background: "#ffffff",
             borderRadius: "10px",
             border: "1px solid #cbd5e1",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08)",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.16), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
             padding: "8px",
-            animation: "fadeIn 0.15s ease"
+            animation: "fadeIn 0.15s ease",
+            ...popoverPos
           }}
         >
           {/* Inner Search Box */}
@@ -216,7 +290,9 @@ export default function MultiSelectDropdown({
               background: "#f1f5f9",
               padding: "6px 8px",
               borderRadius: "6px",
-              marginBottom: "8px"
+              marginBottom: "8px",
+              boxSizing: "border-box",
+              width: "100%"
             }}
           >
             <SearchIcon width="13" height="13" color="#64748b" />
@@ -232,7 +308,8 @@ export default function MultiSelectDropdown({
                 fontSize: "0.8rem",
                 width: "100%",
                 outline: "none",
-                color: "#1e293b"
+                color: "#1e293b",
+                boxSizing: "border-box"
               }}
             />
             {searchTerm && (
@@ -261,7 +338,9 @@ export default function MultiSelectDropdown({
               alignItems: "center",
               padding: "2px 4px 6px",
               borderBottom: "1px solid #f1f5f9",
-              marginBottom: "4px"
+              marginBottom: "4px",
+              boxSizing: "border-box",
+              width: "100%"
             }}
           >
             <button
@@ -301,9 +380,12 @@ export default function MultiSelectDropdown({
           {/* Options List */}
           <div
             style={{
-              maxHeight: "200px",
+              maxHeight: "220px",
               overflowY: "auto",
-              paddingRight: "2px"
+              paddingRight: "2px",
+              boxSizing: "border-box",
+              width: "100%",
+              overscrollBehavior: "contain"
             }}
           >
             {filteredOptions.length === 0 ? (
@@ -315,7 +397,7 @@ export default function MultiSelectDropdown({
                   color: "#94a3b8"
                 }}
               >
-                No matching schools found
+                No matching options found
               </div>
             ) : (
               filteredOptions.map((opt) => {
@@ -329,7 +411,7 @@ export default function MultiSelectDropdown({
                     }}
                     style={{
                       display: "flex",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       gap: "8px",
                       padding: "6px 8px",
                       borderRadius: "6px",
@@ -340,7 +422,9 @@ export default function MultiSelectDropdown({
                       fontWeight: isChecked ? 600 : 400,
                       transition: "background 0.1s ease",
                       marginBottom: "2px",
-                      userSelect: "none"
+                      userSelect: "none",
+                      boxSizing: "border-box",
+                      width: "100%"
                     }}
                     onMouseEnter={(e) => {
                       if (!isChecked) e.currentTarget.style.background = "#f8fafc";
@@ -354,6 +438,7 @@ export default function MultiSelectDropdown({
                       style={{
                         width: "15px",
                         height: "15px",
+                        marginTop: "2px",
                         borderRadius: "4px",
                         border: isChecked ? "1.5px solid #0284c7" : "1.5px solid #cbd5e1",
                         background: isChecked ? "#0284c7" : "#ffffff",
@@ -379,7 +464,16 @@ export default function MultiSelectDropdown({
                         </svg>
                       )}
                     </div>
-                    <span style={{ lineHeight: "1.25" }}>{opt}</span>
+                    <span
+                      style={{
+                        lineHeight: "1.35",
+                        flex: 1,
+                        wordBreak: "break-word",
+                        whiteSpace: "normal"
+                      }}
+                    >
+                      {opt}
+                    </span>
                   </label>
                 );
               })
@@ -396,7 +490,9 @@ export default function MultiSelectDropdown({
               paddingTop: "6px",
               marginTop: "4px",
               fontSize: "0.74rem",
-              color: "#64748b"
+              color: "#64748b",
+              boxSizing: "border-box",
+              width: "100%"
             }}
           >
             <span>
@@ -409,7 +505,7 @@ export default function MultiSelectDropdown({
                 border: "none",
                 background: "#0f172a",
                 color: "#ffffff",
-                padding: "3px 9px",
+                padding: "4px 12px",
                 borderRadius: "5px",
                 fontSize: "0.74rem",
                 fontWeight: 600,

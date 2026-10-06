@@ -119,11 +119,19 @@ function RegisteredStaffTab() {
         limit: "25"
       });
 
-      const res = await fetch(`${BASE_URL}?${queryParams.toString()}`);
+      const token = localStorage.getItem("grievance_token");
+      const res = await fetch(`${BASE_URL}?${queryParams.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       if (!res.ok) throw new Error("Failed to load registered staff");
       const data = await res.json();
 
-      setStaffList(data.staff || []);
+      const currentUserId = String(localStorage.getItem("grievance_id") || "").trim().toUpperCase();
+      const filteredStaff = currentUserId === "10001"
+        ? (data.staff || [])
+        : (data.staff || []).filter(s => String(s.id).trim().toUpperCase() !== "10001");
+
+      setStaffList(filteredStaff);
       setTotal(data.total || 0);
       setTotalVerified(data.totalVerified || 0);
       setTotalTeaching(data.totalTeaching || 0);

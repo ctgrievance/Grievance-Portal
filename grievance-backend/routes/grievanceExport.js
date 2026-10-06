@@ -226,5 +226,103 @@ router.post("/export-selected", async (req, res) => {
   }
 });
 
+// ✅ EXPORT CUSTOM DATA (with user-selected rows & columns)
+router.post("/export-custom", express.json({ limit: "50mb" }), async (req, res) => {
+  try {
+    const { fileName = "export.xlsx", sheetName = "Export Data", columns, records } = req.body;
+
+    if (!records || !records.length) {
+      return res.status(400).json({ message: "No records to export" });
+    }
+
+    if (!columns || !columns.length) {
+      return res.status(400).json({ message: "No columns selected" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const sanitizedSheetName = (sheetName || "Export")
+      .replace(/[*?:/\\\[\]]/g, "")
+      .substring(0, 31) || "Export";
+    const sheet = workbook.addWorksheet(sanitizedSheetName);
+
+    // Columns format: can be string[] or { key, label, width }[]
+    const formattedColumns = columns.map((col) => {
+      const colKey = typeof col === "string" ? col : (col.key || col.label);
+      const colHeader = typeof col === "string" ? col : (col.label || col.key);
+      const width = typeof col === "object" && col.width ? col.width : Math.max(colHeader.length + 6, 16);
+      return {
+        header: colHeader,
+        key: colKey,
+        width: width
+      };
+    });
+
+    sheet.columns = formattedColumns;
+
+    // Style header row with executive dark-navy theme
+    sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFF" } };
+    sheet.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "1E293B" },
+    };
+    sheet.getRow(1).alignment = { vertical: "middle", horizontal: "center" };
+    sheet.getRow(1).height = 24;
+
+    // Add data rows
+    records.forEach((rec, index) => {
+      const rowData = {};
+      formattedColumns.forEach((col) => {
+        let val = rec[col.key];
+        if (val === undefined && col.header) {
+          val = rec[col.header];
+        }
+        if (val === null || val === undefined) {
+          val = "";
+        }
+        rowData[col.key] = val;
+      });
+
+      const row = sheet.addRow(rowData);
+
+      // Alternating row background
+      if (index % 2 === 0) {
+        row.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "F8FAFC" },
+        };
+      }
+    });
+
+    // Add borders to all cells
+    sheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "E2E8F0" } },
+          left: { style: "thin", color: { argb: "E2E8F0" } },
+          bottom: { style: "thin", color: { argb: "E2E8F0" } },
+          right: { style: "thin", color: { argb: "E2E8F0" } },
+        };
+      });
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${fileName}"`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("Custom Excel Export Error:", err);
+    res.status(500).json({ message: "Excel export failed" });
+  }
+});
+
 export default router;
 

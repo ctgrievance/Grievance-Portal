@@ -92,7 +92,8 @@ app.use(cors({
   origin: true, // Allow localhost, LAN IPs (e.g. 192.168.x.x), Capacitor, and deployed domains
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // ------------------ REGISTER ROUTES ------------------
 app.use("/api/staff-records", staffRecordRoutes);
@@ -650,7 +651,12 @@ app.get("/api/admin/export-users", verifyToken, async (req, res) => {
 // A5. Get all users as JSON
 app.get("/api/admin/all-users", verifyToken, async (req, res) => {
   try {
-    const users = await User.find({}).select('id fullName email phone role department program isDeptAdmin adminDepartment adminDepartments isMasterAdmin');
+    const requesterId = String(req.user.id || "").trim().toUpperCase();
+    const query = {};
+    if (requesterId !== "10001") {
+      query.id = { $ne: "10001" };
+    }
+    const users = await User.find(query).select('id fullName email phone role department program isDeptAdmin adminDepartment adminDepartments isMasterAdmin');
     res.json(users);
   } catch (err) {
     console.error("Fetch all users error:", err);
@@ -701,6 +707,12 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
 
     // 2. Find Target Staff
     const safeTargetId = targetStaffId.toString().trim().toUpperCase();
+
+    // Permanent Root Protection: Account 10001 can never be modified or demoted
+    if (safeTargetId === "10001") {
+      return res.status(403).json({ message: "❌ Account 10001 is protected and cannot be modified." });
+    }
+
     const targetMember = await User.findOne({ id: safeTargetId });
 
     if (!targetMember) return res.status(404).json({ message: "Target staff member not found." });
@@ -1170,18 +1182,39 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
 // staff who registered with their department, not just team members.
 app.get("/api/admin-staff/all", async (req, res) => {
   try {
-    // 1. Fetch from BOTH collections
+    let requesterId = "";
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_fallback_secret_key_12345");
+        requesterId = String(decoded.id || "").trim().toUpperCase();
+      } catch (e) {
+        // invalid / expired token, continue without requesterId
+      }
+    }
+
+    // 1. Visibility rules:
+    // User 10001 can see all staff AND all other super admins.
+    // Anyone other than 10001 CANNOT see 10001 anywhere!
+    const userQuery = { role: { $in: ["staff", "admin"] } };
+    const staffQuery = { role: { $in: ["staff", "admin"] } };
+
+    if (requesterId === "10001") {
+      // 10001 sees all staff and other super admins, hides self from the management list
+      userQuery.id = { $ne: "10001" };
+      staffQuery.id = { $ne: "10001" };
+    } else {
+      // Any other admin/user CANNOT see 10001 and cannot see master admins
+      userQuery.id = { $ne: "10001" };
+      staffQuery.id = { $ne: "10001" };
+      userQuery.isMasterAdmin = { $ne: true };
+      staffQuery.isMasterAdmin = { $ne: true };
+    }
+
+    // Fetch from BOTH collections
     const [userList, staffUserList, staffRecords] = await Promise.all([
-      User.find({
-        isMasterAdmin: { $ne: true },
-        role: { $in: ["staff", "admin"] }
-      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment department school delegatedPermissions").lean(),
-
-      StaffUser.find({
-        isMasterAdmin: { $ne: true },
-        role: { $in: ["staff", "admin"] }
-      }).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment delegatedPermissions").lean(),
-
+      User.find(userQuery).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment department school delegatedPermissions isMasterAdmin").lean(),
+      StaffUser.find(staffQuery).select("id fullName email isDeptAdmin adminDepartment adminDepartments role staffDepartment delegatedPermissions isMasterAdmin").lean(),
       StaffRecord.find({}).select("id department").lean()
     ]);
 
@@ -1224,6 +1257,7 @@ app.get("/api/admin-staff/all", async (req, res) => {
         if (su.role) existing.role = su.role;
         if (su.fullName) existing.fullName = su.fullName;
         if (su.email) existing.email = su.email;
+        if (su.isMasterAdmin !== undefined) existing.isMasterAdmin = su.isMasterAdmin;
         existing.delegatedPermissions = su.delegatedPermissions || existing.delegatedPermissions || {
           allowStudentRecords: false,
           allowStaffRecords: false,
@@ -1237,6 +1271,7 @@ app.get("/api/admin-staff/all", async (req, res) => {
           fullName: su.fullName || "",
           email: su.email || "",
           isDeptAdmin: su.isDeptAdmin || false,
+          isMasterAdmin: su.isMasterAdmin || false,
           adminDepartment: su.adminDepartment || "",
           adminDepartments: su.adminDepartments || [],
           role: su.role || "staff",
@@ -1252,6 +1287,11 @@ app.get("/api/admin-staff/all", async (req, res) => {
         };
       }
     });
+
+    // Final security check: If requester is NOT 10001, strictly remove 10001
+    if (requesterId !== "10001") {
+      delete mergedMap["10001"];
+    }
 
     const mergedStaffList = Object.values(mergedMap);
 
@@ -1340,50 +1380,122 @@ app.get("/api/admin/staff/:department", verifyToken, async (req, res) => {
   }
 });
 
-// 🔥 NEW: Transfer Ownership Route
+// 🔥 Transfer Ownership / Promote to Super Admin Route
 app.post("/api/admin/transfer-ownership", verifyToken, async (req, res) => {
   try {
     const { newMasterId } = req.body;
-    const requesterId = req.user.id;
+    const requesterId = String(req.user.id || "").trim().toUpperCase();
 
-    // 1. Verify Request is from Current Master Admin
-    const currentMaster = await User.findOne({ id: requesterId, isMasterAdmin: true });
-    if (!currentMaster) {
-      return res.status(403).json({ message: "❌ Only the Master Admin can transfer ownership." });
+    // 1. Verify Request is from Current Master Admin or 10001
+    const [currentMasterUser, currentMasterStaff] = await Promise.all([
+      User.findOne({ id: requesterId }),
+      StaffUser.findOne({ id: requesterId })
+    ]);
+
+    const isCurrentMaster = requesterId === "10001" ||
+      Boolean(currentMasterUser?.isMasterAdmin) ||
+      Boolean(currentMasterStaff?.isMasterAdmin);
+
+    if (!isCurrentMaster) {
+      return res.status(403).json({ message: "❌ Only a Super/Master Admin can perform this action." });
     }
 
     // 2. Validate New Master ID
-    const safeTargetId = newMasterId.toString().trim().toUpperCase();
+    const safeTargetId = String(newMasterId || "").trim().toUpperCase();
     if (safeTargetId === requesterId) {
-      return res.status(400).json({ message: "You are already the Master Admin." });
+      return res.status(400).json({ message: "You already have Super Admin privileges." });
     }
 
-    const newMaster = await User.findOne({ id: safeTargetId });
-    if (!newMaster) {
+    const [targetUser, targetStaff] = await Promise.all([
+      User.findOne({ id: safeTargetId }),
+      StaffUser.findOne({ id: safeTargetId })
+    ]);
+
+    if (!targetUser && !targetStaff) {
       return res.status(404).json({ message: "Target user not found." });
     }
 
-    // 3. ATOMIC TRANSFER
-    // Demote Current
-    currentMaster.isMasterAdmin = false;
-    currentMaster.role = "staff"; // 🔥 DEMOTE TO STAFF (User Requested)
+    // 3. TRANSFER / PROMOTION LOGIC:
+    if (requesterId === "10001") {
+      // 👑 SPECIAL HARDCODED FEATURE FOR 10001:
+      // When 10001 makes someone a Super Admin:
+      // - The target becomes Super Admin.
+      // - 10001 ALSO remains Super Admin (permanent root super admin).
+      if (targetUser) {
+        targetUser.isMasterAdmin = true;
+        targetUser.role = "admin";
+        targetUser.isDeptAdmin = false;
+        targetUser.adminDepartment = "";
+        await targetUser.save();
+      }
+      if (targetStaff) {
+        targetStaff.isMasterAdmin = true;
+        targetStaff.role = "admin";
+        targetStaff.isDeptAdmin = false;
+        targetStaff.adminDepartment = "";
+        await targetStaff.save();
+      }
 
-    // Promote New
-    newMaster.isMasterAdmin = true;
-    newMaster.role = "admin";
-    newMaster.isDeptAdmin = false; // Master is above Dept Admin
-    newMaster.adminDepartment = ""; // Master has no specific Dept
+      // Hardcode safeguard: Ensure 10001 is permanently Master Admin in both collections
+      await User.updateOne({ id: "10001" }, { $set: { isMasterAdmin: true, role: "admin" } });
+      await StaffUser.updateOne({ id: "10001" }, { $set: { isMasterAdmin: true, role: "admin" } });
 
-    await currentMaster.save();
-    await newMaster.save();
+      const targetName = targetUser?.fullName || targetStaff?.fullName || safeTargetId;
+      console.log(`👑 User 10001 appointed ${targetName} (${safeTargetId}) as Super Admin. 10001 remains Super Admin.`);
 
-    console.log(`👑 Ownership Transferred: ${currentMaster.fullName} -> ${newMaster.fullName}`);
+      return res.json({
+        success: true,
+        is10001: true,
+        message: `✅ Successfully appointed ${targetName} (${safeTargetId}) as Super Administrator. You also remain Super Admin.`
+      });
+    } else {
+      // 👤 NON-10001 SUPER ADMIN TRANSFERRING RIGHTS:
+      // When any other Super Admin promotes someone else:
+      // - The promoting Super Admin is demoted to staff (ownership forfeited).
+      // - The 3rd person becomes Super Admin.
+      // - User 10001 STILL remains Super Admin (never demoted or modified).
+      if (currentMasterUser) {
+        currentMasterUser.isMasterAdmin = false;
+        currentMasterUser.role = "staff";
+        await currentMasterUser.save();
+      }
+      if (currentMasterStaff) {
+        currentMasterStaff.isMasterAdmin = false;
+        currentMasterStaff.role = "staff";
+        await currentMasterStaff.save();
+      }
 
-    res.json({ message: `✅ Ownership successfully transferred to ${newMaster.fullName} (${newMaster.id})` });
+      if (targetUser) {
+        targetUser.isMasterAdmin = true;
+        targetUser.role = "admin";
+        targetUser.isDeptAdmin = false;
+        targetUser.adminDepartment = "";
+        await targetUser.save();
+      }
+      if (targetStaff) {
+        targetStaff.isMasterAdmin = true;
+        targetStaff.role = "admin";
+        targetStaff.isDeptAdmin = false;
+        targetStaff.adminDepartment = "";
+        await targetStaff.save();
+      }
 
+      // Safeguard: Ensure 10001 always remains Super Admin
+      await User.updateOne({ id: "10001" }, { $set: { isMasterAdmin: true, role: "admin" } });
+      await StaffUser.updateOne({ id: "10001" }, { $set: { isMasterAdmin: true, role: "admin" } });
+
+      const targetName = targetUser?.fullName || targetStaff?.fullName || safeTargetId;
+      console.log(`👑 Ownership Transferred: ${requesterId} -> ${targetName} (${safeTargetId}). 10001 remains Super Admin.`);
+
+      return res.json({
+        success: true,
+        is10001: false,
+        message: `✅ Super Administrator rights successfully transferred to ${targetName} (${safeTargetId}).`
+      });
+    }
   } catch (err) {
     console.error("Transfer Error:", err);
-    res.status(500).json({ message: "Transfer failed" });
+    res.status(500).json({ message: "Transfer failed", error: err.message });
   }
 });
 
@@ -1447,7 +1559,8 @@ app.get("/api/file/:filename", async (req, res) => {
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", authRoutes);
 app.put("/api/grievances/hide/:id", verifyToken, hideGrievance);
-app.use("/api/grievances", grievanceExportRoutes);// ✅ Soft Delete Route
+app.use("/api/grievances", grievanceExportRoutes); // ✅ Grievance & Custom Excel Export Routes
+app.use("/api/export", grievanceExportRoutes);
 app.use("/api/grievances", grievanceRoutes);
 app.use("/api/chat", chatRoutes);
 app.get("/", (req, res) => res.send("✅ Backend Running"));

@@ -248,6 +248,7 @@ function RegisteredStudentsTab() {
             }}
             placeholder="All Schools"
             searchPlaceholder="Filter schools..."
+            className="reg-users-multiselect"
             width="210px"
           />
         )}

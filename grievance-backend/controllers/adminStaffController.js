@@ -2,13 +2,36 @@ const AdminStaffModel = require("../models/AdminStaffModel");
 const UserModel = require("../models/UserModel");
 const GrievanceModel = require("../models/GrievanceModel");
 
+const jwt = require("jsonwebtoken");
+
 /**
  * 1️⃣ Get All Staff
  * Used by Master Admin & Dept Admins
  */
 exports.getAllStaff = async (req, res) => {
   try {
-    const users = await UserModel.find({ role: { $in: ["staff", "admin"] }, id: { $ne: "10001" }, isMasterAdmin: { $ne: true } }).select("-password");
+    let requesterId = "";
+    if (req.user && req.user.id) {
+      requesterId = String(req.user.id).trim().toUpperCase();
+    } else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_fallback_secret_key_12345");
+        requesterId = String(decoded.id || "").trim().toUpperCase();
+      } catch (e) {}
+    }
+
+    const query = { role: { $in: ["staff", "admin"] } };
+    if (requesterId === "10001") {
+      // 10001 can see all staff and other super admins
+      query.id = { $ne: "10001" };
+    } else {
+      // Any other user cannot see 10001 or master admins
+      query.id = { $ne: "10001" };
+      query.isMasterAdmin = { $ne: true };
+    }
+
+    const users = await UserModel.find(query).select("-password");
 
     // 🔥 Fix: Filter out students (Student IDs are exactly 8 digits)
     const validStaffUsers = users.filter((user) => {

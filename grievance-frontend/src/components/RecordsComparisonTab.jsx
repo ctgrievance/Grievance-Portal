@@ -13,6 +13,38 @@ import {
   SpinnerIcon
 } from "./Icons";
 import MultiSelectDropdown from "./MultiSelectDropdown";
+import ExportPreviewModal from "./ExportPreviewModal";
+
+const studentComparisonColumns = [
+  { key: "Student ID", label: "Student ID" },
+  { key: "CTU ID", label: "CTU ID" },
+  { key: "Full Name", label: "Full Name" },
+  { key: "Official Email", label: "Official Email" },
+  { key: "Official Phone", label: "Official Phone" },
+  { key: "School", label: "School" },
+  { key: "Program", label: "Program" },
+  { key: "Batch", label: "Batch" },
+  { key: "Type", label: "Student Type" },
+  { key: "Portal Status", label: "Portal Status" },
+  { key: "Registered Email", label: "Registered Email" },
+  { key: "Registered Phone", label: "Registered Phone" },
+  { key: "Registered On", label: "Registered On" },
+];
+
+const staffComparisonColumns = [
+  { key: "Staff ID", label: "Staff ID" },
+  { key: "Full Name", label: "Full Name" },
+  { key: "Official Email", label: "Official Email" },
+  { key: "Official Phone", label: "Official Phone" },
+  { key: "Role", label: "Official Role" },
+  { key: "Staff Category", label: "Staff Category" },
+  { key: "Department", label: "Department" },
+  { key: "Portal Status", label: "Portal Status" },
+  { key: "Portal Role", label: "Portal Role" },
+  { key: "Registered Email", label: "Registered Email" },
+  { key: "Registered Phone", label: "Registered Phone" },
+  { key: "Registered On", label: "Registered On" },
+];
 
 export default function RecordsComparisonTab() {
   const [cohort, setCohort] = useState("students"); // "students" | "staff"
@@ -42,6 +74,8 @@ export default function RecordsComparisonTab() {
   const [departmentsList, setDepartmentsList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportPreviewData, setExportPreviewData] = useState([]);
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("info");
 
@@ -155,41 +189,74 @@ export default function RecordsComparisonTab() {
     fetchComparison(newCohort, "all", "", [], "all", 1);
   };
 
-  const handleExport = async () => {
+  const handleOpenExportPreview = async () => {
     setExporting(true);
     try {
       const deptsParam = selectedDepartments.length > 0 ? selectedDepartments.join(",") : "all";
       const queryParams = new URLSearchParams({
         type: cohort,
-        status: statusFilter,
+        status: "all", // Load entire cohort dataset so user can switch between Registered and Not Registered in preview
         search: search.trim(),
         department: deptsParam,
         departments: deptsParam,
         staffType: cohort === "staff" ? staffType : "all",
-        export: "true"
+        export: "preview"
       });
 
       const res = await fetch(`${BASE_URL}?${queryParams.toString()}`);
-      if (!res.ok) throw new Error("Failed to generate Excel export");
+      if (!res.ok) throw new Error("Failed to load records for export preview");
+
+      const data = await res.json();
+      setExportPreviewData(data.records || []);
+      setShowExportModal(true);
+    } catch (err) {
+      console.error("Export preview error:", err);
+      showNotification(err.message || "Failed to load export preview", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportSelected = async (selectedData, selectedColumns) => {
+    try {
+      const token = localStorage.getItem("grievance_token");
+      const dateStr = new Date().toISOString().split("T")[0];
+      const catSuffix = cohort === "staff" && staffType !== "all" ? `_${staffType}` : "";
+      const fileName = `${cohort === "students" ? "Students" : "Staff"}_Comparison_${statusFilter}${catSuffix}_${dateStr}.xlsx`;
+
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/export-custom`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          fileName,
+          sheetName: `${cohort === "students" ? "Students" : "Staff"}_Comparison`,
+          columns: selectedColumns,
+          records: selectedData
+        })
+      });
+
+      if (!res.ok) {
+        const errPayload = await res.json().catch(() => null);
+        throw new Error(errPayload?.message || `Failed to generate Excel export (HTTP ${res.status})`);
+      }
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const dateStr = new Date().toISOString().split("T")[0];
-      const catSuffix = cohort === "staff" && staffType !== "all" ? `_${staffType}` : "";
-      a.download = `${cohort === "students" ? "Students" : "Staff"}_Comparison_${statusFilter}${catSuffix}_${dateStr}.xlsx`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      showNotification(`Excel report downloaded successfully for ${cohort}.`, "success");
+      showNotification(`Excel report downloaded successfully (${selectedData.length} records).`, "success");
     } catch (err) {
-      console.error("Export error:", err);
+      console.error("Export download error:", err);
       showNotification(err.message || "Failed to export Excel report", "error");
-    } finally {
-      setExporting(false);
     }
   };
 
@@ -420,7 +487,7 @@ export default function RecordsComparisonTab() {
       </div>
 
       {/* ── TOOLBAR: STATUS FILTER PILLS & SEARCH BAR ── */}
-      <div className="reg-users-filters-bar" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", padding: "12px 16px" }}>
+      <div className="reg-users-filters-bar reg-compare-toolbar">
         
         {/* Status Filter Buttons */}
         <div className="reg-compare-status-filter-group" style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
@@ -602,7 +669,7 @@ export default function RecordsComparisonTab() {
         )}
 
         {/* Search Box */}
-        <div className="reg-users-search-box reg-compare-search-box" style={{ maxWidth: "260px" }}>
+        <div className="reg-users-search-box reg-compare-search-box">
           <span className="reg-users-search-icon">
             <SearchIcon width="14" height="14" />
           </span>
@@ -639,12 +706,13 @@ export default function RecordsComparisonTab() {
             }}
             placeholder={cohort === "students" ? "All Schools" : "All Departments"}
             searchPlaceholder={cohort === "students" ? "Filter schools..." : "Filter departments..."}
+            className="reg-compare-dept-select"
             width="210px"
           />
         )}
 
         {/* Actions: Refresh & Export */}
-        <div className="reg-compare-actions" style={{ display: "flex", gap: "8px", alignItems: "center", marginLeft: "auto" }}>
+        <div className="reg-compare-actions">
           <button
             type="button"
             className="reg-users-btn-reset"
@@ -658,7 +726,7 @@ export default function RecordsComparisonTab() {
 
           <button
             type="button"
-            onClick={handleExport}
+            onClick={handleOpenExportPreview}
             disabled={exporting || loading}
             style={{
               padding: "0 13px",
@@ -675,17 +743,17 @@ export default function RecordsComparisonTab() {
               gap: "6px",
               transition: "all 0.15s ease"
             }}
-            title="Export filtered records to Excel spreadsheet"
+            title="Preview and customize export to Excel spreadsheet"
           >
             {exporting ? <SpinnerIcon size={14} /> : <DownloadIcon width="14" height="14" />}
-            <span>{exporting ? "Exporting..." : "Export (.xlsx)"}</span>
+            <span>{exporting ? "Preparing..." : "Export (.xlsx)"}</span>
           </button>
         </div>
       </div>
 
       {/* ── COMPARISON DATA VIEW ── */}
-      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-        {loading ? (
+      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", position: "relative" }}>
+        {loading && records.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center", color: "#64748b" }}>
             <div style={{ marginBottom: "10px", color: "#3b82f6", display: "flex", justifyContent: "center" }}>
               <SpinnerIcon size={30} />
@@ -694,7 +762,7 @@ export default function RecordsComparisonTab() {
               Comparing official records against registered accounts...
             </p>
           </div>
-        ) : records.length === 0 ? (
+        ) : !loading && records.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center", color: "#64748b" }}>
             <div style={{ marginBottom: "10px", color: "#94a3b8", display: "flex", justifyContent: "center" }}>
               <SearchIcon width="32" height="32" />
@@ -705,7 +773,19 @@ export default function RecordsComparisonTab() {
             </p>
           </div>
         ) : (
-          <>
+          <div style={{ opacity: loading ? 0.65 : 1, transition: "opacity 0.15s ease", pointerEvents: loading ? "none" : "auto" }}>
+            {loading && (
+              <div style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "3px",
+                background: "linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6)",
+                backgroundSize: "200% 100%",
+                zIndex: 20
+              }} />
+            )}
             {/* 1. DESKTOP VIEW: FULL COMPARISON TABLE */}
             <div className="reg-compare-desktop-table" style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
@@ -1002,11 +1082,11 @@ export default function RecordsComparisonTab() {
                 );
               })}
             </div>
-          </>
+          </div>
         )}
 
         {/* ── PAGINATION ── */}
-        {!loading && total > 0 && (
+        {total > 0 && (
           <div
             style={{
               padding: "11px 16px",
@@ -1070,6 +1150,34 @@ export default function RecordsComparisonTab() {
             </div>
           </div>
         )}
+
+        {/* EXPORT PREVIEW MODAL */}
+        <ExportPreviewModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          data={exportPreviewData}
+          columns={cohort === "students" ? studentComparisonColumns : staffComparisonColumns}
+          title="Export Preview"
+          subtitle={`Filter and select ${cohort === "students" ? "student" : "staff"} comparison data to export`}
+          searchPlaceholder={`Search ${cohort === "students" ? "Student ID" : "Staff ID"}, Name, Email...`}
+          initialStatus={statusFilter === "registered" ? "REGISTERED" : statusFilter === "not_registered" ? "NOT REGISTERED" : "All"}
+          statusOptions={[
+            { value: "All", label: "All Status" },
+            { value: "REGISTERED", label: "Registered" },
+            { value: "NOT REGISTERED", label: "Not Registered" }
+          ]}
+          departmentOptions={["All", ...departmentsList]}
+          extraFilter={cohort === "staff" ? {
+            label: "Category",
+            options: [
+              { value: "All", label: "All Categories" },
+              { value: "Teaching", label: "Teaching" },
+              { value: "Non-Teaching", label: "Non-Teaching" }
+            ]
+          } : null}
+          getRowId={(item, idx) => item["Student ID"] || item["Staff ID"] || idx}
+          onExport={handleExportSelected}
+        />
       </div>
     </div>
   );

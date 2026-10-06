@@ -40,7 +40,35 @@ const studentRecordSchema = new mongoose.Schema({
         type: String,
         default: ""
     }, // e.g., 2024, 2025
+    isRegistered: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    registeredUserId: {
+        type: String,
+        default: null
+    },
+    registeredAt: {
+        type: Date,
+        default: null
+    },
+    registeredEmail: {
+        type: String,
+        default: null
+    },
+    registeredPhone: {
+        type: String,
+        default: null
+    }
 }, { timestamps: true });
+
+studentRecordSchema.index({ ctuId: 1 });
+studentRecordSchema.index({ email: 1 });
+studentRecordSchema.index({ school: 1 });
+studentRecordSchema.index({ isRegistered: 1, school: 1 });
+studentRecordSchema.index({ isRegistered: 1, createdAt: -1 });
+studentRecordSchema.index({ school: 1, createdAt: -1 });
 
 const StudentRecord = mongoose.model("StudentRecord", studentRecordSchema);
 export default StudentRecord;

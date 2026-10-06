@@ -113,6 +113,7 @@ const GrievanceDetailsModal = ({
   onTransferred,
   onReject,
   canTransfer = true,
+  onAssign,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -201,7 +202,7 @@ const GrievanceDetailsModal = ({
   // Faculty or staff member of the department holding the grievance
   const isDepartmentStaff = Boolean(
     (userRole === "staff" || userRole === "admin" || isDeptAdminFlag) &&
-    (isSameDept || (!assignedStaffId && !custodianStaffId))
+    isSameDept
   );
 
   // Rule 1: A faculty member who already forwarded this grievance can ONLY view the journey
@@ -213,13 +214,6 @@ const GrievanceDetailsModal = ({
   );
 
   const isStaffOrAdmin = userRole === "staff" || userRole === "admin" || isDeptAdminFlag;
-
-  const allowTransfer =
-    canTransfer &&
-    !isMasterAdmin &&
-    !hasAlreadyForwarded &&
-    isStaffOrAdmin &&
-    (isCurrentAssignee || isDeptAdmin || isDepartmentStaff || userRole === "staff");
 
   if (!grievance) return null;
 
@@ -250,6 +244,27 @@ const GrievanceDetailsModal = ({
   const deadlineInfo = getDeadlineStatus(
     grievance.deadlineDate || grievance.deadline,
     grievance.status
+  );
+
+  // 🔒 STRICT CUSTODY RULE:
+  // When a grievance is assigned/forwarded to another department, that department holds sole custody.
+  // The originating/previous department CANNOT assign to their own faculty nor forward to any other department.
+  // Only users who belong to the holding department (isSameDept) AND have authority can transfer or assign.
+  const allowTransfer =
+    canTransfer &&
+    !isMasterAdmin &&
+    !hasAlreadyForwarded &&
+    isStaffOrAdmin &&
+    isSameDept &&
+    (isCurrentAssignee || isDeptAdmin || isDepartmentStaff);
+
+  const canAssignFaculty = Boolean(
+    !isResolved &&
+    !isRejected &&
+    !grievance.assignedTo &&
+    onAssign &&
+    isSameDept &&
+    (isDeptAdmin || isDeptAdminFlag)
   );
 
   // Copy ID handler
@@ -1406,6 +1421,32 @@ const GrievanceDetailsModal = ({
               </button>
             )}
 
+            {canAssignFaculty && (
+              <button
+                className="g-details-btn g-details-btn-assign"
+                onClick={() => onAssign(grievance._id || grievance)}
+                style={{
+                  padding: "9px 16px",
+                  backgroundColor: "#2563eb",
+                  border: "1.5px solid #1d4ed8",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: "700",
+                  color: "#ffffff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "0.85rem",
+                  transition: "all 0.2s",
+                  boxShadow: "0 1px 3px rgba(37, 99, 235, 0.2)"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#1d4ed8")}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+              >
+                ⚡ Assign Faculty
+              </button>
+            )}
+
             {!isResolved && !isRejected && allowTransfer && (
               <button
                 className="g-details-btn g-details-btn-transfer"
@@ -1452,7 +1493,27 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-            {!isResolved && !isRejected && onReject && (
+            {!isSameDept && !isMasterAdmin && !isResolved && !isRejected && (
+              <div
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#f8fafc",
+                  border: "1.5px solid #e2e8f0",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  color: "#475569",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "0.82rem",
+                }}
+                title="This grievance is assigned to another department. Only the holding department can assign faculty or transfer."
+              >
+                <span>🔒</span> Assigned to {grievance?.currentCustodian?.department || grievance?.category} &bull; View Only
+              </div>
+            )}
+
+            {!isResolved && !isRejected && onReject && isSameDept && (
               <button
                 className="g-details-btn g-details-btn-reject"
                 onClick={() => onReject(grievance)}
