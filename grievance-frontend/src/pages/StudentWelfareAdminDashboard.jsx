@@ -220,8 +220,16 @@ function StudentWelfareAdminDashboard() {
 
   // ✅ FILTER LOGIC
   const filteredGrievances = currentSectionGrievances.filter((g) => {
-    const matchId = (g.userId || "").toLowerCase().includes(searchId.toLowerCase());
-    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
+    const q = (searchId || searchStaffId || "").toLowerCase().trim();
+    const matchSearch = !q ||
+      (g.userId || "").toLowerCase().includes(q) ||
+      (g.name || "").toLowerCase().includes(q) ||
+      (g.category || "").toLowerCase().includes(q) ||
+      (g.assignedTo || "").toLowerCase().includes(q) ||
+      (staffMap[g.assignedTo] || "").toLowerCase().includes(q) ||
+      (g.subject || "").toLowerCase().includes(q) ||
+      (g.description || "").toLowerCase().includes(q);
+
     const matchStatus = statusFilter === "All" || g.status === statusFilter;
 
     let matchMonth = true;
@@ -231,7 +239,7 @@ function StudentWelfareAdminDashboard() {
       matchMonth = gDate.getFullYear() === parseInt(year) && (gDate.getMonth() + 1) === parseInt(month);
     }
 
-    return matchId && matchStaff && matchStatus && matchMonth;
+    return matchSearch && matchStatus && matchMonth;
   });
 
   const resetFilters = () => { setSearchId(""); setSearchStaffId(""); setStatusFilter("All"); setFilterMonth(""); };

@@ -42,8 +42,17 @@ export default function DepartmentGrievanceSectionTabs({
         </span>
       </div>
 
-      {/* ── UNIFIED GRIEVANCE HUB SEGMENTED TABS (SUPER ADMIN SLEEK STYLE) ── */}
-      <div className="dept-section-tabs" role="tablist">
+      {/* ── UNIFIED GRIEVANCE HUB SEGMENTED TABS (RESPONSIVE NO-SLIDE) ── */}
+      <div
+        className={`dept-section-tabs ${
+          hasStudentSection
+            ? "tabs-count-4"
+            : showTracker
+            ? "tabs-count-3"
+            : "tabs-count-2"
+        }`}
+        role="tablist"
+      >
         {/* TAB 1: DIRECT GRIEVANCES */}
         <button
           type="button"
@@ -52,8 +61,10 @@ export default function DepartmentGrievanceSectionTabs({
           className={`dept-section-tab-btn ${grievanceSection === "direct" ? "active" : ""}`}
           onClick={() => handleSelect("direct")}
         >
-          <InboxIcon width="15" height="15" className="dept-sec-svg" />
-          <span className="dept-sec-label">Direct Grievances</span>
+          <InboxIcon width="14" height="14" className="dept-sec-svg" />
+          <span className="dept-sec-label">
+            Direct<span className="dept-sec-label-extra"> Grievances</span>
+          </span>
           <span className="dept-sec-count direct">{directCount}</span>
         </button>
 
@@ -65,7 +76,7 @@ export default function DepartmentGrievanceSectionTabs({
           className={`dept-section-tab-btn ${(grievanceSection === "forwarded" || grievanceSection === "transferred_in") ? "active" : ""}`}
           onClick={() => handleSelect("forwarded")}
         >
-          <ArrowRightLeftIcon width="15" height="15" className="dept-sec-svg" />
+          <ArrowRightLeftIcon width="14" height="14" className="dept-sec-svg" />
           <span className="dept-sec-label">Transferred In</span>
           <span className="dept-sec-count forward">{forwardedCount}</span>
           {unassignedForwardedCount > 0 && (
@@ -86,7 +97,7 @@ export default function DepartmentGrievanceSectionTabs({
             className={`dept-section-tab-btn ${(grievanceSection === "outgoing_tracker" || grievanceSection === "tracker") ? "active" : ""}`}
             onClick={() => handleSelect("outgoing_tracker")}
           >
-            <RerouteIcon width="15" height="15" className="dept-sec-svg" />
+            <RerouteIcon width="14" height="14" className="dept-sec-svg" />
             <span className="dept-sec-label">Transferred Out</span>
             {trackerCount !== null && trackerCount !== undefined && (
               <span className="dept-sec-count tracker">{trackerCount}</span>
@@ -103,8 +114,10 @@ export default function DepartmentGrievanceSectionTabs({
             className={`dept-section-tab-btn ${grievanceSection === "student_grievances" ? "active" : ""}`}
             onClick={() => handleSelect("student_grievances")}
           >
-            <GraduationCapIcon width="15" height="15" className="dept-sec-svg" />
-            <span className="dept-sec-label">Our Students' Grievances</span>
+            <GraduationCapIcon width="14" height="14" className="dept-sec-svg" />
+            <span className="dept-sec-label">
+              Our Students<span className="dept-sec-label-extra">' Grievances</span>
+            </span>
             <span className="dept-sec-count student-out">{studentGrievancesCount}</span>
           </button>
         )}
@@ -120,16 +133,17 @@ export default function DepartmentGrievanceSectionTabs({
         .dept-grievance-title-area {
           display: flex;
           align-items: center;
-          justifyContent: space-between;
+          justify-content: space-between;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 8px 12px;
         }
         .dept-grievance-title-area h2 {
           margin: 0;
-          font-size: 1.3rem;
+          font-size: 1.25rem;
           color: #0f172a;
           font-weight: 700;
           letter-spacing: -0.01em;
+          line-height: 1.3;
         }
         .dept-grievance-total-tag {
           background: #f1f5f9;
@@ -139,9 +153,10 @@ export default function DepartmentGrievanceSectionTabs({
           padding: 3px 10px;
           border-radius: 20px;
           border: 1px solid #e2e8f0;
+          white-space: nowrap;
         }
         
-        /* ── SLEEK SEGMENTED TABS (SUPER ADMIN MATCH) ── */
+        /* ── DESKTOP TABS ── */
         .dept-section-tabs {
           display: inline-flex;
           align-items: center;
@@ -153,8 +168,6 @@ export default function DepartmentGrievanceSectionTabs({
           width: fit-content;
           max-width: 100%;
           box-sizing: border-box;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
         }
         .dept-section-tab-btn {
           display: inline-flex;
@@ -198,7 +211,7 @@ export default function DepartmentGrievanceSectionTabs({
         .dept-sec-count {
           display: inline-flex;
           align-items: center;
-          justifyContent: center;
+          justify-content: center;
           font-size: 0.72rem;
           font-weight: 700;
           padding: 1px 6px;
@@ -254,34 +267,63 @@ export default function DepartmentGrievanceSectionTabs({
           display: none;
         }
 
-        /* ── MOBILE OPTIMIZATION (< 640px) ── */
-        @media (max-width: 640px) {
+        /* ── ZERO-SLIDE RESPONSIVE GRID ON MOBILE (NO SCROLLING NEEDED) ── */
+        @media (max-width: 768px) {
           .dept-section-tabs {
-            width: 100%;
-            display: flex;
-            padding: 3px;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 6px !important;
+            padding: 5px !important;
+            overflow: visible !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
           }
           .dept-section-tab-btn {
-            flex: 1;
-            padding: 6px 6px;
-            font-size: 0.76rem;
-            gap: 4px;
-            justifyContent: center;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 8px 6px !important;
+            font-size: 0.78rem !important;
+            gap: 5px !important;
+            box-sizing: border-box !important;
+            white-space: nowrap !important;
+          }
+          /* When there are 3 tabs, the 3rd tab spans full width */
+          .dept-section-tabs.tabs-count-3 .dept-section-tab-btn:nth-child(3) {
+            grid-column: span 2 !important;
+          }
+          .dept-sec-label-extra {
+            display: none !important;
           }
           .dept-sec-action-text {
-            display: none;
+            display: none !important;
           }
           .dept-sec-action-short {
-            display: inline;
+            display: inline !important;
           }
         }
-        @media (max-width: 480px) {
-          .dept-sec-svg {
-            display: none;
+        @media (max-width: 420px) {
+          .dept-section-tabs {
+            gap: 4px !important;
+            padding: 4px !important;
           }
           .dept-section-tab-btn {
-            padding: 6px 3px;
-            font-size: 0.72rem;
+            padding: 7px 3px !important;
+            font-size: 0.72rem !important;
+            gap: 4px !important;
+          }
+          .dept-sec-svg {
+            width: 13px !important;
+            height: 13px !important;
+          }
+          .dept-sec-count {
+            font-size: 0.68rem !important;
+            padding: 0px 4px !important;
+            min-width: 16px !important;
           }
         }
       `}</style>

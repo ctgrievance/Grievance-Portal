@@ -1,13 +1,16 @@
 import React from "react";
-import { SearchIcon, UserIcon, DownloadIcon, XIcon } from "./Icons";
+import { SearchIcon, DownloadIcon, XIcon } from "./Icons";
 
 function DepartmentFilterBar({
   searchId,
   setSearchId,
-  searchIdPlaceholder = "Search Student ID...",
+  searchIdPlaceholder,
   searchStaffId,
   setSearchStaffId,
-  searchStaffIdPlaceholder = "Search Staff ID...",
+  searchStaffIdPlaceholder,
+  searchQuery,
+  setSearchQuery,
+  searchPlaceholder,
   statusFilter,
   setStatusFilter,
   statusOptions = ["All", "Pending", "Assigned", "Resolved", "Rejected"],
@@ -19,7 +22,27 @@ function DepartmentFilterBar({
   onReset,
   onExport,
 }) {
-  const showSearches = setSearchId != null || setSearchStaffId != null;
+  const showSearch = setSearchId != null || setSearchStaffId != null || searchQuery != null;
+  const currentSearchValue = searchQuery !== undefined 
+    ? (searchQuery || "") 
+    : (searchId || searchStaffId || "");
+
+  const handleSearchChange = (val) => {
+    if (setSearchQuery) setSearchQuery(val);
+    if (setSearchId) setSearchId(val);
+    if (setSearchStaffId) setSearchStaffId("");
+  };
+
+  const handleClear = () => {
+    if (setSearchQuery) setSearchQuery("");
+    if (setSearchId) setSearchId("");
+    if (setSearchStaffId) setSearchStaffId("");
+  };
+
+  const resolvedPlaceholder = 
+    searchPlaceholder || 
+    (searchIdPlaceholder && searchIdPlaceholder !== "Search Student ID..." ? searchIdPlaceholder : "Search by Student ID, Staff ID, Name...");
+
   const showControls =
     setStatusFilter != null ||
     (setFilterDepartment != null && departments.length > 0) ||
@@ -28,58 +51,31 @@ function DepartmentFilterBar({
 
   return (
     <div className="dept-filter-bar">
-      {/* Search Inputs */}
-      {showSearches && (
+      {/* Unified Single Search Bar */}
+      {showSearch && (
         <div className="dept-filter-searches">
-          {setSearchId && (
-            <div className="dept-filter-input-wrap">
-              <span className="dept-filter-icon">
-                <SearchIcon width="16" height="16" />
-              </span>
-              <input
-                type="text"
-                placeholder={searchIdPlaceholder}
-                value={searchId || ""}
-                onChange={(e) => setSearchId(e.target.value)}
-                className="dept-filter-input"
-              />
-              {searchId ? (
-                <button
-                  type="button"
-                  className="dept-filter-clear-btn"
-                  onClick={() => setSearchId("")}
-                  title="Clear"
-                >
-                  <XIcon width="14" height="14" />
-                </button>
-              ) : null}
-            </div>
-          )}
-
-          {setSearchStaffId && (
-            <div className="dept-filter-input-wrap">
-              <span className="dept-filter-icon">
-                <UserIcon width="16" height="16" />
-              </span>
-              <input
-                type="text"
-                placeholder={searchStaffIdPlaceholder}
-                value={searchStaffId || ""}
-                onChange={(e) => setSearchStaffId(e.target.value)}
-                className="dept-filter-input"
-              />
-              {searchStaffId ? (
-                <button
-                  type="button"
-                  className="dept-filter-clear-btn"
-                  onClick={() => setSearchStaffId("")}
-                  title="Clear"
-                >
-                  <XIcon width="14" height="14" />
-                </button>
-              ) : null}
-            </div>
-          )}
+          <div className="dept-filter-input-wrap">
+            <span className="dept-filter-icon">
+              <SearchIcon width="16" height="16" />
+            </span>
+            <input
+              type="text"
+              placeholder={resolvedPlaceholder}
+              value={currentSearchValue}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="dept-filter-input"
+            />
+            {currentSearchValue ? (
+              <button
+                type="button"
+                className="dept-filter-clear-btn"
+                onClick={handleClear}
+                title="Clear"
+              >
+                <XIcon width="14" height="14" />
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
