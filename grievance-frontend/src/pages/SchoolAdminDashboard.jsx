@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css"; // Existing CSS for table structure
 import AssignStaffPopup from "../components/AssignStaffPopup";
@@ -47,6 +47,14 @@ const getDeadlineStatus = (deadlineDateStr, status) => {
   return { label: formatDateDateOnly(deadlineDateStr), color: "#16a34a", isOverdue: false };
 };
 
+// Helper to check if a department name matches the admin's own school/department
+const isOwnSchool = (deptName, mySchool) => {
+  if (!deptName || !mySchool) return false;
+  const d = deptName.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s+/g, " ");
+  const m = mySchool.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s+/g, " ");
+  return d === m || d.includes(m) || m.includes(d);
+};
+
 function SchoolAdminDashboard() {
   const navigate = useNavigate();
   const userId = localStorage.getItem("grievance_id")?.toUpperCase();
@@ -67,6 +75,7 @@ function SchoolAdminDashboard() {
   const [searchId, setSearchId] = useState("");
   const [searchStaffId, setSearchStaffId] = useState(""); // Search by Staff ID
   const [statusFilter, setStatusFilter] = useState("All");
+  const [filterDepartment, setFilterDepartment] = useState("All"); // ✅ Department Filter for Student Grievances
   const [filterMonth, setFilterMonth] = useState(""); // ✅ Month Filter
 
   // ✅ Feedback States (Added to fix "not working" issue)
@@ -217,6 +226,37 @@ function SchoolAdminDashboard() {
       ? forwardedGrievances
       : directGrievances;
 
+  // ✅ Departments where our students have grievances, excluding our own school/department
+  const studentDepartments = useMemo(() => {
+    const map = new Map();
+
+    studentGrievances.forEach((g) => {
+      const candidates = [
+        g.category,
+        g.currentCustodian?.department,
+        g.originatingDepartment,
+        ...(g.involvedDepartments || []),
+        ...(g.transferHistory?.map((t) => t.toDepartment) || []),
+        ...(g.transferHistory?.map((t) => t.fromDepartment) || []),
+      ].filter(Boolean);
+
+      candidates.forEach((deptRaw) => {
+        const dept = deptRaw.trim();
+        if (!dept) return;
+
+        // Exclude own school / department
+        if (!isOwnSchool(dept, mySchoolName)) {
+          const norm = dept.toLowerCase();
+          if (!map.has(norm)) {
+            map.set(norm, dept);
+          }
+        }
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [studentGrievances, mySchoolName]);
+
   // ✅ FILTER LOGIC
   const filteredGrievances = currentSectionGrievances.filter((g) => {
     const q = (searchId || searchStaffId || "").toLowerCase().trim();
@@ -231,6 +271,24 @@ function SchoolAdminDashboard() {
 
     const matchStatus = statusFilter === "All" || g.status === statusFilter;
 
+    // Department match (especially for Our Students' Grievances)
+    let matchDept = true;
+    if (filterDepartment && filterDepartment !== "All") {
+      const selected = filterDepartment.trim().toLowerCase();
+      const associatedDepts = [
+        g.category,
+        g.currentCustodian?.department,
+        g.originatingDepartment,
+        ...(g.involvedDepartments || []),
+        ...(g.transferHistory?.map((t) => t.toDepartment) || [])
+      ].filter(Boolean);
+
+      matchDept = associatedDepts.some((d) => {
+        const norm = d.trim().toLowerCase();
+        return norm === selected || norm.includes(selected) || selected.includes(norm);
+      });
+    }
+
     let matchMonth = true;
     if (filterMonth) {
       const gDate = new Date(g.createdAt);
@@ -238,10 +296,16 @@ function SchoolAdminDashboard() {
       matchMonth = gDate.getFullYear() === parseInt(year) && (gDate.getMonth() + 1) === parseInt(month);
     }
 
-    return matchSearch && matchStatus && matchMonth;
+    return matchSearch && matchStatus && matchDept && matchMonth;
   });
 
-  const resetFilters = () => { setSearchId(""); setSearchStaffId(""); setStatusFilter("All"); setFilterMonth(""); };
+  const resetFilters = () => {
+    setSearchId("");
+    setSearchStaffId("");
+    setStatusFilter("All");
+    setFilterDepartment("All");
+    setFilterMonth("");
+  };
   const handleOpenExportModal = () => setShowExportModal(true);
   const handleExportSelected = (selectedData, selectedColumns, customName) => {
     const token = localStorage.getItem("grievance_token");
@@ -369,6 +433,9 @@ function SchoolAdminDashboard() {
               searchPlaceholder="Search by Student ID, Staff ID, Name..."
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}
+              filterDepartment={filterDepartment}
+              setFilterDepartment={grievanceSection === "student_grievances" ? setFilterDepartment : undefined}
+              departments={studentDepartments}
               filterMonth={filterMonth}
               setFilterMonth={setFilterMonth}
               onReset={resetFilters}

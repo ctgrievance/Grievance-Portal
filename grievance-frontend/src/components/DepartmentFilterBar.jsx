@@ -45,7 +45,7 @@ function DepartmentFilterBar({
 
   const showControls =
     setStatusFilter != null ||
-    (setFilterDepartment != null && departments.length > 0) ||
+    setFilterDepartment != null ||
     setFilterMonth != null;
   const showActions = onReset != null || onExport != null;
 
@@ -98,14 +98,17 @@ function DepartmentFilterBar({
             </div>
           )}
 
-          {setFilterDepartment && departments.length > 0 && (
+          {setFilterDepartment && (
             <div className="dept-filter-select-wrap">
               <select
                 value={filterDepartment || "All"}
                 onChange={(e) => setFilterDepartment(e.target.value)}
                 className="dept-filter-select"
+                disabled={departments.length === 0}
               >
-                <option value="All">All Departments</option>
+                <option value="All">
+                  {departments.length === 0 ? "No External Depts" : "All Departments"}
+                </option>
                 {departments.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
