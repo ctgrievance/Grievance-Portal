@@ -1,5 +1,5 @@
 import React from "react";
-import { InboxIcon, ArrowRightLeftIcon, RerouteIcon, GraduationCapIcon } from "./Icons";
+import { InboxIcon, ArrowRightLeftIcon, RerouteIcon, GraduationCapIcon, AlertCircleIcon } from "./Icons";
 
 /**
  * DepartmentGrievanceSectionTabs
@@ -80,10 +80,11 @@ export default function DepartmentGrievanceSectionTabs({
           <span className="dept-sec-label">Transferred In</span>
           <span className="dept-sec-count forward">{forwardedCount}</span>
           {unassignedForwardedCount > 0 && (
-            <span className="dept-sec-attention-pill" title={`${unassignedForwardedCount} grievance(s) require faculty assignment`}>
-              <span className="dept-sec-pulse-dot" />
-              <span className="dept-sec-action-text">{unassignedForwardedCount} Action Needed</span>
-              <span className="dept-sec-action-short">{unassignedForwardedCount}</span>
+            <span
+              className="dept-sec-attention-symbol"
+              title={`${unassignedForwardedCount} Action Needed: Unassigned grievance requiring faculty assignment`}
+            >
+              <AlertCircleIcon width="11" height="11" />
             </span>
           )}
         </button>
@@ -242,29 +243,34 @@ export default function DepartmentGrievanceSectionTabs({
           color: #854d0e;
           border: 1px solid #fef08a;
         }
-        .dept-sec-attention-pill {
-          font-size: 0.68rem;
-          font-weight: 700;
-          background: #fef3c7;
-          color: #92400e;
-          border: 1px solid #fde68a;
-          padding: 1px 6px;
-          border-radius: 6px;
+        .dept-sec-attention-symbol {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          margin-left: 2px;
-          line-height: 1.2;
-        }
-        .dept-sec-pulse-dot {
-          width: 5px;
-          height: 5px;
+          justify-content: center;
+          width: 17px;
+          height: 17px;
           border-radius: 50%;
-          background: #d97706;
-          display: inline-block;
+          background: #fef3c7;
+          color: #b45309;
+          border: 1px solid #fde68a;
+          flex-shrink: 0;
+          margin-left: 2px;
+          animation: attentionPulse 2s infinite ease-in-out;
+          transition: transform 0.15s ease, background 0.15s ease;
+          cursor: pointer;
         }
-        .dept-sec-action-short {
-          display: none;
+        .dept-sec-attention-symbol:hover {
+          transform: scale(1.15);
+          background: #fde68a;
+          color: #92400e;
+        }
+        @keyframes attentionPulse {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4);
+          }
+          50% {
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0);
+          }
         }
 
         /* ── ZERO-SLIDE RESPONSIVE GRID ON MOBILE (NO SCROLLING NEEDED) ── */
@@ -298,12 +304,6 @@ export default function DepartmentGrievanceSectionTabs({
           }
           .dept-sec-label-extra {
             display: none !important;
-          }
-          .dept-sec-action-text {
-            display: none !important;
-          }
-          .dept-sec-action-short {
-            display: inline !important;
           }
         }
         @media (max-width: 420px) {

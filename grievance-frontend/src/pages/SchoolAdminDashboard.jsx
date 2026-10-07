@@ -219,9 +219,23 @@ function SchoolAdminDashboard() {
 
   // ✅ 2 SECTIONS: DIRECT GRIEVANCES vs OUR STUDENTS' GRIEVANCES
   const { directGrievances, forwardedGrievances, unassignedForwardedCount } = splitGrievancesByOrigin(grievances, mySchoolName);
+
+  // ✅ OPTION 1: Strictly isolate external student grievances (held by other campus departments)
+  // This avoids duplicating grievances that are already handled within our school in Direct or Transferred In tabs.
+  const externalStudentGrievances = useMemo(() => {
+    return studentGrievances.filter((g) => {
+      const currentDept = g.currentCustodian?.department || g.category || "";
+      // Exclude grievances currently held by or categorized under our own school
+      if (isOwnSchool(currentDept, mySchoolName) || isOwnSchool(g.category, mySchoolName)) {
+        return false;
+      }
+      return true;
+    });
+  }, [studentGrievances, mySchoolName]);
+
   const currentSectionGrievances =
     grievanceSection === "student_grievances"
-      ? studentGrievances
+      ? externalStudentGrievances
       : grievanceSection === "forwarded"
       ? forwardedGrievances
       : directGrievances;
@@ -230,7 +244,7 @@ function SchoolAdminDashboard() {
   const studentDepartments = useMemo(() => {
     const map = new Map();
 
-    studentGrievances.forEach((g) => {
+    externalStudentGrievances.forEach((g) => {
       const candidates = [
         g.category,
         g.currentCustodian?.department,
@@ -255,7 +269,7 @@ function SchoolAdminDashboard() {
     });
 
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
-  }, [studentGrievances, mySchoolName]);
+  }, [externalStudentGrievances, mySchoolName]);
 
   // ✅ FILTER LOGIC
   const filteredGrievances = currentSectionGrievances.filter((g) => {
@@ -405,7 +419,7 @@ function SchoolAdminDashboard() {
               setGrievanceSection={setGrievanceSection}
               directCount={directGrievances.length}
               forwardedCount={forwardedGrievances.length}
-              studentGrievancesCount={studentGrievances.length}
+              studentGrievancesCount={externalStudentGrievances.length}
               unassignedForwardedCount={unassignedForwardedCount}
               departmentName={mySchoolName}
               showTracker={true}
@@ -448,7 +462,7 @@ function SchoolAdminDashboard() {
                 <p>
                   {currentSectionGrievances.length === 0
                     ? (grievanceSection === "student_grievances"
-                        ? `No grievances submitted by ${mySchoolName} students yet.`
+                        ? `No grievances submitted by ${mySchoolName} students to other departments yet.`
                         : (grievanceSection === "forwarded" || grievanceSection === "transferred_in")
                             ? "No transferred grievances received from other departments."
                             : "No direct grievances received from students yet.")

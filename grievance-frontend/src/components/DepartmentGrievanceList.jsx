@@ -217,7 +217,7 @@ function DepartmentGrievanceList({
                           fontSize: "0.82rem",
                           border: "1px solid #bfdbfe"
                         }}>
-                          <BuildingIcon width="13" height="13" style={{ verticalAlign: "middle", marginRight: "4px" }} /> {g.category}
+                          <BuildingIcon width="13" height="13" style={{ verticalAlign: "middle", marginRight: "4px" }} /> {g.currentCustodian?.department || g.category}
                         </span>
                       </td>
 
@@ -423,7 +423,7 @@ function DepartmentGrievanceList({
           if (isForwardedSection && fwdInfo?.fromDepartment) {
             deptLabel = `From: ${fwdInfo.fromDepartment}`;
           } else if (isStudentSection) {
-            deptLabel = `To: ${g.category || "General"}`;
+            deptLabel = `To: ${g.currentCustodian?.department || g.category || "General"}`;
           }
 
           return (
