@@ -468,3 +468,27 @@ export const SpinnerIcon = ({ size = 20, ...props }) => (
         />
     </svg>
 );
+
+export const InboxIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
+);
+
+export const ArrowRightLeftIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <path d="m16 3 4 4-4 4" />
+        <path d="M20 7H4" />
+        <path d="m8 21-4-4 4-4" />
+        <path d="M4 17h16" />
+    </svg>
+);
+
+export const InfoIcon = (props) => (
+    <svg {...defaultProps} {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+);

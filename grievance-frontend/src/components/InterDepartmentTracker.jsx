@@ -13,7 +13,7 @@ const formatDate = (dateString) => {
   });
 };
 
-function InterDepartmentTracker({ departmentName, staffMap = {}, onSelectGrievance }) {
+function InterDepartmentTracker({ departmentName, staffMap = {}, onSelectGrievance, embedded = false }) {
   const [grievances, setGrievances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -85,96 +85,98 @@ function InterDepartmentTracker({ departmentName, staffMap = {}, onSelectGrievan
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {/* Top Banner / Card - Crisp White Theme matching project */}
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: "14px",
-          padding: "20px 24px",
-          border: "1px solid #e2e8f0",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "16px",
-          boxShadow: "0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "12px",
-              background: "#eef2ff",
-              border: "1px solid #c7d2fe",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#4f46e5",
-            }}
-          >
-            <RerouteIcon width="26" height="26" />
+    <div style={{ display: "flex", flexDirection: "column", gap: embedded ? "12px" : "20px" }}>
+      {/* Top Banner / Card - Only shown when NOT embedded */}
+      {!embedded && (
+        <div
+          style={{
+            background: "#ffffff",
+            borderRadius: "14px",
+            padding: "20px 24px",
+            border: "1px solid #e2e8f0",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "16px",
+            boxShadow: "0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
+                background: "#eef2ff",
+                border: "1px solid #c7d2fe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#4f46e5",
+              }}
+            >
+              <RerouteIcon width="26" height="26" />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "700", color: "#0f172a" }}>
+                Inter-Department Communication Tracker
+              </h2>
+              <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
+                Live custody and status monitoring for grievances routed through <strong style={{ color: "#1e293b" }}>{departmentName}</strong>
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "700", color: "#0f172a" }}>
-              Inter-Department Communication Tracker
-            </h2>
-            <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-              Live custody and status monitoring for grievances routed through <strong style={{ color: "#1e293b" }}>{departmentName}</strong>
-            </p>
-          </div>
-        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div
-            style={{
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              padding: "8px 18px",
-              borderRadius: "10px",
-              textAlign: "center"
-            }}
-          >
-            <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Total Tracked
-            </span>
-            <strong style={{ fontSize: "1.25rem", color: "#4f46e5", fontWeight: "800" }}>
-              {grievances.length}
-            </strong>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                padding: "8px 18px",
+                borderRadius: "10px",
+                textAlign: "center"
+              }}
+            >
+              <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Total Tracked
+              </span>
+              <strong style={{ fontSize: "1.25rem", color: "#4f46e5", fontWeight: "800" }}>
+                {grievances.length}
+              </strong>
+            </div>
+            <button
+              onClick={fetchTransfers}
+              disabled={loading}
+              style={{
+                padding: "10px 18px",
+                background: "#ffffff",
+                border: "1.5px solid #cbd5e1",
+                borderRadius: "10px",
+                color: "#334155",
+                fontWeight: "600",
+                fontSize: "0.86rem",
+                cursor: loading ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = "#f8fafc";
+                e.currentTarget.style.borderColor = "#94a3b8";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = "#ffffff";
+                e.currentTarget.style.borderColor = "#cbd5e1";
+              }}
+            >
+              <RefreshIcon width="16" height="16" /> Refresh
+            </button>
           </div>
-          <button
-            onClick={fetchTransfers}
-            disabled={loading}
-            style={{
-              padding: "10px 18px",
-              background: "#ffffff",
-              border: "1.5px solid #cbd5e1",
-              borderRadius: "10px",
-              color: "#334155",
-              fontWeight: "600",
-              fontSize: "0.86rem",
-              cursor: loading ? "not-allowed" : "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "7px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-              transition: "all 0.2s",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = "#f8fafc";
-              e.currentTarget.style.borderColor = "#94a3b8";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = "#ffffff";
-              e.currentTarget.style.borderColor = "#cbd5e1";
-            }}
-          >
-            <RefreshIcon width="16" height="16" /> Refresh
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Filter & Search Bar */}
       <div
@@ -252,6 +254,45 @@ function InterDepartmentTracker({ departmentName, staffMap = {}, onSelectGrievan
               </option>
             ))}
           </select>
+
+          {embedded && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{
+                fontSize: "0.78rem",
+                color: "#475569",
+                fontWeight: "700",
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                padding: "6px 10px",
+                borderRadius: "8px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
+              }}>
+                Tracked: <strong style={{ color: "#2563eb" }}>{grievances.length}</strong>
+              </span>
+              <button
+                onClick={fetchTransfers}
+                disabled={loading}
+                style={{
+                  padding: "7px 14px",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  color: "#334155",
+                  fontWeight: "600",
+                  fontSize: "0.82rem",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
+                }}
+              >
+                <RefreshIcon width="14" height="14" /> Refresh
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

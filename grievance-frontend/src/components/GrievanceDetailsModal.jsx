@@ -14,7 +14,8 @@ import { ZapIcon, RerouteIcon, ClipboardIcon,
   CheckCircleIcon,
   AlertCircleIcon,
   FileIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  ArrowRightLeftIcon
 } from "./Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 
@@ -123,11 +124,6 @@ const GrievanceDetailsModal = ({
     grievance?.isRerouted ||
     (grievance?.transferHistory && grievance.transferHistory.length > 0)
   );
-  const [isOverviewExpanded, setIsOverviewExpanded] = useState(!hasJourney);
-
-  useEffect(() => {
-    setIsOverviewExpanded(!hasJourney);
-  }, [grievance?._id, hasJourney]);
 
   const storedUser = (() => {
     try {
@@ -555,259 +551,232 @@ const GrievanceDetailsModal = ({
     </div>
   );
 
-  // Inter-Department Communication & Custody Journey Stepper
+  // Transfer History Timeline (Sleek Linear/GitHub style)
+  const transferHistoryList = grievance?.transferHistory || [];
+  const transferCount = transferHistoryList.length;
+
   const journeyStepperSection = hasJourney ? (
     <div
+      className="g-details-card"
       style={{
-        background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-        border: "1.5px solid #cbd5e1",
-        borderRadius: "14px",
-        padding: "18px 20px",
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        borderRadius: "12px",
+        boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         gap: "14px",
-        boxSizing: "border-box",
-        flexShrink: 0,
       }}
     >
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid #f1f5f9",
+          paddingBottom: "10px",
+          flexWrap: "wrap",
+          gap: "8px",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <RerouteIcon width="22" height="22" style={{ color: "#4f46e5" }} />
-          <div>
-            <h4 style={{ margin: 0, fontSize: "1rem", color: "#0f172a", fontWeight: "700" }}>
-              Inter-Department Communication & Custody Journey
-            </h4>
-            <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-              Multi-hop audit record tracking every department and faculty handoff
-            </span>
-          </div>
+          <ArrowRightLeftIcon width="16" height="16" style={{ color: "#2563eb" }} />
+          <h4 style={{ margin: 0, fontSize: "0.92rem", color: "#1e293b", fontWeight: "700" }}>
+            Transfer History
+          </h4>
         </div>
-        <span style={{ fontSize: "0.75rem", background: "#e0e7ff", color: "#3730a3", padding: "4px 10px", borderRadius: "8px", fontWeight: "700", letterSpacing: "0.5px" }}>
-          {grievance.transferHistory?.length || 1} HOP(S) COMPLETED
+        <span
+          style={{
+            fontSize: "0.75rem",
+            background: "#f1f5f9",
+            color: "#475569",
+            border: "1px solid #e2e8f0",
+            padding: "2px 8px",
+            borderRadius: "12px",
+            fontWeight: "600",
+          }}
+        >
+          {transferCount} {transferCount === 1 ? "Transfer" : "Transfers"}
         </span>
       </div>
 
-      {/* 📌 CURRENT CUSTODIAN CARD */}
-      <div
-        style={{
-          background: "#ffffff",
-          border: "1.5px solid #93c5fd",
-          borderRadius: "10px",
-          padding: "14px 16px",
-          boxShadow: "0 2px 6px rgba(37, 99, 235, 0.08)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px"
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-          <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.6px", display: "flex", alignItems: "center", gap: "5px" }}>
-            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#2563eb", display: "inline-block", animation: "pulse 1.5s infinite" }}></span>
-            Current Live Custodian
-          </span>
-          <span className={`status-badge status-${(grievance.status || "pending").toLowerCase().replace(" ", "")}`}>
-            {grievance.status}
-          </span>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", marginTop: "2px" }}>
-          <div style={{ background: "#eff6ff", padding: "8px 12px", borderRadius: "8px", border: "1px solid #bfdbfe" }}>
-            <span style={{ fontSize: "0.75rem", color: "#1e40af", display: "block", fontWeight: "600" }}>Active Department</span>
-            <strong style={{ fontSize: "0.95rem", color: "#1e3a8a" }}>
-              {grievance.currentCustodian?.department || grievance.category}
-            </strong>
-          </div>
-
-          <div style={{ background: "#f0fdf4", padding: "8px 12px", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-            <span style={{ fontSize: "0.75rem", color: "#166534", display: "block", fontWeight: "600" }}>Holding Faculty / Assignee</span>
-            <strong style={{ fontSize: "0.95rem", color: "#14532d" }}>
-              {grievance.currentCustodian?.staffName ||
-                staffMap[grievance.assignedTo] ||
-                (grievance.assignedTo ? `Faculty (${grievance.assignedTo})` : "Unassigned (With Dept Admin)")}
-            </strong>
-          </div>
-
-          <div style={{ background: "#f8fafc", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-            <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block", fontWeight: "600" }}>Last Handover / Update</span>
-            <span style={{ fontSize: "0.85rem", color: "#334155", fontWeight: "600" }}>
-              {formatDateTime(grievance.updatedAt || grievance.createdAt)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 🔀 MULTI-DEPARTMENT CONCURRENT FORWARDING CARD */}
+      {/* Concurrent Multi-Dept info (only if multi-forwarded) */}
       {(grievance.isMultiForwarded || (grievance.forwardedDepartments && grievance.forwardedDepartments.length > 1)) && (
         <div
           style={{
-            background: "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
-            border: "1.5px solid #c7d2fe",
-            borderRadius: "10px",
-            padding: "14px 16px",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "10px 12px",
+            fontSize: "0.82rem",
+            color: "#475569",
             display: "flex",
             flexDirection: "column",
-            gap: "10px",
-            boxShadow: "0 2px 6px rgba(99, 102, 241, 0.08)"
+            gap: "6px",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-            <span style={{ fontSize: "0.82rem", fontWeight: "800", color: "#3730a3", display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>🔀</span> Multi-Department Forwarded Ticket
-            </span>
-            <span style={{ background: "#4f46e5", color: "#ffffff", padding: "2px 8px", borderRadius: "10px", fontSize: "0.72rem", fontWeight: "700" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+            <span style={{ fontWeight: "600", color: "#1e293b" }}>Multi-Department Forwarded Ticket</span>
+            <span style={{ fontSize: "0.72rem", background: "#e2e8f0", color: "#334155", padding: "1px 6px", borderRadius: "4px", fontWeight: "600" }}>
               {grievance.forwardedDepartments?.length || (grievance.linkedGrievances?.length ? grievance.linkedGrievances.length + 1 : 2)} Departments
             </span>
           </div>
-          <p style={{ margin: 0, fontSize: "0.84rem", color: "#4338ca", lineHeight: "1.4" }}>
-            This grievance was forwarded concurrently to multiple departments for synchronized resolution across domains.
-          </p>
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
-            <div style={{
-              background: "#ffffff",
-              border: "1.5px solid #93c5fd",
-              padding: "6px 12px",
-              borderRadius: "8px",
-              fontSize: "0.82rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}>
-              <strong style={{ color: "#1e3a8a" }}>{grievance.category}</strong>
-              <span className={`status-badge status-${(grievance.status || "pending").toLowerCase().replace(" ", "")}`} style={{ fontSize: "0.72rem", padding: "1px 6px" }}>
-                {grievance.status}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            <span style={{ background: "#ffffff", border: "1px solid #cbd5e1", padding: "2px 8px", borderRadius: "6px", fontWeight: "600", color: "#1e293b" }}>
+              {grievance.category} (Current)
+            </span>
+            {grievance.linkedGrievances && grievance.linkedGrievances.map((linked, lIdx) => (
+              <span key={lIdx} style={{ background: "#ffffff", border: "1px solid #e2e8f0", padding: "2px 8px", borderRadius: "6px", color: "#64748b" }}>
+                {linked.category || "Department"} ({linked.status || "Pending"})
               </span>
-              <span style={{ fontSize: "0.7rem", color: "#2563eb", fontWeight: "700" }}>(This Branch)</span>
-            </div>
-
-            {grievance.linkedGrievances && grievance.linkedGrievances.map((linked, lIdx) => {
-              const linkedDept = linked.category || "Department";
-              const linkedStatus = linked.status || "Pending";
-              return (
-                <div key={lIdx} style={{
-                  background: "#ffffff",
-                  border: "1.5px solid #c7d2fe",
-                  padding: "6px 12px",
-                  borderRadius: "8px",
-                  fontSize: "0.82rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px"
-                }}>
-                  <strong style={{ color: "#3730a3" }}>{linkedDept}</strong>
-                  <span className={`status-badge status-${linkedStatus.toLowerCase().replace(" ", "")}`} style={{ fontSize: "0.72rem", padding: "1px 6px" }}>
-                    {linkedStatus}
-                  </span>
-                </div>
-              );
-            })}
+            ))}
           </div>
         </div>
       )}
 
-      {/* 📍 STEP-BY-STEP AUDIT TRAIL */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "4px" }}>
-        <span style={{ fontSize: "0.8rem", fontWeight: "700", color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          Complete Transfer & Custody Trail
-        </span>
-
-        {/* Step 0: Origination */}
+      {/* Timeline entries */}
+      {transferCount > 0 ? (
         <div
           style={{
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            borderLeft: "4px solid #64748b",
-            borderRadius: "8px",
-            padding: "10px 14px",
+            position: "relative",
+            paddingLeft: "24px",
             display: "flex",
             flexDirection: "column",
-            gap: "4px"
+            gap: "18px",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-            <span style={{ fontWeight: "700", fontSize: "0.83rem", color: "#334155" }}>
-              Step 0: Grievance Originated
-            </span>
-            <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-              {formatDateTime(grievance.createdAt)}
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569" }}>
-            Submitted by <strong>{grievance.name}</strong> to department: <span style={{ fontWeight: "700", color: "#1e293b" }}>{grievance.originatingDepartment || grievance.category}</span>
-          </p>
-        </div>
+          {/* Continuous vertical track line */}
+          <div
+            style={{
+              position: "absolute",
+              top: "10px",
+              bottom: "10px",
+              left: "5px",
+              width: "2px",
+              background: "#e2e8f0",
+            }}
+          />
 
-        {/* Steps 1..N */}
-        {grievance.transferHistory && grievance.transferHistory.length > 0 ? (
-          grievance.transferHistory.map((item, idx) => (
+          {/* Step 0: Origination */}
+          <div style={{ position: "relative" }}>
             <div
-              key={idx}
               style={{
+                position: "absolute",
+                left: "-24px",
+                top: "4px",
+                width: "12px",
+                height: "12px",
+                borderRadius: "50%",
                 background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderLeft: `4px solid ${idx === grievance.transferHistory.length - 1 ? "#2563eb" : "#94a3b8"}`,
-                borderRadius: "8px",
-                padding: "12px 14px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "6px"
+                border: "2px solid #94a3b8",
+                boxSizing: "border-box",
               }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-                <span style={{ fontWeight: "700", fontSize: "0.85rem", color: "#2563eb", display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                  <span>Step {item.hop || idx + 1}:</span>
-                  {item.actionType === "MULTI_DEPARTMENT_TRANSFER" ? (
-                    <span style={{ color: "#4338ca", background: "#e0e7ff", border: "1px solid #c7d2fe", padding: "1px 8px", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      🔀 Multi-Dept Forward: {item.fromDepartment} ➔ {item.toDepartment}
-                    </span>
-                  ) : item.fromDepartment === item.toDepartment ? (
-                    <span style={{ color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 8px", borderRadius: "6px" }}>
-                      🔄 Internal Handover in {item.toDepartment}
-                    </span>
-                  ) : (
-                    <>
-                      <span style={{ color: "#dc2626", background: "#fee2e2", padding: "1px 6px", borderRadius: "4px" }}>{item.fromDepartment}</span>
-                      <span>➔</span>
-                      <span style={{ color: "#16a34a", background: "#dcfce7", padding: "1px 6px", borderRadius: "4px" }}>{item.toDepartment}</span>
-                    </>
-                  )}
+            />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+                <span style={{ fontSize: "0.85rem", color: "#334155" }}>
+                  Originated in <strong style={{ color: "#0f172a" }}>{grievance.originatingDepartment || grievance.category}</strong>
                 </span>
-                <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                  {formatDateTime(item.transferredAt)}
+                <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                  {formatDateTime(grievance.createdAt)}
                 </span>
               </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", fontSize: "0.82rem", color: "#475569" }}>
-                <span>
-                  <strong>{item.fromDepartment === item.toDepartment ? "Reassigned By:" : "Forwarded By:"}</strong> {item.transferredByName || "Staff Member"} <span style={{ color: "#94a3b8" }}>({item.transferredBy})</span>
-                </span>
-                <span style={{ background: "#f1f5f9", padding: "1px 6px", borderRadius: "4px", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                  Role: {item.transferredByRole || "Staff"}
-                </span>
+              <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                Submitted by <span style={{ fontWeight: "600", color: "#334155" }}>{grievance.name}</span>
               </div>
-
-              {item.reason && (
-                <div style={{ background: "#f8fafc", padding: "8px 10px", borderRadius: "6px", border: "1px dashed #cbd5e1", fontSize: "0.84rem", color: "#334155", fontStyle: "italic" }}>
-                  “{item.reason}”
-                </div>
-              )}
-
-              {(item.assignedToNameInNewDept || item.assignedToInNewDept) && (
-                <div style={{ fontSize: "0.8rem", color: "#15803d", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <UserIcon width="14" height="14" />
-                  <span>Assigned to: <strong>{item.assignedToNameInNewDept || item.assignedToInNewDept}</strong></span>
-                </div>
-              )}
             </div>
-          ))
-        ) : (
-          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
-            This grievance was re-routed from another department.
           </div>
-        )}
-      </div>
+
+          {/* Steps 1..N */}
+          {transferHistoryList.map((item, idx) => {
+            const isLatest = idx === transferCount - 1;
+            const isInternal = item.fromDepartment === item.toDepartment;
+
+            return (
+              <div key={idx} style={{ position: "relative" }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: "-24px",
+                    top: "4px",
+                    width: "12px",
+                    height: "12px",
+                    borderRadius: "50%",
+                    background: isLatest ? "#2563eb" : "#ffffff",
+                    border: `2px solid ${isLatest ? "#2563eb" : "#94a3b8"}`,
+                    boxSizing: "border-box",
+                  }}
+                />
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", fontSize: "0.85rem" }}>
+                      {isInternal ? (
+                        <span style={{ color: "#334155" }}>
+                          Internal reassignment in <strong style={{ color: "#0f172a" }}>{item.toDepartment}</strong>
+                        </span>
+                      ) : (
+                        <>
+                          <span style={{ fontWeight: "600", color: "#334155" }}>{item.fromDepartment}</span>
+                          <span style={{ color: "#94a3b8" }}>→</span>
+                          <strong style={{ color: "#0f172a" }}>{item.toDepartment}</strong>
+                        </>
+                      )}
+                    </div>
+                    <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                      {formatDateTime(item.transferredAt)}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", fontSize: "0.78rem", color: "#64748b" }}>
+                    <span>
+                      {isInternal ? "Reassigned by" : "Forwarded by"}{" "}
+                      <strong style={{ color: "#334155", fontWeight: "600" }}>{item.transferredByName || "Staff Member"}</strong>
+                      {item.transferredByRole && (
+                        <span style={{ color: "#94a3b8", marginLeft: "4px" }}>({item.transferredByRole})</span>
+                      )}
+                    </span>
+
+                    {(item.assignedToNameInNewDept || item.assignedToInNewDept) && (
+                      <>
+                        <span style={{ color: "#cbd5e1" }}>•</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", color: "#15803d" }}>
+                          <UserIcon width="12" height="12" />
+                          Assigned to: <strong style={{ fontWeight: "600" }}>{item.assignedToNameInNewDept || item.assignedToInNewDept}</strong>
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {item.reason && (
+                    <div
+                      style={{
+                        background: "#f8fafc",
+                        borderLeft: "2px solid #cbd5e1",
+                        padding: "4px 10px",
+                        borderRadius: "0 4px 4px 0",
+                        fontSize: "0.82rem",
+                        color: "#475569",
+                        fontStyle: "italic",
+                        marginTop: "2px",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      “{item.reason}”
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ fontSize: "0.85rem", color: "#64748b", fontStyle: "italic" }}>
+          This grievance was re-routed from another department.
+        </div>
+      )}
     </div>
   ) : null;
 
@@ -946,56 +915,57 @@ const GrievanceDetailsModal = ({
             <div
               className="g-details-hero-metric"
               style={{
-                background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                border: "1px solid #86efac",
-                borderRadius: "12px",
+                background: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                borderRadius: "10px",
                 display: "flex",
                 flexWrap: "wrap",
                 alignItems: "center",
                 justifyContent: "space-between",
+                padding: "12px 16px",
                 boxSizing: "border-box",
+                gap: "12px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
                   style={{
-                    background: "#22c55e",
-                    color: "white",
+                    background: "#dcfce7",
+                    color: "#16a34a",
                     borderRadius: "50%",
-                    width: "40px",
-                    height: "40px",
+                    width: "32px",
+                    height: "32px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "1.2rem",
-                    boxShadow: "0 4px 10px rgba(34, 197, 94, 0.3)",
+                    flexShrink: 0,
                   }}
                 >
-                  <ZapIcon width="20" height="20" />
+                  <CheckCircleIcon width="18" height="18" />
                 </div>
                 <div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: "700", textTransform: "uppercase", color: "#15803d", letterSpacing: "0.5px" }}>
-                    Resolution Time Metric
+                  <div style={{ fontSize: "0.72rem", fontWeight: "700", textTransform: "uppercase", color: "#16a34a", letterSpacing: "0.5px" }}>
+                    Resolution Time
                   </div>
-                  <div style={{ fontSize: "1.25rem", fontWeight: "800", color: "#14532d" }}>
+                  <div style={{ fontSize: "1.05rem", fontWeight: "700", color: "#14532d" }}>
                     Solved in {timeTakenText || "Quick Turnaround"}
                   </div>
                   {grievance.autoClosed && (
-                    <div style={{ fontSize: "0.75rem", color: "#166534", marginTop: "2px" }}>
+                    <div style={{ fontSize: "0.72rem", color: "#166534", marginTop: "1px" }}>
                       ✓ Auto-closed upon completion of student verification window
                     </div>
                   )}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: "20px", fontSize: "0.82rem", color: "#166534" }}>
+              <div style={{ display: "flex", gap: "16px", fontSize: "0.78rem", color: "#475569" }}>
                 <div>
-                  <strong style={{ display: "block", color: "#14532d" }}>Submitted:</strong>
-                  {formatDateTime(grievance.createdAt)}
+                  <span style={{ color: "#64748b" }}>Submitted: </span>
+                  <strong style={{ color: "#1e293b" }}>{formatDateTime(grievance.createdAt)}</strong>
                 </div>
                 <div>
-                  <strong style={{ display: "block", color: "#14532d" }}>Resolved:</strong>
-                  {formatDateTime(resolvedAt || grievance.updatedAt)}
+                  <span style={{ color: "#64748b" }}>Resolved: </span>
+                  <strong style={{ color: "#1e293b" }}>{formatDateTime(resolvedAt || grievance.updatedAt)}</strong>
                 </div>
               </div>
             </div>
@@ -1003,37 +973,39 @@ const GrievanceDetailsModal = ({
             <div
               className="g-details-hero-metric"
               style={{
-                background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-                border: "1px solid #cbd5e1",
-                borderRadius: "12px",
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "10px",
                 display: "flex",
                 flexWrap: "wrap",
                 alignItems: "center",
                 justifyContent: "space-between",
+                padding: "12px 16px",
                 boxSizing: "border-box",
+                gap: "12px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
                   style={{
-                    background: "#0284c7",
-                    color: "white",
+                    background: "#e0f2fe",
+                    color: "#0284c7",
                     borderRadius: "50%",
-                    width: "40px",
-                    height: "40px",
+                    width: "32px",
+                    height: "32px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "1.1rem",
+                    flexShrink: 0,
                   }}
                 >
-                  <ClockIcon width="20" height="20" />
+                  <ClockIcon width="16" height="16" />
                 </div>
                 <div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: "700", textTransform: "uppercase", color: "#0369a1", letterSpacing: "0.5px" }}>
+                  <div style={{ fontSize: "0.72rem", fontWeight: "700", textTransform: "uppercase", color: "#0369a1", letterSpacing: "0.5px" }}>
                     Active Grievance Age
                   </div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: "800", color: "#0f172a" }}>
+                  <div style={{ fontSize: "1.05rem", fontWeight: "700", color: "#0f172a" }}>
                     Open for {openDurationText || "Just submitted"}
                   </div>
                 </div>
@@ -1041,10 +1013,10 @@ const GrievanceDetailsModal = ({
 
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "600" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: "600" }}>
                     Target Deadline:
                   </div>
-                  <div style={{ fontSize: "0.9rem", fontWeight: "700", color: deadlineInfo.color }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: "700", color: deadlineInfo.color }}>
                     {deadlineInfo.label}
                   </div>
                 </div>
@@ -1052,7 +1024,7 @@ const GrievanceDetailsModal = ({
                   <span
                     style={{
                       fontSize: "0.7rem",
-                      padding: "3px 8px",
+                      padding: "2px 8px",
                       borderRadius: "4px",
                       fontWeight: "700",
                       background: deadlineInfo.isOverdue ? "#fef2f2" : "#fffbeb",
@@ -1099,191 +1071,14 @@ const GrievanceDetailsModal = ({
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* 🌟 INTER-DEPARTMENT JOURNEY VS REGULAR VIEW ARCHITECTURE */}
-          {/* In an inter-department journey: */}
-          {/* 1. Journey Stepper is FIRST PRIORITY (at top) */}
-          {/* 2. Submitter, Category & Assignment details are minimized by default */}
-          {/* In regular grievances: Cards remain unchanged in their original place */}
-          {/* ========================================================================= */}
-          {hasJourney ? (
-            <>
-              {/* 🌟 1. FIRST PRIORITY: INTER-DEPARTMENT CUSTODY JOURNEY */}
-              {journeyStepperSection}
+          {/* Submitter / Student Information */}
+          {studentInfoCard}
 
-              {/* 🔽 2. MINIMIZED: SUBMITTER, CATEGORY & ASSIGNMENT DETAILS */}
-              <div
-                style={{
-                  width: "100%",
-                  background: isOverviewExpanded ? "#f8fafc" : "#ffffff",
-                  border: "1.5px solid #cbd5e1",
-                  borderRadius: "12px",
-                  boxShadow: "0 2px 5px rgba(0,0,0,0.03)",
-                  boxSizing: "border-box",
-                  display: "flex",
-                  flexDirection: "column",
-                  flexShrink: 0,
-                  transition: "background 0.2s ease, border-color 0.2s ease",
-                }}
-              >
-                {/* Minimized / Collapsible Header Toggle */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    flexWrap: "wrap",
-                    gap: "12px",
-                    padding: "14px 18px",
-                    borderBottom: isOverviewExpanded ? "1.5px solid #e2e8f0" : "none",
-                    background: isOverviewExpanded ? "#f1f5f9" : "#ffffff",
-                    borderRadius: isOverviewExpanded ? "11px 11px 0 0" : "11px",
-                    boxSizing: "border-box",
-                    transition: "all 0.15s ease",
-                    flexShrink: 0,
-                  }}
-                  onClick={() => setIsOverviewExpanded(!isOverviewExpanded)}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: 1, minWidth: "260px" }}>
-                    <div
-                      style={{
-                        background: "#eff6ff",
-                        borderRadius: "8px",
-                        padding: "7px 10px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        color: "#2563eb",
-                        flexShrink: 0,
-                        border: "1px solid #bfdbfe",
-                      }}
-                    >
-                      <UserIcon width="16" height="16" style={{ color: "#2563eb" }} />
-                      <BookIcon width="16" height="16" style={{ color: "#7c3aed" }} />
-                      <ShieldIcon width="16" height="16" style={{ color: "#d97706" }} />
-                    </div>
+          {/* Department Classification & Staff Assignment */}
+          {categoryAndAssignmentGrid}
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                        <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#0f172a", fontWeight: "700" }}>
-                          Student, Category & Assignment Details
-                        </h4>
-                        <span
-                          style={{
-                            fontSize: "0.72rem",
-                            background: isOverviewExpanded ? "#e2e8f0" : "#dbeafe",
-                            color: isOverviewExpanded ? "#334155" : "#1e40af",
-                            padding: "2px 8px",
-                            borderRadius: "6px",
-                            fontWeight: "700",
-                            border: `1px solid ${isOverviewExpanded ? "#cbd5e1" : "#bfdbfe"}`,
-                          }}
-                        >
-                          {isOverviewExpanded ? "Details Expanded • Click to Minimize" : "Minimized • Click to View"}
-                        </span>
-                      </div>
-
-                      {/* Quick Summary Chips when minimized */}
-                      {!isOverviewExpanded && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            flexWrap: "wrap",
-                            fontSize: "0.82rem",
-                            marginTop: "2px",
-                          }}
-                        >
-                          <span style={{ color: "#334155" }}>
-                            <strong>Student:</strong> {grievance.name || "N/A"}{" "}
-                            <span style={{ color: "#64748b", fontFamily: "monospace" }}>({grievance.userId || grievance.regid || "—"})</span>
-                          </span>
-                          {grievance.studentProgram && (
-                            <>
-                              <span style={{ color: "#cbd5e1" }}>•</span>
-                              <span style={{ color: "#1e40af", background: "#eff6ff", padding: "1px 6px", borderRadius: "4px", fontSize: "0.78rem", fontWeight: "600" }}>
-                                {grievance.studentProgram}
-                              </span>
-                            </>
-                          )}
-                          <span style={{ color: "#cbd5e1" }}>•</span>
-                          <span style={{ color: "#334155" }}>
-                            <strong>Dept:</strong> {grievance.category || grievance.school || "N/A"}
-                          </span>
-                          <span style={{ color: "#cbd5e1" }}>•</span>
-                          <span style={{ color: "#334155" }}>
-                            <strong>Staff:</strong> {grievance.assignedTo ? getStaffDisplayName(grievance.assignedTo) : "Unassigned"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsOverviewExpanded(!isOverviewExpanded);
-                    }}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      background: isOverviewExpanded ? "#ffffff" : "#2563eb",
-                      color: isOverviewExpanded ? "#334155" : "#ffffff",
-                      border: isOverviewExpanded ? "1px solid #cbd5e1" : "none",
-                      borderRadius: "8px",
-                      padding: "8px 16px",
-                      fontSize: "0.82rem",
-                      fontWeight: "700",
-                      cursor: "pointer",
-                      boxShadow: isOverviewExpanded ? "0 1px 2px rgba(0,0,0,0.05)" : "0 2px 4px rgba(37, 99, 235, 0.25)",
-                      transition: "all 0.15s ease",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span>{isOverviewExpanded ? "Minimize Details" : "View Full Details"}</span>
-                    <ChevronDownIcon
-                      width="15"
-                      height="15"
-                      style={{
-                        transform: isOverviewExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 0.2s ease",
-                      }}
-                    />
-                  </button>
-                </div>
-
-                {/* Expanded Content: Full Cards */}
-                {isOverviewExpanded && (
-                  <div
-                    style={{
-                      padding: "16px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "16px",
-                      background: "#f8fafc",
-                      borderRadius: "0 0 11px 11px",
-                      boxSizing: "border-box",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {studentInfoCard}
-                    {categoryAndAssignmentGrid}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* 📌 REGULAR GRIEVANCE: UNMODIFIED ORIGINAL DISPLAY */}
-              {studentInfoCard}
-              {categoryAndAssignmentGrid}
-            </>
-          )}
+          {/* Transfer History Timeline (if re-routed / transferred) */}
+          {journeyStepperSection}
 
           {/* ⏳ SECTION 3: EXTENSION REQUEST (IF ANY) */}
           {grievance.extensionRequest &&

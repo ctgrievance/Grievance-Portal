@@ -39,7 +39,7 @@ function DepartmentAdminNavbar({
       label: "Inter-Dept Tracker", 
       description: "Track grievances transferred across departments", 
       IconComponent: RerouteIcon, 
-      isVisible: true 
+      isVisible: false // Unified under Grievances Hub (Transferred Out)
     },
     { 
       id: "student_records", 

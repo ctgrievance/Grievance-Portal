@@ -11889,19 +11889,24 @@ textarea:focus {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px;
+  padding: 14px 16px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
   display: flex;
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
+}
+
+.dept-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.07);
 }
 
 .dept-mobile-card:active {
   background: #f8fafc;
-  transform: scale(0.99);
+  transform: scale(0.995);
 }
 
 .dept-mcard-header {
@@ -11916,21 +11921,22 @@ textarea:focus {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .dept-mcard-name {
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   font-weight: 700;
   color: #0f172a;
 }
 
 .dept-mcard-id {
-  font-size: 0.76rem;
-  font-family: monospace;
+  font-size: 0.74rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   color: #64748b;
   background: #f1f5f9;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 5px;
   border: 1px solid #e2e8f0;
 }
 
@@ -11941,14 +11947,79 @@ textarea:focus {
   flex-shrink: 0;
 }
 
+.dept-mcard-fwd-banner {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #3b82f6;
+  border-radius: 8px;
+  padding: 8px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dept-mcard-fwd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dept-mcard-fwd-dept {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.dept-mcard-fwd-by {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.dept-mcard-fwd-reason {
+  font-size: 0.76rem;
+  color: #334155;
+  font-style: italic;
+  line-height: 1.35;
+}
+
+.dept-mcard-student-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 8px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.dept-mcard-student-dept {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.dept-mcard-student-issue {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
 .dept-mcard-msg {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: #334155;
   line-height: 1.4;
   background: #f8fafc;
   padding: 8px 10px;
   border-radius: 6px;
-  border-left: 3px solid #3b82f6;
+  border-left: 2.5px solid #cbd5e1;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -11958,22 +12029,23 @@ textarea:focus {
 
 .dept-mcard-meta {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px 12px;
-  padding-top: 4px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  padding: 4px 0;
 }
 
 .dept-mcard-meta-row {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .dept-mcard-meta-label {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   color: #94a3b8;
 }
 
@@ -11981,7 +12053,94 @@ textarea:focus {
   font-size: 0.82rem;
   color: #1e293b;
   font-weight: 500;
+  min-width: 0;
+}
+
+.dept-mcard-staff-assigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: #0f172a;
   word-break: break-word;
+}
+
+.dept-mcard-staff-id {
+  color: #64748b;
+  font-weight: 400;
+  font-size: 0.78rem;
+}
+
+.dept-mcard-unassigned-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dept-mcard-unassigned-badge {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  padding: 2.5px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dept-mcard-assign-btn {
+  padding: 3px 10px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.3;
+  transition: background 0.15s ease;
+}
+
+.dept-mcard-assign-btn:hover {
+  background: #1d4ed8;
+}
+
+.dept-mcard-deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  flex-wrap: wrap;
+}
+
+.dept-mcard-deadline-tag {
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dept-mcard-ext-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .dept-mcard-footer {
@@ -11989,21 +12148,40 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-top: 8px;
+  padding-top: 10px;
+  margin-top: 2px;
   border-top: 1px solid #f1f5f9;
 }
 
-.dept-mcard-details-hint {
+.dept-mcard-view-btn {
   font-size: 0.78rem;
   font-weight: 600;
   color: #2563eb;
   cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.dept-mcard-view-btn:hover {
+  color: #1d4ed8;
 }
 
 .dept-mcard-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .dept-mobile-card {
+    padding: 12px 14px;
+  }
+  .dept-mcard-name {
+    font-size: 0.88rem;
+  }
+  .dept-mcard-meta {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 }
 
 

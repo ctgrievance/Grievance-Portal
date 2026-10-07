@@ -1,7 +1,7 @@
 import React from "react";
 import ActionDropdown from "./ActionDropdown";
-import { UserRoleBadge } from "../utils/userRoleHelper";
-import { AlertCircleIcon, RerouteIcon } from "./Icons";
+import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
+import { AlertCircleIcon, RerouteIcon, ArrowRightLeftIcon, UserIcon, ClockIcon, BuildingIcon, LockIcon } from "./Icons";
 import { getIncomingTransferInfo } from "../utils/grievanceClassification";
 
 /**
@@ -162,13 +162,18 @@ function DepartmentGrievanceList({
                               style={{
                                 background: "#fef3c7",
                                 color: "#92400e",
+                                border: "1px solid #fde68a",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                whiteSpace: "nowrap",
                                 padding: "2px 7px",
                                 borderRadius: "4px",
                                 fontSize: "0.75rem",
                                 fontWeight: "700"
                               }}
                             >
-                              ⚡ Unassigned
+                              <AlertCircleIcon width="12" height="12" style={{ color: "#b45309" }} /> Unassigned
                             </span>
                             {openAssignPopup && isHeldByThisDept(g) && (
                               <button
@@ -212,7 +217,7 @@ function DepartmentGrievanceList({
                           fontSize: "0.82rem",
                           border: "1px solid #bfdbfe"
                         }}>
-                          🏢 {g.category}
+                          <BuildingIcon width="13" height="13" style={{ verticalAlign: "middle", marginRight: "4px" }} /> {g.category}
                         </span>
                       </td>
 
@@ -348,7 +353,7 @@ function DepartmentGrievanceList({
                     <ActionDropdown>
                       {!isHeldByThisDept(g) ? (
                         <div style={{ padding: "8px 12px", fontSize: "0.78rem", color: "#64748b", fontStyle: "italic", whiteSpace: "nowrap" }}>
-                          🔒 Assigned to {g.category}
+                          <LockIcon width="12" height="12" style={{ verticalAlign: "middle", marginRight: "4px" }} /> Assigned to {g.category}
                         </div>
                       ) : (
                         <>
@@ -410,236 +415,74 @@ function DepartmentGrievanceList({
         </table>
       </div>
 
-      {/* ── Mobile View: Compact Touch Cards (Zero Squishing, Perfect Layout) ── */}
-      <div className="dept-mobile-cards-list admin-mobile-only">
+      {/* ── Mobile View: Compact Cards (Exact Super Admin Sleek Design) ── */}
+      <div className="admin-mobile-cards-list admin-mobile-only">
         {grievances.map((g) => {
-          const staffName = staffMap[g.assignedTo];
-          const ds = getDeadlineStatus
-            ? getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status)
-            : null;
           const fwdInfo = isForwardedSection ? getIncomingTransferInfo(g, currentDepartment) : null;
+          let deptLabel = g.category || g.school || "General";
+          if (isForwardedSection && fwdInfo?.fromDepartment) {
+            deptLabel = `From: ${fwdInfo.fromDepartment}`;
+          } else if (isStudentSection) {
+            deptLabel = `To: ${g.category || "General"}`;
+          }
 
           return (
             <div
               key={g._id}
-              className="dept-mobile-card"
+              className="admin-mobile-compact-card"
               onClick={() => setSelectedGrievance && setSelectedGrievance(g)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  if (setSelectedGrievance) setSelectedGrievance(g);
+                }
+              }}
               role="button"
               tabIndex={0}
             >
-              {/* Header: User Info & Status */}
-              <div className="dept-mcard-header">
-                <div className="dept-mcard-user-wrap">
-                  <span className="dept-mcard-name">{g.name || "Student"}</span>
+              <div className="admin-mcard-row-top">
+                <div className="admin-mcard-user-info">
+                  <span className="admin-mcard-user-name">
+                    {g.name || (getSubmitterRole(g) === "staff" ? "Staff Member" : "Student")}
+                  </span>
                   <UserRoleBadge grievance={g} />
-                  <span className="dept-mcard-id">#{g.userId}</span>
                 </div>
-                <div className="dept-mcard-status-wrap">
-                  <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
+                <div className="admin-mcard-status-info">
+                  <span
+                    className={`status-badge status-${(g.status || "")
+                      .toLowerCase()
+                      .replace(" ", "")}`}
+                  >
                     {g.status}
                   </span>
                   {g.isRerouted && (
-                    <span className="admin-reroute-icon-badge" title="Re-routed">
-                      <RerouteIcon width="12" height="12" />
+                    <span
+                      className="admin-reroute-icon-badge"
+                      title={
+                        g.transferHistory?.length > 1
+                          ? `Re-routed (${g.transferHistory.length} times)`
+                          : "Re-routed"
+                      }
+                    >
+                      <RerouteIcon width="11" height="11" />
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Forwarded Info Callout for Mobile */}
-              {isForwardedSection && fwdInfo && (
-                <div
-                  style={{
-                    background: "#eff6ff",
-                    border: "1px solid #bfdbfe",
-                    borderRadius: "8px",
-                    padding: "8px 10px",
-                    marginBottom: "8px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2px"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                    <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#1d4ed8" }}>
-                      🔁 From: {fwdInfo.fromDepartment}
-                    </span>
-                    <span style={{ fontSize: "0.7rem", color: "#64748b" }}>
-                      {fwdInfo.transferredByName}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: "0.75rem", color: "#334155", fontStyle: "italic", marginTop: "2px" }}>
-                    "{fwdInfo.reason}"
-                  </div>
-                </div>
-              )}
-
-              {/* Student Outgoing Grievance Callout for Mobile */}
-              {isStudentSection && (
-                <div
-                  style={{
-                    background: "#eff6ff",
-                    border: "1px solid #bfdbfe",
-                    borderRadius: "8px",
-                    padding: "8px 10px",
-                    marginBottom: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "6px"
-                  }}
-                >
-                  <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#1d4ed8" }}>
-                    🏢 Submitted To: {g.category}
+              <div className="admin-mcard-row-bottom">
+                <div className="admin-mcard-meta-wrap">
+                  <span className="admin-mcard-dept-name">
+                    {deptLabel}
                   </span>
-                  {g.issueTypeId?.issueName && (
-                    <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
-                      {g.issueTypeId.issueName}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Message Snippet */}
-              <div className="dept-mcard-msg">
-                {g.message || "No message content provided."}
-              </div>
-
-              {/* Meta Grid */}
-              <div className="dept-mcard-meta">
-                <div className="dept-mcard-meta-row">
-                  <span className="dept-mcard-meta-label">Assigned Staff</span>
-                  <span className="dept-mcard-meta-val" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    {g.assignedTo ? (
-                      <strong>{staffName || "Staff"} ({g.assignedTo})</strong>
-                    ) : (
-                      <>
-                        <span style={{ color: "#d97706", fontWeight: "700", fontSize: "0.78rem" }}>⚡ Unassigned (Pool)</span>
-                        {openAssignPopup && isHeldByThisDept(g) && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openAssignPopup(g._id);
-                            }}
-                            style={{
-                              padding: "2px 7px",
-                              background: "#2563eb",
-                              color: "#ffffff",
-                              border: "none",
-                              borderRadius: "4px",
-                              fontSize: "0.72rem",
-                              fontWeight: "600",
-                              cursor: "pointer"
-                            }}
-                          >
-                            Assign
-                          </button>
-                        )}
-                      </>
-                    )}
+                  <span className="admin-mcard-sep">•</span>
+                  <span className="admin-mcard-user-id">{g.userId}</span>
+                  <span className="admin-mcard-sep">•</span>
+                  <span className="admin-mcard-date-str">
+                    {new Date(g.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </span>
                 </div>
-
-                <div className="dept-mcard-meta-row">
-                  <span className="dept-mcard-meta-label">Deadline</span>
-                  <span className="dept-mcard-meta-val">
-                    {ds ? (
-                      <span style={{ color: ds.color, fontWeight: ds.isOverdue ? "700" : "600" }}>
-                        {ds.label} {ds.badge ? `(${ds.badge})` : ""}
-                      </span>
-                    ) : "-"}
-                  </span>
-                </div>
-
-                <div className="dept-mcard-meta-row">
-                  <span className="dept-mcard-meta-label">Submitted On</span>
-                  <span className="dept-mcard-meta-val">
-                    {formatDate ? formatDate(g.createdAt) : new Date(g.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-
-                {g.extensionRequest?.status === "Pending" && (
-                  <div className="dept-mcard-meta-row">
-                    <span className="dept-mcard-meta-label">Extension</span>
-                    <span className="dept-mcard-meta-val" style={{ color: "#d97706", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                      <AlertCircleIcon width="12" height="12" /> Req Pending
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer: Tap hint & Actions */}
-              <div className="dept-mcard-footer" onClick={(e) => e.stopPropagation()}>
-                <span
-                  className="dept-mcard-details-hint"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (setSelectedGrievance) setSelectedGrievance(g);
-                  }}
-                >
-                  Tap for details ➔
-                </span>
-
-                <div className="dept-mcard-actions">
-                  <ActionDropdown>
-                    {!isHeldByThisDept(g) ? (
-                      <div style={{ padding: "8px 12px", fontSize: "0.78rem", color: "#64748b", fontStyle: "italic", whiteSpace: "nowrap" }}>
-                        🔒 Assigned to {g.category}
-                      </div>
-                    ) : (
-                      <>
-                        {openAssignPopup && (
-                          <button
-                            type="button"
-                            className="action-btn assign-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openAssignPopup(g._id);
-                            }}
-                            disabled={g.status === "Resolved"}
-                            style={{
-                              opacity: g.status === "Resolved" ? 0.5 : 1,
-                              cursor: g.status === "Resolved" ? "not-allowed" : "pointer"
-                            }}
-                          >
-                            {g.assignedTo ? "Reassign" : "Assign"}
-                          </button>
-                        )}
-                        {onResolve && (
-                          <button
-                            type="button"
-                            className="action-btn resolve-btn"
-                            onClick={(e) => handleResolve(e, g)}
-                            disabled={g.status === "Resolved"}
-                            style={{
-                              opacity: g.status === "Resolved" ? 0.5 : 1,
-                              cursor: g.status === "Resolved" ? "not-allowed" : "pointer",
-                              marginLeft: "5px"
-                            }}
-                          >
-                            Resolve
-                          </button>
-                        )}
-                        {(onReject || updateStatus) && (
-                          <button
-                            type="button"
-                            className="action-btn reject-btn"
-                            onClick={(e) => handleReject(e, g)}
-                            disabled={g.status === "Resolved" || g.status === "Rejected"}
-                            style={{
-                              opacity: g.status === "Resolved" || g.status === "Rejected" ? 0.5 : 1,
-                              cursor: g.status === "Resolved" || g.status === "Rejected" ? "not-allowed" : "pointer",
-                              marginLeft: "5px"
-                            }}
-                          >
-                            Reject
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </ActionDropdown>
-                </div>
+                <span className="admin-mcard-chevron" aria-hidden="true">›</span>
               </div>
             </div>
           );
