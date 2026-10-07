@@ -413,8 +413,7 @@ function RegisteredStudentsTab() {
                   <th>Reg No</th>
                   <th>Full Name</th>
                   <th>Contact Info</th>
-                  <th>School</th>
-                  <th>Program / Course</th>
+                  <th>Program / School</th>
                   <th>Type</th>
                   <th>Status</th>
                   <th>Registered At</th>
@@ -424,13 +423,13 @@ function RegisteredStudentsTab() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="10" className="reg-users-empty-cell">
+                    <td colSpan="9" className="reg-users-empty-cell">
                       <div className="reg-users-loading-spinner">Loading registered students...</div>
                     </td>
                   </tr>
                 ) : students.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="reg-users-empty-cell">
+                    <td colSpan="9" className="reg-users-empty-cell">
                       <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                       <div style={{ fontWeight: "600", color: "#334155" }}>No registered students found</div>
                       <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -482,17 +481,18 @@ function RegisteredStudentsTab() {
                         )}
                       </td>
 
-                      {/* School */}
+                      {/* Program / School */}
                       <td>
-                        <span className="reg-user-school-badge" title={student.school || "Unassigned"}>
-                          <GraduationCapIcon width="12" height="12" style={{ flexShrink: 0, opacity: 0.85 }} />
-                          <span>{student.school || "—"}</span>
-                        </span>
-                      </td>
-
-                      {/* Program */}
-                      <td>
-                        <span className="reg-user-dept-text">{student.program || "-"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <span style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.85rem", lineHeight: "1.25" }}>
+                            {student.program || "—"}
+                          </span>
+                          {student.school && (
+                            <span style={{ fontSize: "0.76rem", color: "#64748b", lineHeight: "1.2" }}>
+                              {student.school}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Type */}
@@ -592,21 +592,15 @@ function RegisteredStudentsTab() {
                   </span>
                 </div>
 
-                {/* School Row */}
-                {student.school && (
-                  <div style={{ marginTop: "4px" }}>
-                    <span className="reg-user-mcard-school" title={student.school}>
-                      <GraduationCapIcon width="12" height="12" style={{ flexShrink: 0 }} />
-                      <span>{student.school}</span>
-                    </span>
+                {/* Metadata Row: Program & School & Type */}
+                <div className="reg-user-mcard-meta" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", width: "100%", justifyContent: "space-between" }}>
+                    <span className="reg-user-mcard-prog" style={{ fontWeight: "600", color: "#1e293b" }}>{student.program || "Unassigned"}</span>
+                    <span className="reg-user-type-badge">{student.studentType || "Regular"}</span>
                   </div>
-                )}
-
-                {/* Metadata Row: Program & Type */}
-                <div className="reg-user-mcard-meta">
-                  <span className="reg-user-mcard-prog">{student.program || "Unassigned"}</span>
-                  <span className="reg-user-mcard-dot">•</span>
-                  <span className="reg-user-type-badge">{student.studentType || "Regular"}</span>
+                  {student.school && (
+                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{student.school}</span>
+                  )}
                 </div>
 
                 {/* Contact Row */}
