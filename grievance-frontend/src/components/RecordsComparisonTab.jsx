@@ -107,18 +107,24 @@ export default function RecordsComparisonTab() {
 
     setLoading(true);
     try {
-      const deptsParam = (targetDepts || []).length > 0 ? (targetDepts || []).join(",") : "all";
       const queryParams = new URLSearchParams({
         type: targetCohort,
         status: targetStatus,
         search: (targetSearch || "").trim(),
-        department: deptsParam,
-        departments: deptsParam,
         staffType: targetCohort === "staff" ? (targetStaffType || "all") : "all",
         page: (targetPage || 1).toString(),
         limit: limit.toString(),
         _t: Date.now().toString()
       });
+
+      if ((targetDepts || []).length > 0) {
+        const deptsJson = JSON.stringify(targetDepts);
+        queryParams.set("department", deptsJson);
+        queryParams.set("departments", deptsJson);
+      } else {
+        queryParams.set("department", "all");
+        queryParams.set("departments", "all");
+      }
 
       const res = await fetch(`${BASE_URL}?${queryParams.toString()}`, {
         signal: controller.signal,
@@ -192,16 +198,22 @@ export default function RecordsComparisonTab() {
   const handleOpenExportPreview = async () => {
     setExporting(true);
     try {
-      const deptsParam = selectedDepartments.length > 0 ? selectedDepartments.join(",") : "all";
       const queryParams = new URLSearchParams({
         type: cohort,
         status: "all", // Load entire cohort dataset so user can switch between Registered and Not Registered in preview
         search: search.trim(),
-        department: deptsParam,
-        departments: deptsParam,
         staffType: cohort === "staff" ? staffType : "all",
         export: "preview"
       });
+
+      if (selectedDepartments.length > 0) {
+        const deptsJson = JSON.stringify(selectedDepartments);
+        queryParams.set("department", deptsJson);
+        queryParams.set("departments", deptsJson);
+      } else {
+        queryParams.set("department", "all");
+        queryParams.set("departments", "all");
+      }
 
       const res = await fetch(`${BASE_URL}?${queryParams.toString()}`);
       if (!res.ok) throw new Error("Failed to load records for export preview");

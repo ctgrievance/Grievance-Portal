@@ -11,6 +11,235 @@ import jwt from "jsonwebtoken";
 import { logAuditAction } from "../utils/AuditService.js";
 import { syncSingleStudentRegistration, syncSingleStaffRegistration } from "../utils/registrationSyncService.js";
 
+// Smart title case: capitalize all words except common prepositions/articles/conjunctions,
+// but always capitalize the first word of the string.
+const SMALL_WORDS = new Set([
+  "of", "and", "the", "in", "on", "at", "to", "for", "a", "an",
+  "by", "with", "from", "or", "nor", "but", "is", "as", "vs"
+]);
+
+const smartTitleCase = (str) => {
+  if (!str) return str;
+  return str
+    .split(/\s+/)
+    .map((word, idx) => {
+      if (!word) return word;
+      const lower = word.toLowerCase();
+      if (idx === 0 || !SMALL_WORDS.has(lower)) {
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      }
+      return lower;
+    })
+    .join(" ");
+};
+
+// =========================================================================
+// CACHING UTILITIES & NORMALIZERS (Zero-Lag Cohort Audits)
+// =========================================================================
+let cachedStudentsData = null;
+let cachedStudentsTimestamp = 0;
+let cachedStaffData = null;
+let cachedStaffTimestamp = 0;
+let cachedSchools = null;
+let cachedSchoolsTimestamp = 0;
+let cachedDepts = null;
+let cachedDeptsTimestamp = 0;
+
+const USER_CACHE_TTL = 30 * 1000; // 30 seconds
+const DROPDOWN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export const invalidateComparisonCache = () => {
+  cachedStudentsData = null;
+  cachedStudentsTimestamp = 0;
+  cachedStaffData = null;
+  cachedStaffTimestamp = 0;
+  cachedSchools = null;
+  cachedSchoolsTimestamp = 0;
+  cachedDepts = null;
+  cachedDeptsTimestamp = 0;
+};
+
+const getCleanSchools = async () => {
+  const now = Date.now();
+  if (cachedSchools && (now - cachedSchoolsTimestamp < DROPDOWN_CACHE_TTL)) {
+    return cachedSchools;
+  }
+  const [schools, officialDepts] = await Promise.all([
+    StudentRecord.distinct("school"),
+    Department.find({ isActive: true }).select("name").sort({ name: 1 })
+  ]);
+  const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+  const officialMap = new Map();
+  if (Array.isArray(officialDepts)) {
+    officialDepts.forEach(d => {
+      const c = (d.name || "").replace(/\s+/g, " ").trim();
+      if (c) officialMap.set(normKey(c), c);
+    });
+  }
+  const compMap = new Map();
+  if (Array.isArray(schools)) {
+    schools.forEach(d => {
+      const c = (d || "").replace(/\s+/g, " ").trim();
+      if (c && !/^\d+$/.test(c)) {
+        const k = normKey(c);
+        if (!compMap.has(k)) {
+          if (officialMap.has(k)) {
+            compMap.set(k, officialMap.get(k));
+          } else {
+            compMap.set(k, smartTitleCase(c));
+          }
+        }
+      }
+    });
+  }
+  cachedSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
+  cachedSchoolsTimestamp = now;
+  return cachedSchools;
+};
+
+const getCleanDepartments = async () => {
+  const now = Date.now();
+  if (cachedDepts && (now - cachedDeptsTimestamp < DROPDOWN_CACHE_TTL)) {
+    return cachedDepts;
+  }
+  const [allDistinctDepts, officialDepts] = await Promise.all([
+    StaffRecord.distinct("department"),
+    Department.find({ isActive: true }).select("name").sort({ name: 1 })
+  ]);
+  const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+  const officialMap = new Map();
+  if (Array.isArray(officialDepts)) {
+    officialDepts.forEach(d => {
+      const c = (d.name || "").replace(/\s+/g, " ").trim();
+      if (c) officialMap.set(normKey(c), c);
+    });
+  }
+  const compMap = new Map();
+  if (Array.isArray(allDistinctDepts)) {
+    allDistinctDepts.forEach(d => {
+      const c = (d || "").replace(/\s+/g, " ").trim();
+      if (c && !/^\d+$/.test(c)) {
+        const k = normKey(c);
+        if (!compMap.has(k)) {
+          if (officialMap.has(k)) {
+            compMap.set(k, officialMap.get(k));
+          } else {
+            compMap.set(k, smartTitleCase(c));
+          }
+        }
+      }
+    });
+  }
+  cachedDepts = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
+  cachedDeptsTimestamp = now;
+  return cachedDepts;
+};
+
+/**
+ * Robustly parses department / school filters from query parameters.
+ * Supports:
+ * - Arrays (repeated query parameters)
+ * - JSON encoded strings (e.g. JSON.stringify(departments))
+ * - Delimited strings (e.g. `|||`)
+ * - Comma-separated strings, while carefully preserving names that contain commas
+ *   (e.g. "School of Hotel Management, Airlines and Tourism - 40")
+ */
+const parseSelectedDepartments = (rawParam, knownList = []) => {
+  if (!rawParam || rawParam === "all") return [];
+
+  // 1. Array from repeated query params
+  if (Array.isArray(rawParam)) {
+    return rawParam
+      .map(d => String(d).trim())
+      .filter(d => d && d !== "all");
+  }
+
+  const str = String(rawParam).trim();
+  if (!str || str === "all") return [];
+
+  // 2. JSON-encoded array
+  if ((str.startsWith("[") && str.endsWith("]")) || (str.startsWith("%5B") && str.endsWith("%5D"))) {
+    try {
+      const decoded = str.startsWith("%5B") ? decodeURIComponent(str) : str;
+      const parsed = JSON.parse(decoded);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(d => String(d).trim())
+          .filter(d => d && d !== "all");
+      }
+    } catch (_) {
+      // ignore JSON parse failure and proceed
+    }
+  }
+
+  // 3. Pipe-delimited (|||)
+  if (str.includes("|||")) {
+    return str
+      .split("|||")
+      .map(d => d.trim())
+      .filter(d => d && d !== "all");
+  }
+
+  // 4. Exact match against known schools / departments
+  // If the entire string matches a known school or department, DO NOT split on commas!
+  if (Array.isArray(knownList) && knownList.length > 0) {
+    const exact = knownList.find(k => k.trim().toLowerCase() === str.toLowerCase());
+    if (exact) {
+      return [exact];
+    }
+
+    // Check if multiple known entries were joined with commas
+    const sortedKnown = [...knownList].sort((a, b) => b.length - a.length);
+    const matches = [];
+    let remaining = str;
+    let matchedAny = false;
+
+    for (const item of sortedKnown) {
+      const itemLower = item.toLowerCase();
+      const idx = remaining.toLowerCase().indexOf(itemLower);
+      if (idx !== -1) {
+        matches.push(item);
+        remaining = remaining.slice(0, idx) + remaining.slice(idx + item.length);
+        matchedAny = true;
+      }
+    }
+
+    if (matchedAny && matches.length > 0) {
+      return matches;
+    }
+  }
+
+  // 5. Fallback: split by comma if none of the above matched
+  return str
+    .split(",")
+    .map(d => d.trim())
+    .filter(d => d && d !== "all");
+};
+
+/**
+ * Builds mongo query conditions for schools/departments that flexibly match
+ * with or without numeric codes (e.g. "- 40"), with "&" or "and", and whitespace variations.
+ */
+const buildSchoolOrConditions = (selectedDepartments, includeDeptField = false) => {
+  return selectedDepartments.map(cleanDept => {
+    const baseDept = cleanDept.replace(/\s*-\s*\d+\s*$/, "").trim();
+    const baseEscaped = baseDept
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+      .replace(/\s+/g, "\\s+");
+    const regexPattern = new RegExp(`^${baseEscaped}(?:\\s*-\\s*\\d+)?$`, "i");
+
+    const conditions = [
+      { school: { $regex: regexPattern } },
+      { program: { $regex: regexPattern } }
+    ];
+    if (includeDeptField) {
+      conditions.push({ department: { $regex: regexPattern } });
+    }
+    return { $or: conditions };
+  });
+};
+
 // =========================================================================
 // 1️⃣ GET LIVE REGISTERED STUDENTS
 // =========================================================================
@@ -21,12 +250,8 @@ export const getLiveStudents = async (req, res) => {
     const limitNum = parseInt(limit, 10) || 50;
 
     const rawDeptParam = req.query.departments || req.query.department || req.query.school || req.query.schools || "all";
-    let selectedDepartments = [];
-    if (Array.isArray(rawDeptParam)) {
-      selectedDepartments = rawDeptParam.map(d => String(d).trim()).filter(d => d && d !== "all");
-    } else if (typeof rawDeptParam === "string" && rawDeptParam.trim() !== "all" && rawDeptParam.trim() !== "") {
-      selectedDepartments = rawDeptParam.split(",").map(d => d.trim()).filter(d => d && d !== "all");
-    }
+    const cleanSchools = await getCleanSchools();
+    const selectedDepartments = parseSelectedDepartments(rawDeptParam, cleanSchools);
 
     // Strict condition: A user is considered a registered student ONLY IF their OTP has been verified
     const verifiedCondition = {
@@ -51,21 +276,7 @@ export const getLiveStudents = async (req, res) => {
     // if status === "all", query both
 
     if (selectedDepartments.length > 0) {
-      const schoolOrConditions = selectedDepartments.map(d => {
-        const cleanDept = d.toString().trim();
-        const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const pattern = escaped
-          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
-          .replace(/\s+/g, "\\s+");
-        const regexPattern = new RegExp(`^${pattern}$`, "i");
-        return {
-          $or: [
-            { school: { $regex: regexPattern } },
-            { department: { $regex: regexPattern } },
-            { program: { $regex: regexPattern } }
-          ]
-        };
-      });
+      const schoolOrConditions = buildSchoolOrConditions(selectedDepartments, true);
       andConditions.push({ $or: schoolOrConditions });
     }
 
@@ -128,43 +339,10 @@ export const getLiveStudents = async (req, res) => {
     });
 
     // Counts: Total truly registered (OTP verified) vs Incomplete/Pending OTP
-    const [totalRegistered, totalPending, schools, officialDepts] = await Promise.all([
+    const [totalRegistered, totalPending] = await Promise.all([
       StudentUser.countDocuments(verifiedCondition),
-      StudentUser.countDocuments(pendingCondition),
-      StudentRecord.distinct("school"),
-      Department.find({ isActive: true }).select("name").sort({ name: 1 })
+      StudentUser.countDocuments(pendingCondition)
     ]);
-
-    const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
-    const officialMap = new Map();
-    if (Array.isArray(officialDepts)) {
-      officialDepts.forEach(d => {
-        const c = (d.name || "").replace(/\s+/g, " ").trim();
-        if (c) officialMap.set(normKey(c), c);
-      });
-    }
-
-    const compMap = new Map();
-    if (Array.isArray(schools)) {
-      schools.forEach(d => {
-        const c = (d || "").replace(/\s+/g, " ").trim();
-        if (c && !/^\d+$/.test(c)) {
-          const k = normKey(c);
-          if (!compMap.has(k)) {
-            if (officialMap.has(k)) {
-              compMap.set(k, officialMap.get(k));
-            } else {
-              const titleCased = c.replace(
-                /\w\S*/g,
-                (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-              );
-              compMap.set(k, titleCased);
-            }
-          }
-        }
-      });
-    }
-    const cleanSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
 
     const isExport = req.query.isExport || req.query.export;
     if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
@@ -412,23 +590,28 @@ export const getLiveStaff = async (req, res) => {
       Object.assign(query, pendingCondition);
     }
 
-    if (department && department !== "all") {
-      const cleanDept = department.toString().trim();
-      const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const pattern = escaped
-        .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
-        .replace(/\s+/g, "\\s+");
-      const deptRegex = new RegExp(`^${pattern}$`, "i");
+    const rawDeptParam = req.query.departments || req.query.department || "all";
+    const cleanDepartments = await getCleanDepartments();
+    const selectedDepartments = parseSelectedDepartments(rawDeptParam, cleanDepartments);
 
-      const deptCondition = [
-        { staffDepartment: { $regex: deptRegex } },
-        { adminDepartment: { $regex: deptRegex } }
-      ];
+    if (selectedDepartments.length > 0) {
+      const deptOrConditions = selectedDepartments.flatMap(d => {
+        const baseDept = d.replace(/\s*-\s*\d+\s*$/, "").trim();
+        const baseEscaped = baseDept
+          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+          .replace(/\s+/g, "\\s+");
+        const deptRegex = new RegExp(`^${baseEscaped}(?:\\s*-\\s*\\d+)?$`, "i");
+        return [
+          { staffDepartment: { $regex: deptRegex } },
+          { adminDepartment: { $regex: deptRegex } }
+        ];
+      });
       if (query.$or) {
-        query.$and = [{ $or: query.$or }, { $or: deptCondition }];
+        query.$and = [{ $or: query.$or }, { $or: deptOrConditions }];
         delete query.$or;
       } else {
-        query.$or = deptCondition;
+        query.$or = deptOrConditions;
       }
     }
 
@@ -516,52 +699,15 @@ export const getLiveStaff = async (req, res) => {
     const total = enriched.length;
     const paginated = enriched.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
-    // Count strictly verified staff and fetch all unique departments
-    const [totalRegistered, totalPending, totalAdmins, totalRegularStaff, deptDocs, staffDepts, adminDepts] = await Promise.all([
+    // Count strictly verified staff
+    const [totalRegistered, totalPending, totalAdmins, totalRegularStaff] = await Promise.all([
       StaffUser.countDocuments(verifiedCondition),
       StaffUser.countDocuments(pendingCondition),
       StaffUser.countDocuments({ ...verifiedCondition, $or: [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }] }),
-      StaffUser.countDocuments({ ...verifiedCondition, role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } }),
-      Department.find({ isActive: true }).select("name").sort({ name: 1 }),
-      StaffUser.distinct("staffDepartment"),
-      StaffUser.distinct("adminDepartment")
+      StaffUser.countDocuments({ ...verifiedCondition, role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } })
     ]);
 
-    // Dynamic deduplication: canonicalize against official departments without hardcoding
-    const normalizeKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
-    const deptCanonicalMap = new Map();
-    if (Array.isArray(deptDocs)) {
-      deptDocs.forEach(d => {
-        const cleanName = (d.name || "").replace(/\s+/g, " ").trim();
-        if (cleanName) {
-          const k = normalizeKey(cleanName);
-          if (!deptCanonicalMap.has(k)) deptCanonicalMap.set(k, cleanName);
-        }
-      });
-    }
-
-    const allDeptsMap = new Map();
-    const candidateDepts = [...(staffDepts || []), ...(adminDepts || [])];
-    candidateDepts.forEach(d => {
-      const cleanName = (d || "").replace(/\s+/g, " ").trim();
-      if (cleanName && !/^\d+$/.test(cleanName)) { // Ignore purely numeric ones
-        const k = normalizeKey(cleanName);
-        if (!allDeptsMap.has(k)) {
-          if (deptCanonicalMap.has(k)) {
-            allDeptsMap.set(k, deptCanonicalMap.get(k));
-          } else {
-            // Title case it because it's not in official depts
-            const titleCased = cleanName.replace(
-              /\w\S*/g,
-              (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-            );
-            allDeptsMap.set(k, titleCased);
-          }
-        }
-      }
-    });
-
-    const departments = Array.from(allDeptsMap.values()).sort((a, b) => a.localeCompare(b));
+    const departments = cleanDepartments;
 
     const isExport = req.query.isExport || req.query.export;
     if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
@@ -809,31 +955,7 @@ export const deleteLiveStaff = async (req, res) => {
   }
 };
 
-// =========================================================================
-// CACHING UTILITIES FOR COMPARISON (Zero-Lag Cohort Audits)
-// =========================================================================
-let cachedStudentsData = null;
-let cachedStudentsTimestamp = 0;
-let cachedStaffData = null;
-let cachedStaffTimestamp = 0;
-let cachedSchools = null;
-let cachedSchoolsTimestamp = 0;
-let cachedDepts = null;
-let cachedDeptsTimestamp = 0;
 
-const USER_CACHE_TTL = 30 * 1000; // 30 seconds
-const DROPDOWN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-export const invalidateComparisonCache = () => {
-  cachedStudentsData = null;
-  cachedStudentsTimestamp = 0;
-  cachedStaffData = null;
-  cachedStaffTimestamp = 0;
-  cachedSchools = null;
-  cachedSchoolsTimestamp = 0;
-  cachedDepts = null;
-  cachedDeptsTimestamp = 0;
-};
 
 const getRegisteredStudentsData = async () => {
   const now = Date.now();
@@ -937,83 +1059,7 @@ const getRegisteredStaffData = async () => {
   return cachedStaffData;
 };
 
-const getCleanSchools = async () => {
-  const now = Date.now();
-  if (cachedSchools && (now - cachedSchoolsTimestamp < DROPDOWN_CACHE_TTL)) {
-    return cachedSchools;
-  }
-  const [schools, officialDepts] = await Promise.all([
-    StudentRecord.distinct("school"),
-    Department.find({ isActive: true }).select("name").sort({ name: 1 })
-  ]);
-  const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
-  const officialMap = new Map();
-  if (Array.isArray(officialDepts)) {
-    officialDepts.forEach(d => {
-      const c = (d.name || "").replace(/\s+/g, " ").trim();
-      if (c) officialMap.set(normKey(c), c);
-    });
-  }
-  const compMap = new Map();
-  if (Array.isArray(schools)) {
-    schools.forEach(d => {
-      const c = (d || "").replace(/\s+/g, " ").trim();
-      if (c && !/^\d+$/.test(c)) {
-        const k = normKey(c);
-        if (!compMap.has(k)) {
-          if (officialMap.has(k)) {
-            compMap.set(k, officialMap.get(k));
-          } else {
-            const titleCased = c.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-            compMap.set(k, titleCased);
-          }
-        }
-      }
-    });
-  }
-  cachedSchools = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
-  cachedSchoolsTimestamp = now;
-  return cachedSchools;
-};
 
-const getCleanDepartments = async () => {
-  const now = Date.now();
-  if (cachedDepts && (now - cachedDeptsTimestamp < DROPDOWN_CACHE_TTL)) {
-    return cachedDepts;
-  }
-  const [allDistinctDepts, officialDepts] = await Promise.all([
-    StaffRecord.distinct("department"),
-    Department.find({ isActive: true }).select("name").sort({ name: 1 })
-  ]);
-  const normKey = (n) => (n || "").toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
-  const officialMap = new Map();
-  if (Array.isArray(officialDepts)) {
-    officialDepts.forEach(d => {
-      const c = (d.name || "").replace(/\s+/g, " ").trim();
-      if (c) officialMap.set(normKey(c), c);
-    });
-  }
-  const compMap = new Map();
-  if (Array.isArray(allDistinctDepts)) {
-    allDistinctDepts.forEach(d => {
-      const c = (d || "").replace(/\s+/g, " ").trim();
-      if (c && !/^\d+$/.test(c)) {
-        const k = normKey(c);
-        if (!compMap.has(k)) {
-          if (officialMap.has(k)) {
-            compMap.set(k, officialMap.get(k));
-          } else {
-            const titleCased = c.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-            compMap.set(k, titleCased);
-          }
-        }
-      }
-    });
-  }
-  cachedDepts = Array.from(compMap.values()).sort((a, b) => a.localeCompare(b));
-  cachedDeptsTimestamp = now;
-  return cachedDepts;
-};
 
 // =========================================================================
 // 7️⃣ COMPARE RECORDS VS REGISTERED USERS (Students or Staff)
@@ -1042,14 +1088,11 @@ export const getRecordsComparison = async (req, res) => {
     const isStudents = reqType === "students" || reqType === "student";
 
     const rawDeptParam = req.query.departments || req.query.department || "all";
-    let selectedDepartments = [];
-    if (Array.isArray(rawDeptParam)) {
-      selectedDepartments = rawDeptParam.map(d => String(d).trim()).filter(d => d && d !== "all");
-    } else if (typeof rawDeptParam === "string" && rawDeptParam.trim() !== "all" && rawDeptParam.trim() !== "") {
-      selectedDepartments = rawDeptParam.split(",").map(d => d.trim()).filter(d => d && d !== "all");
-    }
 
     if (isStudents) {
+      const cleanSchools = await getCleanSchools();
+      const selectedDepartments = parseSelectedDepartments(rawDeptParam, cleanSchools);
+
       // 1️⃣ Fetch cached registered students mapping
       const {
         registeredMap,
@@ -1061,19 +1104,7 @@ export const getRecordsComparison = async (req, res) => {
       const contextConditions = [];
 
       if (selectedDepartments.length > 0) {
-        const schoolOrConditions = selectedDepartments.map(cleanDept => {
-          const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const pattern = escaped
-            .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
-            .replace(/\s+/g, "\\s+");
-          const regexPattern = new RegExp(`^${pattern}$`, "i");
-          return {
-            $or: [
-              { school: { $regex: regexPattern } },
-              { program: { $regex: regexPattern } }
-            ]
-          };
-        });
+        const schoolOrConditions = buildSchoolOrConditions(selectedDepartments, false);
         contextConditions.push({ $or: schoolOrConditions });
       }
 
@@ -1100,11 +1131,10 @@ export const getRecordsComparison = async (req, res) => {
         ? { $and: [...contextConditions, studentRegisteredCondition] }
         : studentRegisteredCondition;
 
-      // Dynamic counts and clean schools in parallel
-      const [totalRecords, totalRegistered, cleanSchools] = await Promise.all([
+      // Dynamic counts
+      const [totalRecords, totalRegistered] = await Promise.all([
         StudentRecord.countDocuments(baseContextQuery),
-        StudentRecord.countDocuments(registeredContextQuery),
-        getCleanSchools()
+        StudentRecord.countDocuments(registeredContextQuery)
       ]);
       const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
       const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
@@ -1208,6 +1238,9 @@ export const getRecordsComparison = async (req, res) => {
         records
       });
     } else {
+      const cleanDepartments = await getCleanDepartments();
+      const selectedDepartments = parseSelectedDepartments(rawDeptParam, cleanDepartments);
+
       // 2️⃣ STAFF COMPARISON
       const {
         registeredMap,
@@ -1220,11 +1253,13 @@ export const getRecordsComparison = async (req, res) => {
 
       if (selectedDepartments.length > 0) {
         const staffDeptOrConditions = selectedDepartments.map(cleanDept => {
-          const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const pattern = escaped
+          const baseDept = cleanDept.replace(/\s*-\s*\d+\s*$/, "").trim();
+          const baseEscaped = baseDept
+            .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
             .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
             .replace(/\s+/g, "\\s+");
-          return { department: { $regex: new RegExp(`^${pattern}$`, "i") } };
+          const regexPattern = new RegExp(`^${baseEscaped}(?:\\s*-\\s*\\d+)?$`, "i");
+          return { department: { $regex: regexPattern } };
         });
         deptSearchConditions.push({ $or: staffDeptOrConditions });
       }
@@ -1273,12 +1308,11 @@ export const getRecordsComparison = async (req, res) => {
         ? { $and: [...activeCategoryConditions, staffRegisteredCondition] }
         : staffRegisteredCondition;
 
-      const [totalTeaching, totalNonTeaching, totalRecords, totalRegistered, cleanDepartments] = await Promise.all([
+      const [totalTeaching, totalNonTeaching, totalRecords, totalRegistered] = await Promise.all([
         StaffRecord.countDocuments(teachingQuery),
         StaffRecord.countDocuments(nonTeachingQuery),
         StaffRecord.countDocuments(activeCategoryQuery),
-        StaffRecord.countDocuments(registeredCategoryQuery),
-        getCleanDepartments()
+        StaffRecord.countDocuments(registeredCategoryQuery)
       ]);
       const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
       const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";

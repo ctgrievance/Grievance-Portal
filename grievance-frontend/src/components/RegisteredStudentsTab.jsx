@@ -105,7 +105,7 @@ function RegisteredStudentsTab() {
         limit: "25"
       });
       if (selectedSchools.length > 0) {
-        queryParams.set("departments", selectedSchools.join(","));
+        queryParams.set("departments", JSON.stringify(selectedSchools));
       }
 
       const res = await fetch(`${BASE_URL}?${queryParams.toString()}`);
@@ -142,7 +142,7 @@ function RegisteredStudentsTab() {
         export: "preview"
       });
       if (selectedSchools.length > 0) {
-        queryParams.set("departments", selectedSchools.join(","));
+        queryParams.set("departments", JSON.stringify(selectedSchools));
       }
 
       const res = await fetch(`${BASE_URL}?${queryParams.toString()}`);
