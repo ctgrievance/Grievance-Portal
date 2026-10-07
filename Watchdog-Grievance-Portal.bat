@@ -43,6 +43,15 @@ if errorlevel 1 (
     echo [%date% %time%] [SUCCESS] Frontend App restarted on port 3000.
 )
 
+:: 4. Check GitHub Actions Self-Hosted Runner
+tasklist /fi "imagename eq Runner.Listener.exe" 2>nul | find /i "Runner.Listener.exe" >nul
+if errorlevel 1 (
+    echo [%date% %time%] [ALERT] GitHub Actions Runner stopped! Auto-recovering...
+    powershell -NoProfile -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'cmd.exe /c run.cmd'; CurrentDirectory = 'C:\actions-runner'}" >nul 2>&1
+    ping 127.0.0.1 -n 3 >nul
+    echo [%date% %time%] [SUCCESS] GitHub Actions Runner restarted.
+)
+
 :: Wait 30 seconds before next check
 ping 127.0.0.1 -n 31 >nul
 goto loop

@@ -1,0 +1,71 @@
+name: Production Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to CTU Production Server
+    runs-on: self-hosted
+
+    steps:
+      - name: Deploy Latest Code to Production Portal
+        shell: powershell
+        run: |
+          Write-Host "=========================================="
+          Write-Host " Starting Production Deployment on CTU Server"
+          Write-Host "=========================================="
+
+          $repoDir = "C:\Users\admin\Desktop\Grievance-Portal"
+          Set-Location $repoDir
+
+          Write-Host "--> [1/5] Syncing latest commits from origin/main..."
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
+
+          Write-Host "--> [2/5] Updating Backend dependencies..."
+          Set-Location "$repoDir\grievance-backend"
+          if (Test-Path "package.json") {
+              npm install --no-audit --prefer-offline
+          }
+
+          Write-Host "--> [3/5] Updating Frontend dependencies..."
+          Set-Location "$repoDir\grievance-frontend"
+          if (Test-Path "package.json") {
+              npm install --no-audit --prefer-offline
+          }
+
+          Write-Host "--> [4/5] Recycling Backend and Frontend processes..."
+          # Terminate backend process on port 5000
+          Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue |
+              Select-Object -ExpandProperty OwningProcess -Unique |
+              ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+
+          # Terminate frontend process on port 3000
+          Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue |
+              Select-Object -ExpandProperty OwningProcess -Unique |
+              ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+
+          Start-Sleep -Seconds 3
+
+          # Launch fresh instances in background via CIM
+          Write-Host "--> [5/5] Launching updated services..."
+          Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+              CommandLine = 'cmd.exe /c start-backend.bat'
+              CurrentDirectory = "$repoDir\grievance-backend"
+          } | Out-Null
+
+          Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+              CommandLine = 'cmd.exe /c start-frontend.bat'
+              CurrentDirectory = "$repoDir\grievance-frontend"
+          } | Out-Null
+
+          Start-Sleep -Seconds 6
+
+          Write-Host "=========================================="
+          Write-Host " Deployment Complete & Services Active!"
+          Write-Host "=========================================="
