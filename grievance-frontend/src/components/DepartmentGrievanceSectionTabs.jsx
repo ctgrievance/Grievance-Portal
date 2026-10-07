@@ -12,6 +12,7 @@ export default function DepartmentGrievanceSectionTabs({
   setGrievanceSection,
   directCount = 0,
   forwardedCount = 0,
+  studentGrievancesCount = null,
   unassignedForwardedCount = 0,
   departmentName = "Department",
   onTabChange
@@ -25,16 +26,18 @@ export default function DepartmentGrievanceSectionTabs({
     }
   };
 
+  const hasStudentSection = typeof studentGrievancesCount === "number";
+
   return (
     <div className="dept-grievance-header-wrap">
       <div className="dept-grievance-title-area">
         <h2>{departmentName} Grievances</h2>
         <span className="dept-grievance-total-tag">
-          Total: {directCount + forwardedCount}
+          Total: {grievanceSection === "student_grievances" ? (studentGrievancesCount || 0) : (directCount + forwardedCount)}
         </span>
       </div>
 
-      {/* ── 2 SECTIONS: DIRECT GRIEVANCES vs FORWARDED GRIEVANCES ── */}
+      {/* ── SECTIONS SWITCHER ── */}
       <div className="dept-section-tabs">
         <button
           type="button"
@@ -47,7 +50,7 @@ export default function DepartmentGrievanceSectionTabs({
               Direct Grievances
               <span className="dept-sec-count direct">{directCount}</span>
             </div>
-            <small className="dept-sec-btn-sub">Directly submitted by students to {departmentName}</small>
+            <small className="dept-sec-btn-sub">Directly submitted to {departmentName}</small>
           </div>
         </button>
 
@@ -70,6 +73,23 @@ export default function DepartmentGrievanceSectionTabs({
             <small className="dept-sec-btn-sub">Transferred from other departments</small>
           </div>
         </button>
+
+        {hasStudentSection && (
+          <button
+            type="button"
+            className={`dept-section-tab-btn ${grievanceSection === "student_grievances" ? "active" : ""}`}
+            onClick={() => handleSelect("student_grievances")}
+          >
+            <div className="dept-sec-btn-icon student-out">🎓</div>
+            <div className="dept-sec-btn-text">
+              <div className="dept-sec-btn-title">
+                Our Students' Grievances
+                <span className="dept-sec-count student-out">{studentGrievancesCount}</span>
+              </div>
+              <small className="dept-sec-btn-sub">Submitted by our students to any dept</small>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Informative notice when Forwarded Section is active */}
@@ -88,6 +108,26 @@ export default function DepartmentGrievanceSectionTabs({
           <span style={{ fontSize: "1.1rem" }}>💡</span>
           <div>
             <strong>Forwarded Grievances:</strong> These complaints were transferred into {departmentName} from other departments. As department admin, you can review the forward reason and assign your faculty members manually.
+          </div>
+        </div>
+      )}
+
+      {/* Informative notice when Our Students Section is active */}
+      {grievanceSection === "student_grievances" && (
+        <div style={{
+          background: "#fefce8",
+          border: "1px solid #fef08a",
+          borderRadius: "8px",
+          padding: "10px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          fontSize: "0.82rem",
+          color: "#854d0e"
+        }}>
+          <span style={{ fontSize: "1.1rem" }}>🎓</span>
+          <div>
+            <strong>Our Students' Grievances:</strong> Showing all complaints submitted by students of <strong>{departmentName}</strong> across any department (Hostel, Accounts, Examination, etc.).
           </div>
         </div>
       )}
@@ -123,7 +163,7 @@ export default function DepartmentGrievanceSectionTabs({
         }
         .dept-section-tabs {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
           gap: 12px;
           background: #f8fafc;
           padding: 6px;
@@ -175,6 +215,10 @@ export default function DepartmentGrievanceSectionTabs({
           background: #f0fdf4;
           border: 1px solid #bbf7d0;
         }
+        .dept-sec-btn-icon.student-out {
+          background: #fefce8;
+          border: 1px solid #fef08a;
+        }
         .dept-sec-btn-text {
           display: flex;
           flex-direction: column;
@@ -223,6 +267,15 @@ export default function DepartmentGrievanceSectionTabs({
         }
         .dept-section-tab-btn.active .dept-sec-count.forward {
           background: #16a34a;
+          color: #ffffff;
+        }
+        .dept-sec-count.student-out {
+          background: #fefce8;
+          color: #854d0e;
+          border: 1px solid #fef08a;
+        }
+        .dept-section-tab-btn.active .dept-sec-count.student-out {
+          background: #d97706;
           color: #ffffff;
         }
         .dept-sec-attention-pill {

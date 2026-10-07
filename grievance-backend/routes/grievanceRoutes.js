@@ -9,6 +9,7 @@ import {
   checkSubmissionLimit,
   getAllGrievances,
   getCategoryGrievances,
+  getGrievancesByStudentSchool,
   getUserGrievances,
   assignToStaff,
   getAssignedGrievances,
@@ -52,6 +53,7 @@ router.get("/all", getAllGrievances);
 
 router.get("/category/:category", getCategoryGrievances);
 router.get("/department/:department", getCategoryGrievances); // Reuse for department grievances
+router.get("/by-student-school/:school", getGrievancesByStudentSchool); // All grievances submitted by students of this school
 router.put("/assign/:id", assignToStaff);
 
 /* ================= STAFF ================= */

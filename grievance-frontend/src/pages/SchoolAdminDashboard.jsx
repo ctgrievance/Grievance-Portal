@@ -58,8 +58,9 @@ function SchoolAdminDashboard() {
 
   // Data States
   const [grievances, setGrievances] = useState([]);
+  const [studentGrievances, setStudentGrievances] = useState([]);
   const [staffMap, setStaffMap] = useState({});
-  const [grievanceSection, setGrievanceSection] = useState("direct"); // "direct" | "forwarded"
+  const [grievanceSection, setGrievanceSection] = useState("direct"); // "direct" | "forwarded" | "student_grievances"
 
   // ✅ FILTER STATES
   const [searchId, setSearchId] = useState("");
@@ -82,6 +83,7 @@ function SchoolAdminDashboard() {
       navigate("/");
     } else {
       fetchMySchoolGrievances();
+      fetchStudentGrievances();
       fetchStaffNames();
     }
   }, [navigate, isAuthorized]);
@@ -92,11 +94,23 @@ function SchoolAdminDashboard() {
       const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/category/${category}`);
       if (res.ok) {
         const data = await res.json();
-        console.log("Fetched grievances (category):", data.slice(0, 5));
         const prevScrollY = window.scrollY || window.pageYOffset;
         setGrievances(data);
         requestAnimationFrame(() => window.scrollTo(0, prevScrollY));
       } else console.error("Failed to fetch grievances");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const fetchStudentGrievances = async () => {
+    try {
+      const category = encodeURIComponent(mySchoolName);
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/by-student-school/${category}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStudentGrievances(data);
+      } else console.error("Failed to fetch student grievances");
     } catch (error) {
       console.error(error);
     }
@@ -193,14 +207,21 @@ function SchoolAdminDashboard() {
     }
   };
 
-  // ✅ 2 SECTIONS: DIRECT GRIEVANCES vs FORWARDED GRIEVANCES
-  const { directGrievances, forwardedGrievances, unassignedForwardedCount } = splitGrievancesByOrigin(grievances, mySchoolName);
-  const currentSectionGrievances = grievanceSection === "forwarded" ? forwardedGrievances : directGrievances;
+  // ✅ 2 SECTIONS: DIRECT GRIEVANCES vs OUR STUDENTS' GRIEVANCES
+  const { directGrievances } = splitGrievancesByOrigin(grievances, mySchoolName);
+  const currentSectionGrievances =
+    grievanceSection === "student_grievances"
+      ? studentGrievances
+      : directGrievances;
 
   // ✅ FILTER LOGIC
   const filteredGrievances = currentSectionGrievances.filter((g) => {
-    const matchId = (g.userId || "").toLowerCase().includes(searchId.toLowerCase());
-    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
+    const q = searchId.toLowerCase();
+    const matchId = (g.userId || "").toLowerCase().includes(q) ||
+                    (g.name || "").toLowerCase().includes(q) ||
+                    (g.category || "").toLowerCase().includes(q);
+    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase()) ||
+                       (staffMap[g.assignedTo] || "").toLowerCase().includes(searchStaffId.toLowerCase());
     const matchStatus = statusFilter === "All" || g.status === statusFilter;
 
     let matchMonth = true;
@@ -218,7 +239,8 @@ function SchoolAdminDashboard() {
   const handleExportSelected = (selectedData, selectedColumns, customName) => {
     const token = localStorage.getItem("grievance_token");
     const dateStr = new Date().toISOString().split('T')[0];
-    const defaultPrefix = `${(mySchoolName || "school").toLowerCase().replace(/\s+/g, '_')}_${grievanceSection}_grievances`;
+    const sectionSuffix = grievanceSection === "student_grievances" ? "student_grievances" : "direct_grievances";
+    const defaultPrefix = `${(mySchoolName || "school").toLowerCase().replace(/\s+/g, '_')}_${sectionSuffix}`;
     const rawName = (customName && customName.trim()) ? customName.trim() : defaultPrefix;
     const safeBase = rawName.replace(/[*?:/\\\[\]]/g, "").trim().replace(/\s+/g, "_") || defaultPrefix;
     const fileName = `${safeBase}_${dateStr}.xlsx`;
@@ -307,11 +329,11 @@ function SchoolAdminDashboard() {
               <div className="dept-grievance-title-area">
                 <h2>{mySchoolName} Grievances</h2>
                 <span className="dept-grievance-total-tag">
-                  Total: {grievances.length}
+                  Total: {grievanceSection === "student_grievances" ? studentGrievances.length : directGrievances.length}
                 </span>
               </div>
 
-              {/* ── 2 SECTIONS: DIRECT GRIEVANCES vs FORWARDED GRIEVANCES ── */}
+              {/* ── 2 SECTIONS: DIRECT GRIEVANCES vs OUR STUDENTS' GRIEVANCES ── */}
               <div className="dept-section-tabs">
                 <button
                   type="button"
@@ -327,30 +349,25 @@ function SchoolAdminDashboard() {
                       Direct Grievances
                       <span className="dept-sec-count direct">{directGrievances.length}</span>
                     </div>
-                    <small className="dept-sec-btn-sub">Directly submitted by students to {mySchoolName}</small>
+                    <small className="dept-sec-btn-sub">Directly submitted to {mySchoolName}</small>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  className={`dept-section-tab-btn ${grievanceSection === "forwarded" ? "active" : ""}`}
+                  className={`dept-section-tab-btn ${grievanceSection === "student_grievances" ? "active" : ""}`}
                   onClick={() => {
-                    setGrievanceSection("forwarded");
+                    setGrievanceSection("student_grievances");
                     resetFilters();
                   }}
                 >
-                  <div className="dept-sec-btn-icon forward">🔁</div>
+                  <div className="dept-sec-btn-icon student-out">🎓</div>
                   <div className="dept-sec-btn-text">
                     <div className="dept-sec-btn-title">
-                      Forwarded Grievances
-                      <span className="dept-sec-count forward">{forwardedGrievances.length}</span>
-                      {unassignedForwardedCount > 0 && (
-                        <span className="dept-sec-attention-pill" title={`${unassignedForwardedCount} grievance(s) require faculty assignment`}>
-                          ⚡ {unassignedForwardedCount} Action Needed
-                        </span>
-                      )}
+                      Our Students' Grievances
+                      <span className="dept-sec-count student-out">{studentGrievances.length}</span>
                     </div>
-                    <small className="dept-sec-btn-sub">Transferred from other departments</small>
+                    <small className="dept-sec-btn-sub">Submitted by {mySchoolName} students to any dept</small>
                   </div>
                 </button>
               </div>
@@ -359,11 +376,11 @@ function SchoolAdminDashboard() {
             {/* ✅ Feedback Message Alert Box */}
             {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
-            {/* Informative hint for Forwarded Section */}
-            {grievanceSection === "forwarded" && (
+            {/* Informative hint for Our Students Section */}
+            {grievanceSection === "student_grievances" && (
               <div style={{
-                background: "#f0fdf4",
-                border: "1px solid #bbf7d0",
+                background: "#fefce8",
+                border: "1px solid #fef08a",
                 borderRadius: "8px",
                 padding: "10px 14px",
                 marginBottom: "14px",
@@ -371,11 +388,11 @@ function SchoolAdminDashboard() {
                 alignItems: "center",
                 gap: "10px",
                 fontSize: "0.82rem",
-                color: "#166534"
+                color: "#854d0e"
               }}>
-                <span style={{ fontSize: "1.1rem" }}>💡</span>
+                <span style={{ fontSize: "1.1rem" }}>🎓</span>
                 <div>
-                  <strong>Forwarded Grievances:</strong> These complaints were transferred into {mySchoolName} from other departments. As department admin, you can review the forward reason and assign your faculty members manually.
+                  <strong>Our Students' Grievances:</strong> Showing all complaints submitted by students belonging to <strong>{mySchoolName}</strong> across any department (Hostel, Accounts, Examination, etc.). You can monitor which departments your students are reaching out to and track their progress.
                 </div>
               </div>
             )}
@@ -399,8 +416,8 @@ function SchoolAdminDashboard() {
               <div className="empty-state">
                 <p>
                   {currentSectionGrievances.length === 0
-                    ? (grievanceSection === "forwarded"
-                        ? "No forwarded grievances received from other departments."
+                    ? (grievanceSection === "student_grievances"
+                        ? `No grievances submitted by ${mySchoolName} students yet.`
                         : "No direct grievances received from students yet.")
                     : "No grievances found matching filters."}
                 </p>
@@ -415,7 +432,8 @@ function SchoolAdminDashboard() {
                 updateStatus={updateStatus}
                 getDeadlineStatus={getDeadlineStatus}
                 formatDate={formatDate}
-                isForwardedSection={grievanceSection === "forwarded"}
+                isForwardedSection={false}
+                isStudentSection={grievanceSection === "student_grievances"}
                 currentDepartment={mySchoolName}
               />
             )}
@@ -500,7 +518,7 @@ function SchoolAdminDashboard() {
         }
         .dept-section-tabs {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
           gap: 12px;
           background: #f8fafc;
           padding: 6px;
@@ -552,6 +570,10 @@ function SchoolAdminDashboard() {
           background: #f0fdf4;
           border: 1px solid #bbf7d0;
         }
+        .dept-sec-btn-icon.student-out {
+          background: #fefce8;
+          border: 1px solid #fef08a;
+        }
         .dept-sec-btn-text {
           display: flex;
           flex-direction: column;
@@ -600,6 +622,15 @@ function SchoolAdminDashboard() {
         }
         .dept-section-tab-btn.active .dept-sec-count.forward {
           background: #16a34a;
+          color: #ffffff;
+        }
+        .dept-sec-count.student-out {
+          background: #fefce8;
+          color: #854d0e;
+          border: 1px solid #fef08a;
+        }
+        .dept-section-tab-btn.active .dept-sec-count.student-out {
+          background: #d97706;
           color: #ffffff;
         }
         .dept-sec-attention-pill {

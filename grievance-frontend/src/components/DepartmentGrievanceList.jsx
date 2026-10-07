@@ -21,6 +21,7 @@ function DepartmentGrievanceList({
   getDeadlineStatus,
   formatDate,
   isForwardedSection = false,
+  isStudentSection = false,
   currentDepartment = ""
 }) {
   if (!grievances || grievances.length === 0) {
@@ -68,6 +69,12 @@ function DepartmentGrievanceList({
                   <th>Forward Reason</th>
                   <th>Assigned Faculty</th>
                 </>
+              ) : isStudentSection ? (
+                <>
+                  <th>Submitted To</th>
+                  <th>Subject / Message</th>
+                  <th>Assigned Faculty</th>
+                </>
               ) : (
                 <>
                   <th>Assigned To</th>
@@ -102,7 +109,7 @@ function DepartmentGrievanceList({
                     </div>
                   </td>
 
-                  {/* Forwarded Columns vs Direct Columns */}
+                  {/* Forwarded vs Student Outgoing vs Direct Columns */}
                   {isForwardedSection ? (
                     <>
                       {/* Forwarded From */}
@@ -186,6 +193,64 @@ function DepartmentGrievanceList({
                               </button>
                             )}
                           </div>
+                        )}
+                      </td>
+                    </>
+                  ) : isStudentSection ? (
+                    <>
+                      {/* Submitted To (Target Department) */}
+                      <td>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          padding: "4px 9px",
+                          borderRadius: "6px",
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          fontWeight: "600",
+                          fontSize: "0.82rem",
+                          border: "1px solid #bfdbfe"
+                        }}>
+                          🏢 {g.category}
+                        </span>
+                      </td>
+
+                      {/* Subject / Message */}
+                      <td className="message-cell" style={{ maxWidth: "220px" }}>
+                        <div
+                          style={{ padding: "4px", borderRadius: "4px", transition: "background 0.2s" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          title={g.message || g.issueTypeId?.issueName || "—"}
+                        >
+                          <div style={{ fontWeight: "600", color: "#0f172a", fontSize: "0.82rem", marginBottom: "2px" }}>
+                            {g.issueTypeId?.issueName || "General Grievance"}
+                          </div>
+                          <span
+                            style={{
+                              wordBreak: "break-word",
+                              lineHeight: "1.3",
+                              color: "#475569",
+                              fontSize: "0.78rem"
+                            }}
+                          >
+                            {g.message ? (g.message.length > 45 ? `${g.message.substring(0, 45)}...` : g.message) : "—"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Assigned Faculty */}
+                      <td>
+                        {g.assignedTo ? (
+                          <div>
+                            <span style={{ fontWeight: "600", display: "block", color: "#1e293b", fontSize: "0.84rem" }}>
+                              {staffName || "Staff"}
+                            </span>
+                            <span style={{ fontSize: "0.78rem", color: "#64748b" }}>({g.assignedTo})</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontStyle: "italic", fontSize: "0.78rem" }}>Unassigned</span>
                         )}
                       </td>
                     </>
@@ -406,6 +471,32 @@ function DepartmentGrievanceList({
                   <div style={{ fontSize: "0.75rem", color: "#334155", fontStyle: "italic", marginTop: "2px" }}>
                     "{fwdInfo.reason}"
                   </div>
+                </div>
+              )}
+
+              {/* Student Outgoing Grievance Callout for Mobile */}
+              {isStudentSection && (
+                <div
+                  style={{
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: "8px",
+                    padding: "8px 10px",
+                    marginBottom: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "6px"
+                  }}
+                >
+                  <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#1d4ed8" }}>
+                    🏢 Submitted To: {g.category}
+                  </span>
+                  {g.issueTypeId?.issueName && (
+                    <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                      {g.issueTypeId.issueName}
+                    </span>
+                  )}
                 </div>
               )}
 

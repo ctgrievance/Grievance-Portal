@@ -4,6 +4,8 @@ import StaffUser from "../models/StaffUser.js";
 import StaffRecord from "../models/StaffRecord.js";
 import IssueType from "../models/IssueType.js";
 import SystemConfig from "../models/SystemConfig.js";
+import StudentUser from "../models/StudentUser.js";
+import StudentRecord from "../models/StudentRecord.js";
 import nodemailer from "nodemailer";
 import { autoAssignGrievance } from "./routingRuleController.js";
 import {
@@ -497,6 +499,111 @@ export const getCategoryGrievances = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch category grievances" });
   }
 };
+
+/* =====================================================
+   🎓 GET GRIEVANCES SUBMITTED BY STUDENTS OF A SCHOOL
+   → Allows Department / School HODs to monitor all complaints
+     filed by their students across ANY category (Hostel, Accounts, Exam, etc.)
+===================================================== */
+export const getGrievancesByStudentSchool = async (req, res) => {
+  try {
+    const rawSchool = req.params.school
+      ? decodeURIComponent(req.params.school).trim()
+      : (req.query.school ? decodeURIComponent(req.query.school).trim() : null);
+
+    if (!rawSchool) {
+      return res.status(400).json({ message: "School / Department parameter is required" });
+    }
+
+    const userId = req.user ? req.user.id : null;
+
+    // 1. Clean school name and build search pattern
+    const cleanSchool = rawSchool.replace(/\s*-\s*\d+$/, "").trim();
+    const escaped = cleanSchool.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = escaped
+      .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+      .replace(/\s+/g, "\\s+");
+    const schoolRegex = new RegExp(`^${pattern}`, "i");
+
+    // Extract significant root keywords (e.g. "engineering", "law", "pharmaceutic", "optometry", "management", "design")
+    const keywords = [];
+    const lower = cleanSchool.toLowerCase();
+    if (lower.includes("engineering")) keywords.push("engineering");
+    if (lower.includes("allied") && lower.includes("health")) keywords.push("allied");
+    if (lower.includes("healthcare") || lower.includes("paramedical")) keywords.push("healthcare", "paramedical");
+    if (lower.includes("health science")) keywords.push("health science");
+    if (lower.includes("law")) keywords.push("law");
+    if (lower.includes("pharmaceutic") || lower.includes("pharmacy")) keywords.push("pharmaceutic", "pharmacy");
+    if (lower.includes("management")) keywords.push("management");
+    if (lower.includes("design") || lower.includes("innovation")) keywords.push("design", "innovation");
+    if (lower.includes("optometry")) keywords.push("optometry");
+    if (lower.includes("agriculture")) keywords.push("agriculture");
+    if (lower.includes("social science")) keywords.push("social science");
+    if (lower.includes("hotel")) keywords.push("hotel");
+    if (lower.includes("computer application") || lower.includes("cait")) keywords.push("computer application", "cait");
+
+    const orSchoolConditions = [{ school: schoolRegex }, { department: schoolRegex }];
+    keywords.forEach((kw) => {
+      const kwRegex = new RegExp(kw, "i");
+      orSchoolConditions.push({ school: kwRegex });
+      orSchoolConditions.push({ department: kwRegex });
+    });
+
+    // 2. Find matching student IDs from StudentUser & StudentRecord
+    const [matchingUsers, matchingRecords] = await Promise.all([
+      StudentUser.find({ $or: orSchoolConditions }).select("id ctuId fullName program school").lean(),
+      StudentRecord.find({ $or: orSchoolConditions }).select("id ctuId fullName program school").lean(),
+    ]);
+
+    const studentIdMap = new Map();
+    matchingUsers.forEach((u) => {
+      if (u.id) studentIdMap.set(u.id.toUpperCase(), u);
+      if (u.ctuId) studentIdMap.set(u.ctuId.toUpperCase(), u);
+    });
+    matchingRecords.forEach((r) => {
+      if (r.id && !studentIdMap.has(r.id.toUpperCase())) studentIdMap.set(r.id.toUpperCase(), r);
+      if (r.ctuId && !studentIdMap.has(r.ctuId.toUpperCase())) studentIdMap.set(r.ctuId.toUpperCase(), r);
+    });
+
+    const studentIds = Array.from(studentIdMap.keys());
+
+    // 3. Query all grievances submitted by these students (across ANY category)
+    const orGrievanceConditions = [];
+    if (studentIds.length > 0) {
+      orGrievanceConditions.push({ userId: { $in: studentIds } });
+      orGrievanceConditions.push({ regid: { $in: studentIds } });
+    }
+    orGrievanceConditions.push({ studentProgram: schoolRegex });
+    keywords.forEach((kw) => {
+      orGrievanceConditions.push({ studentProgram: new RegExp(kw, "i") });
+    });
+
+    const grievances = await Grievance.find({
+      $or: orGrievanceConditions,
+      hiddenFor: { $ne: userId }
+    })
+      .populate("issueTypeId", "issueName description")
+      .populate("linkedGrievances", "category status currentCustodian assignedTo updatedAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 4. Enrich each grievance with student metadata
+    const enrichedGrievances = grievances.map((g) => {
+      const matchedStudent = studentIdMap.get((g.userId || "").toUpperCase()) || studentIdMap.get((g.regid || "").toUpperCase());
+      return {
+        ...g,
+        studentSchool: matchedStudent?.school || rawSchool,
+        studentProgram: g.studentProgram || matchedStudent?.program || "—",
+      };
+    });
+
+    res.json(enrichedGrievances);
+  } catch (err) {
+    console.error("Failed to fetch student department grievances:", err);
+    res.status(500).json({ message: "Failed to fetch student grievances", error: err.message });
+  }
+};
+
 
 
 /* =====================================================
