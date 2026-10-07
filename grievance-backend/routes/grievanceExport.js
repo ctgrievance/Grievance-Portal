@@ -135,6 +135,125 @@ function getRecordDepartment(rec, columns = []) {
 }
 
 /**
+ * Normalizes raw department/school strings to canonical display names
+ * and safe, concise Excel sheet tab names (<= 31 characters).
+ */
+function normalizeDepartment(raw) {
+  if (!raw || typeof raw !== "string") {
+    return { fullName: "General", tabName: "General" };
+  }
+  let s = raw.trim();
+  if (!s || s === "—" || s === "-" || /^\d+$/.test(s) || ["xyz", "n/a", "null", "undefined", "<blank>"].includes(s.toLowerCase())) {
+    return { fullName: "General", tabName: "General" };
+  }
+
+  // Strip trailing ERP department numbers like "- 10", "- 30", "- 70"
+  s = s.replace(/\s*-\s*\d+\s*$/, "").trim();
+  const lower = s.toLowerCase().replace(/\s*&\s*/g, " and ").replace(/\s+/g, " ").trim();
+
+  // Canonical mappings for university schools & faculties
+  if (lower.includes("allied") && lower.includes("health")) {
+    return {
+      fullName: "School of Allied Health Sciences",
+      tabName: "School of Allied Health Sci"
+    };
+  }
+  if (lower.includes("healthcare") || (lower.includes("health") && lower.includes("paramedical"))) {
+    return {
+      fullName: "School of Healthcare & Paramedical Sciences",
+      tabName: "School of Healthcare & Para"
+    };
+  }
+  if (lower.includes("health science")) {
+    return {
+      fullName: "School of Health Sciences",
+      tabName: "School of Health Sciences"
+    };
+  }
+  if (lower.includes("optometry")) {
+    return {
+      fullName: "School of Optometry",
+      tabName: "School of Optometry"
+    };
+  }
+  if (lower.includes("pharmaceutic") || lower.includes("pharmacy")) {
+    return {
+      fullName: "School of Pharmaceutical Sciences",
+      tabName: "School of Pharmaceutical Sci"
+    };
+  }
+  if (lower.includes("computer application") || lower.includes("information technology") || lower.includes("cait")) {
+    return {
+      fullName: "School of Computer Applications & IT",
+      tabName: "Computer Applications & IT"
+    };
+  }
+  if (lower.includes("engineering")) {
+    return {
+      fullName: "School of Engineering and Technology",
+      tabName: "School of Engineering & Tech"
+    };
+  }
+  if (lower.includes("hotel") && lower.includes("design")) {
+    return {
+      fullName: "School of Management, Hotel Management & Design",
+      tabName: "Mgmt, Hotel Mgmt & Design"
+    };
+  }
+  if (lower.includes("airline") || lower.includes("tourism") || lower.includes("hotel")) {
+    return {
+      fullName: "School of Hotel Management, Airlines & Tourism",
+      tabName: "Hotel Mgmt, Airlines & Tourism"
+    };
+  }
+  if (lower.includes("management")) {
+    return {
+      fullName: "School of Management Studies",
+      tabName: "School of Management Studies"
+    };
+  }
+  if (lower.includes("design") || lower.includes("innovation")) {
+    return {
+      fullName: "School of Design and Innovation",
+      tabName: "School of Design & Innovation"
+    };
+  }
+  if (lower.includes("social science") || lower.includes("liberal art")) {
+    return {
+      fullName: "School of Social Sciences and Liberal Arts",
+      tabName: "Social Sciences & Liberal Arts"
+    };
+  }
+  if (lower.includes("agriculture") || lower.includes("natural science")) {
+    return {
+      fullName: "School of Agriculture and Natural Sciences",
+      tabName: "Agriculture & Natural Sciences"
+    };
+  }
+  if (lower.includes("humanities") || lower.includes("physical education")) {
+    return {
+      fullName: "School of Humanities and Physical Education",
+      tabName: "Humanities & Physical Ed"
+    };
+  }
+  if (lower.includes("law")) {
+    return {
+      fullName: "School of Law",
+      tabName: "School of Law"
+    };
+  }
+
+  // Fallback: Title case if all uppercase or lowercase
+  let title = s;
+  if (s === s.toUpperCase() || s === s.toLowerCase()) {
+    title = s.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
+  }
+
+  const tab = title.length > 31 ? title.substring(0, 31).trim() : title;
+  return { fullName: title, tabName: tab };
+}
+
+/**
  * Sanitizes Excel worksheet name according to Excel specifications:
  * - Max length: 31 characters
  * - Forbidden characters: * ? : / \ [ ]
@@ -396,21 +515,29 @@ function buildCorporateDashboardWorkbook({
   workbook.creator = "CT University Grievance Portal";
   workbook.created = new Date();
 
-  // Group records by department
+  // Group records by department (canonicalized to merge case/spelling variants into single tabs)
   const deptGroups = new Map();
   records.forEach((rec) => {
-    const dept = getRecordDepartment(rec, columns) || "General";
-    if (!deptGroups.has(dept)) {
-      deptGroups.set(dept, []);
+    const rawDept = getRecordDepartment(rec, columns) || "General";
+    const deptInfo = normalizeDepartment(rawDept);
+    const key = deptInfo.fullName.toLowerCase();
+    if (!deptGroups.has(key)) {
+      deptGroups.set(key, {
+        fullName: deptInfo.fullName,
+        tabName: deptInfo.tabName,
+        records: []
+      });
     }
-    deptGroups.get(dept).push(rec);
+    deptGroups.get(key).records.push(rec);
   });
 
   const existingSheetNames = new Set();
-  const uniqueDepts = Array.from(deptGroups.keys()).filter((d) => d && d !== "—");
+  const validGroups = Array.from(deptGroups.values()).filter(
+    (g) => g.fullName && g.fullName !== "—" && g.records.length > 0
+  );
 
   // If multiple departments exist, split into separate department tabs!
-  if (uniqueDepts.length > 1) {
+  if (validGroups.length > 1) {
     // 1. Master Consolidated Tab (Named with user's custom sheetName)
     const masterTabName = sanitizeSheetName(sheetName || "All Records", existingSheetNames);
     const masterSheet = workbook.addWorksheet(masterTabName, {
@@ -418,28 +545,39 @@ function buildCorporateDashboardWorkbook({
     });
     populateWorksheet(masterSheet, {
       title: title || `${(sheetName || "DATA EXPORT").toUpperCase()} - ALL RECORDS`,
-      subtitle: subtitle || `Master Consolidated View | Total: ${records.length} Records across ${uniqueDepts.length} Departments`,
+      subtitle: subtitle || `Master Consolidated View | Total: ${records.length} Records across ${validGroups.length} Departments`,
       columns,
       records,
     });
 
-    // 2. Individual Department Tabs (Tab names = Department names)
-    uniqueDepts.forEach((dept) => {
-      const deptRecords = deptGroups.get(dept);
-      const deptTabName = sanitizeSheetName(dept, existingSheetNames);
+    // 2. Individual Department Tabs (Single canonical tab per school/department)
+    validGroups.forEach((group) => {
+      const deptTabName = sanitizeSheetName(group.tabName || group.fullName, existingSheetNames);
       const deptSheet = workbook.addWorksheet(deptTabName, {
         views: [{ showGridLines: true }],
       });
       populateWorksheet(deptSheet, {
-        title: `${dept.toUpperCase()} REPORT`,
-        subtitle: `Department: ${dept} | Total Records: ${deptRecords.length} | Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`,
+        title: `${group.fullName.toUpperCase()} REPORT`,
+        subtitle: `Department: ${group.fullName} | Total Records: ${group.records.length} | Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`,
         columns,
-        records: deptRecords,
+        records: group.records,
       });
     });
-  } else {
+  } else if (validGroups.length === 1) {
     // Single department or uniform dataset
-    const singleTabName = sanitizeSheetName(sheetName || uniqueDepts[0] || "Export Data", existingSheetNames);
+    const singleTabName = sanitizeSheetName(sheetName || validGroups[0].tabName || "Export Data", existingSheetNames);
+    const singleSheet = workbook.addWorksheet(singleTabName, {
+      views: [{ showGridLines: true }],
+    });
+    populateWorksheet(singleSheet, {
+      title,
+      subtitle,
+      columns,
+      records,
+    });
+  } else {
+    // Empty dataset fallback
+    const singleTabName = sanitizeSheetName(sheetName || "Export Data", existingSheetNames);
     const singleSheet = workbook.addWorksheet(singleTabName, {
       views: [{ showGridLines: true }],
     });
