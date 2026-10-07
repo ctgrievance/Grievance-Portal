@@ -9,7 +9,8 @@ import {
   RefreshIcon,
   PhoneIcon,
   MailIcon,
-  DownloadIcon
+  DownloadIcon,
+  GraduationCapIcon
 } from "./Icons";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import ExportPreviewModal from "./ExportPreviewModal";
@@ -65,6 +66,7 @@ function RegisteredStudentsTab() {
     fullName: "",
     email: "",
     phone: "",
+    school: "",
     program: "",
     studentType: "",
     ctuId: "",
@@ -209,6 +211,7 @@ function RegisteredStudentsTab() {
       fullName: student.fullName || "",
       email: student.email || "",
       phone: student.phone || "",
+      school: student.school || student.department || "",
       program: student.program || "",
       studentType: student.studentType || "",
       ctuId: student.ctuId || student.id || "",
@@ -410,6 +413,7 @@ function RegisteredStudentsTab() {
                   <th>Reg No</th>
                   <th>Full Name</th>
                   <th>Contact Info</th>
+                  <th>School</th>
                   <th>Program / Course</th>
                   <th>Type</th>
                   <th>Status</th>
@@ -420,13 +424,13 @@ function RegisteredStudentsTab() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="9" className="reg-users-empty-cell">
+                    <td colSpan="10" className="reg-users-empty-cell">
                       <div className="reg-users-loading-spinner">Loading registered students...</div>
                     </td>
                   </tr>
                 ) : students.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="reg-users-empty-cell">
+                    <td colSpan="10" className="reg-users-empty-cell">
                       <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                       <div style={{ fontWeight: "600", color: "#334155" }}>No registered students found</div>
                       <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -476,6 +480,14 @@ function RegisteredStudentsTab() {
                             <span>{student.phone}</span>
                           </div>
                         )}
+                      </td>
+
+                      {/* School */}
+                      <td>
+                        <span className="reg-user-school-badge" title={student.school || "Unassigned"}>
+                          <GraduationCapIcon width="12" height="12" style={{ flexShrink: 0, opacity: 0.85 }} />
+                          <span>{student.school || "—"}</span>
+                        </span>
                       </td>
 
                       {/* Program */}
@@ -580,6 +592,16 @@ function RegisteredStudentsTab() {
                   </span>
                 </div>
 
+                {/* School Row */}
+                {student.school && (
+                  <div style={{ marginTop: "4px" }}>
+                    <span className="reg-user-mcard-school" title={student.school}>
+                      <GraduationCapIcon width="12" height="12" style={{ flexShrink: 0 }} />
+                      <span>{student.school}</span>
+                    </span>
+                  </div>
+                )}
+
                 {/* Metadata Row: Program & Type */}
                 <div className="reg-user-mcard-meta">
                   <span className="reg-user-mcard-prog">{student.program || "Unassigned"}</span>
@@ -659,7 +681,10 @@ function RegisteredStudentsTab() {
 
       {/* MODAL: EDIT STUDENT */}
       {showEditModal && selectedStudent && (
-        <div className="reg-users-modal-overlay">
+        <div 
+          className="reg-users-modal-overlay" 
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEditModal(false); }}
+        >
           <div className="reg-users-modal-box">
             <div className="reg-users-modal-header">
               <div>
@@ -670,100 +695,120 @@ function RegisteredStudentsTab() {
                 type="button"
                 className="reg-users-modal-close"
                 onClick={() => setShowEditModal(false)}
+                title="Close"
               >
                 <XIcon width="18" height="18" />
               </button>
             </div>
 
             <form onSubmit={handleEditSubmit} className="reg-users-modal-form">
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label>Registration No (ID)</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={selectedStudent?.id || ""}
-                    style={{ background: "#f8fafc", color: "#64748b" }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>CTU ID</label>
-                  <input
-                    type="text"
-                    value={editFormData.ctuId}
-                    onChange={(e) => setEditFormData({ ...editFormData, ctuId: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={editFormData.fullName}
-                  onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Email Address *</label>
-                <input
-                  type="email"
-                  required
-                  value={editFormData.email}
-                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input
-                  type="text"
-                  value={editFormData.phone}
-                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                />
-              </div>
-
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label>Program / Course</label>
-                  <input
-                    type="text"
-                    value={editFormData.program}
-                    onChange={(e) => setEditFormData({ ...editFormData, program: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Student Type</label>
-                  <input
-                    type="text"
-                    placeholder="Regular, Lateral, etc."
-                    value={editFormData.studentType}
-                    onChange={(e) => setEditFormData({ ...editFormData, studentType: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {selectedStudent && (selectedStudent.otpPending || !selectedStudent.isVerified) ? (
-                <div className="reg-users-alert pending" style={{ marginBottom: "16px" }}>
-                  <AlertCircleIcon width="16" height="16" />
-                  <span>
-                    <strong>OTP Pending:</strong> This student has not verified their registration OTP yet. They cannot be marked as verified until OTP verification is completed.
-                  </span>
-                </div>
-              ) : (
-                <div className="form-checkbox-group" style={{ marginBottom: "16px" }}>
-                  <label>
+              <div className="reg-users-modal-body">
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Registration No (ID)</label>
                     <input
-                      type="checkbox"
-                      checked={editFormData.isVerified}
-                      onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
+                      type="text"
+                      disabled
+                      value={selectedStudent?.id || ""}
+                      style={{ background: "#f8fafc", color: "#64748b" }}
                     />
-                    <span>Account Verified (OTP Completed)</span>
-                  </label>
+                  </div>
+                  <div className="form-group">
+                    <label>CTU ID</label>
+                    <input
+                      type="text"
+                      value={editFormData.ctuId}
+                      onChange={(e) => setEditFormData({ ...editFormData, ctuId: e.target.value })}
+                    />
+                  </div>
                 </div>
-              )}
+
+                <div className="form-group">
+                  <label>Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.fullName}
+                    onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Phone Number</label>
+                  <input
+                    type="text"
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  />
+                </div>
+
+                {/* School / Department Field */}
+                <div className="form-group">
+                  <label>School / Department</label>
+                  <input
+                    type="text"
+                    list="student-schools-datalist"
+                    placeholder="e.g. School of Design & Innovation, School of Engineering..."
+                    value={editFormData.school}
+                    onChange={(e) => setEditFormData({ ...editFormData, school: e.target.value })}
+                  />
+                  <datalist id="student-schools-datalist">
+                    {schoolsList.map((sch, i) => (
+                      <option key={i} value={sch} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Program / Course</label>
+                    <input
+                      type="text"
+                      value={editFormData.program}
+                      onChange={(e) => setEditFormData({ ...editFormData, program: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Student Type</label>
+                    <input
+                      type="text"
+                      placeholder="Regular, Lateral, etc."
+                      value={editFormData.studentType}
+                      onChange={(e) => setEditFormData({ ...editFormData, studentType: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {selectedStudent && (selectedStudent.otpPending || !selectedStudent.isVerified) ? (
+                  <div className="reg-users-alert pending" style={{ marginBottom: "16px" }}>
+                    <AlertCircleIcon width="16" height="16" />
+                    <span>
+                      <strong>OTP Pending:</strong> This student has not verified their registration OTP yet. They cannot be marked as verified until OTP verification is completed.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="form-checkbox-group" style={{ marginBottom: "16px" }}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={editFormData.isVerified}
+                        onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
+                      />
+                      <span>Account Verified (OTP Completed)</span>
+                    </label>
+                  </div>
+                )}
+              </div>
 
               <div className="reg-users-modal-actions">
                 <button
@@ -788,7 +833,10 @@ function RegisteredStudentsTab() {
 
       {/* MODAL: DELETE CONFIRMATION */}
       {showDeleteModal && studentToDelete && (
-        <div className="reg-users-modal-overlay">
+        <div 
+          className="reg-users-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
+        >
           <div className="reg-users-modal-box delete-box">
             <div className="reg-users-delete-icon">
               <TrashIcon width="20" height="20" />

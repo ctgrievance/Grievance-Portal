@@ -96,15 +96,33 @@ export const getLiveStudents = async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 
-    // Format output students and compute OTP status flag (without revealing secret OTP code)
+    // Format output students and enrich school/ctuId from StudentRecord if needed
+    const studentIds = rawStudents.map(s => s.id).filter(Boolean);
+    const relatedRecords = await StudentRecord.find({ id: { $in: studentIds } }).select("id school ctuId");
+    const recordMap = new Map(relatedRecords.map(r => [r.id, r]));
+
     const students = rawStudents.map(s => {
       const sObj = s.toObject();
-      const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
-      sObj.otpPending = hasPendingOtp;
-      sObj.isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
+      const matchedRecord = recordMap.get(sObj.id);
+
+      // Resolve school (fallback to StudentRecord if empty or 'xyz')
+      if ((!sObj.school || sObj.school.toLowerCase() === "xyz") && matchedRecord?.school) {
+        sObj.school = matchedRecord.school;
+      }
+      if (!sObj.school && sObj.department) {
+        sObj.school = sObj.department;
+      }
+
+      if (!sObj.ctuId && matchedRecord?.ctuId) {
+        sObj.ctuId = matchedRecord.ctuId;
+      }
       if (!sObj.ctuId) {
         sObj.ctuId = sObj.id;
       }
+
+      const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
+      sObj.otpPending = hasPendingOtp;
+      sObj.isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
       delete sObj.otp; // never leak secret OTP to frontend
       return sObj;
     });
@@ -154,18 +172,24 @@ export const getLiveStudents = async (req, res) => {
         .select("-password -phoneOtp -resetOtp")
         .sort({ createdAt: -1 });
 
+      const allIds = allMatching.map(s => s.id).filter(Boolean);
+      const allRelatedRecords = await StudentRecord.find({ id: { $in: allIds } }).select("id school ctuId");
+      const allRecordMap = new Map(allRelatedRecords.map(r => [r.id, r]));
+
       const exportData = allMatching.map((s, idx) => {
         const sObj = s.toObject ? s.toObject() : s;
+        const matched = allRecordMap.get(sObj.id);
+        const resolvedSchool = (sObj.school && sObj.school.toLowerCase() !== "xyz") ? sObj.school : (matched?.school || sObj.department || "");
         const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
         const isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
         return {
           "S.No": idx + 1,
-          "CTU ID": sObj.ctuId || sObj.id || "",
+          "CTU ID": sObj.ctuId || matched?.ctuId || sObj.id || "",
           "Student ID": sObj.id || "",
           "Full Name": sObj.fullName || "",
           "Email": sObj.email || "",
           "Phone": sObj.phone || "",
-          "School": sObj.school || sObj.department || "",
+          "School": resolvedSchool,
           "Program": sObj.program || "",
           "Batch": sObj.batch || "",
           "Student Type": sObj.studentType || "Regular",
@@ -217,7 +241,7 @@ export const updateLiveStudent = async (req, res) => {
   try {
     const { id } = req.params;
     const safeId = id.toString().trim().toUpperCase();
-    const { fullName, email, phone, program, studentType, isVerified, ctuId } = req.body;
+    const { fullName, email, phone, school, program, studentType, isVerified, ctuId } = req.body;
 
     const student = await StudentUser.findOne({ id: safeId });
     if (!student) {
@@ -237,6 +261,10 @@ export const updateLiveStudent = async (req, res) => {
 
     if (fullName !== undefined) student.fullName = fullName.trim();
     if (phone !== undefined) student.phone = phone.trim();
+    if (school !== undefined) {
+      student.school = school.trim();
+      student.department = school.trim();
+    }
     if (program !== undefined) student.program = program.trim();
     if (studentType !== undefined) student.studentType = studentType.trim();
     if (ctuId !== undefined) student.ctuId = ctuId.trim().toUpperCase();
@@ -259,11 +287,29 @@ export const updateLiveStudent = async (req, res) => {
       fullName: student.fullName,
       email: student.email,
       phone: student.phone,
+      school: student.school,
+      department: student.school,
       program: student.program,
       studentType: student.studentType,
       isVerified: student.isVerified
     };
     await User.findOneAndUpdate({ id: safeId }, { $set: syncData });
+
+    // Sync to StudentRecord if exists
+    await StudentRecord.updateOne(
+      { id: safeId },
+      {
+        $set: {
+          fullName: student.fullName,
+          email: student.email,
+          phone: student.phone,
+          ...(school !== undefined ? { school: student.school } : {}),
+          ...(program !== undefined ? { program: student.program } : {}),
+          ...(studentType !== undefined ? { studentType: student.studentType } : {}),
+          ...(ctuId !== undefined ? { ctuId: student.ctuId } : {})
+        }
+      }
+    );
 
     await logAuditAction("UPDATE", "StudentRecord", req.user, {
       recordId: safeId,

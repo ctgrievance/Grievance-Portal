@@ -894,7 +894,10 @@ function RegisteredStaffTab() {
 
       {/* MODAL: EDIT STAFF */}
       {showEditModal && selectedStaff && (
-        <div className="reg-users-modal-overlay">
+        <div 
+          className="reg-users-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEditModal(false); }}
+        >
           <div className="reg-users-modal-box">
             <div className="reg-users-modal-header">
               <div>
@@ -905,115 +908,118 @@ function RegisteredStaffTab() {
                 type="button"
                 className="reg-users-modal-close"
                 onClick={() => setShowEditModal(false)}
+                title="Close"
               >
                 <XIcon width="18" height="18" />
               </button>
             </div>
 
             <form onSubmit={handleEditSubmit} className="reg-users-modal-form">
-              <div className="form-group">
-                <label>Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={editFormData.fullName}
-                  onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                />
-              </div>
+              <div className="reg-users-modal-body">
+                <div className="form-group">
+                  <label>Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.fullName}
+                    onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Email Address *</label>
-                <input
-                  type="email"
-                  required
-                  value={editFormData.email}
-                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                />
-              </div>
+                <div className="form-group">
+                  <label>Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input
-                  type="text"
-                  value={editFormData.phone}
-                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                />
-              </div>
+                <div className="form-group">
+                  <label>Phone Number</label>
+                  <input
+                    type="text"
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Department *</label>
-                <select
-                  value={editFormData.department}
-                  onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
-                  required
-                >
-                  <option value="">Select Department...</option>
-                  {editFormData.department && !departments.includes(editFormData.department) && (
-                    <option value={editFormData.department}>{editFormData.department}</option>
-                  )}
-                  {departments.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="form-group">
+                  <label>Department *</label>
+                  <select
+                    value={editFormData.department}
+                    onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
+                    required
+                  >
+                    <option value="">Select Department...</option>
+                    {editFormData.department && !departments.includes(editFormData.department) && (
+                      <option value={editFormData.department}>{editFormData.department}</option>
+                    )}
+                    {departments.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="form-group">
-                <label>Staff Category (Classification) *</label>
-                <select
-                  value={editFormData.staffType || "Non-Teaching"}
-                  onChange={(e) => setEditFormData({ ...editFormData, staffType: e.target.value })}
-                >
-                  <option value="Teaching">Teaching (Faculty)</option>
-                  <option value="Non-Teaching">Non-Teaching (Admin / Offices)</option>
-                </select>
-              </div>
+                <div className="form-group">
+                  <label>Staff Category (Classification) *</label>
+                  <select
+                    value={editFormData.staffType || "Non-Teaching"}
+                    onChange={(e) => setEditFormData({ ...editFormData, staffType: e.target.value })}
+                  >
+                    <option value="Teaching">Teaching (Faculty)</option>
+                    <option value="Non-Teaching">Non-Teaching (Admin / Offices)</option>
+                  </select>
+                </div>
 
-              {selectedStaff.id !== "10001" && !selectedStaff.isMasterAdmin && (
-                <div className="form-row-2">
-                  <div className="form-group">
-                    <label>Role</label>
-                    <select
-                      value={editFormData.role}
-                      onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
-                    >
-                      <option value="staff">Staff</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                {selectedStaff.id !== "10001" && !selectedStaff.isMasterAdmin && (
+                  <div className="form-row-2">
+                    <div className="form-group">
+                      <label>Role</label>
+                      <select
+                        value={editFormData.role}
+                        onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                      >
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="form-checkbox-group" style={{ marginTop: "24px" }}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={editFormData.isDeptAdmin}
+                          onChange={(e) => setEditFormData({ ...editFormData, isDeptAdmin: e.target.checked })}
+                        />
+                        <span>Is Department Admin</span>
+                      </label>
+                    </div>
                   </div>
-                  <div className="form-checkbox-group" style={{ marginTop: "24px" }}>
+                )}
+
+                {selectedStaff && (selectedStaff.otpPending || !selectedStaff.isVerified) ? (
+                  <div className="reg-users-alert pending" style={{ marginBottom: "16px" }}>
+                    <AlertCircleIcon width="16" height="16" />
+                    <span>
+                      <strong>OTP Pending:</strong> This staff member has not completed registration OTP verification. They cannot be marked as verified until OTP verification is completed.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="form-checkbox-group" style={{ marginBottom: "16px" }}>
                     <label>
                       <input
                         type="checkbox"
-                        checked={editFormData.isDeptAdmin}
-                        onChange={(e) => setEditFormData({ ...editFormData, isDeptAdmin: e.target.checked })}
+                        checked={editFormData.isVerified}
+                        onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
                       />
-                      <span>Is Department Admin</span>
+                      <span>Account Verified (OTP Completed)</span>
                     </label>
                   </div>
-                </div>
-              )}
-
-              {selectedStaff && (selectedStaff.otpPending || !selectedStaff.isVerified) ? (
-                <div className="reg-users-alert pending" style={{ marginBottom: "16px" }}>
-                  <AlertCircleIcon width="16" height="16" />
-                  <span>
-                    <strong>OTP Pending:</strong> This staff member has not completed registration OTP verification. They cannot be marked as verified until OTP verification is completed.
-                  </span>
-                </div>
-              ) : (
-                <div className="form-checkbox-group" style={{ marginBottom: "16px" }}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={editFormData.isVerified}
-                      onChange={(e) => setEditFormData({ ...editFormData, isVerified: e.target.checked })}
-                    />
-                    <span>Account Verified (OTP Completed)</span>
-                  </label>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="reg-users-modal-actions">
                 <button
@@ -1038,7 +1044,10 @@ function RegisteredStaffTab() {
 
       {/* MODAL: DELETE CONFIRMATION */}
       {showDeleteModal && staffToDelete && (
-        <div className="reg-users-modal-overlay">
+        <div 
+          className="reg-users-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
+        >
           <div className="reg-users-modal-box delete-box">
             <div className="reg-users-delete-icon">
               <TrashIcon width="20" height="20" />

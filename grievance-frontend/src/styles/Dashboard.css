@@ -2861,7 +2861,6 @@ textarea:focus {
   [style*="position: fixed"][style*="display: flex"],
   .dept-modal-overlay,
   .staff-modal-overlay,
-  .reg-users-modal-overlay,
   .transfer-modal-overlay,
   .export-modal-overlay,
   .g-details-modal-overlay,
@@ -2872,6 +2871,12 @@ textarea:focus {
     justify-content: center !important;
     overscroll-behavior: contain !important;
     -webkit-overflow-scrolling: touch !important;
+  }
+
+  .reg-users-modal-overlay {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding: 16px 8px !important;
   }
 
   [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
@@ -2898,14 +2903,15 @@ textarea:focus {
   .transfer-modal-card,
   .export-modal-container,
   .dept-modal-card,
-  .staff-modal-card.simple {
+  .staff-modal-card.simple,
+  .reg-users-modal-box {
     padding: 0 !important;
   }
 
-  /* Simple standalone modal boxes (without separate header-body wrapper) */
-  .reg-users-modal-box {
-    padding: 16px 14px !important;
+  .reg-users-modal-box.delete-box {
+    padding: 18px 14px !important;
   }
+
   .student-modal-card {
     padding: 16px 14px !important;
   }
@@ -3373,12 +3379,17 @@ textarea:focus {
   [style*="position: fixed"][style*="display: flex"],
   .dept-modal-overlay,
   .staff-modal-overlay,
-  .reg-users-modal-overlay,
   .transfer-modal-overlay,
   .export-modal-overlay,
   .g-details-modal-overlay,
   .student-modal-overlay {
     padding: 4px !important;
+  }
+
+  .reg-users-modal-overlay {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding: 12px 6px !important;
   }
 
   [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
@@ -3406,6 +3417,10 @@ textarea:focus {
   }
 
   .reg-users-modal-box {
+    padding: 0 !important;
+  }
+
+  .reg-users-modal-box.delete-box {
     padding: 14px 10px !important;
   }
 
@@ -6288,56 +6303,63 @@ textarea:focus {
   color: #0f172a;
 }
 
-/* Modals */
 .reg-users-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(15, 23, 42, 0.45);
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(15, 23, 42, 0.55);
   display: flex;
   justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 16px;
-  backdrop-filter: blur(2px);
+  align-items: flex-start !important;
+  z-index: 9999;
+  padding: 36px 16px;
+  box-sizing: border-box;
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
 .reg-users-modal-box {
   background: #ffffff;
-  border-radius: 10px;
-  max-width: 500px;
+  border-radius: 14px;
+  max-width: 540px;
   width: 100%;
-  padding: 22px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+  margin: auto !important;
+  padding: 0 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.08);
   box-sizing: border-box;
-  max-height: 90vh;
-  max-height: 90dvh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 72px);
+  max-height: calc(100dvh - 72px);
+  overflow: hidden;
+  position: relative;
 }
 
 .reg-users-modal-box.delete-box {
   max-width: 440px;
+  padding: 24px 22px !important;
   text-align: center;
+  display: block;
+  overflow: visible;
 }
 
 .reg-users-modal-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  padding: 16px 22px 14px;
   border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 12px;
+  background: #ffffff;
 }
 
 .reg-users-modal-title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.12rem;
   color: #0f172a;
   font-weight: 700;
 }
@@ -6349,46 +6371,64 @@ textarea:focus {
   margin-top: 2px;
 }
 
-.reg-users-modal-close {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #64748b;
+.reg-users-modal-form {
   display: flex;
-  align-items: center;
-  padding: 4px;
-  border-radius: 4px;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.reg-users-modal-close:hover {
-  color: #0f172a;
-  background: #f1f5f9;
-}
-
-.reg-users-delete-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #fee2e2;
-  color: #dc2626;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-}
-
-.reg-users-delete-text {
-  font-size: 0.88rem;
-  color: #475569;
-  line-height: 1.5;
-  margin: 12px 0 16px 0;
+.reg-users-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .reg-users-modal-actions {
+  flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 18px;
+  padding: 14px 22px;
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+  margin-top: 0;
+}
+
+/* School Badges in Table and Mobile Cards */
+.reg-user-school-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #0f766e;
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reg-user-mcard-school {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #0f766e;
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  padding: 2px 8px;
+  border-radius: 5px;
+  margin-top: 4px;
 }
 
 .reg-users-btn-cancel {
