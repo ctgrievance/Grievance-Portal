@@ -10,6 +10,7 @@ import {
   MailIcon,
   PhoneIcon,
   EditIcon,
+  EyeIcon,
   SaveIcon,
   GraduationCapIcon,
   CheckCircleIcon,
@@ -19,7 +20,7 @@ import {
 import ExcelUploadModeModal from "./ExcelUploadModeModal";
 import AuditLogsModal from "./AuditLogsModal";
 
-const AdminStudentRecords = () => {
+const AdminStudentRecords = ({ isReadOnly = false }) => {
   const [records, setRecords]       = useState([]);
   const [total, setTotal]           = useState(0);
   const [page, setPage]             = useState(1);
@@ -214,6 +215,7 @@ const AdminStudentRecords = () => {
   const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFileSelect(e.dataTransfer.files[0]); };
 
   const handleClearAll = async () => {
+    if (isReadOnly) return;
     if (!window.confirm("⚠️ Delete ALL student records permanently? This cannot be undone.")) return;
     setClearing(true);
     try {
@@ -237,6 +239,7 @@ const AdminStudentRecords = () => {
 
   // --- inline editing ---
   const handleEditClick = (record) => {
+    if (isReadOnly) return;
     setEditingId(record.id);
     setEditFormData({ ...record });
   };
@@ -277,6 +280,7 @@ const AdminStudentRecords = () => {
   };
 
   const handleAddNew = async () => {
+    if (isReadOnly) return;
     const finalId = (newRow.id || newRow.ctuId || "").trim();
     const finalCtuId = (newRow.ctuId || newRow.id || "").trim();
     if (!finalId || !newRow.fullName) {
@@ -335,17 +339,19 @@ const AdminStudentRecords = () => {
             <FileIcon width="15" height="15" /> View Logs
           </button>
           
-          <button 
-            type="button"
-            onClick={() => setIsAdding(!isAdding)}
-            className={`records-add-btn ${isAdding ? "active" : ""}`}
-          >
-            {isAdding ? (
-              <><XIcon width="15" height="15" /> Cancel</>
-            ) : (
-              <><PlusIcon width="15" height="15" /> Add New Student</>
-            )}
-          </button>
+          {!isReadOnly && (
+            <button 
+              type="button"
+              onClick={() => setIsAdding(!isAdding)}
+              className={`records-add-btn ${isAdding ? "active" : ""}`}
+            >
+              {isAdding ? (
+                <><XIcon width="15" height="15" /> Cancel</>
+              ) : (
+                <><PlusIcon width="15" height="15" /> Add New Student</>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -354,6 +360,28 @@ const AdminStudentRecords = () => {
           collectionName="StudentRecord" 
           onClose={() => setShowLogs(false)} 
         />
+      )}
+
+      {/* ── READ-ONLY ACCESS BANNER ── */}
+      {isReadOnly && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "10px 16px",
+            background: "#fef3c7",
+            border: "1px solid #fde68a",
+            borderRadius: "8px",
+            color: "#92400e",
+            marginBottom: "18px",
+            fontSize: "0.85rem",
+            fontWeight: "600"
+          }}
+        >
+          <EyeIcon width="16" height="16" style={{ flexShrink: 0 }} />
+          <span>Read-Only Mode: You have view & download access for student verification records. Excel upload and record modifications are disabled for your department.</span>
+        </div>
       )}
 
       {/* ── NOTIFICATION MESSAGE ── */}
@@ -413,7 +441,7 @@ const AdminStudentRecords = () => {
             <span>Refresh</span>
           </button>
 
-          {total > 0 && (
+          {total > 0 && !isReadOnly && (
             <button 
               type="button"
               className="records-btn-clear-all"
@@ -429,7 +457,7 @@ const AdminStudentRecords = () => {
       </div>
 
       {/* ── SLIDE-DOWN ADD NEW STUDENT CARD ── */}
-      {isAdding && (
+      {isAdding && !isReadOnly && (
         <div className="records-add-card">
           <div className="records-add-title">
             <PlusIcon width="16" height="16" style={{ color: "#2563eb" }} />
@@ -479,6 +507,7 @@ const AdminStudentRecords = () => {
       )}
 
       {/* ── SLEEK UPLOAD ZONE ── */}
+      {!isReadOnly && (
       <div
         className={`records-upload-card ${dragOver ? "drag-over" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -590,6 +619,7 @@ const AdminStudentRecords = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* ── 3-OPTIONS UPLOAD MODE MODAL ── */}
       <ExcelUploadModeModal
@@ -636,20 +666,20 @@ const AdminStudentRecords = () => {
                 <th>School_Name</th>
                 <th>Program</th>
                 <th>BatchName</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
+                {!isReadOnly && <th style={{ textAlign: "right" }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {/* Existing Records */}
               {loading ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: "center", padding: "36px", color: "#64748b" }}>
+                  <td colSpan={isReadOnly ? "8" : "9"} style={{ textAlign: "center", padding: "36px", color: "#64748b" }}>
                     Loading student records...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
+                  <td colSpan={isReadOnly ? "8" : "9"} style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
                     <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                     <div style={{ fontWeight: "600", color: "#334155" }}>No student records found</div>
                     <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -713,26 +743,28 @@ const AdminStudentRecords = () => {
                         <td onDoubleClick={() => handleEditClick(record)}>
                           <span style={{ color: "#64748b", fontSize: "0.82rem" }}>{record.batch || "—"}</span>
                         </td>
-                        <td style={{ textAlign: "right" }}>
-                          <div className="records-action-group" style={{ justifyContent: "flex-end" }}>
-                            <button 
-                              type="button" 
-                              onClick={() => handleEditClick(record)} 
-                              className="records-action-btn edit" 
-                              title="Edit student record"
-                            >
-                              <EditIcon width="14" height="14" />
-                            </button>
-                            <button 
-                              type="button" 
-                              onClick={() => handleDelete(record.id)} 
-                              className="records-action-btn delete" 
-                              title="Delete student record"
-                            >
-                              <TrashIcon width="14" height="14" />
-                            </button>
-                          </div>
-                        </td>
+                        {!isReadOnly && (
+                          <td style={{ textAlign: "right" }}>
+                            <div className="records-action-group" style={{ justifyContent: "flex-end" }}>
+                              <button 
+                                type="button" 
+                                onClick={() => handleEditClick(record)} 
+                                className="records-action-btn edit" 
+                                title="Edit student record"
+                              >
+                                <EditIcon width="14" height="14" />
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => handleDelete(record.id)} 
+                                className="records-action-btn delete" 
+                                title="Delete student record"
+                              >
+                                <TrashIcon width="14" height="14" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </>
                     )}
                   </tr>
@@ -815,21 +847,13 @@ const AdminStudentRecords = () => {
         </div>
       )}
       
-      <p style={{ marginTop: "12px", fontSize: "0.8rem", color: "#94a3b8", textAlign: "right", margin: "8px 0 0" }}>
-        💡 Double-click any row to edit directly.
-      </p>
+      {!isReadOnly && (
+        <p style={{ marginTop: "12px", fontSize: "0.8rem", color: "#94a3b8", textAlign: "right", margin: "8px 0 0" }}>
+          💡 Double-click any row to edit directly.
+        </p>
+      )}
 
-      {/* ── EXCEL UPLOAD MODE CHOICE MODAL ── */}
-      <ExcelUploadModeModal
-        isOpen={showModeModal}
-        onClose={() => {
-          setShowModeModal(false);
-          setPendingFile(null);
-        }}
-        onConfirm={handleExecuteUpload}
-        file={pendingFile}
-        recordType="Student"
-      />
+
     </div>
   );
 };

@@ -168,7 +168,22 @@ export const getAllDepartmentsAdmin = async (req, res) => {
 // =====================================================
 export const createDepartment = async (req, res) => {
   try {
-    const { name, code, description, targetAudience, isAcademic, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff, programs } = req.body;
+    const {
+      name,
+      code,
+      description,
+      targetAudience,
+      isAcademic,
+      allowStudentRecords,
+      studentRecordsMode,
+      allowStaffRecords,
+      staffRecordsMode,
+      allowRegisteredStudents,
+      registeredStudentsMode,
+      allowRegisteredStaff,
+      registeredStaffMode,
+      programs
+    } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Department name is required" });
@@ -195,9 +210,13 @@ export const createDepartment = async (req, res) => {
       targetAudience: targetAudience || "both",
       isAcademic: !!isAcademic,
       allowStudentRecords: !!allowStudentRecords,
+      studentRecordsMode: studentRecordsMode === "read" ? "read" : "write",
       allowStaffRecords: !!allowStaffRecords,
+      staffRecordsMode: staffRecordsMode === "read" ? "read" : "write",
       allowRegisteredStudents: !!allowRegisteredStudents,
+      registeredStudentsMode: registeredStudentsMode === "read" ? "read" : "write",
       allowRegisteredStaff: !!allowRegisteredStaff,
+      registeredStaffMode: registeredStaffMode === "read" ? "read" : "write",
       programs: cleanedPrograms,
       isActive: true
     });
@@ -246,7 +265,23 @@ export const createDepartment = async (req, res) => {
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, code, description, targetAudience, isAcademic, isActive, allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff, programs } = req.body;
+    const {
+      name,
+      code,
+      description,
+      targetAudience,
+      isAcademic,
+      isActive,
+      allowStudentRecords,
+      studentRecordsMode,
+      allowStaffRecords,
+      staffRecordsMode,
+      allowRegisteredStudents,
+      registeredStudentsMode,
+      allowRegisteredStaff,
+      registeredStaffMode,
+      programs
+    } = req.body;
 
     const dept = await Department.findById(id);
     if (!dept) {
@@ -288,9 +323,13 @@ export const updateDepartment = async (req, res) => {
     if (isAcademic !== undefined) dept.isAcademic = !!isAcademic;
     if (isActive !== undefined) dept.isActive = !!isActive;
     if (allowStudentRecords !== undefined) dept.allowStudentRecords = !!allowStudentRecords;
+    if (studentRecordsMode !== undefined) dept.studentRecordsMode = studentRecordsMode === "read" ? "read" : "write";
     if (allowStaffRecords !== undefined) dept.allowStaffRecords = !!allowStaffRecords;
+    if (staffRecordsMode !== undefined) dept.staffRecordsMode = staffRecordsMode === "read" ? "read" : "write";
     if (allowRegisteredStudents !== undefined) dept.allowRegisteredStudents = !!allowRegisteredStudents;
+    if (registeredStudentsMode !== undefined) dept.registeredStudentsMode = registeredStudentsMode === "read" ? "read" : "write";
     if (allowRegisteredStaff !== undefined) dept.allowRegisteredStaff = !!allowRegisteredStaff;
+    if (registeredStaffMode !== undefined) dept.registeredStaffMode = registeredStaffMode === "read" ? "read" : "write";
     if (programs !== undefined && Array.isArray(programs)) {
       dept.programs = Array.from(new Set(programs.map(p => (typeof p === 'string' ? p.trim() : '')).filter(Boolean)));
     }
@@ -421,18 +460,26 @@ export const getDepartmentPermissions = async (req, res) => {
       return res.status(200).json({
         name: cleanName,
         allowStudentRecords: false,
+        studentRecordsMode: "write",
         allowStaffRecords: false,
+        staffRecordsMode: "write",
         allowRegisteredStudents: false,
-        allowRegisteredStaff: false
+        registeredStudentsMode: "write",
+        allowRegisteredStaff: false,
+        registeredStaffMode: "write"
       });
     }
 
     res.status(200).json({
       name: dept.name,
       allowStudentRecords: !!dept.allowStudentRecords,
+      studentRecordsMode: dept.studentRecordsMode || "write",
       allowStaffRecords: !!dept.allowStaffRecords,
+      staffRecordsMode: dept.staffRecordsMode || "write",
       allowRegisteredStudents: !!dept.allowRegisteredStudents,
-      allowRegisteredStaff: !!dept.allowRegisteredStaff
+      registeredStudentsMode: dept.registeredStudentsMode || "write",
+      allowRegisteredStaff: !!dept.allowRegisteredStaff,
+      registeredStaffMode: dept.registeredStaffMode || "write"
     });
   } catch (error) {
     console.error("Error fetching dept permissions:", error);

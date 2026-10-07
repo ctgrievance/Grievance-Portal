@@ -1061,12 +1061,14 @@ function AdminStaffDashboard() {
           </div>
         )}
 
-        {activeTab === "student_records" && canStudentRecords && <AdminStudentRecords />}
-        {activeTab === "staff_records" && canStaffRecords && <StaffRecordsTab />}
+        {activeTab === "student_records" && canStudentRecords && <AdminStudentRecords isReadOnly={deptPermissions?.studentRecordsMode === "read"} />}
+        {activeTab === "staff_records" && canStaffRecords && <StaffRecordsTab isReadOnly={deptPermissions?.staffRecordsMode === "read"} />}
         {activeTab === "registered_users" && canRegisteredUsers && (
           <RegisteredUsersView
             allowRegisteredStudents={canRegisteredStudents}
             allowRegisteredStaff={canRegisteredStaff}
+            studentReadOnly={deptPermissions?.registeredStudentsMode === "read"}
+            staffReadOnly={deptPermissions?.registeredStaffMode === "read"}
           />
         )}
 

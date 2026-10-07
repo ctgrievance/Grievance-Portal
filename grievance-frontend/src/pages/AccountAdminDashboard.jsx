@@ -56,7 +56,16 @@ function AccountAdminDashboard() {
   const role = localStorage.getItem("grievance_role");
 
   const [activeTab, setActiveTab] = useState("grievances");
-  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
+  const {
+    allowStudentRecords,
+    studentRecordsMode,
+    allowStaffRecords,
+    staffRecordsMode,
+    allowRegisteredStudents,
+    registeredStudentsMode,
+    allowRegisteredStaff,
+    registeredStaffMode
+  } = useDepartmentPermissions(adminDept);
 
   // State
   const [grievances, setGrievances] = useState([]);
@@ -317,12 +326,14 @@ function AccountAdminDashboard() {
       />
 
       <main className="dashboard-body">
-        {activeTab === "student_records" && <AdminStudentRecords />}
-        {activeTab === "staff_records" && <StaffRecordsTab />}
+        {activeTab === "student_records" && <AdminStudentRecords isReadOnly={studentRecordsMode === "read"} />}
+        {activeTab === "staff_records" && <StaffRecordsTab isReadOnly={staffRecordsMode === "read"} />}
         {activeTab === "registered_users" && (allowRegisteredStudents || allowRegisteredStaff) && (
           <RegisteredUsersView
             allowRegisteredStudents={allowRegisteredStudents}
             allowRegisteredStaff={allowRegisteredStaff}
+            studentReadOnly={registeredStudentsMode === "read"}
+            staffReadOnly={registeredStaffMode === "read"}
           />
         )}
         {activeTab === "manage_staff" && <StaffRoleManager />}

@@ -14,7 +14,9 @@ import "../styles/Dashboard.css";
 function RegisteredUsersView({
   allowRegisteredStudents = false,
   allowRegisteredStaff = false,
-  isSuperAdmin = false
+  isSuperAdmin = false,
+  studentReadOnly = false,
+  staffReadOnly = false
 }) {
   const canStudents = isSuperAdmin || !!allowRegisteredStudents;
   const canStaff = isSuperAdmin || !!allowRegisteredStaff;
@@ -119,8 +121,12 @@ function RegisteredUsersView({
       )}
 
       {/* Sub-tab content view */}
-      {activeSubTab === "students" && canStudents && <RegisteredStudentsTab />}
-      {activeSubTab === "staff" && canStaff && <RegisteredStaffTab />}
+      {activeSubTab === "students" && canStudents && (
+        <RegisteredStudentsTab isReadOnly={!isSuperAdmin && studentReadOnly} />
+      )}
+      {activeSubTab === "staff" && canStaff && (
+        <RegisteredStaffTab isReadOnly={!isSuperAdmin && staffReadOnly} />
+      )}
       {activeSubTab === "compare" && canCompare && <RecordsComparisonTab />}
     </div>
   );

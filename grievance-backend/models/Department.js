@@ -38,17 +38,37 @@ const departmentSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    studentRecordsMode: {
+      type: String,
+      enum: ["read", "write"],
+      default: "write"
+    },
     allowStaffRecords: {
       type: Boolean,
       default: false
+    },
+    staffRecordsMode: {
+      type: String,
+      enum: ["read", "write"],
+      default: "write"
     },
     allowRegisteredStudents: {
       type: Boolean,
       default: false
     },
+    registeredStudentsMode: {
+      type: String,
+      enum: ["read", "write"],
+      default: "write"
+    },
     allowRegisteredStaff: {
       type: Boolean,
       default: false
+    },
+    registeredStaffMode: {
+      type: String,
+      enum: ["read", "write"],
+      default: "write"
     },
     programs: {
       type: [String],

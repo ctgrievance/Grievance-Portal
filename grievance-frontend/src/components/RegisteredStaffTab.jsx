@@ -43,7 +43,7 @@ const formatDate = (dateString) => {
   });
 };
 
-function RegisteredStaffTab() {
+function RegisteredStaffTab({ isReadOnly = false }) {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -271,6 +271,7 @@ function RegisteredStaffTab() {
 
   // Open Edit Modal
   const handleOpenEdit = (staff) => {
+    if (isReadOnly) return;
     setSelectedStaff(staff);
     const isActuallyVerified = !staff.otpPending && staff.isVerified === true;
     setEditFormData({
@@ -318,6 +319,7 @@ function RegisteredStaffTab() {
 
   // Open Delete Modal
   const handleOpenDelete = (staff) => {
+    if (isReadOnly) return;
     if (staff.id === "10001" || staff.isMasterAdmin) {
       alert("Master Admin account is protected and cannot be deleted.");
       return;
@@ -617,19 +619,19 @@ function RegisteredStaffTab() {
                   <th>Role & Authority</th>
                   <th>Status</th>
                   <th>Joined Date</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
+                  {!isReadOnly && <th style={{ textAlign: "right" }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="9" className="reg-users-empty-cell">
+                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell">
                       <div className="reg-users-loading-spinner">Loading registered staff members...</div>
                     </td>
                   </tr>
                 ) : staffList.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="reg-users-empty-cell">
+                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell">
                       <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                       <div style={{ fontWeight: "600", color: "#334155" }}>No registered staff found</div>
                       <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -720,30 +722,32 @@ function RegisteredStaffTab() {
                         <td className="reg-user-date">{formatDate(staff.createdAt)}</td>
 
                         {/* Actions */}
-                        <td style={{ textAlign: "right" }}>
-                          <div className="reg-user-actions-wrap">
-                            <button
-                              type="button"
-                              className="reg-user-action-btn edit"
-                              onClick={() => handleOpenEdit(staff)}
-                              title="Edit Staff Member"
-                            >
-                              <EditIcon width="13" height="13" />
-                              <span>Edit</span>
-                            </button>
-                            {!isMaster && (
+                        {!isReadOnly && (
+                          <td style={{ textAlign: "right" }}>
+                            <div className="reg-user-actions-wrap">
                               <button
                                 type="button"
-                                className="reg-user-action-btn delete"
-                                onClick={() => handleOpenDelete(staff)}
-                                title="Delete Staff Member"
+                                className="reg-user-action-btn edit"
+                                onClick={() => handleOpenEdit(staff)}
+                                title="Edit Staff Member"
                               >
-                                <TrashIcon width="13" height="13" />
-                                <span>Delete</span>
+                                <EditIcon width="13" height="13" />
+                                <span>Edit</span>
                               </button>
-                            )}
-                          </div>
-                        </td>
+                              {!isMaster && (
+                                <button
+                                  type="button"
+                                  className="reg-user-action-btn delete"
+                                  onClick={() => handleOpenDelete(staff)}
+                                  title="Delete Staff Member"
+                                >
+                                  <TrashIcon width="13" height="13" />
+                                  <span>Delete</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -837,26 +841,28 @@ function RegisteredStaffTab() {
                 {/* Footer Row: Joined Date & Actions */}
                 <div className="reg-user-mcard-footer">
                   <span className="reg-user-mcard-date">{formatDate(staff.createdAt)}</span>
-                  <div className="reg-user-actions-wrap">
-                    <button
-                      type="button"
-                      className="reg-user-action-btn edit"
-                      onClick={() => handleOpenEdit(staff)}
-                    >
-                      <EditIcon width="13" height="13" />
-                      <span>Edit</span>
-                    </button>
-                    {!isMaster && (
+                  {!isReadOnly && (
+                    <div className="reg-user-actions-wrap">
                       <button
                         type="button"
-                        className="reg-user-action-btn delete"
-                        onClick={() => handleOpenDelete(staff)}
+                        className="reg-user-action-btn edit"
+                        onClick={() => handleOpenEdit(staff)}
                       >
-                        <TrashIcon width="13" height="13" />
-                        <span>Delete</span>
+                        <EditIcon width="13" height="13" />
+                        <span>Edit</span>
                       </button>
-                    )}
-                  </div>
+                      {!isMaster && (
+                        <button
+                          type="button"
+                          className="reg-user-action-btn delete"
+                          onClick={() => handleOpenDelete(staff)}
+                        >
+                          <TrashIcon width="13" height="13" />
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -893,7 +899,7 @@ function RegisteredStaffTab() {
       </div>
 
       {/* MODAL: EDIT STAFF */}
-      {showEditModal && selectedStaff && (
+      {showEditModal && selectedStaff && !isReadOnly && (
         <div 
           className="reg-users-modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) setShowEditModal(false); }}
@@ -1043,7 +1049,7 @@ function RegisteredStaffTab() {
       )}
 
       {/* MODAL: DELETE CONFIRMATION */}
-      {showDeleteModal && staffToDelete && (
+      {showDeleteModal && staffToDelete && !isReadOnly && (
         <div 
           className="reg-users-modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}

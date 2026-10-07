@@ -70,7 +70,16 @@ function HRAdminDashboard() {
 
   // ✅ TABS STATE
   const [activeTab, setActiveTab] = useState("grievances"); // "grievances" | "staff_records" | "student_records" | "registered_students" | "registered_staff"
-  const { allowStudentRecords, allowStaffRecords, allowRegisteredStudents, allowRegisteredStaff } = useDepartmentPermissions(adminDept);
+  const {
+    allowStudentRecords,
+    studentRecordsMode,
+    allowStaffRecords,
+    staffRecordsMode,
+    allowRegisteredStudents,
+    registeredStudentsMode,
+    allowRegisteredStaff,
+    registeredStaffMode
+  } = useDepartmentPermissions(adminDept);
 
   // ✅ FILTER STATES
   const [searchId, setSearchId] = useState("");
@@ -312,12 +321,14 @@ function HRAdminDashboard() {
       />
 
       <main className="dashboard-body">
-        {activeTab === "student_records" && <AdminStudentRecords />}
-        {activeTab === "staff_records" && <StaffRecordsTab />}
+        {activeTab === "student_records" && <AdminStudentRecords isReadOnly={studentRecordsMode === "read"} />}
+        {activeTab === "staff_records" && <StaffRecordsTab isReadOnly={staffRecordsMode === "read"} />}
         {activeTab === "registered_users" && (allowRegisteredStudents || allowRegisteredStaff) && (
           <RegisteredUsersView
             allowRegisteredStudents={allowRegisteredStudents}
             allowRegisteredStaff={allowRegisteredStaff}
+            studentReadOnly={registeredStudentsMode === "read"}
+            staffReadOnly={registeredStaffMode === "read"}
           />
         )}
         {activeTab === "manage_staff" && <StaffRoleManager />}

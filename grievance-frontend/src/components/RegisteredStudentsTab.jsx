@@ -40,7 +40,7 @@ const formatDate = (dateString) => {
   });
 };
 
-function RegisteredStudentsTab() {
+function RegisteredStudentsTab({ isReadOnly = false }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -205,6 +205,7 @@ function RegisteredStudentsTab() {
 
   // Open Edit Modal
   const handleOpenEdit = (student) => {
+    if (isReadOnly) return;
     setSelectedStudent(student);
     const isActuallyVerified = !student.otpPending && student.isVerified === true;
     setEditFormData({
@@ -252,6 +253,7 @@ function RegisteredStudentsTab() {
 
   // Open Delete Modal
   const handleOpenDelete = (student) => {
+    if (isReadOnly) return;
     setStudentToDelete(student);
     setShowDeleteModal(true);
   };
@@ -417,19 +419,19 @@ function RegisteredStudentsTab() {
                   <th>Type</th>
                   <th>Status</th>
                   <th>Registered At</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
+                  {!isReadOnly && <th style={{ textAlign: "right" }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="9" className="reg-users-empty-cell">
+                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell">
                       <div className="reg-users-loading-spinner">Loading registered students...</div>
                     </td>
                   </tr>
                 ) : students.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="reg-users-empty-cell">
+                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell">
                       <SearchIcon width="28" height="28" style={{ color: "#94a3b8", marginBottom: "8px" }} />
                       <div style={{ fontWeight: "600", color: "#334155" }}>No registered students found</div>
                       <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
@@ -512,28 +514,30 @@ function RegisteredStudentsTab() {
                       <td className="reg-user-date">{formatDate(student.createdAt)}</td>
 
                       {/* Actions */}
-                      <td style={{ textAlign: "right" }}>
-                        <div className="reg-user-actions-wrap">
-                          <button
-                            type="button"
-                            className="reg-user-action-btn edit"
-                            onClick={() => handleOpenEdit(student)}
-                            title="Edit Student"
-                          >
-                            <EditIcon width="13" height="13" />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="reg-user-action-btn delete"
-                            onClick={() => handleOpenDelete(student)}
-                            title="Delete Student"
-                          >
-                            <TrashIcon width="13" height="13" />
-                            <span>Delete</span>
-                          </button>
-                        </div>
-                      </td>
+                      {!isReadOnly && (
+                        <td style={{ textAlign: "right" }}>
+                          <div className="reg-user-actions-wrap">
+                            <button
+                              type="button"
+                              className="reg-user-action-btn edit"
+                              onClick={() => handleOpenEdit(student)}
+                              title="Edit Student"
+                            >
+                              <EditIcon width="13" height="13" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="reg-user-action-btn delete"
+                              onClick={() => handleOpenDelete(student)}
+                              title="Delete Student"
+                            >
+                              <TrashIcon width="13" height="13" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -620,24 +624,26 @@ function RegisteredStudentsTab() {
                 {/* Footer Row: Date & Actions */}
                 <div className="reg-user-mcard-footer">
                   <span className="reg-user-mcard-date">{formatDate(student.createdAt)}</span>
-                  <div className="reg-user-actions-wrap">
-                    <button
-                      type="button"
-                      className="reg-user-action-btn edit"
-                      onClick={() => handleOpenEdit(student)}
-                    >
-                      <EditIcon width="13" height="13" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="reg-user-action-btn delete"
-                      onClick={() => handleOpenDelete(student)}
-                    >
-                      <TrashIcon width="13" height="13" />
-                      <span>Delete</span>
-                    </button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="reg-user-actions-wrap">
+                      <button
+                        type="button"
+                        className="reg-user-action-btn edit"
+                        onClick={() => handleOpenEdit(student)}
+                      >
+                        <EditIcon width="13" height="13" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="reg-user-action-btn delete"
+                        onClick={() => handleOpenDelete(student)}
+                      >
+                        <TrashIcon width="13" height="13" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -674,7 +680,7 @@ function RegisteredStudentsTab() {
       </div>
 
       {/* MODAL: EDIT STUDENT */}
-      {showEditModal && selectedStudent && (
+      {showEditModal && selectedStudent && !isReadOnly && (
         <div 
           className="reg-users-modal-overlay" 
           onClick={(e) => { if (e.target === e.currentTarget) setShowEditModal(false); }}
@@ -826,7 +832,7 @@ function RegisteredStudentsTab() {
       )}
 
       {/* MODAL: DELETE CONFIRMATION */}
-      {showDeleteModal && studentToDelete && (
+      {showDeleteModal && studentToDelete && !isReadOnly && (
         <div 
           className="reg-users-modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}

@@ -3,9 +3,13 @@ import { useState, useEffect } from "react";
 export const useDepartmentPermissions = (deptName) => {
   const [permissions, setPermissions] = useState({
     allowStudentRecords: false,
+    studentRecordsMode: "write",
     allowStaffRecords: false,
+    staffRecordsMode: "write",
     allowRegisteredStudents: false,
+    registeredStudentsMode: "write",
     allowRegisteredStaff: false,
+    registeredStaffMode: "write",
     loading: true,
   });
 
@@ -13,9 +17,13 @@ export const useDepartmentPermissions = (deptName) => {
     if (!deptName) {
       setPermissions({
         allowStudentRecords: false,
+        studentRecordsMode: "write",
         allowStaffRecords: false,
+        staffRecordsMode: "write",
         allowRegisteredStudents: false,
+        registeredStudentsMode: "write",
         allowRegisteredStaff: false,
+        registeredStaffMode: "write",
         loading: false,
       });
       return;
@@ -33,9 +41,13 @@ export const useDepartmentPermissions = (deptName) => {
           if (isMounted) {
             setPermissions({
               allowStudentRecords: !!data.allowStudentRecords,
+              studentRecordsMode: data.studentRecordsMode || "write",
               allowStaffRecords: !!data.allowStaffRecords,
+              staffRecordsMode: data.staffRecordsMode || "write",
               allowRegisteredStudents: !!data.allowRegisteredStudents,
+              registeredStudentsMode: data.registeredStudentsMode || "write",
               allowRegisteredStaff: !!data.allowRegisteredStaff,
+              registeredStaffMode: data.registeredStaffMode || "write",
               loading: false,
             });
           }
@@ -49,9 +61,13 @@ export const useDepartmentPermissions = (deptName) => {
       if (isMounted) {
         setPermissions({
           allowStudentRecords: false,
+          studentRecordsMode: "write",
           allowStaffRecords: false,
+          staffRecordsMode: "write",
           allowRegisteredStudents: false,
+          registeredStudentsMode: "write",
           allowRegisteredStaff: false,
+          registeredStaffMode: "write",
           loading: false,
         });
       }

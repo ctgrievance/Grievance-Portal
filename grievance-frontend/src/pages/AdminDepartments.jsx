@@ -5,6 +5,7 @@ import {
   PlusIcon,
   TrashIcon,
   EditIcon,
+  EyeIcon,
   CheckCircleIcon,
   AlertCircleIcon,
   XIcon,
@@ -203,9 +204,13 @@ function AdminDepartments() {
     isAcademic: false,
     isActive: true,
     allowStudentRecords: false,
+    studentRecordsMode: "write",
     allowStaffRecords: false,
+    staffRecordsMode: "write",
     allowRegisteredStudents: false,
+    registeredStudentsMode: "write",
     allowRegisteredStaff: false,
+    registeredStaffMode: "write",
     programs: []
   });
 
@@ -270,41 +275,45 @@ function AdminDepartments() {
   const getDepartmentPermissions = (dept) => {
     const perms = [];
     if (dept.allowRegisteredStudents) {
+      const isReadOnly = dept.registeredStudentsMode === "read";
       perms.push({
         id: "students",
-        label: "Live Students Access",
-        badge: "Students",
-        desc: "Allowed to manage live student accounts",
+        label: `Live Students (${isReadOnly ? "Read Only" : "Read & Write"})`,
+        badge: isReadOnly ? "Students (Read)" : "Students",
+        desc: isReadOnly ? "View and export live student accounts" : "Allowed to manage live student accounts",
         type: "students",
         icon: <UserIcon width="11" height="11" />
       });
     }
     if (dept.allowRegisteredStaff) {
+      const isReadOnly = dept.registeredStaffMode === "read";
       perms.push({
         id: "staff",
-        label: "Live Staff Access",
-        badge: "Staff",
-        desc: "Allowed to manage live staff accounts",
+        label: `Live Staff (${isReadOnly ? "Read Only" : "Read & Write"})`,
+        badge: isReadOnly ? "Staff (Read)" : "Staff",
+        desc: isReadOnly ? "View and export live staff accounts" : "Allowed to manage live staff accounts",
         type: "staff",
         icon: <UsersIcon width="11" height="11" />
       });
     }
     if (dept.allowStudentRecords) {
+      const isReadOnly = dept.studentRecordsMode === "read";
       perms.push({
         id: "student-records",
-        label: "Student Records Access",
-        badge: "Student Records",
-        desc: "Allowed to manage student verification database",
+        label: `Student Records (${isReadOnly ? "Read Only" : "Read & Write"})`,
+        badge: isReadOnly ? "Student Rec (Read)" : "Student Records",
+        desc: isReadOnly ? "View and download student verification records" : "Allowed to manage student verification database",
         type: "records",
         icon: <FileIcon width="11" height="11" />
       });
     }
     if (dept.allowStaffRecords) {
+      const isReadOnly = dept.staffRecordsMode === "read";
       perms.push({
         id: "staff-records",
-        label: "Staff Records Access",
-        badge: "Staff Records",
-        desc: "Allowed to manage staff verification database",
+        label: `Staff Records (${isReadOnly ? "Read Only" : "Read & Write"})`,
+        badge: isReadOnly ? "Staff Rec (Read)" : "Staff Records",
+        desc: isReadOnly ? "View and download staff verification records" : "Allowed to manage staff verification database",
         type: "records",
         icon: <FileIcon width="11" height="11" />
       });
@@ -333,9 +342,13 @@ function AdminDepartments() {
       isAcademic: false,
       isActive: true,
       allowStudentRecords: false,
+      studentRecordsMode: "write",
       allowStaffRecords: false,
+      staffRecordsMode: "write",
       allowRegisteredStudents: false,
+      registeredStudentsMode: "write",
       allowRegisteredStaff: false,
+      registeredStaffMode: "write",
       programs: []
     });
     setNewProgramInput("");
@@ -355,9 +368,13 @@ function AdminDepartments() {
       isAcademic: !!dept.isAcademic,
       isActive: dept.isActive !== false,
       allowStudentRecords: !!dept.allowStudentRecords,
+      studentRecordsMode: dept.studentRecordsMode || "write",
       allowStaffRecords: !!dept.allowStaffRecords,
+      staffRecordsMode: dept.staffRecordsMode || "write",
       allowRegisteredStudents: !!dept.allowRegisteredStudents,
+      registeredStudentsMode: dept.registeredStudentsMode || "write",
       allowRegisteredStaff: !!dept.allowRegisteredStaff,
+      registeredStaffMode: dept.registeredStaffMode || "write",
       programs: Array.isArray(dept.programs) ? [...dept.programs] : []
     });
     setNewProgramInput("");
@@ -842,8 +859,8 @@ function AdminDepartments() {
 
       {/* UNIFIED SLEEK MODAL (Add & Edit) */}
       {isModalOpen && (
-        <div className="dept-modal-overlay">
-          <div className="dept-modal-card">
+        <div className="dept-modal-overlay" onClick={handleCloseModal}>
+          <div className="dept-modal-card" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="dept-modal-header">
               <h3>{isEditMode ? "Edit Department" : "Add New Department"}</h3>
@@ -886,31 +903,10 @@ function AdminDepartments() {
                   </span>
                 )}
               </button>
-              <button
-                type="button"
-                className={`dept-modal-tab-btn ${modalTab === "programs" ? "active" : ""}`}
-                onClick={() => setModalTab("programs")}
-              >
-                Programs & Domains
-                {formData.programs && formData.programs.length > 0 && (
-                  <span
-                    style={{
-                      background: "#eff6ff",
-                      color: "#2563eb",
-                      fontSize: "0.68rem",
-                      padding: "1px 6px",
-                      borderRadius: "10px",
-                      fontWeight: "700"
-                    }}
-                  >
-                    {formData.programs.length}
-                  </span>
-                )}
-              </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit}>
+            <form className="dept-modal-form" onSubmit={handleSubmit}>
               <div className="dept-modal-body">
                 {modalTab === "general" && (
                   <>
@@ -995,230 +991,291 @@ function AdminDepartments() {
                     {/* Live Students Permission Card */}
                     <div
                       className={`dept-perm-card ${formData.allowRegisteredStudents ? "enabled" : ""}`}
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          allowRegisteredStudents: !formData.allowRegisteredStudents
-                        })
-                      }
                     >
-                      <div className="dept-perm-info">
-                        <div className="dept-perm-icon-box">
-                          <UserIcon width="16" height="16" />
+                      <div
+                        className="dept-perm-card-main"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            allowRegisteredStudents: !formData.allowRegisteredStudents
+                          })
+                        }
+                      >
+                        <div className="dept-perm-info">
+                          <div className="dept-perm-icon-box">
+                            <UserIcon width="16" height="16" />
+                          </div>
+                          <div className="dept-perm-text-wrap">
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <h5>Student Directory Access</h5>
+                              {formData.allowRegisteredStudents && (
+                                <span className={`dept-perm-level-badge ${formData.registeredStudentsMode === "read" ? "read" : "write"}`}>
+                                  {formData.registeredStudentsMode === "read" ? "Read Only" : "Read & Write"}
+                                </span>
+                              )}
+                            </div>
+                            <p>
+                              Allow department admin to view registered student accounts.
+                            </p>
+                          </div>
                         </div>
-                        <div className="dept-perm-text-wrap">
-                          <h5>Student Directory Access</h5>
-                          <p>
-                            Allow department admin to view, edit profiles, or manage registered student accounts.
-                          </p>
-                        </div>
+                        <input
+                          type="checkbox"
+                          className="dept-perm-checkbox"
+                          checked={formData.allowRegisteredStudents}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setFormData({ ...formData, allowRegisteredStudents: e.target.checked });
+                          }}
+                        />
                       </div>
-                      <input
-                        type="checkbox"
-                        className="dept-perm-checkbox"
-                        checked={formData.allowRegisteredStudents}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setFormData({ ...formData, allowRegisteredStudents: e.target.checked });
-                        }}
-                      />
+
+                      {formData.allowRegisteredStudents && (
+                        <div className="dept-perm-mode-bar" onClick={(e) => e.stopPropagation()}>
+                          <span className="dept-perm-mode-label">Access Level:</span>
+                          <div className="dept-perm-mode-pill-group">
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.registeredStudentsMode === "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, registeredStudentsMode: "read" })}
+                            >
+                              <EyeIcon width="13" height="13" />
+                              <span>Read Only</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.registeredStudentsMode !== "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, registeredStudentsMode: "write" })}
+                            >
+                              <EditIcon width="13" height="13" />
+                              <span>Read & Write</span>
+                            </button>
+                          </div>
+                          <span className="dept-perm-mode-desc">
+                            {formData.registeredStudentsMode === "read"
+                              ? "View & export only (no edit/delete)"
+                              : "Full access (can edit & delete)"}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Live Staff Permission Card */}
                     <div
                       className={`dept-perm-card ${formData.allowRegisteredStaff ? "enabled" : ""}`}
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          allowRegisteredStaff: !formData.allowRegisteredStaff
-                        })
-                      }
                     >
-                      <div className="dept-perm-info">
-                        <div className="dept-perm-icon-box">
-                          <UsersIcon width="16" height="16" />
+                      <div
+                        className="dept-perm-card-main"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            allowRegisteredStaff: !formData.allowRegisteredStaff
+                          })
+                        }
+                      >
+                        <div className="dept-perm-info">
+                          <div className="dept-perm-icon-box">
+                            <UsersIcon width="16" height="16" />
+                          </div>
+                          <div className="dept-perm-text-wrap">
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <h5>Staff Directory Access</h5>
+                              {formData.allowRegisteredStaff && (
+                                <span className={`dept-perm-level-badge ${formData.registeredStaffMode === "read" ? "read" : "write"}`}>
+                                  {formData.registeredStaffMode === "read" ? "Read Only" : "Read & Write"}
+                                </span>
+                              )}
+                            </div>
+                            <p>
+                              Allow department admin to view registered staff and faculty accounts.
+                            </p>
+                          </div>
                         </div>
-                        <div className="dept-perm-text-wrap">
-                          <h5>Staff Directory Access</h5>
-                          <p>
-                            Allow department admin to view, edit details, or manage registered staff and faculty accounts.
-                          </p>
-                        </div>
+                        <input
+                          type="checkbox"
+                          className="dept-perm-checkbox"
+                          checked={formData.allowRegisteredStaff}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setFormData({ ...formData, allowRegisteredStaff: e.target.checked });
+                          }}
+                        />
                       </div>
-                      <input
-                        type="checkbox"
-                        className="dept-perm-checkbox"
-                        checked={formData.allowRegisteredStaff}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setFormData({ ...formData, allowRegisteredStaff: e.target.checked });
-                        }}
-                      />
+
+                      {formData.allowRegisteredStaff && (
+                        <div className="dept-perm-mode-bar" onClick={(e) => e.stopPropagation()}>
+                          <span className="dept-perm-mode-label">Access Level:</span>
+                          <div className="dept-perm-mode-pill-group">
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.registeredStaffMode === "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, registeredStaffMode: "read" })}
+                            >
+                              <EyeIcon width="13" height="13" />
+                              <span>Read Only</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.registeredStaffMode !== "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, registeredStaffMode: "write" })}
+                            >
+                              <EditIcon width="13" height="13" />
+                              <span>Read & Write</span>
+                            </button>
+                          </div>
+                          <span className="dept-perm-mode-desc">
+                            {formData.registeredStaffMode === "read"
+                              ? "View & export only (no edit/delete)"
+                              : "Full access (can edit & delete)"}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="dept-perm-section-title" style={{ marginTop: "6px" }}>
+                    <div className="dept-perm-section-title" style={{ marginTop: "10px" }}>
                       Verification Records (Excel Pre-Upload)
                     </div>
 
                     {/* Student Verification Records */}
                     <div
                       className={`dept-perm-card ${formData.allowStudentRecords ? "enabled" : ""}`}
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          allowStudentRecords: !formData.allowStudentRecords
-                        })
-                      }
                     >
-                      <div className="dept-perm-info">
-                        <div className="dept-perm-icon-box">
-                          <FileIcon width="16" height="16" />
+                      <div
+                        className="dept-perm-card-main"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            allowStudentRecords: !formData.allowStudentRecords
+                          })
+                        }
+                      >
+                        <div className="dept-perm-info">
+                          <div className="dept-perm-icon-box">
+                            <FileIcon width="16" height="16" />
+                          </div>
+                          <div className="dept-perm-text-wrap">
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <h5>Student Verification Records</h5>
+                              {formData.allowStudentRecords && (
+                                <span className={`dept-perm-level-badge ${formData.studentRecordsMode === "read" ? "read" : "write"}`}>
+                                  {formData.studentRecordsMode === "read" ? "Read Only" : "Read & Write"}
+                                </span>
+                              )}
+                            </div>
+                            <p>
+                              Allow access to student spreadsheet records for pre-registration verification.
+                            </p>
+                          </div>
                         </div>
-                        <div className="dept-perm-text-wrap">
-                          <h5>Student Verification Records</h5>
-                          <p>
-                            Allow uploading and managing student spreadsheet records for pre-registration verification.
-                          </p>
-                        </div>
+                        <input
+                          type="checkbox"
+                          className="dept-perm-checkbox"
+                          checked={formData.allowStudentRecords}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setFormData({ ...formData, allowStudentRecords: e.target.checked });
+                          }}
+                        />
                       </div>
-                      <input
-                        type="checkbox"
-                        className="dept-perm-checkbox"
-                        checked={formData.allowStudentRecords}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setFormData({ ...formData, allowStudentRecords: e.target.checked });
-                        }}
-                      />
+
+                      {formData.allowStudentRecords && (
+                        <div className="dept-perm-mode-bar" onClick={(e) => e.stopPropagation()}>
+                          <span className="dept-perm-mode-label">Access Level:</span>
+                          <div className="dept-perm-mode-pill-group">
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.studentRecordsMode === "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, studentRecordsMode: "read" })}
+                            >
+                              <EyeIcon width="13" height="13" />
+                              <span>Read Only</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.studentRecordsMode !== "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, studentRecordsMode: "write" })}
+                            >
+                              <EditIcon width="13" height="13" />
+                              <span>Read & Write</span>
+                            </button>
+                          </div>
+                          <span className="dept-perm-mode-desc">
+                            {formData.studentRecordsMode === "read"
+                              ? "View & download only (no Excel upload, add, edit, or delete)"
+                              : "Full access (can upload Excel, add, edit, and delete records)"}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Staff Verification Records */}
                     <div
                       className={`dept-perm-card ${formData.allowStaffRecords ? "enabled" : ""}`}
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          allowStaffRecords: !formData.allowStaffRecords
-                        })
-                      }
                     >
-                      <div className="dept-perm-info">
-                        <div className="dept-perm-icon-box">
-                          <FileIcon width="16" height="16" />
+                      <div
+                        className="dept-perm-card-main"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            allowStaffRecords: !formData.allowStaffRecords
+                          })
+                        }
+                      >
+                        <div className="dept-perm-info">
+                          <div className="dept-perm-icon-box">
+                            <FileIcon width="16" height="16" />
+                          </div>
+                          <div className="dept-perm-text-wrap">
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <h5>Staff Verification Records</h5>
+                              {formData.allowStaffRecords && (
+                                <span className={`dept-perm-level-badge ${formData.staffRecordsMode === "read" ? "read" : "write"}`}>
+                                  {formData.staffRecordsMode === "read" ? "Read Only" : "Read & Write"}
+                                </span>
+                              )}
+                            </div>
+                            <p>
+                              Allow access to staff spreadsheet records for pre-registration verification.
+                            </p>
+                          </div>
                         </div>
-                        <div className="dept-perm-text-wrap">
-                          <h5>Staff Verification Records</h5>
-                          <p>
-                            Allow uploading and managing staff spreadsheet records for pre-registration verification.
-                          </p>
-                        </div>
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="dept-perm-checkbox"
-                        checked={formData.allowStaffRecords}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setFormData({ ...formData, allowStaffRecords: e.target.checked });
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {modalTab === "programs" && (
-                  <div className="dept-programs-container">
-                    <div className="dept-programs-header-note">
-                      <div className="dept-programs-note-icon">
-                        <GraduationCapIcon width="20" height="20" />
-                      </div>
-                      <div className="dept-programs-note-text">
-                        <h4>Department Academic Programs / Domains</h4>
-                        <p>
-                          Define the degree programs and courses offered under this department (e.g., <em>B.Tech - CSE, BCA, MBA</em>).
-                          Students will dynamically choose from this list after choosing this school.
-                        </p>
-                      </div>
-                    </div>
-
-                    {!formData.isAcademic && (
-                      <div className="dept-programs-warning">
-                        <AlertCircleIcon width="16" height="16" />
-                        <span>
-                          <strong>Notice:</strong> This department is currently not marked as an <em>Academic Department</em> in General Information. Mark it as academic so students can select it.
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Add Program Input Row */}
-                    <div className="dept-program-add-box">
-                      <label className="dept-form-label">Add New Program / Domain</label>
-                      <div className="dept-program-input-row">
                         <input
-                          type="text"
-                          className="dept-form-input"
-                          placeholder="e.g. B.Tech - Computer Science, BCA, MBA"
-                          value={newProgramInput}
-                          onChange={(e) => setNewProgramInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddProgram();
-                            }
+                          type="checkbox"
+                          className="dept-perm-checkbox"
+                          checked={formData.allowStaffRecords}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setFormData({ ...formData, allowStaffRecords: e.target.checked });
                           }}
                         />
-                        <button
-                          type="button"
-                          className="dept-btn-add-prog"
-                          onClick={handleAddProgram}
-                          disabled={!newProgramInput.trim()}
-                        >
-                          <PlusIcon width="16" height="16" /> Add
-                        </button>
-                      </div>
-                      <span className="dept-program-input-hint">
-                        Type program name and press <strong>Enter</strong> or click <strong>Add</strong>.
-                      </span>
-                    </div>
-
-                    {/* Program List */}
-                    <div className="dept-programs-list-section">
-                      <div className="dept-programs-list-header">
-                        <span className="dept-programs-count-title">
-                          Configured Programs ({formData.programs?.length || 0})
-                        </span>
-                        {formData.programs && formData.programs.length > 1 && (
-                          <button
-                            type="button"
-                            className="dept-programs-clear-btn"
-                            onClick={() => setFormData((prev) => ({ ...prev, programs: [] }))}
-                          >
-                            Clear All
-                          </button>
-                        )}
                       </div>
 
-                      {(!formData.programs || formData.programs.length === 0) ? (
-                        <div className="dept-programs-empty">
-                          <p>No programs added yet.</p>
-                          <small>Use the input above to add programs for this department.</small>
-                        </div>
-                      ) : (
-                        <div className="dept-program-chips-wrap">
-                          {formData.programs.map((program, idx) => (
-                            <div key={idx} className="dept-program-chip">
-                              <span className="dept-program-chip-text">{program}</span>
-                              <button
-                                type="button"
-                                className="dept-program-chip-del"
-                                onClick={() => handleRemoveProgram(program)}
-                                title={`Remove ${program}`}
-                                aria-label={`Remove ${program}`}
-                              >
-                                <XIcon width="14" height="14" />
-                              </button>
-                            </div>
-                          ))}
+                      {formData.allowStaffRecords && (
+                        <div className="dept-perm-mode-bar" onClick={(e) => e.stopPropagation()}>
+                          <span className="dept-perm-mode-label">Access Level:</span>
+                          <div className="dept-perm-mode-pill-group">
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.staffRecordsMode === "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, staffRecordsMode: "read" })}
+                            >
+                              <EyeIcon width="13" height="13" />
+                              <span>Read Only</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`dept-perm-mode-pill ${formData.staffRecordsMode !== "read" ? "active" : ""}`}
+                              onClick={() => setFormData({ ...formData, staffRecordsMode: "write" })}
+                            >
+                              <EditIcon width="13" height="13" />
+                              <span>Read & Write</span>
+                            </button>
+                          </div>
+                          <span className="dept-perm-mode-desc">
+                            {formData.staffRecordsMode === "read"
+                              ? "View & download only (no Excel upload, add, edit, or delete)"
+                              : "Full access (can upload Excel, add, edit, and delete records)"}
+                          </span>
                         </div>
                       )}
                     </div>
