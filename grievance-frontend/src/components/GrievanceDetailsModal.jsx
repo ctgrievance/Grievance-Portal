@@ -152,14 +152,32 @@ const GrievanceDetailsModal = ({
 
   const userDept = (
     localStorage.getItem("admin_department") ||
+    localStorage.getItem("staff_department") ||
     storedUser.adminDepartment ||
+    storedUser.staffDepartment ||
+    storedUser.department ||
+    storedUser.school ||
     ""
   ).toString().trim().toLowerCase();
 
   const userDepts = (() => {
     try {
       const parsed = JSON.parse(localStorage.getItem("admin_departments") || "[]");
-      return Array.isArray(parsed) ? parsed.map((d) => (d || "").toString().trim().toLowerCase()) : [];
+      const list = Array.isArray(parsed) ? parsed.map((d) => (d || "").toString().trim().toLowerCase()) : [];
+      if (storedUser.adminDepartment) list.push(storedUser.adminDepartment.toString().trim().toLowerCase());
+      if (storedUser.staffDepartment) list.push(storedUser.staffDepartment.toString().trim().toLowerCase());
+      if (storedUser.department) list.push(storedUser.department.toString().trim().toLowerCase());
+      if (storedUser.school) list.push(storedUser.school.toString().trim().toLowerCase());
+      if (Array.isArray(storedUser.adminDepartments)) {
+        storedUser.adminDepartments.forEach((d) => d && list.push(d.toString().trim().toLowerCase()));
+      }
+      if (Array.isArray(storedUser.departments)) {
+        storedUser.departments.forEach((d) => d && list.push(d.toString().trim().toLowerCase()));
+      }
+      if (Array.isArray(storedUser.staffDepartments)) {
+        storedUser.staffDepartments.forEach((d) => d && list.push(d.toString().trim().toLowerCase()));
+      }
+      return Array.from(new Set(list.filter(Boolean)));
     } catch {
       return [];
     }
@@ -179,8 +197,8 @@ const GrievanceDetailsModal = ({
   const isSameDept = Boolean(
     grievanceDept &&
     (
-      (userDept && userDept === grievanceDept) ||
-      (userDepts.length > 0 && userDepts.includes(grievanceDept))
+      (userDept && (userDept === grievanceDept || grievanceDept.includes(userDept) || userDept.includes(grievanceDept))) ||
+      (userDepts.length > 0 && userDepts.some((d) => d === grievanceDept || grievanceDept.includes(d) || d.includes(grievanceDept)))
     )
   );
 
@@ -262,7 +280,7 @@ const GrievanceDetailsModal = ({
     !isMasterAdmin &&
     !hasAlreadyForwarded &&
     isStaffOrAdmin &&
-    isSameDept &&
+    (isSameDept || isCurrentAssignee) &&
     (isCurrentAssignee || isDeptAdmin || isDepartmentStaff);
 
   const canAssignFaculty = Boolean(
@@ -1337,6 +1355,45 @@ const GrievanceDetailsModal = ({
             </div>
           )}
 
+          {/* 🔄 STUDENT REOPEN / REJECTION FEEDBACK (IF REOPENED BY STUDENT) */}
+          {grievance.rejectionReason && grievance.status !== "Rejected" && (
+            <div
+              style={{
+                background: "#fff1f2",
+                border: "1px solid #fecdd3",
+                borderRadius: "12px",
+                padding: "16px 18px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                <AlertCircleIcon width="18" height="18" style={{ color: "#e11d48" }} />
+                <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#9f1239", fontWeight: "700" }}>
+                  Student Reopen Feedback / Dissatisfaction Reason
+                </h4>
+              </div>
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #ffe4e6",
+                  fontSize: "0.9rem",
+                  color: "#881337",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  marginTop: "6px",
+                }}
+              >
+                {grievance.rejectionReason}
+              </div>
+              {grievance.rejectedAt && (
+                <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "#9f1239" }}>
+                  Submitted on {formatDateTime(grievance.rejectedAt)}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* ⭐ SECTION 6: STUDENT FEEDBACK & STAR RATING */}
           {grievance.rating?.stars && (
             <div
@@ -1494,7 +1551,7 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-            {!isSameDept && !isMasterAdmin && !isResolved && !isRejected && (
+            {!isSameDept && !isCurrentAssignee && !isMasterAdmin && !isResolved && !isRejected && (
               <div
                 style={{
                   padding: "8px 14px",

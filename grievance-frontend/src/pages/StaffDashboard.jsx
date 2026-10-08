@@ -1184,7 +1184,7 @@ function StaffDashboard() {
         <GrievanceDetailsModal
           grievance={selectedGrievance}
           staffMap={staffMap}
-          canTransfer={false}
+          canTransfer={activeTab !== "transferred"}
           onClose={() => setSelectedGrievance(null)}
           onDelete={handleDeleteGrievance}
           onReject={(g) => {

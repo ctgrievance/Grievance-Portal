@@ -906,7 +906,7 @@ export const getUserGrievances = async (req, res) => {
 export const updateGrievanceStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, resolutionRemarks, resolvedBy } = req.body;
+    const { status, resolutionRemarks, resolvedBy, verificationAttempts } = req.body;
 
     // 🔥 If status is "Resolved", switch to "Verification"
     let finalStatus = status;
@@ -923,6 +923,10 @@ export const updateGrievanceStatus = async (req, res) => {
       resolvedBy,
       updatedAt: Date.now(),
     };
+
+    if (typeof verificationAttempts === "number") {
+      updateData.verificationAttempts = verificationAttempts;
+    }
 
     if (finalStatus === "Rejected") {
       updateData.rejectionReason = resolutionRemarks || "Rejected by Administrator";
@@ -1017,21 +1021,45 @@ export const verifyResolution = async (req, res) => {
 
     if (action === "accept") {
       newStatus = "Resolved";
+      grievance.status = "Resolved";
+      grievance.resolutionProposedAt = null;
+      grievance.autoClosed = false;
+
       emailSubject = "Resolution Accepted ✅";
       emailBody = `The student has <strong>ACCEPTED</strong> the resolution for grievance #${id}. Great job!`;
       if (staffEmail) notifyEmails.push(staffEmail);
     } else {
-      newStatus = "Pending"; // Reopen
-      emailSubject = "Resolution Rejected ❌";
-      emailBody = `The student has <strong>REJECTED</strong> the resolution for grievance #${id}.<br><br><strong>Student Feedback:</strong> ${feedback}<br><br>Please review and take necessary action immediately.`;
+      // 🔒 Check 2-reopen limit
+      if ((grievance.verificationAttempts || 0) >= 2) {
+        return res.status(400).json({
+          message: "Maximum reopen limit (2) reached. Further rejection is not allowed. Please accept the resolution.",
+          grievance
+        });
+      }
+
+      // 🔄 Student Rejected / Reopened the grievance
+      newStatus = grievance.assignedTo ? "Assigned" : "Pending";
+      grievance.status = newStatus;
+      grievance.verificationAttempts = (grievance.verificationAttempts || 0) + 1;
+      grievance.resolutionProposedAt = null;
+      grievance.autoClosed = false;
+
+      const rejectionFeedback = (feedback || "").trim() || "Resolution rejected by student";
+      grievance.rejectionReason = rejectionFeedback;
+      grievance.rejectedAt = new Date();
+      grievance.rejectedBy = grievance.userId;
+      grievance.rejectedByName = grievance.name;
+
+      const reopenNote = `[Reopened #${grievance.verificationAttempts} by Student: ${rejectionFeedback}]`;
+      grievance.resolutionRemarks = grievance.resolutionRemarks
+        ? `${grievance.resolutionRemarks}\n${reopenNote}`
+        : reopenNote;
+
+      emailSubject = "Resolution Rejected ❌ - Grievance Reopened";
+      emailBody = `The student has <strong>REJECTED</strong> the proposed resolution for grievance #${id} and reopened it.<br><br><strong>Student Reason / Feedback:</strong> ${rejectionFeedback}<br><br>Please review and take necessary action immediately.`;
       if (staffEmail) notifyEmails.push(staffEmail);
       if (deptAdminEmail && deptAdminEmail !== staffEmail) notifyEmails.push(deptAdminEmail);
     }
-
-    // Update Status
-    grievance.status = newStatus;
-    // grievance.resolutionRemarks += `\n[Student Verified: ${action.toUpperCase()} - ${feedback || "No feedback"}]`; 
-    // Optional: Append feedback to internal remarks if desired, keeping simple for now.
 
     await grievance.save();
 
@@ -1055,7 +1083,10 @@ export const verifyResolution = async (req, res) => {
       }
     }
 
-    res.json({ message: `Grievance marked as ${newStatus}`, grievance });
+    res.json({
+      message: action === "accept" ? "Grievance resolved and closed successfully" : "Grievance reopened successfully",
+      grievance
+    });
 
   } catch (err) {
     console.error("Verification Error:", err);
@@ -1324,21 +1355,42 @@ export const transferGrievance = async (req, res) => {
     );
     const currentHoldingDept = (grievance.currentCustodian?.department || grievance.category || "").trim().toLowerCase();
 
-    // Check if sender is admin of the current holding department
+    // Check if sender is admin or faculty/staff member of the current holding department
     let isCurrentDeptAdmin = false;
     let isDeptStaff = false;
 
     if (senderStaffId && senderStaffId !== "10001" && transferredByRole !== "master_admin") {
       try {
-        const staffUser = await StaffUser.findOne({ id: senderStaffId }) || await User.findOne({ id: senderStaffId });
+        const idRegex = new RegExp(`^${senderStaffId}$`, "i");
+        const staffUser =
+          (await User.findOne({ id: { $regex: idRegex } })) ||
+          (await StaffUser.findOne({ id: { $regex: idRegex } })) ||
+          (await User.findOne({ id: senderStaffId })) ||
+          (await StaffUser.findOne({ id: senderStaffId }));
+
         if (staffUser) {
-          const staffDepts = Array.isArray(staffUser.adminDepartments) && staffUser.adminDepartments.length > 0
-            ? staffUser.adminDepartments.map(d => (d || "").trim().toLowerCase())
-            : (staffUser.adminDepartment ? [staffUser.adminDepartment.trim().toLowerCase()] : (staffUser.department ? [staffUser.department.trim().toLowerCase()] : []));
-          
-          const hasDeptAuth = staffDepts.some(d => d === currentHoldingDept || currentHoldingDept.includes(d) || d.includes(currentHoldingDept));
+          const staffDepts = [];
+          if (Array.isArray(staffUser.adminDepartments)) {
+            staffUser.adminDepartments.forEach((d) => d && staffDepts.push(d.trim().toLowerCase()));
+          }
+          if (staffUser.adminDepartment) staffDepts.push(staffUser.adminDepartment.trim().toLowerCase());
+          if (staffUser.staffDepartment) staffDepts.push(staffUser.staffDepartment.trim().toLowerCase());
+          if (staffUser.department) staffDepts.push(staffUser.department.trim().toLowerCase());
+          if (staffUser.school) staffDepts.push(staffUser.school.trim().toLowerCase());
+
+          const hasDeptAuth = staffDepts.some(
+            (d) =>
+              d === currentHoldingDept ||
+              currentHoldingDept.includes(d) ||
+              d.includes(currentHoldingDept)
+          );
           if (hasDeptAuth) {
-            if (transferredByRole === "admin" || staffUser.isDeptAdmin || staffUser.role === "admin" || req.user?.isDeptAdmin) {
+            if (
+              transferredByRole === "admin" ||
+              staffUser.isDeptAdmin ||
+              staffUser.role === "admin" ||
+              req.user?.isDeptAdmin
+            ) {
               isCurrentDeptAdmin = true;
             }
             isDeptStaff = true;
