@@ -40,6 +40,11 @@ const escapeHtml = (unsafe) => {
     .replace(/'/g, "&#039;");
 };
 
+const getClientBaseUrl = () => {
+  const url = process.env.CLIENT_URL || "https://rms.ctuniversity.in";
+  return url.replace(/\/+$/, "");
+};
+
 // Send Promotion Email
 export const sendPromotionEmail = async (staffEmail, staffName, newRole, department, staffId) => {
   try {
@@ -238,7 +243,7 @@ export const sendChatMessageEmail = async ({
         .substring(0, 2)
         .toUpperCase() || "GP";
 
-    const portalUrl = process.env.CLIENT_URL || "http://localhost:3000";
+    const portalUrl = getClientBaseUrl();
     const previewMessage = escapeHtml(messageText || (hasAttachment ? "Shared an attachment" : "Sent a message"));
 
     const emailSubject = isStaffSender
@@ -628,7 +633,7 @@ export const sendRoutingReminderEmail = async ({
   superAdminName = "Super Administrator"
 }) => {
   try {
-    const portalUrl = (process.env.CLIENT_URL || "http://localhost:3000") + "/admin/smart-assignment";
+    const portalUrl = `${getClientBaseUrl()}/admin/smart-assignment`;
     const emailSubject = `⚠️ Action Required: Configure Smart Routing for ${department} Department`;
 
     const unroutedListHtml = unroutedIssues.length > 0
