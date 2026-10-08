@@ -132,8 +132,11 @@ export const getAllDepartmentsAdmin = async (req, res) => {
 
       const checkMatchesAdmin = (u) => {
         if (!u || !u.isDeptAdmin) return false;
+        // Authoritative: If adminDepartments array is present and non-empty, match strictly against it
+        if (Array.isArray(u.adminDepartments) && u.adminDepartments.length > 0) {
+          return u.adminDepartments.some((d) => normKey(d) === deptNorm);
+        }
         if (u.adminDepartment && normKey(u.adminDepartment) === deptNorm) return true;
-        if (Array.isArray(u.adminDepartments) && u.adminDepartments.some((d) => normKey(d) === deptNorm)) return true;
         return false;
       };
 

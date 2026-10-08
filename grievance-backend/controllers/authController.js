@@ -965,7 +965,7 @@ export const updateUserProfile = async (req, res) => {
     if (fullName && fullName.trim()) userUpdate.fullName = fullName.trim();
     if (!isStudent && newDept) {
       userUpdate.staffDepartment = newDept;
-      if (user.isDeptAdmin || user.isMasterAdmin) {
+      if (user.isMasterAdmin) {
         userUpdate.adminDepartment = newDept;
       }
     }
