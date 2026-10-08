@@ -125,11 +125,52 @@ export const getRoutingRuleByIssueType = async (req, res) => {
 export const updateRoutingRule = async (req, res) => {
   try {
     const { id } = req.params;
-    const { assignedStaff, assignmentMode, isActive } = req.body;
+    const { issueTypeId, department, assignedStaff, assignmentMode, targetAudience, isActive } = req.body;
+
+    const existingRule = await RoutingRule.findById(id);
+    if (!existingRule) {
+      return res.status(404).json({ message: "Routing rule not found" });
+    }
 
     const updateData = { updatedAt: Date.now() };
+
+    if (issueTypeId) {
+      const issueType = await IssueType.findById(issueTypeId);
+      if (!issueType) {
+        return res.status(404).json({ message: "Issue type not found" });
+      }
+
+      // Check if duplicate active rule already exists for this issueTypeId in this department
+      const targetDept = department || existingRule.department;
+      const deptRegex = new RegExp(`^${(targetDept || "").trim()}$`, "i");
+      const duplicateRule = await RoutingRule.findOne({
+        _id: { $ne: id },
+        issueTypeId,
+        department: { $regex: deptRegex },
+        isActive: true
+      });
+
+      if (duplicateRule) {
+        return res.status(400).json({
+          message: "An active routing rule already exists for this issue type in this department"
+        });
+      }
+
+      updateData.issueTypeId = issueTypeId;
+    }
+
+    if (department) updateData.department = department.trim();
+    if (targetAudience) updateData.targetAudience = targetAudience;
+    if (assignmentMode) updateData.assignmentMode = assignmentMode;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
     if (assignedStaff) {
-      updateData.assignedStaff = assignedStaff.map(staff => ({
+      const mode = assignmentMode || existingRule.assignmentMode || "single";
+      const finalStaff = mode === "single" && Array.isArray(assignedStaff)
+        ? assignedStaff.slice(0, 1)
+        : assignedStaff;
+
+      updateData.assignedStaff = finalStaff.map(staff => ({
         staffId: staff.staffId,
         staffName: staff.staffName,
         staffEmail: staff.staffEmail || "",
@@ -137,14 +178,9 @@ export const updateRoutingRule = async (req, res) => {
         roundRobinIndex: staff.roundRobinIndex || 0
       }));
     }
-    if (assignmentMode) updateData.assignmentMode = assignmentMode;
-    if (isActive !== undefined) updateData.isActive = isActive;
 
-    const routingRule = await RoutingRule.findByIdAndUpdate(id, updateData, { new: true });
-
-    if (!routingRule) {
-      return res.status(404).json({ message: "Routing rule not found" });
-    }
+    const routingRule = await RoutingRule.findByIdAndUpdate(id, updateData, { new: true })
+      .populate('issueTypeId');
 
     res.status(200).json({ message: "Routing rule updated successfully", routingRule });
   } catch (error) {

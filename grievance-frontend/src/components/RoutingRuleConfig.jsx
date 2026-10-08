@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   PlusIcon,
   TrashIcon,
@@ -9,7 +9,8 @@ import {
   RerouteIcon,
   RepeatIcon,
   ZapIcon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  EditIcon
 } from "./Icons";
 
 function RoutingRuleConfig({ department }) {
@@ -17,6 +18,8 @@ function RoutingRuleConfig({ department }) {
   const [issues, setIssues] = useState([]);
   const [departmentStaff, setDepartmentStaff] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const formRef = useRef(null);
   const [targetAudience, setTargetAudience] = useState("student"); // "student" | "staff"
   const [formData, setFormData] = useState({
     issueTypeId: "",
@@ -93,6 +96,25 @@ function RoutingRuleConfig({ department }) {
     }
   };
 
+  // Merge currently assigned staff with department staff list so assigned personnel always render
+  const combinedStaffList = useMemo(() => {
+    const list = [...departmentStaff];
+    formData.assignedStaff.forEach((assigned) => {
+      const exists = list.some(
+        (s) => String(s.id) === String(assigned.staffId) || String(s._id) === String(assigned.staffId)
+      );
+      if (!exists && assigned.staffName) {
+        list.push({
+          id: assigned.staffId,
+          fullName: assigned.staffName,
+          email: assigned.staffEmail || "",
+          isCurrentAssignmentOnly: true
+        });
+      }
+    });
+    return list;
+  }, [departmentStaff, formData.assignedStaff]);
+
   const handleModeChange = (newMode) => {
     let updatedStaff = [...formData.assignedStaff];
     if (newMode === "single" && updatedStaff.length > 1) {
@@ -106,33 +128,34 @@ function RoutingRuleConfig({ department }) {
   };
 
   const handleStaffToggle = (staffId, staffName, staffEmail) => {
+    const sId = String(staffId);
     if (formData.assignmentMode === "single") {
       // In Single Assign, exactly 1 staff member is selected at a time
-      const isAlreadySelected = formData.assignedStaff.some((s) => s.staffId === staffId);
+      const isAlreadySelected = formData.assignedStaff.some((s) => String(s.staffId) === sId);
       if (isAlreadySelected) {
         setFormData({ ...formData, assignedStaff: [] });
       } else {
         setFormData({
           ...formData,
-          assignedStaff: [{ staffId, staffName, staffEmail: staffEmail || "", isAvailable: true }]
+          assignedStaff: [{ staffId: sId, staffName, staffEmail: staffEmail || "", isAvailable: true }]
         });
       }
       return;
     }
 
     // In Round Robin & Team Pool, multi-select is enabled
-    const currentStaff = formData.assignedStaff.find((s) => s.staffId === staffId);
+    const currentStaff = formData.assignedStaff.find((s) => String(s.staffId) === sId);
     if (currentStaff) {
       setFormData({
         ...formData,
-        assignedStaff: formData.assignedStaff.filter((s) => s.staffId !== staffId)
+        assignedStaff: formData.assignedStaff.filter((s) => String(s.staffId) !== sId)
       });
     } else {
       setFormData({
         ...formData,
         assignedStaff: [
           ...formData.assignedStaff,
-          { staffId, staffName, staffEmail: staffEmail || "", isAvailable: true }
+          { staffId: sId, staffName, staffEmail: staffEmail || "", isAvailable: true }
         ]
       });
     }
@@ -192,6 +215,108 @@ function RoutingRuleConfig({ department }) {
     } catch (error) {
       console.error("Error creating routing rule:", error);
       setMessage("Failed to create routing rule");
+      setMessageType("error");
+    }
+  };
+
+  const handleStartEdit = (rule) => {
+    setEditingRule(rule);
+    setShowAddForm(false);
+
+    if (rule.targetAudience && rule.targetAudience !== targetAudience) {
+      setTargetAudience(rule.targetAudience);
+    }
+
+    setFormData({
+      issueTypeId: rule.issueTypeId?._id || rule.issueTypeId || "",
+      assignedStaff: rule.assignedStaff
+        ? rule.assignedStaff.map((s) => ({
+            staffId: String(s.staffId),
+            staffName: s.staffName,
+            staffEmail: s.staffEmail || "",
+            isAvailable: s.isAvailable !== undefined ? s.isAvailable : true,
+            roundRobinIndex: s.roundRobinIndex || 0
+          }))
+        : [],
+      assignmentMode: rule.assignmentMode || "single"
+    });
+
+    setMessage("");
+    if (formRef.current) {
+      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleCancel = () => {
+    setShowAddForm(false);
+    setEditingRule(null);
+    setFormData({
+      issueTypeId: "",
+      assignedStaff: [],
+      assignmentMode: "single"
+    });
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editingRule) return;
+
+    if (!formData.issueTypeId) {
+      setMessage("Please select an issue type.");
+      setMessageType("error");
+      return;
+    }
+
+    if (formData.assignmentMode === "single") {
+      if (formData.assignedStaff.length !== 1) {
+        setMessage("For Single Assign mode, please select exactly 1 dedicated staff member.");
+        setMessageType("error");
+        return;
+      }
+    } else if (formData.assignedStaff.length === 0) {
+      setMessage("Please select at least one staff member.");
+      setMessageType("error");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/${editingRule._id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issueTypeId: formData.issueTypeId,
+            department,
+            assignedStaff:
+              formData.assignmentMode === "single" ? [formData.assignedStaff[0]] : formData.assignedStaff,
+            assignmentMode: formData.assignmentMode,
+            targetAudience: targetAudience
+          })
+        }
+      );
+
+      if (res.ok) {
+        setMessage("Routing rule updated successfully!");
+        setMessageType("success");
+        setEditingRule(null);
+        setFormData({
+          issueTypeId: "",
+          assignedStaff: [],
+          assignmentMode: "single"
+        });
+        fetchRoutingRules();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        const error = await res.json().catch(() => ({}));
+        setMessage(error.message || "Failed to update routing rule");
+        setMessageType("error");
+      }
+    } catch (error) {
+      console.error("Error updating routing rule:", error);
+      setMessage("Failed to update routing rule");
       setMessageType("error");
     }
   };
@@ -293,8 +418,15 @@ function RoutingRuleConfig({ department }) {
               </button>
             </div>
 
-            {!showAddForm && (
-              <button onClick={() => setShowAddForm(true)} className="smart-btn-obsidian">
+            {!showAddForm && !editingRule && (
+              <button
+                onClick={() => {
+                  setEditingRule(null);
+                  setFormData({ issueTypeId: "", assignedStaff: [], assignmentMode: "single" });
+                  setShowAddForm(true);
+                }}
+                className="smart-btn-obsidian"
+              >
                 <PlusIcon width="15" height="15" />
                 <span>Create {targetAudience === "staff" ? "Staff" : "Student"} Rule</span>
               </button>
@@ -302,12 +434,34 @@ function RoutingRuleConfig({ department }) {
           </div>
         </div>
 
-        {/* Add Rule Form */}
-        {showAddForm && (
-          <form onSubmit={handleSubmit} className="smart-form-card">
+        {/* Add / Edit Rule Form */}
+        {(showAddForm || editingRule) && (
+          <form
+            ref={formRef}
+            onSubmit={editingRule ? handleUpdate : handleSubmit}
+            className="smart-form-card"
+          >
             <div className="smart-form-header">
-              <h3>Create {targetAudience === "staff" ? "Staff" : "Student"} Routing Rule</h3>
-              <p>Configure automated grievance dispatching mode and assigned staff personnel.</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <h3>
+                    {editingRule
+                      ? `Edit ${targetAudience === "staff" ? "Staff" : "Student"} Routing Rule`
+                      : `Create ${targetAudience === "staff" ? "Staff" : "Student"} Routing Rule`}
+                  </h3>
+                  <p>
+                    {editingRule
+                      ? "Modify assignment mode, issue type, and assigned personnel for this routing rule."
+                      : "Configure automated grievance dispatching mode and assigned staff personnel."}
+                  </p>
+                </div>
+                {editingRule && (
+                  <div className="smart-editing-pill">
+                    <EditIcon width="13" height="13" />
+                    <span>Editing Mode</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Field 1: Issue Type */}
@@ -323,6 +477,15 @@ function RoutingRuleConfig({ department }) {
                 required
               >
                 <option value="">Select an issue type...</option>
+                {editingRule &&
+                  editingRule.issueTypeId &&
+                  !issues.some(
+                    (i) => i._id === (editingRule.issueTypeId?._id || editingRule.issueTypeId)
+                  ) && (
+                    <option value={editingRule.issueTypeId?._id || editingRule.issueTypeId}>
+                      {editingRule.issueTypeId?.issueName || "Current Issue"}
+                    </option>
+                  )}
                 {issues.map((issue) => (
                   <option key={issue._id} value={issue._id}>
                     {issue.issueName} {!issue.isActive ? "(Inactive)" : ""}
@@ -449,19 +612,25 @@ function RoutingRuleConfig({ department }) {
                 )}
               </label>
 
-              {departmentStaff.length === 0 ? (
+              {combinedStaffList.length === 0 ? (
                 <div className="rule-empty-staff">
                   <AlertCircleIcon width="18" height="18" />
                   <span>No staff available in department "{department}". Please add staff first.</span>
                 </div>
               ) : (
                 <div className="rule-staff-grid">
-                  {departmentStaff.map((staff) => {
-                    const isSelected = !!formData.assignedStaff.find((s) => s.staffId === staff.id);
+                  {combinedStaffList.map((staff) => {
+                    const isSelected = !!formData.assignedStaff.find(
+                      (s) =>
+                        String(s.staffId) === String(staff.id) ||
+                        String(s.staffId) === String(staff._id)
+                    );
                     return (
                       <div
-                        key={staff.id}
-                        onClick={() => handleStaffToggle(staff.id, staff.fullName, staff.email)}
+                        key={staff.id || staff._id}
+                        onClick={() =>
+                          handleStaffToggle(staff.id || staff._id, staff.fullName, staff.email)
+                        }
                         className={`rule-staff-card ${isSelected ? "selected" : ""}`}
                       >
                         <div className="rule-staff-card-left">
@@ -470,7 +639,10 @@ function RoutingRuleConfig({ department }) {
                           </div>
                           <div>
                             <div className="rule-staff-name">{staff.fullName}</div>
-                            <div className="rule-staff-id">ID: {staff.id}</div>
+                            <div className="rule-staff-id">
+                              ID: {staff.id || staff._id}
+                              {staff.isCurrentAssignmentOnly && " (Current)"}
+                            </div>
                           </div>
                         </div>
 
@@ -492,19 +664,12 @@ function RoutingRuleConfig({ department }) {
             <div className="smart-form-actions">
               <button type="submit" className="smart-btn-obsidian">
                 <SaveIcon width="15" height="15" />
-                <span>Save Routing Rule</span>
+                <span>{editingRule ? "Update Routing Rule" : "Save Routing Rule"}</span>
               </button>
               <button
                 type="button"
                 className="smart-btn-ghost"
-                onClick={() => {
-                  setShowAddForm(false);
-                  setFormData({
-                    issueTypeId: "",
-                    assignedStaff: [],
-                    assignmentMode: "single"
-                  });
-                }}
+                onClick={handleCancel}
               >
                 Cancel
               </button>
@@ -518,9 +683,13 @@ function RoutingRuleConfig({ department }) {
             <RerouteIcon width="34" height="34" />
             <h4>No {targetAudience} routing rules configured</h4>
             <p>Define automated rules so incoming tickets are immediately dispatched to officers.</p>
-            {!showAddForm && (
+            {!showAddForm && !editingRule && (
               <button
-                onClick={() => setShowAddForm(true)}
+                onClick={() => {
+                  setEditingRule(null);
+                  setFormData({ issueTypeId: "", assignedStaff: [], assignmentMode: "single" });
+                  setShowAddForm(true);
+                }}
                 className="smart-btn-obsidian"
                 style={{ marginTop: "12px" }}
               >
@@ -543,69 +712,105 @@ function RoutingRuleConfig({ department }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {routingRules.map((rule) => (
-                    <tr key={rule._id}>
-                      <td>
-                        <div className="rule-issue-name-cell">
-                          <span className="smart-issue-name">
-                            {rule.issueTypeId?.issueName || "Unknown Issue"}
-                          </span>
-                          <span className="rule-audience-tag">
-                            {rule.targetAudience === "staff" ? "👔 Staff" : "🎓 Student"}
-                          </span>
-                        </div>
-                      </td>
-                      <td>{renderModeBadge(rule.assignmentMode)}</td>
-                      <td>
-                        <div className="rule-staff-chips-wrap">
-                          {rule.assignedStaff && rule.assignedStaff.length > 0 ? (
-                            rule.assignedStaff.map((staff, idx) => (
-                              <span key={idx} className="rule-staff-chip">
-                                <UserIcon width="12" height="12" />
-                                <span>{staff.staffName}</span>
+                  {routingRules.map((rule) => {
+                    const isCurrentlyEditing = editingRule && editingRule._id === rule._id;
+                    return (
+                      <tr key={rule._id} className={isCurrentlyEditing ? "rule-row-editing" : ""}>
+                        <td>
+                          <div className="rule-issue-name-cell">
+                            <span className="smart-issue-name">
+                              {rule.issueTypeId?.issueName || "Unknown Issue"}
+                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span className="rule-audience-tag">
+                                {rule.targetAudience === "staff" ? "👔 Staff" : "🎓 Student"}
                               </span>
-                            ))
-                          ) : (
-                            <span className="rule-staff-none">None assigned</span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: "right", paddingRight: "20px" }}>
-                        <button
-                          onClick={() => handleDelete(rule._id)}
-                          className="smart-action-btn delete"
-                          title="Delete Routing Rule"
-                        >
-                          <TrashIcon width="16" height="16" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                              {isCurrentlyEditing && (
+                                <span className="rule-editing-badge">Editing</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td>{renderModeBadge(rule.assignmentMode)}</td>
+                        <td>
+                          <div className="rule-staff-chips-wrap">
+                            {rule.assignedStaff && rule.assignedStaff.length > 0 ? (
+                              rule.assignedStaff.map((staff, idx) => (
+                                <span key={idx} className="rule-staff-chip">
+                                  <UserIcon width="12" height="12" />
+                                  <span>{staff.staffName}</span>
+                                </span>
+                              ))
+                            ) : (
+                              <span className="rule-staff-none">None assigned</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: "right", paddingRight: "20px" }}>
+                          <div className="smart-actions-group">
+                            <button
+                              onClick={() => handleStartEdit(rule)}
+                              className={`smart-action-btn edit ${isCurrentlyEditing ? "active" : ""}`}
+                              title="Edit Routing Rule"
+                            >
+                              <EditIcon width="15" height="15" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(rule._id)}
+                              className="smart-action-btn delete"
+                              title="Delete Routing Rule"
+                            >
+                              <TrashIcon width="16" height="16" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* 2. Mobile Clean Cards View (< 768px) */}
             <div className="smart-mobile-cards">
-              {routingRules.map((rule) => (
-                <div key={rule._id} className="smart-mobile-card">
-                  <div className="smart-mobile-card-top">
-                    <div>
-                      <div className="smart-issue-name">
-                        {rule.issueTypeId?.issueName || "Unknown Issue"}
+              {routingRules.map((rule) => {
+                const isCurrentlyEditing = editingRule && editingRule._id === rule._id;
+                return (
+                  <div
+                    key={rule._id}
+                    className={`smart-mobile-card ${isCurrentlyEditing ? "rule-card-editing" : ""}`}
+                  >
+                    <div className="smart-mobile-card-top">
+                      <div>
+                        <div className="smart-issue-name">
+                          {rule.issueTypeId?.issueName || "Unknown Issue"}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                          <span className="rule-audience-tag">
+                            {rule.targetAudience === "staff" ? "👔 Staff Rule" : "🎓 Student Rule"}
+                          </span>
+                          {isCurrentlyEditing && (
+                            <span className="rule-editing-badge">Editing</span>
+                          )}
+                        </div>
                       </div>
-                      <span className="rule-audience-tag" style={{ marginTop: "4px" }}>
-                        {rule.targetAudience === "staff" ? "👔 Staff Rule" : "🎓 Student Rule"}
-                      </span>
+                      <div className="smart-actions-group">
+                        <button
+                          onClick={() => handleStartEdit(rule)}
+                          className={`smart-action-btn edit ${isCurrentlyEditing ? "active" : ""}`}
+                          title="Edit"
+                        >
+                          <EditIcon width="15" height="15" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(rule._id)}
+                          className="smart-action-btn delete"
+                          title="Delete"
+                        >
+                          <TrashIcon width="16" height="16" />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleDelete(rule._id)}
-                      className="smart-action-btn delete"
-                      title="Delete"
-                    >
-                      <TrashIcon width="16" height="16" />
-                    </button>
-                  </div>
 
                   <div style={{ marginTop: "4px" }}>{renderModeBadge(rule.assignmentMode)}</div>
 
@@ -627,7 +832,8 @@ function RoutingRuleConfig({ department }) {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           </>
         )}
@@ -1195,6 +1401,12 @@ function RoutingRuleConfig({ department }) {
         }
 
         /* Actions */
+        .smart-actions-group {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
         .smart-action-btn {
           width: 32px;
           height: 32px;
@@ -1208,12 +1420,62 @@ function RoutingRuleConfig({ department }) {
           transition: all 0.15s ease;
         }
 
+        .smart-action-btn.edit {
+          color: #2563eb;
+        }
+        .smart-action-btn.edit:hover {
+          background: #eff6ff;
+          border-color: #93c5fd;
+        }
+        .smart-action-btn.edit.active {
+          background: #dbeafe;
+          border-color: #3b82f6;
+          color: #1d4ed8;
+        }
+
         .smart-action-btn.delete {
           color: #dc2626;
         }
         .smart-action-btn.delete:hover {
           background: #fef2f2;
           border-color: #fca5a5;
+        }
+
+        .smart-editing-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+          border-radius: 9999px;
+          font-size: 0.74rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+        }
+
+        .rule-editing-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 1px 6px;
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+          border-radius: 4px;
+          font-size: 0.68rem;
+          font-weight: 700;
+        }
+
+        .rule-row-editing {
+          background-color: #f0f7ff !important;
+        }
+
+        .smart-mobile-card.rule-card-editing {
+          border-color: #93c5fd;
+          background: #f8fbff;
+          box-shadow: 0 0 0 1px #3b82f6;
         }
 
         /* Empty State */
