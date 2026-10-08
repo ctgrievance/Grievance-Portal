@@ -218,7 +218,7 @@ const ExportPreviewModal = ({
             // Select initial records matching the active status
             const initialFiltered = itemList.filter(item => {
                 if (initStatus !== "All") {
-                    const s = item.status || item["Portal Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+                    const s = item.status || item.Status || item["Portal Status"] || item["Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
                     if (String(s).toLowerCase() !== String(initStatus).toLowerCase()) {
                         return false;
                     }

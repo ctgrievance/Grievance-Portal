@@ -292,13 +292,28 @@ function sanitizeSheetName(rawName, existingNames = new Set()) {
  * 4. Status column soft pastel badge colors (green/yellow/red)
  * 5. Dynamic calculated column widths so text is never cut off
  */
+// Reusable cell styles for high-speed Excel export with minimal memory overhead
+const DEFAULT_CELL_FONT = { name: "Calibri", size: 10, color: { argb: "FF1E293B" } };
+const DEFAULT_CELL_BORDER = {
+  top: { style: "thin", color: { argb: "FFE2E8F0" } },
+  bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+  left: { style: "thin", color: { argb: "FFE2E8F0" } },
+  right: { style: "thin", color: { argb: "FFE2E8F0" } },
+};
+const ALIGN_LEFT_WRAP = { vertical: "middle", horizontal: "left", wrapText: true };
+const ALIGN_CENTER = { vertical: "middle", horizontal: "center" };
+const ALIGN_LEFT = { vertical: "middle", horizontal: "left" };
+const ZEBRA_WHITE_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
+const ZEBRA_GRAY_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+
 function populateWorksheet(sheet, {
   title = "DATA EXPORT REPORT",
   subtitle,
   columns = [],
   records = [],
 }) {
-  // 5. PROPER COLUMN WIDTHS: Normalize column metadata and calculate widths based on content
+  // 5. PROPER COLUMN WIDTHS: Fast sampled calculation (first 100 rows) instead of 70,000+ string splits
+  const sampleRecords = records.length > 100 ? records.slice(0, 100) : records;
   const formattedColumns = columns.map((col) => {
     const colKey = typeof col === "string" ? col : (col.key || col.label);
     const colHeader = typeof col === "string" ? col : (col.label || col.key);
@@ -308,15 +323,14 @@ function populateWorksheet(sheet, {
       /message|description|details|remarks/i.test(colHeader);
 
     let maxContentLen = (colHeader || "").length;
-    records.forEach((rec) => {
+    sampleRecords.forEach((rec) => {
       let val = rec[colKey];
       if (val === undefined && colHeader) val = rec[colHeader];
       if (val !== null && val !== undefined) {
         const strVal = String(val);
-        const lines = strVal.split("\n");
-        lines.forEach((l) => {
-          if (l.length > maxContentLen) maxContentLen = l.length;
-        });
+        const newlineIdx = strVal.indexOf("\n");
+        const len = newlineIdx !== -1 ? newlineIdx : strVal.length;
+        if (len > maxContentLen) maxContentLen = len;
       }
     });
 
@@ -445,55 +459,35 @@ function populateWorksheet(sheet, {
     row.height = 22;
 
     const isEven = recIdx % 2 === 0;
-    const zebraColor = isEven ? "FFFFFFFF" : "FFF8FAFC"; // White & Soft-Gray (#F8FAFC)
+    const currentZebraFill = isEven ? ZEBRA_WHITE_FILL : ZEBRA_GRAY_FILL;
 
     row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
       const colMeta = formattedColumns[colNumber - 1];
       if (!colMeta) return;
 
-      cell.font = { name: "Calibri", size: 10, color: { argb: "FF1E293B" } };
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFE2E8F0" } },
-        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
-        left: { style: "thin", color: { argb: "FFE2E8F0" } },
-        right: { style: "thin", color: { argb: "FFE2E8F0" } },
-      };
+      cell.font = DEFAULT_CELL_FONT;
+      cell.border = DEFAULT_CELL_BORDER;
 
       if (colMeta.isLongText) {
-        cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+        cell.alignment = ALIGN_LEFT_WRAP;
       } else if (/id|date|phone|rating|roll/i.test(colMeta.key)) {
-        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.alignment = ALIGN_CENTER;
       } else {
-        cell.alignment = { vertical: "middle", horizontal: "left" };
+        cell.alignment = ALIGN_LEFT;
       }
 
       // 4. SOFT PASTEL BADGE COLORS ON STATUS COLUMN
       const isStatusCol = isStatusColumn(colMeta);
       const badgeStyle = getStatusBadgeStyle(cell.value);
 
-      if (isStatusCol && badgeStyle) {
+      if (badgeStyle) {
         cell.fill = badgeStyle.fill;
         cell.font = badgeStyle.font;
         cell.border = badgeStyle.border;
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-      } else if (badgeStyle) {
-        cell.fill = badgeStyle.fill;
-        cell.font = badgeStyle.font;
-        cell.border = badgeStyle.border;
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-      } else if (isStatusCol) {
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: zebraColor },
-        };
+        cell.alignment = ALIGN_CENTER;
       } else {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: zebraColor },
-        };
+        if (isStatusCol) cell.alignment = ALIGN_CENTER;
+        cell.fill = currentZebraFill;
       }
     });
   });

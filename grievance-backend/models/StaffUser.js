@@ -51,5 +51,7 @@ const staffUserSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+staffUserSchema.index({ createdAt: -1 });
+
 const StaffUser = mongoose.model("StaffUser", staffUserSchema);
 export default StaffUser;

@@ -33,7 +33,20 @@ const smartTitleCase = (str) => {
     .join(" ");
 };
 
+// Fast cached Intl formatters for high-speed batch serialization
+const fastDateFormatter = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" });
+const fastDateTimeFormatter = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const formatExportDate = (dt) => {
+  if (!dt) return "—";
+  try { return fastDateFormatter.format(new Date(dt)); } catch (_) { return "—"; }
+};
+const formatExportDateTime = (dt) => {
+  if (!dt) return "—";
+  try { return fastDateTimeFormatter.format(new Date(dt)); } catch (_) { return "—"; }
+};
+
 // =========================================================================
+
 // CACHING UTILITIES & NORMALIZERS (Zero-Lag Cohort Audits)
 // =========================================================================
 let cachedStudentsData = null;
@@ -46,18 +59,16 @@ let cachedDepts = null;
 let cachedDeptsTimestamp = 0;
 
 const USER_CACHE_TTL = 30 * 1000; // 30 seconds
-const DROPDOWN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const DROPDOWN_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 export const invalidateComparisonCache = () => {
   cachedStudentsData = null;
   cachedStudentsTimestamp = 0;
   cachedStaffData = null;
   cachedStaffTimestamp = 0;
-  cachedSchools = null;
-  cachedSchoolsTimestamp = 0;
-  cachedDepts = null;
-  cachedDeptsTimestamp = 0;
+  // Retain cachedSchools and cachedDepts to prevent 3-second unindexed scans on distinct("school")
 };
+
 
 const getCleanSchools = async () => {
   const now = Date.now();
@@ -300,20 +311,77 @@ export const getLiveStudents = async (req, res) => {
 
     const query = andConditions.length > 0 ? { $and: andConditions } : {};
 
+    const isExport = req.query.isExport || req.query.export;
+    if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
+      const allMatching = await StudentUser.find(query)
+        .select("id ctuId fullName email phone school department program batch studentType isVerified otp createdAt")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Only query StudentRecord for students that actually have missing school or ctuId!
+      const missingEnrichment = allMatching.filter(s => (!s.school || s.school.toLowerCase() === "xyz" || !s.ctuId));
+      let allRecordMap = new Map();
+      if (missingEnrichment.length > 0) {
+        const missingIds = missingEnrichment.map(s => s.id).filter(Boolean);
+        const relatedRecords = await StudentRecord.find({ id: { $in: missingIds } }).select("id school ctuId").lean();
+        allRecordMap = new Map(relatedRecords.map(r => [r.id, r]));
+      }
+
+      const exportData = allMatching.map((sObj, idx) => {
+        const matched = allRecordMap.get(sObj.id);
+        const resolvedSchool = (sObj.school && sObj.school.toLowerCase() !== "xyz") ? sObj.school : (matched?.school || sObj.department || "");
+        const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
+        const isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
+        return {
+          "S.No": idx + 1,
+          "CTU ID": sObj.ctuId || matched?.ctuId || sObj.id || "",
+          "Student ID": sObj.id || "",
+          "Full Name": sObj.fullName || "",
+          "Email": sObj.email || "",
+          "Phone": sObj.phone || "",
+          "School": resolvedSchool,
+          "Program": sObj.program || "",
+          "Batch": sObj.batch || "",
+          "Student Type": sObj.studentType || "Regular",
+          "Status": isOtpVerified ? "VERIFIED" : "PENDING OTP",
+          "Registered On": formatExportDate(sObj.createdAt)
+        };
+      });
+
+      if (isExport === "preview" || req.query.preview === "true") {
+        return res.json({
+          success: true,
+          type: "live_students",
+          count: exportData.length,
+          records: exportData,
+          departments: cleanSchools
+        });
+      }
+
+      const wb = xlsx.utils.book_new();
+      const ws = xlsx.utils.json_to_sheet(exportData);
+      xlsx.utils.book_append_sheet(wb, ws, "Registered_Students");
+      const buffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+
+      res.setHeader("Content-Disposition", `attachment; filename="Registered_Students_${status}_${new Date().toISOString().split("T")[0]}.xlsx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      return res.send(buffer);
+    }
+
     const total = await StudentUser.countDocuments(query);
     const rawStudents = await StudentUser.find(query)
       .select("-password -phoneOtp -resetOtp") // retain otp presence check
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean();
 
     // Format output students and enrich school/ctuId from StudentRecord if needed
     const studentIds = rawStudents.map(s => s.id).filter(Boolean);
-    const relatedRecords = await StudentRecord.find({ id: { $in: studentIds } }).select("id school ctuId");
+    const relatedRecords = await StudentRecord.find({ id: { $in: studentIds } }).select("id school ctuId").lean();
     const recordMap = new Map(relatedRecords.map(r => [r.id, r]));
 
-    const students = rawStudents.map(s => {
-      const sObj = s.toObject();
+    const students = rawStudents.map(sObj => {
       const matchedRecord = recordMap.get(sObj.id);
 
       // Resolve school (fallback to StudentRecord if empty or 'xyz')
@@ -344,57 +412,6 @@ export const getLiveStudents = async (req, res) => {
       StudentUser.countDocuments(pendingCondition)
     ]);
 
-    const isExport = req.query.isExport || req.query.export;
-    if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
-      const allMatching = await StudentUser.find(query)
-        .select("-password -phoneOtp -resetOtp")
-        .sort({ createdAt: -1 });
-
-      const allIds = allMatching.map(s => s.id).filter(Boolean);
-      const allRelatedRecords = await StudentRecord.find({ id: { $in: allIds } }).select("id school ctuId");
-      const allRecordMap = new Map(allRelatedRecords.map(r => [r.id, r]));
-
-      const exportData = allMatching.map((s, idx) => {
-        const sObj = s.toObject ? s.toObject() : s;
-        const matched = allRecordMap.get(sObj.id);
-        const resolvedSchool = (sObj.school && sObj.school.toLowerCase() !== "xyz") ? sObj.school : (matched?.school || sObj.department || "");
-        const hasPendingOtp = !sObj.isVerified || !!(sObj.otp && sObj.otp.trim() !== "");
-        const isOtpVerified = !hasPendingOtp && sObj.isVerified === true;
-        return {
-          "S.No": idx + 1,
-          "CTU ID": sObj.ctuId || matched?.ctuId || sObj.id || "",
-          "Student ID": sObj.id || "",
-          "Full Name": sObj.fullName || "",
-          "Email": sObj.email || "",
-          "Phone": sObj.phone || "",
-          "School": resolvedSchool,
-          "Program": sObj.program || "",
-          "Batch": sObj.batch || "",
-          "Student Type": sObj.studentType || "Regular",
-          "Status": isOtpVerified ? "VERIFIED" : "PENDING OTP",
-          "Registered On": sObj.createdAt ? new Date(sObj.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—"
-        };
-      });
-
-      if (isExport === "preview" || req.query.preview === "true") {
-        return res.json({
-          success: true,
-          type: "live_students",
-          count: exportData.length,
-          records: exportData,
-          departments: cleanSchools
-        });
-      }
-
-      const wb = xlsx.utils.book_new();
-      const ws = xlsx.utils.json_to_sheet(exportData);
-      xlsx.utils.book_append_sheet(wb, ws, "Registered_Students");
-      const buffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
-
-      res.setHeader("Content-Disposition", `attachment; filename="Registered_Students_${status}_${new Date().toISOString().split("T")[0]}.xlsx"`);
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      return res.send(buffer);
-    }
 
     res.status(200).json({
       total,
@@ -650,22 +667,24 @@ export const getLiveStaff = async (req, res) => {
       }
     }
 
+    const isExport = req.query.isExport || req.query.export;
+
     const rawStaff = await StaffUser.find(query)
       .select("-password -phoneOtp -resetOtp") // retain otp presence check
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     // Also pull admin records and staff records for complete role/staffType enrichment
     const [adminRecords, staffRecords] = await Promise.all([
-      AdminStaffModel.find({}),
+      AdminStaffModel.find({}).lean(),
       StaffRecord.find({}).select("id staffType department").lean()
     ]);
     const adminMap = new Map(adminRecords.map(a => [a.id, a]));
     const staffRecordTypeMap = new Map(staffRecords.map(r => [r.id ? r.id.toUpperCase() : "", r.staffType]));
 
-    let enriched = rawStaff.map(s => {
-      const sObj = s.toObject();
+    let enriched = rawStaff.map(sObj => {
       const sUpperId = sObj.id ? sObj.id.toUpperCase() : "";
-      const adminRec = adminMap.get(s.id);
+      const adminRec = adminMap.get(sObj.id);
       if (adminRec) {
         sObj.adminDepartment = adminRec.adminDepartment || sObj.adminDepartment || "";
         sObj.isDeptAdmin = adminRec.isDeptAdmin !== undefined ? adminRec.isDeptAdmin : sObj.isDeptAdmin;
@@ -678,16 +697,6 @@ export const getLiveStaff = async (req, res) => {
       return sObj;
     });
 
-    // Calculate verified teaching vs non-teaching counts across ALL registered staff
-    let totalTeaching = 0;
-    let totalNonTeaching = 0;
-    enriched.forEach(s => {
-      if (s.isOtpVerified) {
-        if (s.staffType === "Teaching") totalTeaching++;
-        else totalNonTeaching++;
-      }
-    });
-
     // Filter by staffType if requested ("teaching" vs "non-teaching")
     const cleanStaffType = (staffType || "all").toString().toLowerCase().trim();
     if (cleanStaffType === "teaching") {
@@ -696,20 +705,8 @@ export const getLiveStaff = async (req, res) => {
       enriched = enriched.filter(s => s.staffType !== "Teaching");
     }
 
-    const total = enriched.length;
-    const paginated = enriched.slice((pageNum - 1) * limitNum, pageNum * limitNum);
-
-    // Count strictly verified staff
-    const [totalRegistered, totalPending, totalAdmins, totalRegularStaff] = await Promise.all([
-      StaffUser.countDocuments(verifiedCondition),
-      StaffUser.countDocuments(pendingCondition),
-      StaffUser.countDocuments({ ...verifiedCondition, $or: [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }] }),
-      StaffUser.countDocuments({ ...verifiedCondition, role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } })
-    ]);
-
     const departments = cleanDepartments;
 
-    const isExport = req.query.isExport || req.query.export;
     if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
       const exportData = enriched.map((s, idx) => {
         let authorityRole = "Staff Member";
@@ -727,7 +724,7 @@ export const getLiveStaff = async (req, res) => {
           "Department": s.staffDepartment || s.adminDepartment || s.department || "",
           "Role & Authority": authorityRole,
           "Status": s.isOtpVerified ? "VERIFIED" : "PENDING OTP",
-          "Joined Date": s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"
+          "Joined Date": formatExportDateTime(s.createdAt)
         };
       });
 
@@ -750,6 +747,28 @@ export const getLiveStaff = async (req, res) => {
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       return res.send(buffer);
     }
+
+    // Calculate verified teaching vs non-teaching counts across ALL registered staff
+    let totalTeaching = 0;
+    let totalNonTeaching = 0;
+    enriched.forEach(s => {
+      if (s.isOtpVerified) {
+        if (s.staffType === "Teaching") totalTeaching++;
+        else totalNonTeaching++;
+      }
+    });
+
+    const total = enriched.length;
+    const paginated = enriched.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+
+    // Count strictly verified staff
+    const [totalRegistered, totalPending, totalAdmins, totalRegularStaff] = await Promise.all([
+      StaffUser.countDocuments(verifiedCondition),
+      StaffUser.countDocuments(pendingCondition),
+      StaffUser.countDocuments({ ...verifiedCondition, $or: [{ role: "admin" }, { isDeptAdmin: true }, { isMasterAdmin: true }] }),
+      StaffUser.countDocuments({ ...verifiedCondition, role: "staff", isDeptAdmin: { $ne: true }, isMasterAdmin: { $ne: true } })
+    ]);
+
 
     res.status(200).json({
       total,
@@ -1126,19 +1145,6 @@ export const getRecordsComparison = async (req, res) => {
         });
       }
 
-      const baseContextQuery = contextConditions.length > 0 ? { $and: contextConditions } : {};
-      const registeredContextQuery = contextConditions.length > 0
-        ? { $and: [...contextConditions, studentRegisteredCondition] }
-        : studentRegisteredCondition;
-
-      // Dynamic counts
-      const [totalRecords, totalRegistered] = await Promise.all([
-        StudentRecord.countDocuments(baseContextQuery),
-        StudentRecord.countDocuments(registeredContextQuery)
-      ]);
-      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
-      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
-
       // Final query including status filter
       const finalConditions = [...contextConditions];
       if (status === "registered") {
@@ -1151,6 +1157,7 @@ export const getRecordsComparison = async (req, res) => {
       // Export to Excel / Preview
       if (isExport === "true" || isExport === true || isExport === "preview" || req.query.preview === "true") {
         const allMatching = await StudentRecord.find(finalQuery).sort({ id: 1 }).lean();
+
         const exportData = allMatching.map((rec, idx) => {
           const recId = rec.id ? String(rec.id).trim().toUpperCase() : "";
           const recCtu = rec.ctuId ? String(rec.ctuId).trim().toUpperCase() : "";
@@ -1173,7 +1180,7 @@ export const getRecordsComparison = async (req, res) => {
             "Portal Status": (rec.isRegistered === true || !!regInfo) ? "REGISTERED" : "NOT REGISTERED",
             "Registered Email": rec.registeredEmail || regInfo?.email || "—",
             "Registered Phone": rec.registeredPhone || regInfo?.phone || "—",
-            "Registered On": (rec.registeredAt || regInfo?.createdAt) ? new Date(rec.registeredAt || regInfo.createdAt).toLocaleDateString("en-US") : "—"
+            "Registered On": formatExportDate(rec.registeredAt || regInfo?.createdAt)
           };
         });
 
@@ -1197,8 +1204,22 @@ export const getRecordsComparison = async (req, res) => {
         return res.send(buffer);
       }
 
+      const baseContextQuery = contextConditions.length > 0 ? { $and: contextConditions } : {};
+      const registeredContextQuery = contextConditions.length > 0
+        ? { $and: [...contextConditions, studentRegisteredCondition] }
+        : studentRegisteredCondition;
+
+      // Dynamic counts
+      const [totalRecords, totalRegistered] = await Promise.all([
+        StudentRecord.countDocuments(baseContextQuery),
+        StudentRecord.countDocuments(registeredContextQuery)
+      ]);
+      const totalNotRegistered = Math.max(0, totalRecords - totalRegistered);
+      const registrationRate = totalRecords > 0 ? `${((totalRegistered / totalRecords) * 100).toFixed(1)}%` : "0%";
+
       // Mathematical totalFiltered without duplicate countDocuments query
       const totalFiltered = status === "registered" ? totalRegistered : status === "not_registered" ? totalNotRegistered : totalRecords;
+
       const rawRecords = await StudentRecord.find(finalQuery)
         .sort({ createdAt: -1, id: 1 })
         .skip((pageNum - 1) * limitNum)
@@ -1347,7 +1368,7 @@ export const getRecordsComparison = async (req, res) => {
             "Portal Role": rec.registeredRole || regInfo?.role || (regInfo?.isDeptAdmin ? "Dept Admin" : "—"),
             "Registered Email": rec.registeredEmail || regInfo?.email || "—",
             "Registered Phone": rec.registeredPhone || regInfo?.phone || "—",
-            "Registered On": (rec.registeredAt || regInfo?.createdAt) ? new Date(rec.registeredAt || regInfo.createdAt).toLocaleDateString("en-US") : "—"
+            "Registered On": formatExportDate(rec.registeredAt || regInfo?.createdAt)
           };
         });
 
