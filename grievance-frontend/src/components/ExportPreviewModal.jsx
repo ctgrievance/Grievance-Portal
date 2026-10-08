@@ -659,6 +659,20 @@ const ExportPreviewModal = ({
                     </button>
                 </div>
 
+                {/* Scrollable Modal Body (Contains Filters, Columns, Stats, Records, and Pagination) */}
+                <div
+                    className="export-modal-body"
+                    style={{
+                        flex: 1,
+                        overflowY: "auto",
+                        overflowX: "hidden",
+                        WebkitOverflowScrolling: "touch",
+                        minHeight: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        background: "#ffffff",
+                    }}
+                >
                 {/* Filter Toolbar */}
                 <div
                     className="export-filter-bar"
@@ -805,20 +819,32 @@ const ExportPreviewModal = ({
                         background: "#ffffff",
                     }}
                 >
-                    <p style={{
-                        margin: "0 0 8px",
-                        fontWeight: "700",
-                        color: "#64748b",
-                        fontSize: "0.76rem",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px"
-                    }}>
-                        <GridIcon width="13" height="13" /> Select Columns
-                    </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: "8px",
+                        }}
+                    >
+                        <p style={{
+                            margin: 0,
+                            fontWeight: "700",
+                            color: "#64748b",
+                            fontSize: "0.76rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px"
+                        }}>
+                            <GridIcon width="13" height="13" /> Select Columns ({selectedColumns.length}/{activeColumns.length})
+                        </p>
+                    </div>
+                    <div
+                        className="export-columns-chips-container"
+                        style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}
+                    >
                         {activeColumns.map((col) => {
                             const isSelected = selectedColumns.includes(col.key);
                             return (
@@ -880,42 +906,47 @@ const ExportPreviewModal = ({
                             Columns: <strong style={{ color: "#0f172a", fontWeight: "700" }}>{selectedColumns.length}</strong>
                         </span>
                     </div>
-                    <label style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                        color: "#334155",
-                        fontSize: "0.82rem",
-                        userSelect: "none",
-                    }}>
-                        <input
-                            type="checkbox"
-                            checked={isAllFilteredSelected}
-                            onChange={toggleSelectAll}
-                            style={{
-                                width: "16px",
-                                height: "16px",
-                                cursor: "pointer",
-                                accentColor: "#0f172a",
-                            }}
-                        />
-                        {isAllFilteredSelected ? "Deselect All" : "Select All"}
-                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        {/* Select All Checkbox */}
+                        <label style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                            color: "#334155",
+                            fontSize: "0.82rem",
+                            userSelect: "none",
+                        }}>
+                            <input
+                                type="checkbox"
+                                checked={isAllFilteredSelected}
+                                onChange={toggleSelectAll}
+                                style={{
+                                    width: "16px",
+                                    height: "16px",
+                                    cursor: "pointer",
+                                    accentColor: "#0f172a",
+                                }}
+                            />
+                            {isAllFilteredSelected ? "Deselect All" : "Select All"}
+                        </label>
+                    </div>
                 </div>
 
-                {/* Table Preview */}
+                {/* Horizontal Scroll Table Preview */}
                 <div
                     className="export-table-container"
                     style={{
                         flex: 1,
                         overflow: "auto",
                         background: "#ffffff",
+                        WebkitOverflowScrolling: "touch",
                     }}
                 >
                     <table style={{
                         width: "100%",
+                        minWidth: "850px",
                         borderCollapse: "collapse",
                         fontSize: "0.84rem",
                     }}>
@@ -1053,18 +1084,21 @@ const ExportPreviewModal = ({
 
                 {/* Preview Pagination Toolbar */}
                 {filteredData.length > 0 && (
-                    <div style={{
-                        padding: "10px 24px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        background: "#f8fafc",
-                        borderTop: "1px solid #e2e8f0",
-                        fontSize: "0.82rem",
-                        color: "#64748b",
-                        flexWrap: "wrap",
-                        gap: "10px"
-                    }}>
+                    <div
+                        className="export-pagination-bar"
+                        style={{
+                            padding: "10px 24px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            background: "#f8fafc",
+                            borderTop: "1px solid #e2e8f0",
+                            fontSize: "0.82rem",
+                            color: "#64748b",
+                            flexWrap: "wrap",
+                            gap: "10px"
+                        }}
+                    >
                         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
                             <span>
                                 Showing <strong>{((currentPreviewPage - 1) * previewPageSize) + 1}</strong> – <strong>{Math.min(currentPreviewPage * previewPageSize, filteredData.length)}</strong> of <strong>{filteredData.length.toLocaleString()}</strong> preview records
@@ -1134,6 +1168,8 @@ const ExportPreviewModal = ({
                         </div>
                     </div>
                 )}
+
+                </div>{/* End export-modal-body */}
 
                 {/* Footer */}
                 <div
@@ -1305,65 +1341,109 @@ const ExportPreviewModal = ({
         @media (max-width: 768px) {
           .export-modal-overlay {
             padding: 8px !important;
+            align-items: center !important;
           }
 
           .export-modal-container {
-            max-height: 95vh !important;
+            height: 94vh !important;
+            max-height: 94vh !important;
             border-radius: 14px !important;
             margin: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
           }
           
           .export-header {
-            padding: 14px 16px !important;
+            padding: 12px 16px !important;
+            flex-shrink: 0 !important;
           }
           
           .export-header h2 {
-            font-size: 1.1rem !important;
+            font-size: 1.05rem !important;
+          }
+
+          .export-modal-body {
+            flex: 1 !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            min-height: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
           
           .export-filter-bar {
-            flex-direction: column !important;
-            padding: 10px 14px !important;
-            align-items: stretch !important;
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            padding: 8px 12px !important;
+            gap: 6px !important;
+            align-items: center !important;
           }
           
           .export-filter-bar > * {
-            width: 100% !important;
-            flex: none !important;
+            flex: 1 1 130px !important;
+            min-width: 110px !important;
           }
           
           .export-column-section {
-            padding: 10px 14px !important;
+            padding: 8px 12px !important;
+          }
+
+          .export-columns-chips-container {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 4px !important;
+            gap: 6px !important;
           }
           
-          .export-column-section > div {
-            gap: 5px !important;
+          .export-columns-chips-container label {
+            flex-shrink: 0 !important;
           }
           
           .export-stats-bar {
             padding: 10px 14px !important;
-            flex-direction: column !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
             gap: 8px !important;
-            align-items: flex-start !important;
+            align-items: center !important;
+            justify-content: space-between !important;
           }
           
           .export-stats-bar > div {
-            gap: 12px !important;
-            justify-content: flex-start !important;
-            width: 100% !important;
+            gap: 10px !important;
+            flex-wrap: wrap !important;
           }
           
           .export-table-container {
-            max-height: 40vh !important;
+            flex: 1 !important;
+            min-height: 260px !important;
+            overflow: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            background: #ffffff !important;
+          }
+
+          .export-table-container table {
+            min-width: 850px !important;
+            border-collapse: collapse !important;
+          }
+
+          .export-pagination-bar {
+            padding: 8px 12px !important;
+            font-size: 0.78rem !important;
+            gap: 6px !important;
           }
           
           .export-footer {
-            padding: 14px 16px !important;
+            padding: 10px 14px !important;
             flex-direction: column !important;
-            gap: 12px !important;
+            gap: 8px !important;
             align-items: stretch !important;
+            flex-shrink: 0 !important;
           }
           
           .export-sheetname-wrap {
@@ -1371,7 +1451,7 @@ const ExportPreviewModal = ({
             width: 100% !important;
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 6px !important;
+            gap: 4px !important;
           }
 
           .export-sheetname-wrap > div {

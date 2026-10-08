@@ -31,7 +31,8 @@ const grievanceSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      index: true
     },
     issueTypeId: {
       type: mongoose.Schema.Types.ObjectId,

@@ -263,11 +263,11 @@ function AdminDepartments() {
     };
   }, [fetchDepartments]);
 
-  // ⏱️ Auto background polling fallback every 8 seconds (silent, zero UI flicker)
+  // ⏱️ Auto background polling fallback every 60 seconds (silent, zero UI flicker)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchDepartments(true);
-    }, 8000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [fetchDepartments]);
 
@@ -434,12 +434,25 @@ function AdminDepartments() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || `Failed to ${isEditMode ? "update" : "create"} department`);
 
+      // Optimistically update local department in state for instant UI response
+      if (isEditMode && data.department) {
+        setDepartments((prev) =>
+          prev.map((d) =>
+            d._id === data.department._id
+              ? { ...d, ...data.department, stats: d.stats, currentAdmin: d.currentAdmin, currentAdmins: d.currentAdmins }
+              : d
+          )
+        );
+      } else if (!isEditMode && data.department) {
+        setDepartments((prev) => [data.department, ...prev]);
+      }
+
       showNotification(
         `Department "${formData.name}" ${isEditMode ? "updated" : "added"} successfully.`,
         "success"
       );
       handleCloseModal();
-      fetchDepartments();
+      fetchDepartments(true);
     } catch (err) {
       showNotification(err.message, "error");
     } finally {
