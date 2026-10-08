@@ -8,6 +8,7 @@ import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
+import RoutingAuditPanel from "../components/RoutingAuditPanel";
 import ctLogo from "../assets/ct-logo.png";
 import { getSocket } from "../services/socket";
 import {
@@ -68,7 +69,7 @@ function AdminDashboard() {
   // Determine initial tab from URL query (?tab=departments), then localStorage, fallback to "triage"
   const getInitialTab = () => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users"];
+    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users", "routing_audit"];
     if (urlTab && validTabs.includes(urlTab)) {
       return urlTab;
     }
@@ -94,7 +95,7 @@ function AdminDashboard() {
   // Keep URL search params and activeTab synced
   useEffect(() => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users"];
+    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users", "routing_audit"];
     if (urlTab && validTabs.includes(urlTab)) {
       if (urlTab !== activeTab) {
         setActiveTabState(urlTab);
@@ -170,6 +171,12 @@ function AdminDashboard() {
             label: "Registered Users",
             IconComponent: UserIcon,
             description: "Verified student and staff accounts"
+          },
+          {
+            id: "routing_audit",
+            label: "Routing Audit",
+            IconComponent: RerouteIcon,
+            description: "Coverage health & automated reminders"
           }
         ]
       : [])
@@ -516,6 +523,7 @@ function AdminDashboard() {
             isSuperAdmin={true}
           />
         )}
+        {activeTab === "routing_audit" && isMasterAdmin && <RoutingAuditPanel />}
 
         {activeTab === "triage" && (
           <div className="card admin-triage-card">

@@ -4,6 +4,8 @@ import StaffUser from "../models/StaffUser.js";
 import User from "../models/UserModel.js";
 import StaffRecord from "../models/StaffRecord.js";
 import Grievance from "../models/GrievanceModel.js";
+import Department from "../models/Department.js";
+import { sendRoutingReminderEmail } from "../utils/emailService.js";
 
 // Create Routing Rule
 export const createRoutingRule = async (req, res) => {
@@ -361,6 +363,401 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
   }
 };
 
+/**
+ * 📊 GET ROUTING HEALTH AUDIT
+ * Aggregates all departments, their issue types, and routing rules.
+ * Flags unrouted issue types and sorts departments by highest deficit first.
+ */
+export const getRoutingHealthAudit = async (req, res) => {
+  try {
+    // 1. Fetch departments from Department collection and distinct IssueType departments
+    const officialDepts = await Department.find({ isActive: true }).lean();
+    const issueTypeDepts = await IssueType.distinct("department", { isActive: true });
+
+    // Map of normalized department name -> metadata
+    const deptMap = new Map();
+
+    officialDepts.forEach((d) => {
+      if (d.name) {
+        const key = d.name.trim().toLowerCase();
+        deptMap.set(key, {
+          name: d.name.trim(),
+          code: d.code || "",
+          description: d.description || "",
+          targetAudience: d.targetAudience || "both",
+          lastRoutingReminderAt: d.lastRoutingReminderAt || null,
+          lastRoutingReminderTo: d.lastRoutingReminderTo || ""
+        });
+      }
+    });
+
+    issueTypeDepts.forEach((name) => {
+      if (name && name.trim()) {
+        const key = name.trim().toLowerCase();
+        if (!deptMap.has(key)) {
+          deptMap.set(key, {
+            name: name.trim(),
+            code: "",
+            description: "",
+            targetAudience: "both",
+            lastRoutingReminderAt: null,
+            lastRoutingReminderTo: ""
+          });
+        }
+      }
+    });
+
+    // 2. Fetch all active issue types
+    const allIssues = await IssueType.find({ isActive: true })
+      .sort({ targetAudience: 1, issueName: 1 })
+      .lean();
+
+    // 3. Fetch all active routing rules
+    const allRules = await RoutingRule.find({ isActive: true }).lean();
+
+    // 4. Fetch all department administrators
+    const adminUsers = await User.find({ isDeptAdmin: true })
+      .select("id fullName email adminDepartment adminDepartments")
+      .lean();
+
+    // 5. Aggregate metrics per department
+    const departmentAudits = [];
+
+    deptMap.forEach((deptMeta, deptKey) => {
+      const deptName = deptMeta.name;
+
+      // Filter issues for this department
+      const deptIssues = allIssues.filter(
+        (i) => (i.department || "").trim().toLowerCase() === deptKey
+      );
+
+      // Filter rules for this department
+      const deptRules = allRules.filter(
+        (r) => (r.department || "").trim().toLowerCase() === deptKey
+      );
+
+      const routedIssues = [];
+      const unroutedIssues = [];
+
+      deptIssues.forEach((issue) => {
+        // A valid routing rule must match issueTypeId, be active, and have at least 1 available assigned staff
+        const matchedRule = deptRules.find((r) => {
+          const ruleIssueId = r.issueTypeId?._id || r.issueTypeId;
+          const hasStaff =
+            Array.isArray(r.assignedStaff) &&
+            r.assignedStaff.length > 0 &&
+            r.assignedStaff.some((s) => s.isAvailable !== false);
+          return String(ruleIssueId) === String(issue._id) && hasStaff;
+        });
+
+        if (matchedRule) {
+          routedIssues.push({
+            issueId: issue._id,
+            issueName: issue.issueName,
+            targetAudience: issue.targetAudience || "student",
+            assignmentMode: matchedRule.assignmentMode,
+            staffCount: matchedRule.assignedStaff.length
+          });
+        } else {
+          unroutedIssues.push({
+            issueId: issue._id,
+            issueName: issue.issueName,
+            description: issue.description || "",
+            targetAudience: issue.targetAudience || "student",
+            createdAt: issue.createdAt
+          });
+        }
+      });
+
+      // Find department admins
+      const admins = adminUsers
+        .filter((u) => {
+          const primary = (u.adminDepartment || "").trim().toLowerCase();
+          if (primary === deptKey) return true;
+          if (Array.isArray(u.adminDepartments)) {
+            return u.adminDepartments.some(
+              (d) => (d || "").trim().toLowerCase() === deptKey
+            );
+          }
+          return false;
+        })
+        .map((u) => ({
+          id: u.id,
+          fullName: u.fullName || "Department Admin",
+          email: u.email || ""
+        }));
+
+      const totalIssues = deptIssues.length;
+      const routedCount = routedIssues.length;
+      const unroutedCount = unroutedIssues.length;
+      const coveragePercent =
+        totalIssues > 0 ? Math.round((routedCount / totalIssues) * 100) : (totalIssues === 0 ? 0 : 100);
+
+      departmentAudits.push({
+        department: deptName,
+        code: deptMeta.code,
+        description: deptMeta.description,
+        admins,
+        totalIssues,
+        routedCount,
+        unroutedCount,
+        coveragePercent,
+        needsAttention: unroutedCount > 0,
+        unroutedIssues,
+        routedIssues,
+        lastRoutingReminderAt: deptMeta.lastRoutingReminderAt,
+        lastRoutingReminderTo: deptMeta.lastRoutingReminderTo
+      });
+    });
+
+    // 6. Sort departments by DEFICIT FIRST:
+    // 1st: Highest unroutedCount first
+    // 2nd: Lowest coveragePercent first
+    // 3rd: Total issues created
+    departmentAudits.sort((a, b) => {
+      if (a.unroutedCount !== b.unroutedCount) {
+        return b.unroutedCount - a.unroutedCount; // most missing rules on top
+      }
+      if (a.coveragePercent !== b.coveragePercent) {
+        return a.coveragePercent - b.coveragePercent; // lowest coverage first
+      }
+      if (a.totalIssues !== b.totalIssues) {
+        return b.totalIssues - a.totalIssues; // active departments over empty
+      }
+      return a.department.localeCompare(b.department);
+    });
+
+    // 7. Calculate overall health stats
+    const totalDepartments = departmentAudits.length;
+    const needsAttentionCount = departmentAudits.filter((d) => d.needsAttention).length;
+    const fullyConfiguredCount = departmentAudits.filter(
+      (d) => d.totalIssues > 0 && d.unroutedCount === 0
+    ).length;
+    const noIssuesCount = departmentAudits.filter((d) => d.totalIssues === 0).length;
+    const totalUnroutedIssues = departmentAudits.reduce(
+      (sum, d) => sum + d.unroutedCount,
+      0
+    );
+
+    res.status(200).json({
+      summary: {
+        totalDepartments,
+        needsAttentionCount,
+        fullyConfiguredCount,
+        noIssuesCount,
+        totalUnroutedIssues
+      },
+      departments: departmentAudits
+    });
+  } catch (error) {
+    console.error("Error generating routing health audit:", error);
+    res.status(500).json({ message: "Failed to generate routing audit" });
+  }
+};
+
+/**
+ * 📧 SEND DEPARTMENT ROUTING REMINDER EMAIL
+ * Sends a targeted notification email to the Department Admin listing their unrouted issues.
+ */
+export const sendDepartmentRoutingReminder = async (req, res) => {
+  try {
+    const { department, recipientEmail, customNote, superAdminName } = req.body;
+
+    if (!department || !recipientEmail) {
+      return res.status(400).json({
+        message: "Department name and recipient email are required"
+      });
+    }
+
+    const deptRegex = new RegExp(`^${(department || "").trim()}$`, "i");
+
+    // Fetch unrouted issues for this department
+    const deptIssues = await IssueType.find({
+      department: { $regex: deptRegex },
+      isActive: true
+    }).lean();
+
+    const deptRules = await RoutingRule.find({
+      department: { $regex: deptRegex },
+      isActive: true
+    }).lean();
+
+    const unroutedIssues = deptIssues.filter((issue) => {
+      const rule = deptRules.find((r) => {
+        const rIssueId = r.issueTypeId?._id || r.issueTypeId;
+        const hasStaff =
+          Array.isArray(r.assignedStaff) &&
+          r.assignedStaff.length > 0 &&
+          r.assignedStaff.some((s) => s.isAvailable !== false);
+        return String(rIssueId) === String(issue._id) && hasStaff;
+      });
+      return !rule;
+    });
+
+    // Lookup recipient admin's name
+    const adminUser = await User.findOne({
+      email: recipientEmail.trim().toLowerCase()
+    }).lean();
+    const adminName = adminUser ? adminUser.fullName : "Department Administrator";
+
+    // Send email via emailService
+    const emailResult = await sendRoutingReminderEmail({
+      toEmail: recipientEmail.trim(),
+      adminName,
+      department: department.trim(),
+      unroutedIssues,
+      customNote: customNote || "",
+      superAdminName: superAdminName || "Super Administrator"
+    });
+
+    if (!emailResult.success) {
+      return res.status(500).json({
+        message: emailResult.message || "Failed to send reminder email"
+      });
+    }
+
+    // Update timestamp in Department collection
+    const updatedDept = await Department.findOneAndUpdate(
+      { name: { $regex: deptRegex } },
+      {
+        lastRoutingReminderAt: new Date(),
+        lastRoutingReminderTo: recipientEmail.trim()
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      message: `Reminder email successfully sent to ${recipientEmail}`,
+      department: department.trim(),
+      recipientEmail: recipientEmail.trim(),
+      sentAt: new Date(),
+      unroutedCount: unroutedIssues.length,
+      updatedDept
+    });
+  } catch (error) {
+    console.error("Error sending department routing reminder:", error);
+    res.status(500).json({ message: "Internal server error sending reminder" });
+  }
+};
+
+/**
+ * 📢 BROADCAST ROUTING REMINDERS TO ALL INCOMPLETE DEPARTMENTS
+ * Sends an email notification to all department admins whose departments have unrouted categories.
+ */
+export const broadcastRoutingReminders = async (req, res) => {
+  try {
+    const { customNote, superAdminName } = req.body;
+
+    // 1. Fetch all active issue types, routing rules, and admin users
+    const allIssues = await IssueType.find({ isActive: true }).lean();
+    const allRules = await RoutingRule.find({ isActive: true }).lean();
+    const adminUsers = await User.find({ isDeptAdmin: true })
+      .select("id fullName email adminDepartment adminDepartments")
+      .lean();
+
+    // Group issues by department
+    const deptMap = new Map();
+    allIssues.forEach((issue) => {
+      const deptName = (issue.department || "").trim();
+      if (!deptName) return;
+      const deptKey = deptName.toLowerCase();
+      if (!deptMap.has(deptKey)) {
+        deptMap.set(deptKey, { name: deptName, issues: [] });
+      }
+      deptMap.get(deptKey).issues.push(issue);
+    });
+
+    const results = [];
+    const now = new Date();
+
+    for (const [deptKey, deptData] of deptMap.entries()) {
+      const deptRules = allRules.filter(
+        (r) => (r.department || "").trim().toLowerCase() === deptKey
+      );
+
+      const unrouted = deptData.issues.filter((issue) => {
+        const rule = deptRules.find((r) => {
+          const rIssueId = r.issueTypeId?._id || r.issueTypeId;
+          const hasStaff =
+            Array.isArray(r.assignedStaff) &&
+            r.assignedStaff.length > 0 &&
+            r.assignedStaff.some((s) => s.isAvailable !== false);
+          return String(rIssueId) === String(issue._id) && hasStaff;
+        });
+        return !rule;
+      });
+
+      if (unrouted.length === 0) continue; // All routed, skip!
+
+      // Find department admin
+      const admins = adminUsers.filter((u) => {
+        const primary = (u.adminDepartment || "").trim().toLowerCase();
+        if (primary === deptKey) return true;
+        if (Array.isArray(u.adminDepartments)) {
+          return u.adminDepartments.some(
+            (d) => (d || "").trim().toLowerCase() === deptKey
+          );
+        }
+        return false;
+      });
+
+      if (admins.length === 0) continue;
+
+      const targetAdmin = admins[0];
+      if (!targetAdmin.email) continue;
+
+      try {
+        await sendRoutingReminderEmail({
+          toEmail: targetAdmin.email.trim(),
+          adminName: targetAdmin.fullName || "Department Administrator",
+          department: deptData.name,
+          unroutedIssues: unrouted,
+          customNote: customNote || "",
+          superAdminName: superAdminName || "Super Administrator"
+        });
+
+        const deptRegex = new RegExp(`^${deptData.name}$`, "i");
+        await Department.findOneAndUpdate(
+          { name: { $regex: deptRegex } },
+          {
+            lastRoutingReminderAt: now,
+            lastRoutingReminderTo: targetAdmin.email.trim()
+          }
+        );
+
+        results.push({
+          department: deptData.name,
+          adminEmail: targetAdmin.email,
+          unroutedCount: unrouted.length,
+          status: "sent"
+        });
+      } catch (err) {
+        console.error(`Failed to send broadcast reminder to ${deptData.name}:`, err);
+        results.push({
+          department: deptData.name,
+          adminEmail: targetAdmin.email,
+          status: "failed",
+          error: err.message
+        });
+      }
+    }
+
+    const sentCount = results.filter((r) => r.status === "sent").length;
+    const failedCount = results.filter((r) => r.status === "failed").length;
+
+    res.status(200).json({
+      message: `Broadcast complete: reminders sent to ${sentCount} department administrators.`,
+      sentCount,
+      failedCount,
+      sentAt: now,
+      results
+    });
+  } catch (error) {
+    console.error("Error broadcasting routing reminders:", error);
+    res.status(500).json({ message: "Failed to broadcast reminders" });
+  }
+};
+
 export default {
   createRoutingRule,
   getAllRoutingRules,
@@ -368,5 +765,8 @@ export default {
   getRoutingRuleByIssueType,
   updateRoutingRule,
   deleteRoutingRule,
-  autoAssignGrievance
+  autoAssignGrievance,
+  getRoutingHealthAudit,
+  sendDepartmentRoutingReminder,
+  broadcastRoutingReminders
 };

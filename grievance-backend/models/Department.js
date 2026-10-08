@@ -73,6 +73,14 @@ const departmentSchema = new mongoose.Schema(
     programs: {
       type: [String],
       default: []
+    },
+    lastRoutingReminderAt: {
+      type: Date,
+      default: null
+    },
+    lastRoutingReminderTo: {
+      type: String,
+      default: ""
     }
   },
   { timestamps: true }
