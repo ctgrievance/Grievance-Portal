@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { PlusIcon, TrashIcon, SaveIcon } from "./Icons";
+import {
+  PlusIcon,
+  TrashIcon,
+  SaveIcon,
+  GraduationCapIcon,
+  UsersIcon,
+  UserIcon,
+  RerouteIcon,
+  RepeatIcon,
+  ZapIcon,
+  AlertCircleIcon
+} from "./Icons";
 
 function RoutingRuleConfig({ department }) {
   const [routingRules, setRoutingRules] = useState([]);
@@ -25,14 +36,15 @@ function RoutingRuleConfig({ department }) {
 
   const fetchRoutingRules = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`);
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`
+      );
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch routing rules error:", errorText);
         return;
       }
       const data = await res.json();
-      console.log("Fetched routing rules:", data);
       setRoutingRules(data);
     } catch (error) {
       console.error("Error fetching routing rules:", error);
@@ -41,14 +53,15 @@ function RoutingRuleConfig({ department }) {
 
   const fetchIssues = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`);
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/issue-types/department/${encodeURIComponent(department)}?targetAudience=${targetAudience}`
+      );
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch issues error:", errorText);
         return;
       }
       const data = await res.json();
-      console.log("Fetched issues:", data);
       setIssues(data);
     } catch (error) {
       console.error("Error fetching issues:", error);
@@ -62,16 +75,18 @@ function RoutingRuleConfig({ department }) {
         console.error("No token found");
         return;
       }
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/staff/${encodeURIComponent(department)}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/staff/${encodeURIComponent(department)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Fetch department staff error:", errorText);
         return;
       }
       const data = await res.json();
-      console.log("Fetched department staff:", data);
       setDepartmentStaff(data);
     } catch (error) {
       console.error("Error fetching department staff:", error);
@@ -93,7 +108,7 @@ function RoutingRuleConfig({ department }) {
   const handleStaffToggle = (staffId, staffName, staffEmail) => {
     if (formData.assignmentMode === "single") {
       // In Single Assign, exactly 1 staff member is selected at a time
-      const isAlreadySelected = formData.assignedStaff.some(s => s.staffId === staffId);
+      const isAlreadySelected = formData.assignedStaff.some((s) => s.staffId === staffId);
       if (isAlreadySelected) {
         setFormData({ ...formData, assignedStaff: [] });
       } else {
@@ -106,23 +121,32 @@ function RoutingRuleConfig({ department }) {
     }
 
     // In Round Robin & Team Pool, multi-select is enabled
-    const currentStaff = formData.assignedStaff.find(s => s.staffId === staffId);
+    const currentStaff = formData.assignedStaff.find((s) => s.staffId === staffId);
     if (currentStaff) {
       setFormData({
         ...formData,
-        assignedStaff: formData.assignedStaff.filter(s => s.staffId !== staffId)
+        assignedStaff: formData.assignedStaff.filter((s) => s.staffId !== staffId)
       });
     } else {
       setFormData({
         ...formData,
-        assignedStaff: [...formData.assignedStaff, { staffId, staffName, staffEmail: staffEmail || "", isAvailable: true }]
+        assignedStaff: [
+          ...formData.assignedStaff,
+          { staffId, staffName, staffEmail: staffEmail || "", isAvailable: true }
+        ]
       });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    if (!formData.issueTypeId) {
+      setMessage("Please select an issue type.");
+      setMessageType("error");
+      return;
+    }
+
     if (formData.assignmentMode === "single") {
       if (formData.assignedStaff.length !== 1) {
         setMessage("For Single Assign mode, please select exactly 1 dedicated staff member.");
@@ -142,7 +166,8 @@ function RoutingRuleConfig({ department }) {
         body: JSON.stringify({
           issueTypeId: formData.issueTypeId,
           department,
-          assignedStaff: formData.assignmentMode === "single" ? [formData.assignedStaff[0]] : formData.assignedStaff,
+          assignedStaff:
+            formData.assignmentMode === "single" ? [formData.assignedStaff[0]] : formData.assignedStaff,
           assignmentMode: formData.assignmentMode,
           targetAudience: targetAudience
         })
@@ -175,9 +200,12 @@ function RoutingRuleConfig({ department }) {
     if (!window.confirm("Are you sure you want to delete this routing rule?")) return;
 
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/${ruleId}`, {
-        method: "DELETE"
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/routing-rules/${ruleId}`,
+        {
+          method: "DELETE"
+        }
+      );
 
       if (res.ok) {
         setMessage("Routing rule deleted successfully!");
@@ -195,243 +223,261 @@ function RoutingRuleConfig({ department }) {
     }
   };
 
-  const getAssignmentModeLabel = (mode) => {
+  const renderModeBadge = (mode) => {
     switch (mode) {
-      case "single": return "🎯 Single (1 Dedicated)";
-      case "round_robin": return "🔄 Round Robin (Series Rotation)";
-      case "pool_accept": return "👥 Team Pool (First-to-Claim)";
-      default: return mode;
+      case "single":
+        return (
+          <span className="rule-mode-badge single">
+            <ZapIcon width="13" height="13" />
+            <span>Single Dedicated</span>
+          </span>
+        );
+      case "round_robin":
+        return (
+          <span className="rule-mode-badge round-robin">
+            <RepeatIcon width="13" height="13" />
+            <span>Series Rotation</span>
+          </span>
+        );
+      case "pool_accept":
+        return (
+          <span className="rule-mode-badge pool">
+            <UsersIcon width="13" height="13" />
+            <span>Team Pool Queue</span>
+          </span>
+        );
+      default:
+        return <span className="rule-mode-badge default">{mode}</span>;
     }
   };
 
   return (
-    <div className="dashboard-content" style={{ padding: 0 }}>
-      <div className="card" style={{ padding: "20px" }}>
+    <div className="smart-mgmt-container">
+      <div className="smart-mgmt-card">
         {message && (
           <div className={`alert-box ${messageType}`} style={{ marginBottom: "20px" }}>
             {message}
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
-          <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", fontWeight: "700" }}>
-            Routing Rules for {department}
-          </h2>
+        {/* Top Header & Executive Controls */}
+        <div className="smart-mgmt-header">
+          <div className="smart-mgmt-title-group">
+            <div className="smart-mgmt-pill-badge">
+              <RerouteIcon width="13" height="13" />
+              <span>Automated Routing</span>
+            </div>
+            <h2>
+              Routing Rules for <span className="smart-dept-tag">{department}</span>
+            </h2>
+          </div>
 
-          <div style={{ display: "flex", gap: "15px", alignItems: "center", flexWrap: "wrap" }}>
-            <div className="admin-filter-bar" style={{ padding: "4px", margin: 0, width: "auto" }}>
+          <div className="smart-mgmt-controls">
+            {/* Sleek Segmented Switcher */}
+            <div className="smart-segmented-switcher">
               <button
                 type="button"
+                className={`smart-segmented-btn ${targetAudience === "student" ? "active" : ""}`}
                 onClick={() => setTargetAudience("student")}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: "20px",
-                  background: targetAudience === "student" ? "#2563eb" : "transparent",
-                  color: targetAudience === "student" ? "#fff" : "#475569",
-                  border: "none",
-                  fontWeight: "600",
-                  fontSize: "0.85rem",
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
               >
-                Student
+                <GraduationCapIcon width="14" height="14" />
+                <span>Student</span>
               </button>
               <button
                 type="button"
+                className={`smart-segmented-btn ${targetAudience === "staff" ? "active" : ""}`}
                 onClick={() => setTargetAudience("staff")}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: "20px",
-                  background: targetAudience === "staff" ? "#2563eb" : "transparent",
-                  color: targetAudience === "staff" ? "#fff" : "#475569",
-                  border: "none",
-                  fontWeight: "600",
-                  fontSize: "0.85rem",
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
               >
-                Staff
+                <UsersIcon width="14" height="14" />
+                <span>Staff</span>
               </button>
             </div>
 
             {!showAddForm && (
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="admin-btn-primary"
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <PlusIcon width="16" height="16" /> Create {targetAudience === "staff" ? "Staff" : "Student"} Rule
+              <button onClick={() => setShowAddForm(true)} className="smart-btn-obsidian">
+                <PlusIcon width="15" height="15" />
+                <span>Create {targetAudience === "staff" ? "Staff" : "Student"} Rule</span>
               </button>
             )}
           </div>
         </div>
 
+        {/* Add Rule Form */}
         {showAddForm && (
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              background: "#f8fafc",
-              padding: "20px",
-              borderRadius: "12px",
-              marginBottom: "20px",
-              border: "1px solid #e2e8f0"
-            }}
-          >
-            <h3 style={{ margin: "0 0 15px 0", color: "#334155", fontSize: "1.1rem" }}>
-              Create New Routing Rule
-            </h3>
-            
-            <div style={{ marginBottom: "15px" }}>
-              <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
-                Issue Type
+          <form onSubmit={handleSubmit} className="smart-form-card">
+            <div className="smart-form-header">
+              <h3>Create {targetAudience === "staff" ? "Staff" : "Student"} Routing Rule</h3>
+              <p>Configure automated grievance dispatching mode and assigned staff personnel.</p>
+            </div>
+
+            {/* Field 1: Issue Type */}
+            <div className="rule-form-section">
+              <label className="rule-form-label">
+                Select Issue Type *
+                <span className="rule-form-sublabel">The complaint category this routing rule applies to</span>
               </label>
               <select
                 value={formData.issueTypeId}
                 onChange={(e) => setFormData({ ...formData, issueTypeId: e.target.value })}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  borderRadius: "20px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.9rem",
-                  zIndex: 1000,
-                  position: "relative"
-                }}
+                className="smart-input"
                 required
               >
                 <option value="">Select an issue type...</option>
                 {issues.map((issue) => (
                   <option key={issue._id} value={issue._id}>
-                    {issue.issueName}
+                    {issue.issueName} {!issue.isActive ? "(Inactive)" : ""}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label style={{ display: "block", marginBottom: "5px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
-                Assignment Mode
+            {/* Field 2: Assignment Mode Selector Cards */}
+            <div className="rule-form-section">
+              <label className="rule-form-label">
+                Select Assignment Mode *
+                <span className="rule-form-sublabel">Choose how complaints should be dispatched to assigned staff</span>
               </label>
-              <select
-                value={formData.assignmentMode}
-                onChange={(e) => handleModeChange(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  borderRadius: "20px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.9rem",
-                  zIndex: 1000,
-                  position: "relative"
-                }}
-              >
-                <option value="single">🎯 Single Assign (Direct to 1 Dedicated Staff)</option>
-                <option value="round_robin">🔄 Round Robin (Series Rotation / Load Balance)</option>
-                <option value="pool_accept">👥 Team Pool Queue (Open for Team to Claim)</option>
-              </select>
-              <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "8px 0 0 8px" }}>
-                {formData.assignmentMode === "single" && "🎯 Direct: Every complaint for this issue will go directly to the 1 selected staff member."}
-                {formData.assignmentMode === "round_robin" && "🔄 Series Rotation: Complaints will cycle 1-by-1 across all selected staff in series to balance workload."}
-                {formData.assignmentMode === "pool_accept" && "👥 Open Queue: Stays in the 'Pool Accept Queue' for all selected staff; the first staff member to click 'Accept' takes it."}
-              </p>
+
+              <div className="rule-mode-selector-grid">
+                {/* Single Assign */}
+                <div
+                  className={`rule-mode-card ${formData.assignmentMode === "single" ? "active" : ""}`}
+                  onClick={() => handleModeChange("single")}
+                >
+                  <div className="rule-mode-card-header">
+                    <div className="rule-mode-card-title-group">
+                      <div className="rule-mode-icon-box single">
+                        <ZapIcon width="16" height="16" />
+                      </div>
+                      <span className="rule-mode-card-title">Single Dedicated</span>
+                    </div>
+                    <div className={`rule-radio-indicator ${formData.assignmentMode === "single" ? "checked" : ""}`} />
+                  </div>
+                  <p className="rule-mode-card-desc">
+                    Every complaint goes directly and immediately to 1 dedicated staff member.
+                  </p>
+                </div>
+
+                {/* Round Robin */}
+                <div
+                  className={`rule-mode-card ${formData.assignmentMode === "round_robin" ? "active" : ""}`}
+                  onClick={() => handleModeChange("round_robin")}
+                >
+                  <div className="rule-mode-card-header">
+                    <div className="rule-mode-card-title-group">
+                      <div className="rule-mode-icon-box round-robin">
+                        <RepeatIcon width="16" height="16" />
+                      </div>
+                      <span className="rule-mode-card-title">Series Rotation</span>
+                    </div>
+                    <div className={`rule-radio-indicator ${formData.assignmentMode === "round_robin" ? "checked" : ""}`} />
+                  </div>
+                  <p className="rule-mode-card-desc">
+                    Evenly distributes workload by cycling tickets 1-by-1 across all selected staff in series.
+                  </p>
+                </div>
+
+                {/* Team Pool */}
+                <div
+                  className={`rule-mode-card ${formData.assignmentMode === "pool_accept" ? "active" : ""}`}
+                  onClick={() => handleModeChange("pool_accept")}
+                >
+                  <div className="rule-mode-card-header">
+                    <div className="rule-mode-card-title-group">
+                      <div className="rule-mode-icon-box pool">
+                        <UsersIcon width="16" height="16" />
+                      </div>
+                      <span className="rule-mode-card-title">Team Pool Queue</span>
+                    </div>
+                    <div className={`rule-radio-indicator ${formData.assignmentMode === "pool_accept" ? "checked" : ""}`} />
+                  </div>
+                  <p className="rule-mode-card-desc">
+                    Holds tickets in an open pool queue; any selected team member can claim and accept tickets first.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label style={{ display: "block", marginBottom: "10px", fontSize: "0.85rem", fontWeight: "600", color: "#475569" }}>
+            {/* Field 3: Staff Selection Grid */}
+            <div className="rule-form-section">
+              <label className="rule-form-label">
                 {formData.assignmentMode === "single" ? (
                   <>
                     Select 1 Dedicated Staff Member{" "}
-                    <span style={{ color: formData.assignedStaff.length === 1 ? "#16a34a" : "#dc2626", fontWeight: "700" }}>
+                    <span
+                      style={{
+                        color: formData.assignedStaff.length === 1 ? "#16a34a" : "#dc2626",
+                        fontWeight: "700"
+                      }}
+                    >
                       ({formData.assignedStaff.length}/1 selected)
                     </span>
-                    <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", fontWeight: "400", marginTop: "2px" }}>
-                      Single Assign requires exactly 1 staff member. Clicking a card will select only that person.
+                    <span className="rule-form-sublabel">
+                      Click any card below to assign that single dedicated officer.
                     </span>
                   </>
                 ) : formData.assignmentMode === "round_robin" ? (
                   <>
-                    Select Staff Team for Series Rotation & Load Balance{" "}
-                    <span style={{ color: formData.assignedStaff.length > 0 ? "#2563eb" : "#dc2626", fontWeight: "700" }}>
+                    Select Staff Team for Rotation & Load Balancing{" "}
+                    <span
+                      style={{
+                        color: formData.assignedStaff.length > 0 ? "#0f172a" : "#dc2626",
+                        fontWeight: "700"
+                      }}
+                    >
                       ({formData.assignedStaff.length} selected)
                     </span>
-                    <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", fontWeight: "400", marginTop: "2px" }}>
-                      Tickets will automatically rotate across these staff members (1-by-1 in series) to balance the load.
+                    <span className="rule-form-sublabel">
+                      Tickets will rotate 1-by-1 sequentially across the chosen personnel.
                     </span>
                   </>
                 ) : (
                   <>
-                    Select Staff Members for Open Pool Queue{" "}
-                    <span style={{ color: formData.assignedStaff.length > 0 ? "#059669" : "#dc2626", fontWeight: "700" }}>
+                    Select Staff Members for Team Pool{" "}
+                    <span
+                      style={{
+                        color: formData.assignedStaff.length > 0 ? "#0f172a" : "#dc2626",
+                        fontWeight: "700"
+                      }}
+                    >
                       ({formData.assignedStaff.length} selected)
                     </span>
-                    <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", fontWeight: "400", marginTop: "2px" }}>
-                      All selected staff will see incoming complaints in their Pool Queue and can accept them on first-come basis.
+                    <span className="rule-form-sublabel">
+                      All chosen personnel will see incoming tickets in their Pool Queue and can accept them on first-come basis.
                     </span>
                   </>
                 )}
               </label>
+
               {departmentStaff.length === 0 ? (
-                <p style={{ color: "#64748b", fontSize: "0.9rem" }}>No staff available in this department</p>
+                <div className="rule-empty-staff">
+                  <AlertCircleIcon width="18" height="18" />
+                  <span>No staff available in department "{department}". Please add staff first.</span>
+                </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "10px" }}>
+                <div className="rule-staff-grid">
                   {departmentStaff.map((staff) => {
-                    const isSelected = !!formData.assignedStaff.find(s => s.staffId === staff.id);
+                    const isSelected = !!formData.assignedStaff.find((s) => s.staffId === staff.id);
                     return (
                       <div
                         key={staff.id}
                         onClick={() => handleStaffToggle(staff.id, staff.fullName, staff.email)}
-                        style={{
-                          padding: "10px 15px",
-                          borderRadius: "12px",
-                          border: isSelected
-                            ? "2px solid #2563eb"
-                            : "1px solid #cbd5e1",
-                          background: isSelected
-                            ? "#eff6ff"
-                            : "white",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center"
-                        }}
+                        className={`rule-staff-card ${isSelected ? "selected" : ""}`}
                       >
-                        <div>
-                          <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "0.9rem" }}>
-                            {staff.fullName}
+                        <div className="rule-staff-card-left">
+                          <div className={`rule-staff-avatar ${isSelected ? "active" : ""}`}>
+                            {staff.fullName ? staff.fullName.charAt(0).toUpperCase() : "U"}
                           </div>
-                          <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                            ID: {staff.id}
+                          <div>
+                            <div className="rule-staff-name">{staff.fullName}</div>
+                            <div className="rule-staff-id">ID: {staff.id}</div>
                           </div>
                         </div>
+
                         {formData.assignmentMode === "single" ? (
-                          <div style={{
-                            width: "18px",
-                            height: "18px",
-                            borderRadius: "50%",
-                            border: isSelected ? "5px solid #2563eb" : "2px solid #cbd5e1",
-                            background: "white",
-                            flexShrink: 0,
-                            transition: "all 0.15s ease"
-                          }} />
+                          <div className={`rule-radio-indicator ${isSelected ? "checked" : ""}`} />
                         ) : (
-                          <div style={{
-                            width: "18px",
-                            height: "18px",
-                            borderRadius: "4px",
-                            background: isSelected ? "#2563eb" : "white",
-                            border: isSelected ? "none" : "2px solid #cbd5e1",
-                            color: "white",
-                            fontSize: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            fontWeight: "bold",
-                            transition: "all 0.15s ease"
-                          }}>
+                          <div className={`rule-checkbox-indicator ${isSelected ? "checked" : ""}`}>
                             {isSelected ? "✓" : ""}
                           </div>
                         )}
@@ -442,14 +488,15 @@ function RoutingRuleConfig({ department }) {
               )}
             </div>
 
-            <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
-              <button type="submit" className="admin-btn-primary">
-                <SaveIcon width="16" height="16" style={{ marginRight: "5px" }} />
-                Save Routing Rule
+            {/* Form Action Buttons */}
+            <div className="smart-form-actions">
+              <button type="submit" className="smart-btn-obsidian">
+                <SaveIcon width="15" height="15" />
+                <span>Save Routing Rule</span>
               </button>
               <button
                 type="button"
-                className="admin-btn-secondary"
+                className="smart-btn-ghost"
                 onClick={() => {
                   setShowAddForm(false);
                   setFormData({
@@ -465,63 +512,824 @@ function RoutingRuleConfig({ department }) {
           </form>
         )}
 
+        {/* Content Body: Empty State or Desktop Table + Mobile Cards */}
         {routingRules.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
-            No {targetAudience} routing rules configured yet.
+          <div className="smart-empty-state">
+            <RerouteIcon width="34" height="34" />
+            <h4>No {targetAudience} routing rules configured</h4>
+            <p>Define automated rules so incoming tickets are immediately dispatched to officers.</p>
+            {!showAddForm && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="smart-btn-obsidian"
+                style={{ marginTop: "12px" }}
+              >
+                <PlusIcon width="14" height="14" />
+                <span>Create First {targetAudience === "staff" ? "Staff" : "Student"} Rule</span>
+              </button>
+            )}
           </div>
         ) : (
-          <div className="table-container">
-            <table className="grievance-table">
-              <thead>
-                <tr>
-                  <th>Issue Type</th>
-                  <th>Assignment Mode</th>
-                  <th>Assigned Staff</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {routingRules.map((rule) => (
-                  <tr key={rule._id}>
-                    <td style={{ fontWeight: "600", color: "#1e293b" }}>
-                      {rule.issueTypeId?.issueName || "Unknown Issue"}
-                      <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px", fontWeight: "400" }}>
-                        {rule.targetAudience === "staff" ? "👔 Staff Rule" : "🎓 Student Rule"}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ padding: "4px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "600", background: "#dbeafe", color: "#1e40af", whiteSpace: "nowrap" }}>
-                        {getAssignmentModeLabel(rule.assignmentMode)}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                        {rule.assignedStaff.map((staff, idx) => (
-                          <span
-                            key={idx}
-                            style={{ padding: "4px 8px", background: "#f1f5f9", borderRadius: "12px", fontSize: "0.75rem", color: "#334155", fontWeight: "500", whiteSpace: "nowrap" }}
-                          >
-                            {staff.staffName}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleDelete(rule._id)}
-                        style={{ background: "transparent", border: "none", cursor: "pointer", color: "#ef4444" }}
-                        title="Delete Rule"
-                      >
-                        <TrashIcon width="18" height="18" />
-                      </button>
-                    </td>
+          <>
+            {/* 1. Desktop Executive Table */}
+            <div className="smart-table-wrapper">
+              <table className="smart-table">
+                <thead>
+                  <tr>
+                    <th>Issue Type</th>
+                    <th>Assignment Mode</th>
+                    <th>Assigned Personnel</th>
+                    <th style={{ textAlign: "right", paddingRight: "20px" }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {routingRules.map((rule) => (
+                    <tr key={rule._id}>
+                      <td>
+                        <div className="rule-issue-name-cell">
+                          <span className="smart-issue-name">
+                            {rule.issueTypeId?.issueName || "Unknown Issue"}
+                          </span>
+                          <span className="rule-audience-tag">
+                            {rule.targetAudience === "staff" ? "👔 Staff" : "🎓 Student"}
+                          </span>
+                        </div>
+                      </td>
+                      <td>{renderModeBadge(rule.assignmentMode)}</td>
+                      <td>
+                        <div className="rule-staff-chips-wrap">
+                          {rule.assignedStaff && rule.assignedStaff.length > 0 ? (
+                            rule.assignedStaff.map((staff, idx) => (
+                              <span key={idx} className="rule-staff-chip">
+                                <UserIcon width="12" height="12" />
+                                <span>{staff.staffName}</span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="rule-staff-none">None assigned</span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "right", paddingRight: "20px" }}>
+                        <button
+                          onClick={() => handleDelete(rule._id)}
+                          className="smart-action-btn delete"
+                          title="Delete Routing Rule"
+                        >
+                          <TrashIcon width="16" height="16" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 2. Mobile Clean Cards View (< 768px) */}
+            <div className="smart-mobile-cards">
+              {routingRules.map((rule) => (
+                <div key={rule._id} className="smart-mobile-card">
+                  <div className="smart-mobile-card-top">
+                    <div>
+                      <div className="smart-issue-name">
+                        {rule.issueTypeId?.issueName || "Unknown Issue"}
+                      </div>
+                      <span className="rule-audience-tag" style={{ marginTop: "4px" }}>
+                        {rule.targetAudience === "staff" ? "👔 Staff Rule" : "🎓 Student Rule"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(rule._id)}
+                      className="smart-action-btn delete"
+                      title="Delete"
+                    >
+                      <TrashIcon width="16" height="16" />
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop: "4px" }}>{renderModeBadge(rule.assignmentMode)}</div>
+
+                  <div className="rule-mobile-staff-section">
+                    <div className="rule-mobile-staff-label">
+                      Assigned Personnel ({rule.assignedStaff?.length || 0}):
+                    </div>
+                    <div className="rule-staff-chips-wrap">
+                      {rule.assignedStaff && rule.assignedStaff.length > 0 ? (
+                        rule.assignedStaff.map((staff, idx) => (
+                          <span key={idx} className="rule-staff-chip">
+                            <UserIcon width="12" height="12" />
+                            <span>{staff.staffName}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="rule-staff-none">None assigned</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
+
+      {/* Scoped Executive Obsidian Theme CSS */}
+      <style>{`
+        .smart-mgmt-container {
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .smart-mgmt-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+          padding: 24px;
+          box-sizing: border-box;
+        }
+
+        .smart-mgmt-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 24px;
+          flex-wrap: wrap;
+        }
+
+        .smart-mgmt-title-group h2 {
+          margin: 0;
+          color: #0f172a;
+          font-size: 1.28rem;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+        }
+
+        .smart-mgmt-pill-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 2px 8px;
+          background: #f1f5f9;
+          color: #475569;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin-bottom: 6px;
+        }
+
+        .smart-dept-tag {
+          color: #0f172a;
+          background: #f1f5f9;
+          padding: 2px 8px;
+          border-radius: 6px;
+          border: 1px solid #e2e8f0;
+          font-size: 1.15rem;
+        }
+
+        .smart-mgmt-controls {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        /* Segmented Audience Switcher */
+        .smart-segmented-switcher {
+          display: inline-flex;
+          align-items: center;
+          background: #f1f5f9;
+          padding: 3px;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+          gap: 2px;
+        }
+
+        .smart-segmented-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          border-radius: 7px;
+          border: none;
+          font-size: 0.84rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          background: transparent;
+          color: #64748b;
+        }
+
+        .smart-segmented-btn:hover {
+          color: #0f172a;
+        }
+
+        .smart-segmented-btn.active {
+          background: #0f172a;
+          color: #ffffff;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+        }
+
+        /* Obsidian Black Primary Button */
+        .smart-btn-obsidian {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          background: #0f172a;
+          color: #ffffff;
+          border: 1px solid #0f172a;
+          border-radius: 8px;
+          padding: 8px 16px;
+          font-size: 0.84rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+          white-space: nowrap;
+        }
+
+        .smart-btn-obsidian:hover {
+          background: #1e293b;
+          border-color: #1e293b;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+        }
+
+        .smart-btn-ghost {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #ffffff;
+          color: #475569;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 8px 16px;
+          font-size: 0.84rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .smart-btn-ghost:hover {
+          background: #f8fafc;
+          color: #0f172a;
+          border-color: #94a3b8;
+        }
+
+        /* Form Card */
+        .smart-form-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 22px;
+          margin-bottom: 24px;
+          animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .smart-form-header h3 {
+          margin: 0;
+          color: #0f172a;
+          font-size: 1.08rem;
+          font-weight: 700;
+        }
+
+        .smart-form-header p {
+          margin: 4px 0 18px 0;
+          color: #64748b;
+          font-size: 0.82rem;
+        }
+
+        .rule-form-section {
+          margin-bottom: 18px;
+        }
+
+        .rule-form-label {
+          display: block;
+          font-size: 0.84rem;
+          font-weight: 700;
+          color: #0f172a;
+          margin-bottom: 6px;
+        }
+
+        .rule-form-sublabel {
+          display: block;
+          font-size: 0.76rem;
+          color: #64748b;
+          font-weight: 400;
+          margin-top: 2px;
+          margin-bottom: 8px;
+        }
+
+        .smart-input {
+          width: 100%;
+          padding: 9px 13px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          font-size: 0.88rem;
+          color: #0f172a;
+          background: #ffffff;
+          outline: none;
+          box-sizing: border-box;
+          transition: all 0.15s ease;
+        }
+
+        .smart-input:focus {
+          border-color: #0f172a;
+          box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+        }
+
+        /* Assignment Mode Cards Grid */
+        .rule-mode-selector-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+        }
+
+        .rule-mode-card {
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 14px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .rule-mode-card:hover {
+          border-color: #94a3b8;
+          transform: translateY(-1px);
+        }
+
+        .rule-mode-card.active {
+          border-color: #0f172a;
+          background: #f8fafc;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        }
+
+        .rule-mode-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .rule-mode-card-title-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .rule-mode-icon-box {
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .rule-mode-icon-box.single {
+          background: #eff6ff;
+          color: #2563eb;
+        }
+
+        .rule-mode-icon-box.round-robin {
+          background: #ecfdf5;
+          color: #059669;
+        }
+
+        .rule-mode-icon-box.pool {
+          background: #faf5ff;
+          color: #9333ea;
+        }
+
+        .rule-mode-card-title {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .rule-mode-card-desc {
+          margin: 0;
+          font-size: 0.77rem;
+          color: #64748b;
+          line-height: 1.35;
+        }
+
+        /* Radio & Checkbox Indicators */
+        .rule-radio-indicator {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          border: 2px solid #cbd5e1;
+          background: #ffffff;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+          box-sizing: border-box;
+        }
+
+        .rule-radio-indicator.checked {
+          border-color: #0f172a;
+          border-width: 5px;
+        }
+
+        .rule-checkbox-indicator {
+          width: 18px;
+          height: 18px;
+          border-radius: 5px;
+          border: 2px solid #cbd5e1;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: bold;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+          box-sizing: border-box;
+        }
+
+        .rule-checkbox-indicator.checked {
+          background: #0f172a;
+          border-color: #0f172a;
+        }
+
+        /* Staff Grid */
+        .rule-staff-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+          gap: 10px;
+        }
+
+        .rule-staff-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 10px 14px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .rule-staff-card:hover {
+          border-color: #cbd5e1;
+          background: #fafafa;
+        }
+
+        .rule-staff-card.selected {
+          border-color: #0f172a;
+          background: #f8fafc;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        }
+
+        .rule-staff-card-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .rule-staff-avatar {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: #e2e8f0;
+          color: #475569;
+          font-size: 0.8rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+        }
+
+        .rule-staff-avatar.active {
+          background: #0f172a;
+          color: #ffffff;
+        }
+
+        .rule-staff-name {
+          font-size: 0.84rem;
+          font-weight: 600;
+          color: #0f172a;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .rule-staff-id {
+          font-size: 0.74rem;
+          color: #64748b;
+        }
+
+        .rule-empty-staff {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 16px;
+          background: #fffbeb;
+          border: 1px solid #fef3c7;
+          border-radius: 8px;
+          color: #b45309;
+          font-size: 0.82rem;
+        }
+
+        .smart-form-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 20px;
+        }
+
+        /* Desktop Table */
+        .smart-table-wrapper {
+          overflow-x: auto;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          background: #ffffff;
+        }
+
+        .smart-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.86rem;
+          text-align: left;
+        }
+
+        .smart-table thead tr {
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .smart-table th {
+          padding: 12px 16px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #475569;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        .smart-table tbody tr {
+          border-bottom: 1px solid #f1f5f9;
+          transition: background 0.1s ease;
+        }
+
+        .smart-table tbody tr:last-child {
+          border-bottom: none;
+        }
+
+        .smart-table tbody tr:hover {
+          background: #f8fafc;
+        }
+
+        .smart-table td {
+          padding: 13px 16px;
+          vertical-align: middle;
+        }
+
+        .rule-issue-name-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .smart-issue-name {
+          font-weight: 600;
+          color: #0f172a;
+        }
+
+        .rule-audience-tag {
+          display: inline-block;
+          font-size: 0.74rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        /* Mode Badges */
+        .rule-mode-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 9px;
+          border-radius: 12px;
+          font-size: 0.74rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .rule-mode-badge.single {
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+        }
+
+        .rule-mode-badge.round-robin {
+          background: #ecfdf5;
+          color: #047857;
+          border: 1px solid #a7f3d0;
+        }
+
+        .rule-mode-badge.pool {
+          background: #faf5ff;
+          color: #6b21a8;
+          border: 1px solid #e9d5ff;
+        }
+
+        .rule-mode-badge.default {
+          background: #f1f5f9;
+          color: #334155;
+          border: 1px solid #e2e8f0;
+        }
+
+        /* Staff Chips */
+        .rule-staff-chips-wrap {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          max-width: 440px;
+        }
+
+        .rule-staff-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 8px;
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          color: #334155;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .rule-staff-chip svg {
+          color: #64748b;
+        }
+
+        .rule-staff-none {
+          font-size: 0.78rem;
+          color: #94a3b8;
+          font-style: italic;
+        }
+
+        /* Actions */
+        .smart-action-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 7px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .smart-action-btn.delete {
+          color: #dc2626;
+        }
+        .smart-action-btn.delete:hover {
+          background: #fef2f2;
+          border-color: #fca5a5;
+        }
+
+        /* Empty State */
+        .smart-empty-state {
+          text-align: center;
+          padding: 48px 24px;
+          color: #64748b;
+        }
+        .smart-empty-state svg {
+          color: #94a3b8;
+          margin-bottom: 10px;
+        }
+        .smart-empty-state h4 {
+          margin: 0;
+          color: #1e293b;
+          font-size: 1.05rem;
+        }
+        .smart-empty-state p {
+          margin: 6px 0 0 0;
+          font-size: 0.85rem;
+        }
+
+        /* Mobile Layout */
+        .smart-mobile-cards {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .smart-mgmt-card {
+            padding: 16px;
+            border-radius: 12px;
+          }
+
+          .smart-mgmt-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+
+          .smart-mgmt-controls {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+          }
+
+          .smart-segmented-switcher {
+            width: 100%;
+            display: flex;
+          }
+
+          .smart-segmented-btn {
+            flex: 1;
+            justify-content: center;
+          }
+
+          .smart-btn-obsidian {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .rule-mode-selector-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+          }
+
+          .rule-staff-grid {
+            grid-template-columns: 1fr;
+          }
+
+          /* Hide Desktop Table, Show Native Mobile Cards */
+          .smart-table-wrapper {
+            display: none;
+          }
+
+          .smart-mobile-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .smart-mobile-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .smart-mobile-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+          }
+
+          .rule-mobile-staff-section {
+            border-top: 1px solid #f1f5f9;
+            padding-top: 10px;
+            margin-top: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+
+          .rule-mobile-staff-label {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+          }
+        }
+      `}</style>
     </div>
   );
 }

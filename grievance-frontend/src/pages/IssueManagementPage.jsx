@@ -72,13 +72,16 @@ function IssueManagementPage() {
                     value={selectedDepartment}
                     onChange={(e) => setSelectedDepartment(e.target.value)}
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: "6px",
+                      padding: "5px 12px",
+                      borderRadius: "8px",
                       border: "1px solid #cbd5e1",
-                      fontSize: "0.9rem",
+                      fontSize: "0.85rem",
                       fontWeight: "600",
                       background: "#fff",
-                      color: "#1e293b"
+                      color: "#0f172a",
+                      cursor: "pointer",
+                      outline: "none",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
                     }}
                   >
                     {departments.map((d) => (
