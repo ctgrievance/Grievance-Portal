@@ -194,16 +194,27 @@ const processUpload = async (jobId, rows, mode = "add", reqUser = null) => {
         const result = await StaffRecord.bulkWrite(ops, { ordered: false });
         inserted += (result.upsertedCount || 0) + (result.modifiedCount || 0);
 
-        // 🔥 Sync updated name/contact/staffType details to registered accounts while strictly protecting Admin roles
+        // 🔥 Sync updated name/contact/staffType details to registered accounts while strictly protecting Admin roles & verified contact details
         for (const doc of uniqueDocs) {
           try {
-            const existingUser = await User.findOne({ id: doc.id });
+            const existingUser = await StaffUser.findOne({ id: doc.id }) || await User.findOne({ id: doc.id });
             if (existingUser) {
               const syncUpdate = {};
               if (doc.fullName) syncUpdate.fullName = doc.fullName;
-              if (doc.email) syncUpdate.email = doc.email;
-              if (doc.phone) syncUpdate.phone = doc.phone;
               if (doc.staffType) syncUpdate.staffType = doc.staffType;
+              if (doc.department) syncUpdate.staffDepartment = doc.department;
+
+              // 🔒 Protect verified user contact details!
+              // If user is already registered & verified via OTP, DO NOT overwrite email or phone from Excel
+              const isVerifiedUser = Boolean(existingUser.isVerified);
+              if (!isVerifiedUser) {
+                if (doc.email) syncUpdate.email = doc.email;
+                if (doc.phone) syncUpdate.phone = doc.phone;
+              } else {
+                // If verified user has no email or phone set, allow filling missing data only
+                if (!existingUser.email && doc.email) syncUpdate.email = doc.email;
+                if (!existingUser.phone && doc.phone) syncUpdate.phone = doc.phone;
+              }
 
               const isAlreadyAdmin = existingUser.isDeptAdmin || existingUser.isMasterAdmin || existingUser.role === "admin";
               if (!isAlreadyAdmin && doc.role) {
@@ -405,17 +416,27 @@ export const updateRecord = async (req, res) => {
 
     if (!record) return res.status(404).json({ message: "Record not found" });
 
-    // 🔥 Sync all relevant fields to StaffUser and User so Manage Staff and Export Records update immediately
+    // 🔥 Sync all relevant fields to StaffUser and User while strictly protecting verified contact details
     const syncFields = {};
     if (updateData.fullName) syncFields.fullName = updateData.fullName.trim();
     if (updateData.name) syncFields.fullName = updateData.name.trim();
-    if (updateData.email) syncFields.email = updateData.email.toLowerCase().trim();
-    if (updateData.phone) syncFields.phone = updateData.phone.trim();
     if (updateData.staffType) syncFields.staffType = updateData.staffType;
 
-    // Check if target user is currently an admin to avoid demoting them to staff on verification record update
-    const existingUser = await User.findOne({ id: cleanId });
+    // Check if target user exists and whether they are an admin / verified
+    const existingUser = await StaffUser.findOne({ id: cleanId }) || await User.findOne({ id: cleanId });
     const isAlreadyAdmin = existingUser && (existingUser.isDeptAdmin || existingUser.isMasterAdmin || existingUser.role === "admin");
+    const isVerifiedUser = Boolean(existingUser && existingUser.isVerified);
+
+    // 🔒 Protect verified user contact details!
+    // Do NOT overwrite email or phone if user is already verified via OTP
+    if (!isVerifiedUser) {
+      if (updateData.email) syncFields.email = updateData.email.toLowerCase().trim();
+      if (updateData.phone) syncFields.phone = updateData.phone.trim();
+    } else {
+      // If verified user has no email or phone set, allow filling missing data only
+      if (existingUser && !existingUser.email && updateData.email) syncFields.email = updateData.email.toLowerCase().trim();
+      if (existingUser && !existingUser.phone && updateData.phone) syncFields.phone = updateData.phone.trim();
+    }
 
     if (updateData.role && !isAlreadyAdmin) {
       syncFields.role = updateData.role.toLowerCase().trim();
