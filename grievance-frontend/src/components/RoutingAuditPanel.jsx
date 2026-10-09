@@ -7,7 +7,9 @@ import {
   SpinnerIcon,
   UserIcon,
   ClockIcon,
-  ShieldIcon
+  ShieldIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 
 // Minimal clean SVG icons
@@ -258,12 +260,7 @@ function RoutingAuditPanel() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "60px 20px", color: "#64748b" }}>
-        <SpinnerIcon size={28} />
-        <div style={{ marginTop: "12px", fontSize: "0.9rem", fontWeight: "600" }}>
-          Loading routing audit data...
-        </div>
-      </div>
+      <DynamicLoadingState text="Loading routing audit data..." minHeight="280px" />
     );
   }
 

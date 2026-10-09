@@ -11,7 +11,8 @@ import {
   MailIcon,
   PhoneIcon,
   SpinnerIcon,
-  DynamicSpinner
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import ExportPreviewModal from "./ExportPreviewModal";
@@ -770,14 +771,7 @@ export default function RecordsComparisonTab() {
       {/* ── COMPARISON DATA VIEW ── */}
       <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", position: "relative" }}>
         {loading && records.length === 0 ? (
-          <div style={{ padding: "48px 20px", textAlign: "center", color: "#64748b" }}>
-            <div style={{ marginBottom: "10px", color: "#3b82f6", display: "flex", justifyContent: "center" }}>
-              <SpinnerIcon size={30} />
-            </div>
-            <p style={{ margin: 0, fontWeight: 600, fontSize: "0.92rem", color: "#1e293b" }}>
-              Comparing official records against registered accounts...
-            </p>
-          </div>
+          <DynamicLoadingState text="Comparing official records against registered accounts..." minHeight="200px" />
         ) : !loading && records.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center", color: "#64748b" }}>
             <div style={{ marginBottom: "10px", color: "#94a3b8", display: "flex", justifyContent: "center" }}>

@@ -1,4 +1,4 @@
-import { ArrowRightLeftIcon, BuildingIcon, UserIcon, AlertCircleIcon, LockIcon, XIcon, SearchIcon, ChevronDownIcon } from "./Icons";
+import { ArrowRightLeftIcon, BuildingIcon, UserIcon, AlertCircleIcon, LockIcon, XIcon, SearchIcon, ChevronDownIcon, DynamicSpinner } from "./Icons";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 
 const DEFAULT_DEPARTMENTS = [
@@ -1002,8 +1002,9 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
                 Select Faculty to Reassign <span style={{ color: "#ef4444" }}>*</span>
               </label>
               {loadingStaffMap[currentDept] ? (
-                <div style={{ fontSize: "0.8rem", color: "#64748b", padding: "6px 0" }}>
-                  Loading department faculty...
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "#64748b", padding: "6px 0" }}>
+                  <DynamicSpinner size={16} color="#2563eb" />
+                  <span>Loading department faculty...</span>
                 </div>
               ) : (
                 <SearchableFacultySelect

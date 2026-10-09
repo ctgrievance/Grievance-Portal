@@ -22,7 +22,9 @@ import {
   UsersIcon,
   BuildingIcon,
   UserIcon,
-  GraduationCapIcon
+  GraduationCapIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
@@ -110,6 +112,7 @@ function AdminDashboard() {
     }
   }, [searchParams, activeTab, setSearchParams]);
   const [grievances, setGrievances] = useState([]);
+  const [loadingGrievances, setLoadingGrievances] = useState(true);
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
   const [selectedGrievance, setSelectedGrievance] = useState(null);
@@ -195,6 +198,8 @@ function AdminDashboard() {
     } catch (err) {
       setMsg(err.message);
       setStatusType("error");
+    } finally {
+      setLoadingGrievances(false);
     }
   }, []);
 
@@ -640,8 +645,10 @@ function AdminDashboard() {
 
             {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
-            {filteredGrievances.length === 0 ? (
-              <p>No grievances found matching criteria.</p>
+            {loadingGrievances ? (
+              <DynamicLoadingState text="Loading grievances..." minHeight="240px" />
+            ) : filteredGrievances.length === 0 ? (
+              <p style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>No grievances found matching criteria.</p>
             ) : (
               <>
                 {/* Desktop View: Full Table */}

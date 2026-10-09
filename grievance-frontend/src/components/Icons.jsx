@@ -470,24 +470,64 @@ export const SpinnerIcon = ({ size = 20, ...props }) => (
     </svg>
 );
 
-export const DynamicSpinner = ({ size = 15, color = "#38bdf8", style, ...props }) => (
-    <span
-        {...props}
+export const DynamicSpinner = ({ size = 15, color = "#38bdf8", trackColor, strokeWidth, style, ...props }) => {
+    const borderWidth = strokeWidth || (size >= 30 ? 3 : 2);
+    const resolvedTrack = trackColor || (color === "#38bdf8" || color === "#ffffff" ? "rgba(255, 255, 255, 0.25)" : "rgba(203, 213, 225, 0.55)");
+    return (
+        <span
+            {...props}
+            style={{
+                width: `${size}px`,
+                height: `${size}px`,
+                borderRadius: "50%",
+                border: `${borderWidth}px solid ${resolvedTrack}`,
+                borderTopColor: color,
+                borderRightColor: color,
+                display: "inline-block",
+                verticalAlign: "middle",
+                animation: "spin 0.65s linear infinite",
+                boxSizing: "border-box",
+                flexShrink: 0,
+                ...style
+            }}
+        />
+    );
+};
+
+export const DynamicLoadingState = ({
+    text = "Loading records...",
+    spinnerSize = 34,
+    spinnerColor = "#2563eb",
+    minHeight = "200px",
+    style
+}) => (
+    <div
         style={{
-            width: `${size}px`,
-            height: `${size}px`,
-            borderRadius: "50%",
-            border: "2px solid rgba(255, 255, 255, 0.25)",
-            borderTopColor: color,
-            borderRightColor: color,
-            display: "inline-block",
-            verticalAlign: "middle",
-            animation: "spin 0.65s linear infinite",
-            boxSizing: "border-box",
-            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight,
+            padding: "36px 20px",
+            gap: "12px",
+            color: "#475569",
             ...style
         }}
-    />
+    >
+        <DynamicSpinner size={spinnerSize} color={spinnerColor} />
+        {text && (
+            <span
+                style={{
+                    fontSize: "0.93rem",
+                    fontWeight: 500,
+                    color: "#475569",
+                    letterSpacing: "-0.01em"
+                }}
+            >
+                {text}
+            </span>
+        )}
+    </div>
 );
 
 export const InboxIcon = (props) => (

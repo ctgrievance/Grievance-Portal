@@ -18,7 +18,7 @@ import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import { 
   ClipboardIcon, PaperclipIcon, TrashIcon, CheckCircleIcon, XIcon, UserIcon, AlertCircleIcon, ShieldIcon,
   StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, MessageCircleIcon,
-  GraduationCapIcon, UsersIcon
+  GraduationCapIcon, UsersIcon, DynamicSpinner, DynamicLoadingState
 } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
@@ -1380,7 +1380,7 @@ function AdminStaffDashboard() {
               </p>
 
               {loadingPool ? (
-                <p>Loading pool grievances...</p>
+                <DynamicLoadingState text="Loading pool grievances..." minHeight="160px" />
               ) : poolGrievances.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "40px", background: "white", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
                   <p style={{ color: "#64748b", margin: 0 }}>No grievances available in the pool</p>
@@ -1668,7 +1668,9 @@ function AdminStaffDashboard() {
                 }}
               />
 
-              {loadingMine ? <p>Loading...</p> : getFilteredData(myGrievances, "mine").length === 0 ? <p>No submissions match your filters.</p> : (
+              {loadingMine ? (
+                <DynamicLoadingState text="Loading your grievances..." minHeight="160px" />
+              ) : getFilteredData(myGrievances, "mine").length === 0 ? <p>No submissions match your filters.</p> : (
                 <>
                 <div className="table-container staff-desktop-only">
                   <table className="grievance-table">
@@ -1964,9 +1966,7 @@ function AdminStaffDashboard() {
               </div>
 
               {loadingTransferred ? (
-                <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
-                  Loading transferred grievances...
-                </div>
+                <DynamicLoadingState text="Loading transferred grievances..." minHeight="160px" />
               ) : transferredGrievances.length > 0 ? (
                 <>
                 <div className="table-container staff-desktop-only" style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "10px", background: "#ffffff", marginBottom: "16px" }}>

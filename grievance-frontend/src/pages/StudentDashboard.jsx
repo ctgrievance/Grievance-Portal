@@ -15,7 +15,7 @@ import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import ctLogo from "../assets/ct-logo.png";
 import {
   BellIcon, GraduationCapIcon, ChartBarIcon, ClockIcon, CheckCircleIcon,
-  PaperclipIcon, TrashIcon, MessageCircleIcon
+  PaperclipIcon, TrashIcon, MessageCircleIcon, DynamicSpinner, DynamicLoadingState
 } from "../components/Icons";
 
 
@@ -589,7 +589,7 @@ function StudentDashboard() {
             </div>
 
             {loading ? (
-              <p style={{ color: "#64748b", padding: "20px 0" }}>Loading records...</p>
+              <DynamicLoadingState text="Loading records..." minHeight="160px" />
             ) : filteredHistory.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
                 <h3 style={{ color: "#0f172a" }}>No grievances found</h3>

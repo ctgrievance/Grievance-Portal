@@ -11,7 +11,7 @@ import RegisteredUsersView from "../components/RegisteredUsersView";
 import StaffRoleManager from "../components/StaffRoleManager";
 import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
 import ctLogo from "../assets/ct-logo.png";
-import { ShieldIcon, DownloadIcon } from "../components/Icons";
+import { ShieldIcon, DownloadIcon, DynamicSpinner, DynamicLoadingState } from "../components/Icons";
 import { UserRoleBadge } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import DepartmentSwitcher from "../components/DepartmentSwitcher";
@@ -357,7 +357,7 @@ function StudentSectionAdminDashboard() {
             />
 
             {loading ? (
-              <p>Loading...</p>
+              <DynamicLoadingState text="Loading grievances..." minHeight="160px" />
             ) : filteredGrievances.length === 0 ? (
               <div className="empty-state">
                 <p>

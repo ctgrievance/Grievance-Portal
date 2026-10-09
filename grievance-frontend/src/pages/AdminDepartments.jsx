@@ -15,7 +15,9 @@ import {
   UsersIcon,
   FileIcon,
   ShieldIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "../components/Icons";
 
 // Portal-powered floating permissions dropdown to avoid table overflow cutoff
@@ -658,9 +660,7 @@ function AdminDepartments() {
 
         {/* Directory Content */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: "48px 20px", color: "#64748b" }}>
-            Loading university departments...
-          </div>
+          <DynamicLoadingState text="Loading university departments..." minHeight="240px" />
         ) : filteredDepartments.length === 0 ? (
           <div style={{ textAlign: "center", padding: "48px 20px", color: "#64748b" }}>
             No departments match your filters.

@@ -9,7 +9,9 @@ import {
   SearchIcon,
   EditIcon,
   StarIcon,
-  SaveIcon
+  SaveIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 
 const DEFAULT_DEPARTMENTS = [
@@ -683,9 +685,7 @@ function StaffRoleManager() {
 
       {/* MAIN CONTENT AREA */}
       {loading ? (
-        <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-          Loading staff directory...
-        </div>
+        <DynamicLoadingState text="Loading staff directory..." minHeight="240px" />
       ) : filteredStaffList.length === 0 ? (
         <div style={{ padding: "40px 20px", textAlign: "center", color: "#64748b", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
           <p style={{ margin: 0, fontWeight: "600", fontSize: "0.95rem" }}>No staff members match your criteria</p>

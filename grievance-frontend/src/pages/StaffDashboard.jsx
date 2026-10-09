@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Dashboard.css";
-import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon, LockIcon } from "../components/Icons";
+import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon, LockIcon, DynamicSpinner, DynamicLoadingState } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import GenericAdminNavbar from "../components/GenericAdminNavbar";
@@ -795,7 +795,7 @@ function StaffDashboard() {
               />
 
               {loadingMine ? (
-                <p>Loading your grievances...</p>
+                <DynamicLoadingState text="Loading your grievances..." minHeight="160px" />
               ) : filteredMyGrievances.length === 0 ? (
                 <div className="empty-state"><p>{myGrievances.length === 0 ? "You have not submitted any grievances yet." : "No grievances match your filters."}</p></div>
               ) : (
@@ -1081,7 +1081,7 @@ function StaffDashboard() {
               </div>
 
               {loadingTransferred ? (
-                <p>Loading transferred grievances...</p>
+                <DynamicLoadingState text="Loading transferred grievances..." minHeight="160px" />
               ) : transferredGrievances.length === 0 ? (
                 <div style={{
                   background: "#f8fafc",
