@@ -81,6 +81,18 @@ function StaffRoleManager() {
     return () => clearTimeout(timer);
   }, [msg]);
 
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (selectedStaffForManage) setSelectedStaffForManage(null);
+        if (selectedReviewsStaff) setSelectedReviewsStaff(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedStaffForManage, selectedReviewsStaff]);
+
   // Fetch all departments
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -900,6 +912,7 @@ function StaffRoleManager() {
         return (
           <div
             className="staff-modal-overlay"
+            style={{ zIndex: 99999 }}
             onClick={() => setSelectedStaffForManage(null)}
           >
             <div
@@ -912,7 +925,7 @@ function StaffRoleManager() {
                   <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#0f172a" }}>
                     Manage Role
                   </h3>
-                  <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <span>{selectedStaffForManage.fullName}</span>
                     <span className="staff-id-pill">#{selectedStaffForManage.id}</span>
                     {selectedStaffForManage.isDeptAdmin ? (
@@ -1404,6 +1417,7 @@ function StaffRoleManager() {
       {selectedReviewsStaff && (
         <div
           className="staff-modal-overlay"
+          style={{ zIndex: 99999 }}
           onClick={() => setSelectedReviewsStaff(null)}
         >
           <div

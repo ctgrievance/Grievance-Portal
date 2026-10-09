@@ -2885,7 +2885,6 @@ textarea:focus {
   }
 
   [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
-  .staff-modal-card.simple,
   .reg-users-modal-box,
   .transfer-modal-card,
   .export-modal-container,
@@ -2902,7 +2901,8 @@ textarea:focus {
     box-sizing: border-box !important;
   }
 
-  .dept-modal-card {
+  .dept-modal-card,
+  .staff-modal-card.simple {
     width: 100% !important;
     max-width: 100% !important;
     max-height: calc(100vh - 32px) !important;
@@ -2923,10 +2923,18 @@ textarea:focus {
     overflow: hidden !important;
   }
 
-  .dept-modal-body {
+  .dept-modal-body,
+  .staff-modal-body {
     flex: 1 !important;
     min-height: 0 !important;
     overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .staff-modal-header,
+  .staff-modal-footer {
+    flex-shrink: 0 !important;
   }
 
   /* Structured card modals with separate header/body/footer MUST NOT have container padding */
@@ -3429,7 +3437,6 @@ textarea:focus {
   }
 
   [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
-  .staff-modal-card.simple,
   .reg-users-modal-box,
   .transfer-modal-card,
   .export-modal-container,
@@ -3437,6 +3444,15 @@ textarea:focus {
   .student-modal-card {
     border-radius: 12px !important;
     max-height: 96vh !important;
+  }
+
+  .staff-modal-card.simple {
+    border-radius: 12px !important;
+    max-height: calc(100vh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .dept-modal-header,
@@ -7265,68 +7281,107 @@ textarea:focus {
 
 .staff-modal-overlay {
   position: fixed;
+  inset: 0;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(4px);
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 16px;
+  z-index: 99999 !important;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
   animation: modalFadeIn 0.15s ease-out;
 }
 
 .staff-modal-card.simple {
   background: #ffffff;
-  border-radius: 12px;
-  max-width: 480px;
+  border-radius: 14px;
+  max-width: 500px;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 48px) !important;
+  max-height: calc(100dvh - 48px) !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.08);
   border: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  margin: auto !important;
+  position: relative;
+  box-sizing: border-box;
 }
 
 .staff-modal-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0 !important;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: #ffffff;
-  border-radius: 12px 12px 0 0;
+  border-radius: 14px 14px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .staff-modal-close-btn {
-  background: #ffffff;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  width: 28px;
-  height: 28px;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: #64748b;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .staff-modal-close-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-color: #cbd5e1;
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fca5a5;
+  transform: rotate(90deg);
 }
 
 .staff-modal-body {
-  padding: 16px 18px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.staff-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.staff-modal-body::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.staff-modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.staff-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .staff-modal-block {
@@ -7524,12 +7579,13 @@ textarea:focus {
 }
 
 .staff-modal-footer {
-  padding: 12px 18px;
-  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0 !important;
+  padding: 14px 20px;
+  border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: flex-end;
-  background: #ffffff;
-  border-radius: 0 0 12px 12px;
+  background: #f8fafc;
+  border-radius: 0 0 14px 14px;
 }
 
 .staff-modal-done-btn {
@@ -8514,7 +8570,7 @@ textarea:focus {
   display: flex;
   justify-content: center;
   align-items: center !important;
-  z-index: 1000;
+  z-index: 99999 !important;
   padding: 24px 16px;
   box-sizing: border-box;
   overflow: hidden !important;
