@@ -1361,7 +1361,11 @@ app.get("/api/admin/staff/:department", verifyToken, async (req, res) => {
   try {
     const { department } = req.params;
     const cleanDept = decodeURIComponent(department).trim();
-    const deptRegex = new RegExp(`^${cleanDept}$`, "i");
+    const escaped = cleanDept.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = escaped
+      .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
+      .replace(/\s+/g, "\\s+");
+    const deptRegex = new RegExp(`^${pattern}$`, "i");
     
     // Fetch faculty & staff belonging to that department (exclude Master Admin)
     const staff = await User.find({

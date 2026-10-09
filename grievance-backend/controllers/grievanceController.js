@@ -13,6 +13,21 @@ import {
   sendGrievanceRejectionToStudent,
 } from "../utils/emailService.js";
 
+// 🔧 Helper to normalize department names for comparison (handles "&" vs "and", extra spaces, case)
+export const normalizeDept = (dept) =>
+  String(dept || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s*(?:&|and)\s*/g, " and ")
+    .replace(/\s+/g, " ");
+
+export const isDeptMatch = (deptA, deptB) => {
+  const normA = normalizeDept(deptA);
+  const normB = normalizeDept(deptB);
+  if (!normA || !normB) return false;
+  return normA === normB || normA.includes(normB) || normB.includes(normA);
+};
+
 /* =====================================================
    1️⃣ STUDENT → SUBMIT GRIEVANCE
    → Goes to CATEGORY inbox (UNASSIGNED)
@@ -641,11 +656,10 @@ export const assignToStaff = async (req, res) => {
       const requesterUser = await StaffUser.findOne({ id: requesterId }) || await User.findOne({ id: requesterId });
       if (requesterUser) {
         const adminDepts = Array.isArray(requesterUser.adminDepartments) && requesterUser.adminDepartments.length > 0
-          ? requesterUser.adminDepartments.map(d => (d || "").trim().toLowerCase())
-          : (requesterUser.adminDepartment ? [requesterUser.adminDepartment.trim().toLowerCase()] : (requesterUser.department ? [requesterUser.department.trim().toLowerCase()] : []));
+          ? requesterUser.adminDepartments
+          : (requesterUser.adminDepartment ? [requesterUser.adminDepartment] : (requesterUser.department ? [requesterUser.department] : []));
 
-        const holdingDeptLower = currentHoldingDept.toLowerCase();
-        const isAuthorizedAdmin = adminDepts.some(d => d === holdingDeptLower || holdingDeptLower.includes(d) || d.includes(holdingDeptLower));
+        const isAuthorizedAdmin = adminDepts.some(d => isDeptMatch(d, currentHoldingDept));
 
         if (!isAuthorizedAdmin && adminDepts.length > 0) {
           return res.status(403).json({
@@ -657,23 +671,26 @@ export const assignToStaff = async (req, res) => {
 
     // 🔒 FACULTY BELONGING CHECK:
     // Ensure the faculty member being assigned belongs to currentHoldingDept!
+    // Normalizes "&" vs "and" and checks all department fields associated with the staff member.
     if (staffId && currentHoldingDept) {
       const targetStaff = await StaffUser.findOne({ id: staffId })
         || await User.findOne({ id: staffId })
         || await StaffRecord.findOne({ id: staffId });
       
       if (targetStaff) {
-        const staffDept = (
-          targetStaff.staffDepartment ||
-          targetStaff.department ||
-          targetStaff.adminDepartment ||
-          ""
-        ).trim().toLowerCase();
-        const holdingDeptLower = currentHoldingDept.toLowerCase();
+        const staffDepts = [
+          targetStaff.staffDepartment,
+          targetStaff.department,
+          targetStaff.adminDepartment,
+          ...(Array.isArray(targetStaff.adminDepartments) ? targetStaff.adminDepartments : [])
+        ].filter(Boolean);
 
-        if (staffDept && !staffDept.includes(holdingDeptLower) && !holdingDeptLower.includes(staffDept)) {
+        const isBelongsToHoldingDept = staffDepts.length === 0 || staffDepts.some(d => isDeptMatch(d, currentHoldingDept));
+
+        if (!isBelongsToHoldingDept) {
+          const displayDept = targetStaff.staffDepartment || targetStaff.department || targetStaff.adminDepartment || "Unknown";
           return res.status(400).json({
-            message: `❌ Cannot assign faculty member (${staffId}) of ${targetStaff.staffDepartment || targetStaff.department} to a grievance assigned to ${currentHoldingDept}. Please assign a faculty member of ${currentHoldingDept}.`
+            message: `❌ Cannot assign faculty member (${staffId}) of ${displayDept} to a grievance assigned to ${currentHoldingDept}. Please assign a faculty member of ${currentHoldingDept}.`
           });
         }
       }
@@ -1228,10 +1245,15 @@ export const getGrievanceDetail = async (req, res) => {
     }
 
     res.json({
+      _id: grievance._id,
       name: grievance.name,
+      userId: grievance.userId,
+      email: grievance.email,
+      userType: grievance.userType,
       message: grievance.message,
       regid: grievance.regid,
       category: grievance.category,
+      status: grievance.status,
       assignedStaff: staffInfo,
       createdAt: grievance.createdAt,
       deadlineDate: grievance.deadlineDate || null
@@ -1371,19 +1393,14 @@ export const transferGrievance = async (req, res) => {
         if (staffUser) {
           const staffDepts = [];
           if (Array.isArray(staffUser.adminDepartments)) {
-            staffUser.adminDepartments.forEach((d) => d && staffDepts.push(d.trim().toLowerCase()));
+            staffUser.adminDepartments.forEach((d) => d && staffDepts.push(d));
           }
-          if (staffUser.adminDepartment) staffDepts.push(staffUser.adminDepartment.trim().toLowerCase());
-          if (staffUser.staffDepartment) staffDepts.push(staffUser.staffDepartment.trim().toLowerCase());
-          if (staffUser.department) staffDepts.push(staffUser.department.trim().toLowerCase());
-          if (staffUser.school) staffDepts.push(staffUser.school.trim().toLowerCase());
+          if (staffUser.adminDepartment) staffDepts.push(staffUser.adminDepartment);
+          if (staffUser.staffDepartment) staffDepts.push(staffUser.staffDepartment);
+          if (staffUser.department) staffDepts.push(staffUser.department);
+          if (staffUser.school) staffDepts.push(staffUser.school);
 
-          const hasDeptAuth = staffDepts.some(
-            (d) =>
-              d === currentHoldingDept ||
-              currentHoldingDept.includes(d) ||
-              d.includes(currentHoldingDept)
-          );
+          const hasDeptAuth = staffDepts.some((d) => isDeptMatch(d, currentHoldingDept));
           if (hasDeptAuth) {
             if (
               transferredByRole === "admin" ||
@@ -1431,7 +1448,7 @@ export const transferGrievance = async (req, res) => {
         }
         if (!resolvedStaffId && !grievance.assignedTo) {
           return res.status(400).json({
-            message: "The grievance is already unassigned in this department. Please select a faculty member to assign."
+            message: "The grievance is already unassigned and under the custody of the Department Administrator."
           });
         }
       }
@@ -1560,8 +1577,8 @@ export const transferGrievance = async (req, res) => {
 
       return res.json({
         message: isSameDepartment
-          ? `✅ Grievance successfully reassigned within ${targetDept}${newAssignedName ? ` to ${newAssignedName}` : ' (unassigned)'}.`
-          : `✅ Grievance successfully forwarded to ${targetDept} (Department Pool). The ${targetDept} admin will assign faculty.`,
+          ? `✅ Grievance returned to ${targetDept} Department Administrator.`
+          : `✅ Grievance successfully forwarded to ${targetDept} Department Administrator (Pool).`,
         grievance
       });
     }

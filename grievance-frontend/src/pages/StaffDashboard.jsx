@@ -491,7 +491,7 @@ function StaffDashboard() {
 
   //  FILTER LOGIC
   const filteredMyGrievances = myGrievances.filter((g) => {
-    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
+    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase()) || (staffMap[g.assignedTo] || "").toLowerCase().includes(searchStaffId.toLowerCase());
     const matchStatus = filterStatus === "All" || g.status === filterStatus;
     const matchDept = filterDepartment === "All" || (g.category || g.school || "") === filterDepartment;
 
@@ -781,7 +781,7 @@ function StaffDashboard() {
               <DepartmentFilterBar
                 searchId={searchStaffId}
                 setSearchId={setSearchStaffId}
-                searchIdPlaceholder="Search Assigned Staff ID..."
+                searchIdPlaceholder="Search Assigned Staff ID or Name..."
                 statusFilter={filterStatus}
                 setStatusFilter={setFilterStatus}
                 filterDepartment={filterDepartment}
@@ -855,7 +855,18 @@ function StaffDashboard() {
                               )}
                             </div>
                           </td>
-                          <td>{g.assignedTo || "Not Assigned"}</td>
+                          <td>
+                            {g.assignedTo ? (
+                              <div>
+                                <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                                  {staffMap[g.assignedTo] || "Staff Member"}
+                                </span>
+                                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>({g.assignedTo})</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned</span>
+                            )}
+                          </td>
                           <td>{formatDate(g.createdAt)}</td>
                         </tr>
                       ))}
@@ -1184,13 +1195,13 @@ function StaffDashboard() {
         <GrievanceDetailsModal
           grievance={selectedGrievance}
           staffMap={staffMap}
-          canTransfer={activeTab !== "transferred"}
+          canTransfer={activeTab !== "transferred" && activeTab !== "mine"}
           onClose={() => setSelectedGrievance(null)}
-          onDelete={handleDeleteGrievance}
-          onReject={(g) => {
+          onDelete={activeTab !== "mine" ? handleDeleteGrievance : null}
+          onReject={activeTab !== "mine" ? (g) => {
             setRejectPopup(g);
             setRejectionReason("");
-          }}
+          } : null}
           onTransferred={() => {
             fetchMyGrievances();
             fetchTransferredGrievances();

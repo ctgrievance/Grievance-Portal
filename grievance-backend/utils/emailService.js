@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import User from "../models/UserModel.js";
 import StaffUser from "../models/StaffUser.js";
 import StaffRecord from "../models/StaffRecord.js";
+import Grievance from "../models/GrievanceModel.js";
 
 dotenv.config();
 
@@ -17,18 +18,18 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 10000,
 });
 
-// Cooldown map to prevent spamming recipient with multiple emails in active chat (60s throttle per ticket & recipient)
+// Cooldown map to prevent spamming recipient with multiple emails in active chat (24-hour throttle per ticket & recipient)
 const chatEmailCooldowns = new Map();
 
-// Periodic cleanup of stale cooldown entries (older than 5 minutes)
+// Periodic cleanup of stale cooldown entries (older than 24 hours)
 setInterval(() => {
   const now = Date.now();
   for (const [key, timestamp] of chatEmailCooldowns.entries()) {
-    if (now - timestamp > 300000) {
+    if (now - timestamp > 24 * 60 * 60 * 1000) {
       chatEmailCooldowns.delete(key);
     }
   }
-}, 300000);
+}, 3600000); // Hourly cleanup
 
 const escapeHtml = (unsafe) => {
   if (!unsafe) return "";
@@ -223,15 +224,28 @@ export const sendChatMessageEmail = async ({
       return { success: false, message: "No recipient email found" };
     }
 
-    // Anti-flood throttle (at most 1 email per recipient per grievance every 60 seconds)
+    // 24-HOUR CHAT EMAIL RATE LIMIT: At most 1 chat notification email per recipient per grievance every 24 hours.
+    // In-app notifications/sockets are delivered in real time for every message, while email is rate-limited to 24h.
+    const CHAT_EMAIL_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours = 86,400,000 ms
     const cooldownKey = `${grievance._id}:${recipientEmail.toLowerCase()}`;
-    const lastSent = chatEmailCooldowns.get(cooldownKey);
     const now = Date.now();
-    if (lastSent && now - lastSent < 60000) {
-      console.log(`⏳ Chat email to ${recipientEmail} throttled (cooldown active: ${Math.round((60000 - (now - lastSent)) / 1000)}s left)`);
-      return { success: false, message: "Throttled by cooldown" };
+
+    // 1. Check in-memory fast cache
+    const memLastSent = chatEmailCooldowns.get(cooldownKey);
+    if (memLastSent && (now - memLastSent) < CHAT_EMAIL_WINDOW_MS) {
+      const hoursRemaining = Math.ceil((CHAT_EMAIL_WINDOW_MS - (now - memLastSent)) / (1000 * 60 * 60));
+      console.log(`⏳ Chat email to ${recipientEmail} throttled by 24h limit (${hoursRemaining}h remaining). In-app notification active.`);
+      return { success: false, throttled: true, message: "Chat email throttled by 24-hour limit" };
     }
-    chatEmailCooldowns.set(cooldownKey, now);
+
+    // 2. Check persistent timestamp on Grievance document in database
+    const dbLastSent = isStaffSender ? grievance.lastChatEmailToStudent : grievance.lastChatEmailToStaff;
+    if (dbLastSent && (now - new Date(dbLastSent).getTime()) < CHAT_EMAIL_WINDOW_MS) {
+      const hoursRemaining = Math.ceil((CHAT_EMAIL_WINDOW_MS - (now - new Date(dbLastSent).getTime())) / (1000 * 60 * 60));
+      chatEmailCooldowns.set(cooldownKey, new Date(dbLastSent).getTime());
+      console.log(`⏳ Chat email to ${recipientEmail} throttled by persistent 24h limit (${hoursRemaining}h remaining). In-app notification active.`);
+      return { success: false, throttled: true, message: "Chat email throttled by persistent 24-hour limit" };
+    }
 
     // Prepare initials for LinkedIn-style avatar circle
     const initials =
@@ -376,7 +390,14 @@ export const sendChatMessageEmail = async ({
       html: emailHtml,
     });
 
-    console.log(`✅ LinkedIn-style chat notification email sent to ${recipientEmail} from ${senderDisplayName}`);
+    // Record timestamp in both memory and database
+    chatEmailCooldowns.set(cooldownKey, now);
+    const updateField = isStaffSender ? "lastChatEmailToStudent" : "lastChatEmailToStaff";
+    await Grievance.findByIdAndUpdate(grievance._id, { [updateField]: new Date(now) }).catch((dbErr) => {
+      console.error("⚠️ Failed to update chat email timestamp on grievance:", dbErr);
+    });
+
+    console.log(`✅ LinkedIn-style chat notification email sent to ${recipientEmail} from ${senderDisplayName} (24h rate limit recorded)`);
     return { success: true, message: "Email sent successfully" };
   } catch (error) {
     console.error("⚠️ Failed to send chat email notification:", error);

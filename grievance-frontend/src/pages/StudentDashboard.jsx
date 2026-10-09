@@ -661,13 +661,16 @@ function StudentDashboard() {
                             <div className="chat-btn-wrapper">
                               {(() => {
                                 const isChatEnabled = Boolean(g.assignedTo) && g.status !== "Pending";
+                                const isClosed = ["resolved", "rejected"].includes((g.status || "").toLowerCase());
                                 return (
                                   <button
                                     className={`action-btn ${!isChatEnabled ? "disabled" : ""}`}
                                     disabled={!isChatEnabled}
                                     style={
                                       isChatEnabled
-                                        ? { backgroundColor: "#0f172a", color: "white" }
+                                        ? (isClosed
+                                            ? { backgroundColor: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1" }
+                                            : { backgroundColor: "#0f172a", color: "white" })
                                         : {
                                             backgroundColor: "#f1f5f9",
                                             color: "#94a3b8",
@@ -677,16 +680,16 @@ function StudentDashboard() {
                                           }
                                     }
                                     title={
-                                      isChatEnabled
-                                        ? "Open chat with assigned staff"
-                                        : "Chat will be enabled once staff is assigned"
+                                      !isChatEnabled
+                                        ? "Chat will be enabled once staff is assigned"
+                                        : (isClosed ? "View conversation history (Read-only)" : "Open chat with assigned staff")
                                     }
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (isChatEnabled) openChat(g._id);
                                     }}
                                   >
-                                    Chat
+                                    {isClosed ? "View Chat" : "Chat"}
                                   </button>
                                 );
                               })()}
@@ -774,15 +777,21 @@ function StudentDashboard() {
                           <div className="chat-btn-wrapper">
                             {(() => {
                               const isChatEnabled = Boolean(g.assignedTo) && g.status !== "Pending";
+                              const isClosed = ["resolved", "rejected"].includes((g.status || "").toLowerCase());
                               return (
                                 <button
                                   type="button"
                                   className={`student-mcard-chat-btn ${!isChatEnabled ? "disabled" : ""}`}
                                   disabled={!isChatEnabled}
+                                  style={
+                                    isClosed && isChatEnabled
+                                      ? { backgroundColor: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1" }
+                                      : undefined
+                                  }
                                   title={
-                                    isChatEnabled
-                                      ? "Open chat with assigned staff"
-                                      : "Chat will be enabled once staff is assigned"
+                                    !isChatEnabled
+                                      ? "Chat will be enabled once staff is assigned"
+                                      : (isClosed ? "View conversation history (Read-only)" : "Open chat with assigned staff")
                                   }
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -790,7 +799,7 @@ function StudentDashboard() {
                                   }}
                                 >
                                   <MessageCircleIcon width="14" height="14" />
-                                  <span>Chat</span>
+                                  <span>{isClosed ? "View Chat" : "Chat"}</span>
                                 </button>
                               );
                             })()}
@@ -1191,6 +1200,7 @@ function StudentDashboard() {
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         grievanceId={chatGrievanceId}
+        grievanceStatus={history.find((g) => String(g._id) === String(chatGrievanceId))?.status}
         currentUserId={userId}
         currentUserRole="student"
       />

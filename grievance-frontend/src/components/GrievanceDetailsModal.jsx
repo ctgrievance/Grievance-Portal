@@ -188,21 +188,47 @@ const GrievanceDetailsModal = ({
     storedUser.isDeptAdmin === true ||
     userRole === "admin";
 
-  const grievanceDept = (
+  const normDept = (d) =>
+    (d || "").toString().trim().toLowerCase().replace(/\s*(?:&|and)\s*/g, " and ").replace(/\s+/g, " ");
+
+  const grievanceDept = normDept(
     grievance?.currentCustodian?.department ||
     grievance?.category ||
     ""
-  ).toString().trim().toLowerCase();
+  );
 
   const isSameDept = Boolean(
     grievanceDept &&
     (
-      (userDept && (userDept === grievanceDept || grievanceDept.includes(userDept) || userDept.includes(grievanceDept))) ||
-      (userDepts.length > 0 && userDepts.some((d) => d === grievanceDept || grievanceDept.includes(d) || d.includes(grievanceDept)))
+      (userDept && (normDept(userDept) === grievanceDept || grievanceDept.includes(normDept(userDept)) || normDept(userDept).includes(grievanceDept))) ||
+      (userDepts.length > 0 && userDepts.some((d) => {
+        const nd = normDept(d);
+        return nd === grievanceDept || grievanceDept.includes(nd) || nd.includes(grievanceDept);
+      }))
     )
   );
 
   const isDeptAdmin = isDeptAdminFlag && (isSameDept || !grievanceDept);
+
+  // Submitter identification: Current user submitted this grievance
+  const submitterId = (
+    grievance?.userId ||
+    grievance?.regid ||
+    ""
+  ).toString().trim().toUpperCase();
+
+  const userEmail = (
+    localStorage.getItem("grievance_email") ||
+    storedUser.email ||
+    ""
+  ).toString().trim().toLowerCase();
+
+  const grievanceEmail = (grievance?.email || "").toString().trim().toLowerCase();
+
+  const isSubmitter = Boolean(
+    (currentUserId && submitterId && currentUserId === submitterId) ||
+    (userEmail && grievanceEmail && userEmail === grievanceEmail)
+  );
 
   // Extract assigned staff ID safely whether string or object
   const assignedStaffId = (
@@ -215,13 +241,20 @@ const GrievanceDetailsModal = ({
     grievance?.currentCustodian?.staffId || ""
   ).toString().trim().toUpperCase();
 
-  // Current assignee check (matches faculty/staff ID)
+  // Current assignee check (matches faculty/staff ID assigned to work on the grievance)
   const isCurrentAssignee = Boolean(
     currentUserId &&
     (
       (assignedStaffId && assignedStaffId === currentUserId) ||
       (custodianStaffId && custodianStaffId === currentUserId)
     )
+  );
+
+  // Whether a faculty member is already assigned to this grievance
+  const isFacultyAssigned = Boolean(
+    assignedStaffId ||
+    grievance?.assignedTo ||
+    grievance?.status === "Assigned"
   );
 
   // Faculty or staff member of the department holding the grievance
@@ -271,22 +304,26 @@ const GrievanceDetailsModal = ({
     grievance.status
   );
 
-  // 🔒 STRICT CUSTODY RULE:
-  // When a grievance is assigned/forwarded to another department, that department holds sole custody.
-  // The originating/previous department CANNOT assign to their own faculty nor forward to any other department.
-  // Only users who belong to the holding department (isSameDept) AND have authority can transfer or assign.
+  // 🔒 STRICT CUSTODY & ASSIGNMENT RULES:
+  // - Unassigned: Only the holding department admin/staff can forward it.
+  // - Assigned: ONLY the currently assigned faculty member (isCurrentAssignee) has the right to forward it. Dept admin cannot forward an assigned grievance.
+  // - Submitter: Can NEVER forward their own submitted grievance.
   const allowTransfer =
     canTransfer &&
+    !isSubmitter &&
     !isMasterAdmin &&
     !hasAlreadyForwarded &&
     isStaffOrAdmin &&
-    (isSameDept || isCurrentAssignee) &&
-    (isCurrentAssignee || isDeptAdmin || isDepartmentStaff);
+    (
+      (!isFacultyAssigned && isSameDept && (isDeptAdmin || isDepartmentStaff)) ||
+      isCurrentAssignee
+    );
 
   const canAssignFaculty = Boolean(
+    !isSubmitter &&
     !isResolved &&
     !isRejected &&
-    !grievance.assignedTo &&
+    !isFacultyAssigned &&
     onAssign &&
     isSameDept &&
     (isDeptAdmin || isDeptAdminFlag)
@@ -1212,8 +1249,10 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-          {/* Staff Extension Request Action Trigger */}
+          {/* Staff Extension Request Action Trigger (Only assigned staff handling the task can request extension, not the submitter) */}
           {onRequestExtension &&
+            isCurrentAssignee &&
+            !isSubmitter &&
             grievance.deadlineDate &&
             !isResolved &&
             !isRejected &&
@@ -1454,7 +1493,7 @@ const GrievanceDetailsModal = ({
           }}
         >
           <div className="g-details-footer-actions" style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-            {onDelete && (
+            {onDelete && !isSubmitter && (
               <button
                 className="g-details-btn g-details-btn-danger"
                 onClick={() => onDelete(grievance._id)}
@@ -1551,7 +1590,7 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-            {!isSameDept && !isCurrentAssignee && !isMasterAdmin && !isResolved && !isRejected && (
+            {!isSameDept && !isCurrentAssignee && !isMasterAdmin && !isResolved && !isRejected && !isSubmitter && (
               <div
                 style={{
                   padding: "8px 14px",
@@ -1571,7 +1610,7 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-            {!isResolved && !isRejected && onReject && isSameDept && (
+            {!isResolved && !isRejected && onReject && isSameDept && !isSubmitter && (
               <button
                 className="g-details-btn g-details-btn-reject"
                 onClick={() => onReject(grievance)}

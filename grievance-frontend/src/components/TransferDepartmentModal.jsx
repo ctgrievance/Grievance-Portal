@@ -1,5 +1,5 @@
-import { ArrowRightLeftIcon, BuildingIcon, UserIcon, AlertCircleIcon, LockIcon, XIcon, SearchIcon, ChevronDownIcon, DynamicSpinner } from "./Icons";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { ArrowRightLeftIcon, BuildingIcon, AlertCircleIcon, LockIcon, XIcon, ShieldIcon } from "./Icons";
+import React, { useState, useEffect, useRef } from "react";
 
 const DEFAULT_DEPARTMENTS = [
   "Accounts",
@@ -20,282 +20,6 @@ const DEFAULT_DEPARTMENTS = [
   "Transport"
 ];
 
-/**
- * SearchableFacultySelect
- * Combobox / Searchable Dropdown where the search bar is INSIDE the dropdown menu.
- */
-function SearchableFacultySelect({
-  dept,
-  staffList,
-  selectedStaffId,
-  onSelect,
-  isCurrentDept
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const dropdownRef = useRef(null);
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  const selectedStaff = staffList.find((s) => s.id === selectedStaffId);
-
-  // Filter staff by search query (name, id, email)
-  const q = searchQuery.toLowerCase().trim();
-  const filteredStaff = staffList.filter((s) => {
-    if (!q) return true;
-    const name = (s.fullName || "").toLowerCase();
-    const id = (s.id || "").toLowerCase();
-    const email = (s.email || "").toLowerCase();
-    return name.includes(q) || id.includes(q) || email.includes(q);
-  });
-
-  return (
-    <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
-      {/* Dropdown Trigger Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        style={{
-          width: "100%",
-          padding: "10px 14px",
-          borderRadius: "8px",
-          border: isOpen ? "2px solid #2563eb" : "1.5px solid #cbd5e1",
-          background: "#ffffff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          cursor: "pointer",
-          textAlign: "left",
-          outline: "none",
-          boxShadow: isOpen ? "0 0 0 3px rgba(37, 99, 235, 0.12)" : "none",
-          transition: "all 0.15s ease"
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
-          <span style={{ fontSize: "1rem", flexShrink: 0 }}>
-            {selectedStaff ? <UserIcon width="14" height="14" style={{ color: "#2563eb" }} /> : <AlertCircleIcon width="14" height="14" style={{ color: "#d97706" }} />}
-          </span>
-          <span
-            style={{
-              color: selectedStaff ? "#0f172a" : "#475569",
-              fontWeight: selectedStaff ? "600" : "500",
-              fontSize: "0.85rem",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap"
-            }}
-          >
-            {selectedStaff
-              ? `${selectedStaff.fullName || selectedStaff.id} (${selectedStaff.id})${selectedStaff.email ? ` • ${selectedStaff.email}` : ""}`
-              : "Auto-Assign / Department Pool (Unassigned)"}
-          </span>
-        </div>
-        <span
-          style={{
-            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-            color: "#64748b",
-            fontSize: "0.72rem",
-            flexShrink: 0,
-            marginLeft: "8px"
-          }}
-        >
-          ▼
-        </span>
-      </button>
-
-      {/* Dropdown Popover Menu with Search Bar */}
-      {isOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            right: 0,
-            zIndex: 150,
-            background: "#ffffff",
-            borderRadius: "10px",
-            boxShadow: "0 14px 30px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.06)",
-            border: "1.5px solid #cbd5e1",
-            overflow: "hidden"
-          }}
-        >
-          {/* Search Input INSIDE the Faculty Dropdown */}
-          <div style={{ padding: "8px 10px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                autoFocus
-                placeholder={`Search faculty in ${dept}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "7px 10px 7px 28px",
-                  borderRadius: "6px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.82rem",
-                  boxSizing: "border-box",
-                  outline: "none"
-                }}
-              />
-              <span style={{ position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.8rem" }}>
-                🔍
-              </span>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    color: "#94a3b8",
-                    cursor: "pointer",
-                    fontSize: "0.8rem"
-                  }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Options List */}
-          <div style={{ maxHeight: "200px", overflowY: "auto", padding: "4px" }}>
-            {/* Auto-Assign Option */}
-            {(!q || "auto-assign department pool queue unassigned".includes(q)) && (
-              <div
-                onClick={() => {
-                  onSelect("");
-                  setIsOpen(false);
-                  setSearchQuery("");
-                }}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: "6px",
-                  background: !selectedStaffId ? "#eff6ff" : "transparent",
-                  color: !selectedStaffId ? "#1d4ed8" : "#334155",
-                  fontWeight: !selectedStaffId ? "600" : "500",
-                  fontSize: "0.82rem",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  transition: "background 0.1s"
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedStaffId) e.currentTarget.style.background = "#f1f5f9";
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedStaffId) e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><AlertCircleIcon width="13" height="13" style={{ color: "#2563eb" }} /> Auto-Assign / Department Pool (Unassigned)</span>
-                {!selectedStaffId && <span style={{ color: "#2563eb", fontWeight: "700" }}>✓</span>}
-              </div>
-            )}
-
-            {/* If no matches found */}
-            {filteredStaff.length === 0 && q ? (
-              <div style={{ padding: "14px", textAlign: "center", color: "#94a3b8", fontSize: "0.8rem" }}>
-                No faculty matching "{searchQuery}"
-              </div>
-            ) : (
-              filteredStaff.map((staff) => {
-                const isSelected = selectedStaffId === staff.id;
-                return (
-                  <div
-                    key={staff.id}
-                    onClick={() => {
-                      onSelect(staff.id);
-                      setIsOpen(false);
-                      setSearchQuery("");
-                    }}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: "6px",
-                      background: isSelected ? "#eff6ff" : "transparent",
-                      color: isSelected ? "#1d4ed8" : "#1e293b",
-                      fontWeight: isSelected ? "600" : "500",
-                      fontSize: "0.82rem",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      transition: "background 0.1s"
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) e.currentTarget.style.background = "#f1f5f9";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) e.currentTarget.style.background = "transparent";
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: isSelected ? "700" : "600", color: isSelected ? "#1d4ed8" : "#0f172a" }}>
-                        <UserIcon width="13" height="13" style={{ color: "#64748b", verticalAlign: "middle", marginRight: "5px" }} />{staff.fullName || staff.id} <span style={{ color: "#64748b", fontWeight: "normal" }}>({staff.id})</span>
-                      </div>
-                      {staff.email && (
-                        <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "1px" }}>
-                          ✉️ {staff.email}
-                        </div>
-                      )}
-                    </div>
-                    {isSelected && (
-                      <span style={{ color: "#2563eb", fontWeight: "800", fontSize: "0.85rem" }}>
-                        ✓
-                      </span>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Selected Faculty Confirmation (Clean & subtle) */}
-      {selectedStaff && (
-        <div
-          style={{
-            marginTop: "6px",
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            fontSize: "0.78rem",
-            color: "#15803d",
-            fontWeight: "500"
-          }}
-        >
-          <span>Assigned to:</span>
-          <strong>{selectedStaff.fullName || selectedStaff.id} ({selectedStaff.id})</strong>
-        </div>
-      )}
-
-      {isCurrentDept && !selectedStaff && (
-        <div style={{ marginTop: "4px", fontSize: "0.76rem", color: "#dc2626", fontWeight: "600" }}>
-          <AlertCircleIcon width="13" height="13" style={{ color: "#d97706", verticalAlign: "middle", marginRight: "4px" }} /> For internal reassignment within {dept}, please select a faculty member.
-        </div>
-      )}
-    </div>
-  );
-}
-
 function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
   const [departmentsList, setDepartmentsList] = useState(DEFAULT_DEPARTMENTS);
   const [selectedDepartments, setSelectedDepartments] = useState([]);
@@ -303,16 +27,12 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
   const [deptSearchQuery, setDeptSearchQuery] = useState("");
   const deptDropdownRef = useRef(null);
 
-  const [deptStaffMap, setDeptStaffMap] = useState({});
-  const [loadingStaffMap, setLoadingStaffMap] = useState({});
-  const [deptAssignments, setDeptAssignments] = useState({});
-  const [reason, setReason] = useState("");
+        const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const currentDept = grievance?.category || "";
-  const currentAssignedId = (grievance?.assignedTo || "").toString().trim().toUpperCase();
-
+  
   const currentUserId = (
     localStorage.getItem("grievance_id") ||
     "STAFF"
@@ -363,41 +83,6 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
     fetchActiveDepts();
   }, []);
 
-  // Fetch faculty / staff for a department
-  const fetchStaffForDept = useCallback(async (dept) => {
-    if (!dept) return;
-    setLoadingStaffMap((prev) => ({ ...prev, [dept]: true }));
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/staff/${encodeURIComponent(dept)}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("grievance_token") || ""}` } }
-      );
-      if (res.ok) {
-        const staffData = await res.json();
-        const validStaff = Array.isArray(staffData)
-          ? staffData.filter((s) => s.id && s.id.length !== 8) // exclude students
-          : [];
-        setDeptStaffMap((prev) => ({ ...prev, [dept]: validStaff }));
-      } else {
-        setDeptStaffMap((prev) => ({ ...prev, [dept]: [] }));
-      }
-    } catch (err) {
-      console.warn(`Could not fetch staff for department "${dept}":`, err);
-      setDeptStaffMap((prev) => ({ ...prev, [dept]: [] }));
-    } finally {
-      setLoadingStaffMap((prev) => ({ ...prev, [dept]: false }));
-    }
-  }, []);
-
-  // Whenever selectedDepartments changes, fetch staff ONLY for current dept if internal reassignment
-  useEffect(() => {
-    selectedDepartments.forEach((dept) => {
-      if (dept && dept === currentDept && !deptStaffMap[dept] && !loadingStaffMap[dept]) {
-        fetchStaffForDept(dept);
-      }
-    });
-  }, [selectedDepartments, currentDept, deptStaffMap, loadingStaffMap, fetchStaffForDept]);
-
   // Toggle department selection (single or multiple seamlessly)
   const toggleDepartment = (dept) => {
     setErrorMsg("");
@@ -408,20 +93,6 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
         return [...prev, dept];
       }
     });
-  };
-
-  // Change assigned faculty for a specific department
-  const handleFacultyChange = (dept, staffId) => {
-    setErrorMsg("");
-    const staffList = deptStaffMap[dept] || [];
-    const selected = staffList.find((s) => s.id === staffId);
-    setDeptAssignments((prev) => ({
-      ...prev,
-      [dept]: {
-        staffId: staffId || "",
-        staffName: selected ? (selected.fullName || selected.id) : ""
-      }
-    }));
   };
 
   // Filter departments by search
@@ -445,19 +116,6 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
       return;
     }
 
-    // If forwarding internally within the same department only
-    if (isOnlySameDept) {
-      const chosenStaffId = deptAssignments[currentDept]?.staffId;
-      if (!chosenStaffId) {
-        setErrorMsg("Internal Reassignment: Please select a faculty member in this department.");
-        return;
-      }
-      if (chosenStaffId.toUpperCase() === currentAssignedId) {
-        setErrorMsg("This grievance is already assigned to this faculty member. Please choose a different faculty member to reassign.");
-        return;
-      }
-    }
-
     if (!reason.trim() || reason.trim().length < 8) {
       setErrorMsg("Please provide a detailed reason for the forward (at least 8 characters).");
       return;
@@ -467,26 +125,20 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
     setErrorMsg("");
 
     try {
-      const departmentAssignments = selectedDepartments.map((dept) => {
-        const isCurrent = dept === currentDept;
-        const assign = deptAssignments[dept];
-        return {
-          department: dept,
-          staffId: isCurrent ? (assign?.staffId || null) : null,
-          staffName: isCurrent ? (assign?.staffName || null) : null
-        };
-      });
+      const departmentAssignments = selectedDepartments.map((dept) => ({
+        department: dept,
+        staffId: null,
+        staffName: null
+      }));
 
       const primaryDept = selectedDepartments[0];
-      const isPrimaryCurrent = primaryDept === currentDept;
-      const primaryAssign = deptAssignments[primaryDept];
 
       const payload = {
         targetDepartments: selectedDepartments,
         targetDepartment: primaryDept,
         departmentAssignments,
-        targetStaffId: isPrimaryCurrent ? (primaryAssign?.staffId || null) : null,
-        targetStaffName: isPrimaryCurrent ? (primaryAssign?.staffName || null) : null,
+        targetStaffId: null,
+        targetStaffName: null,
         reason: reason.trim(),
         transferredBy: currentUserId,
         transferredByName: currentUserName,
@@ -995,26 +647,119 @@ function TransferDepartmentModal({ grievance, onClose, onTransferred }) {
             )}
           </div>
 
-          {/* Faculty Assignment (Only shown if reassigning internally within same department) */}
-          {isOnlySameDept && (
-            <div>
-              <label style={{ display: "block", marginBottom: "6px", fontSize: "0.86rem", fontWeight: "600", color: "#0f172a" }}>
-                Select Faculty to Reassign <span style={{ color: "#ef4444" }}>*</span>
-              </label>
-              {loadingStaffMap[currentDept] ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "#64748b", padding: "6px 0" }}>
-                  <DynamicSpinner size={16} color="#2563eb" />
-                  <span>Loading department faculty...</span>
+          {/* ========================================================
+              SECTION 2: ASSIGNED RECIPIENT - DEPARTMENT ADMIN ONLY
+             ======================================================== */}
+          {selectedDepartments.length > 0 && (
+            <div
+              style={{
+                background: "#f0fdf4",
+                border: "1.5px solid #86efac",
+                borderRadius: "10px",
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span
+                  style={{
+                    fontSize: "0.78rem",
+                    fontWeight: "700",
+                    color: "#166534",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px"
+                  }}
+                >
+                  <ShieldIcon width="14" height="14" style={{ color: "#16a34a" }} />
+                  Forwarding Target
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.72rem",
+                    fontWeight: "700",
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    background: "#dcfce7",
+                    color: "#15803d",
+                    border: "1px solid #bbf7d0"
+                  }}
+                >
+                  Department Admin Only
+                </span>
+              </div>
+
+              <div
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "8px",
+                      background: "#dcfce7",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#16a34a",
+                      flexShrink: 0
+                    }}
+                  >
+                    <BuildingIcon width="18" height="18" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: "700", fontSize: "0.88rem", color: "#0f172a" }}>
+                      {selectedDepartments.length === 1
+                        ? `${selectedDepartments[0]} — Department Administrator`
+                        : `${selectedDepartments.join(", ")} — Department Administrators`}
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "#166534", marginTop: "1px", fontWeight: "500" }}>
+                      Target: Head of Department / Department Pool
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <SearchableFacultySelect
-                  dept={currentDept}
-                  staffList={deptStaffMap[currentDept] || []}
-                  selectedStaffId={deptAssignments[currentDept]?.staffId}
-                  onSelect={(staffId) => handleFacultyChange(currentDept, staffId)}
-                  isCurrentDept={true}
-                />
-              )}
+                <span
+                  style={{
+                    fontSize: "0.74rem",
+                    color: "#15803d",
+                    fontWeight: "700",
+                    background: "#f0fdf4",
+                    padding: "3px 8px",
+                    borderRadius: "6px",
+                    border: "1px solid #bbf7d0",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  ✓ Direct Routing to Admin
+                </span>
+              </div>
+
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#475569",
+                  background: "#f8fafc",
+                  padding: "7px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #e2e8f0",
+                  lineHeight: "1.4"
+                }}
+              >
+                ℹ️ <strong>Routing Policy:</strong> Faculty members cannot assign grievances directly to other faculty members. This grievance will be sent directly to the destination <strong>Department Administrator</strong>, who will evaluate and assign it.
+              </div>
             </div>
           )}
 

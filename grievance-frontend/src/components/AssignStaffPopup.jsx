@@ -7,6 +7,7 @@ function AssignStaffPopup({
   grievanceId,
   adminId,
   onAssigned,
+  submitterId: propSubmitterId,
 }) {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,6 +15,8 @@ function AssignStaffPopup({
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
+  const [submitterId, setSubmitterId] = useState(propSubmitterId ? propSubmitterId.toString().trim().toUpperCase() : "");
+  const [submitterEmail, setSubmitterEmail] = useState("");
 
   // Deadline states
   const [grievanceCreatedAt, setGrievanceCreatedAt] = useState(null);
@@ -32,6 +35,10 @@ function AssignStaffPopup({
   /* ================= FETCH STAFF ================= */
   useEffect(() => {
     if (!isOpen) return;
+
+    if (propSubmitterId) {
+      setSubmitterId(propSubmitterId.toString().trim().toUpperCase());
+    }
 
     // Default deadline = 7 days from assignment date
     const initDate = new Date();
@@ -55,13 +62,26 @@ function AssignStaffPopup({
         const validStaff = staffData.filter(s => s.id.length !== 8);
         setStaffList(validStaff);
 
-        // Fetch grievance detail to read createdAt and existing deadline
+        // Fetch grievance detail to read createdAt, existing deadline, and submitter ID
         if (grievanceId) {
           const gRes = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/detail/${grievanceId}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("grievance_token")}` }
           });
           const gData = await gRes.json();
           if (gRes.ok) {
+            const detectedSubmitter = (
+              propSubmitterId ||
+              gData.userId ||
+              gData.regid ||
+              ""
+            ).toString().trim().toUpperCase();
+            if (detectedSubmitter) {
+              setSubmitterId(detectedSubmitter);
+            }
+            if (gData.email) {
+              setSubmitterEmail(gData.email.toString().trim().toLowerCase());
+            }
+
             if (gData.createdAt) setGrievanceCreatedAt(new Date(gData.createdAt));
             if (gData.deadlineDate) {
               const d = new Date(gData.deadlineDate);
@@ -85,7 +105,7 @@ function AssignStaffPopup({
     };
 
     fetchStaffAndGrievance();
-  }, [isOpen, department, grievanceId]);
+  }, [isOpen, department, grievanceId, propSubmitterId]);
 
   if (!isOpen) return null;
 
@@ -93,6 +113,16 @@ function AssignStaffPopup({
   const handleAssign = async () => {
     if (!selectedStaffId) {
       setMsg("Please select a staff member");
+      setStatusType("error");
+      return;
+    }
+
+    const isSelectedSubmitter = Boolean(
+      (submitterId && selectedStaffId.toUpperCase() === submitterId) ||
+      (submitterEmail && staffList.find(s => s.id === selectedStaffId)?.email?.toLowerCase() === submitterEmail)
+    );
+    if (isSelectedSubmitter) {
+      setMsg("❌ Cannot assign grievance to the staff member who submitted it.");
       setStatusType("error");
       return;
     }
@@ -164,17 +194,39 @@ function AssignStaffPopup({
         ) : (
           <div>
             <div className="assign-staff-list">
-              {staffList.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={`staff-pill ${selectedStaffId === s.id ? "selected" : ""
-                    }`}
-                  onClick={() => setSelectedStaffId(s.id)}
-                >
-                  {s.fullName} ({s.id})
-                </button>
-              ))}
+              {staffList.map((s) => {
+                const isSubmitterStaff = Boolean(
+                  (submitterId && s.id && s.id.toString().trim().toUpperCase() === submitterId) ||
+                  (submitterEmail && s.email && s.email.toString().trim().toLowerCase() === submitterEmail)
+                );
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={isSubmitterStaff}
+                    className={`staff-pill ${selectedStaffId === s.id ? "selected" : ""} ${isSubmitterStaff ? "disabled-submitter" : ""}`}
+                    onClick={() => {
+                      if (!isSubmitterStaff) setSelectedStaffId(s.id);
+                    }}
+                    title={isSubmitterStaff ? "Cannot assign grievance to the staff member who submitted it" : `Assign to ${s.fullName}`}
+                    style={isSubmitterStaff ? {
+                      backgroundColor: "#f1f5f9",
+                      color: "#94a3b8",
+                      borderColor: "#cbd5e1",
+                      cursor: "not-allowed",
+                      opacity: 0.5,
+                      boxShadow: "none"
+                    } : {}}
+                  >
+                    {s.fullName} ({s.id})
+                    {isSubmitterStaff && (
+                      <span style={{ fontSize: "0.72rem", marginLeft: "6px", color: "#64748b", fontStyle: "italic", fontWeight: "normal" }}>
+                        (Submitter)
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             <div style={{ marginTop: 12, padding: '0 24px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>

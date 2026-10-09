@@ -10,6 +10,7 @@ import { connectSocketUser } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
+import TransferDepartmentModal from "../components/TransferDepartmentModal";
 import ctLogo from "../assets/ct-logo.png";
 import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
@@ -221,6 +222,7 @@ function AdminStaffDashboard() {
 
   // EXPORT MODAL STATE
   const [showExportModal, setShowExportModal] = useState(false);
+  const [transferModalGrievance, setTransferModalGrievance] = useState(null);
 
   //  STAFF REJECTION POPUP STATE
   const [rejectPopup, setRejectPopup] = useState(null);
@@ -832,7 +834,7 @@ function AdminStaffDashboard() {
         if (type === "assigned") {
           matchId = (g.userId || "").toLowerCase().includes(q) || (g.name || "").toLowerCase().includes(q);
         } else {
-          matchId = (g.assignedTo || "").toLowerCase().includes(q);
+          matchId = (g.assignedTo || "").toLowerCase().includes(q) || (staffMap[g.assignedTo] || "").toLowerCase().includes(q);
         }
       }
 
@@ -1220,6 +1222,26 @@ function AdminStaffDashboard() {
                                 <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><ClockIcon width="12" height="12" /> Pending</span>
                               )}
                               <button
+                                className="action-btn forward-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTransferModalGrievance(g);
+                                }}
+                                disabled={g.status === "Resolved" || g.status === "Rejected"}
+                                style={{
+                                  background: "#eff6ff",
+                                  color: "#1d4ed8",
+                                  border: "1px solid #bfdbfe",
+                                  fontWeight: "600",
+                                  opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1,
+                                  cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer",
+                                  marginLeft: "5px"
+                                }}
+                                title="Forward to another department"
+                              >
+                                Forward
+                              </button>
+                              <button
                                 className="action-btn chat-btn"
                                 onClick={(e) => { e.stopPropagation(); setCurrentChatId(g._id); setShowChat(true); }}
                                 style={{ background: "#3b82f6", color: "white", position: "relative" }}
@@ -1360,6 +1382,27 @@ function AdminStaffDashboard() {
                             }}
                           >
                             Reject
+                          </button>
+
+                          {/* Forward */}
+                          <button
+                            type="button"
+                            className="staff-mcard-btn"
+                            disabled={g.status === "Resolved" || g.status === "Rejected"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTransferModalGrievance(g);
+                            }}
+                            style={{
+                              background: "#eff6ff",
+                              color: "#1d4ed8",
+                              border: "1px solid #bfdbfe",
+                              fontWeight: "600",
+                              opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1
+                            }}
+                            title="Forward to another department"
+                          >
+                            Forward
                           </button>
                         </div>
                       </div>
@@ -1655,7 +1698,7 @@ function AdminStaffDashboard() {
               <DepartmentFilterBar
                 searchId={searchId}
                 setSearchId={setSearchId}
-                searchIdPlaceholder="Search Assigned Staff ID..."
+                searchIdPlaceholder="Search Assigned Staff ID or Name..."
                 statusFilter={filterStatus}
                 setStatusFilter={setFilterStatus}
                 filterDepartment={filterDepartment}
@@ -1703,7 +1746,18 @@ function AdminStaffDashboard() {
                               {g.status}
                             </span>
                           </td>
-                          <td>{g.assignedTo || "Not Assigned"}</td>
+                          <td>
+                            {g.assignedTo ? (
+                              <div>
+                                <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                                  {staffMap[g.assignedTo] || "Staff Member"}
+                                </span>
+                                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>({g.assignedTo})</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned</span>
+                            )}
+                          </td>
                           <td>{formatDate(g.createdAt)}</td>
                         </tr>
                       ))}
@@ -1733,7 +1787,9 @@ function AdminStaffDashboard() {
                       <div className="staff-mcard-meta-grid">
                         <div className="staff-mcard-meta-item">
                           <span className="staff-mcard-meta-label">Assigned To</span>
-                          <span className="staff-mcard-meta-value">{g.assignedTo || "Not Assigned"}</span>
+                          <span className="staff-mcard-meta-value">
+                            {g.assignedTo ? (staffMap[g.assignedTo] ? `${staffMap[g.assignedTo]} (${g.assignedTo})` : g.assignedTo) : "Not Assigned"}
+                          </span>
                         </div>
                         <div className="staff-mcard-meta-item">
                           <span className="staff-mcard-meta-label">Date</span>
@@ -2206,11 +2262,11 @@ function AdminStaffDashboard() {
               staffMap={staffMap}
               canTransfer={activeTab !== "transferred" && activeTab !== "mine"}
               onClose={() => setSelectedGrievance(null)}
-              onDelete={handleDeleteGrievance}
-              onReject={(g) => {
+              onDelete={activeTab !== "mine" ? handleDeleteGrievance : null}
+              onReject={activeTab !== "mine" ? (g) => {
                 setRejectPopup(g);
                 setRejectionReason("");
-              }}
+              } : null}
               onTransferred={(message) => {
                 setMsg(message);
                 setStatusType("success");
@@ -2219,10 +2275,25 @@ function AdminStaffDashboard() {
                 setSelectedGrievance(null);
                 setTimeout(() => setMsg(""), 4000);
               }}
-              onRequestExtension={(g) => {
+              onRequestExtension={activeTab !== "mine" ? (g) => {
                 setExtensionPopup(g);
                 setExtDate("");
                 setExtReason("");
+              } : null}
+            />
+          )}
+
+          {transferModalGrievance && (
+            <TransferDepartmentModal
+              grievance={transferModalGrievance}
+              onClose={() => setTransferModalGrievance(null)}
+              onTransferred={(message) => {
+                setMsg(message || "Grievance forwarded to department successfully!");
+                setStatusType("success");
+                fetchAssignedGrievances();
+                fetchTransferredGrievances();
+                setTransferModalGrievance(null);
+                setTimeout(() => setMsg(""), 4000);
               }}
             />
           )}
@@ -2236,6 +2307,7 @@ function AdminStaffDashboard() {
         isOpen={showChat}
         onClose={closeChat}
         grievanceId={currentChatId}
+        grievanceStatus={grievances.find((g) => String(g._id) === String(currentChatId))?.status}
         currentUserId={staffId}
         currentUserRole="staff"
       />

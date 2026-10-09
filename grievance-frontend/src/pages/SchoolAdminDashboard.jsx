@@ -50,8 +50,8 @@ const getDeadlineStatus = (deadlineDateStr, status) => {
 // Helper to check if a department name matches the admin's own school/department
 const isOwnSchool = (deptName, mySchool) => {
   if (!deptName || !mySchool) return false;
-  const d = deptName.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s+/g, " ");
-  const m = mySchool.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s+/g, " ");
+  const d = deptName.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s*(?:&|and)\s*/g, " and ").replace(/\s+/g, " ");
+  const m = mySchool.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s*(?:&|and)\s*/g, " and ").replace(/\s+/g, " ");
   return d === m || d.includes(m) || m.includes(d);
 };
 
@@ -94,6 +94,7 @@ function SchoolAdminDashboard() {
   // Popup States
   const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
   const [assignGrievanceId, setAssignGrievanceId] = useState(null);
+  const [assignSubmitterId, setAssignSubmitterId] = useState("");
   const [selectedGrievance, setSelectedGrievance] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -194,6 +195,9 @@ function SchoolAdminDashboard() {
         alert(`❌ This grievance has been assigned to ${targetG.currentCustodian?.department || targetG.category}. You cannot assign faculty to it.`);
         return;
       }
+      setAssignSubmitterId((targetG.userId || targetG.regid || "").toString().trim().toUpperCase());
+    } else {
+      setAssignSubmitterId("");
     }
     setAssignGrievanceId(typeof id === "object" ? id._id : id);
     setIsAssignPopupOpen(true);
@@ -517,7 +521,15 @@ function SchoolAdminDashboard() {
         />
       )}
 
-      <AssignStaffPopup isOpen={isAssignPopupOpen} onClose={() => setIsAssignPopupOpen(false)} department={mySchoolName} grievanceId={assignGrievanceId} adminId={userId} onAssigned={(m, t) => { fetchMySchoolGrievances() }} />
+      <AssignStaffPopup 
+        isOpen={isAssignPopupOpen} 
+        onClose={() => setIsAssignPopupOpen(false)} 
+        department={mySchoolName} 
+        grievanceId={assignGrievanceId} 
+        submitterId={assignSubmitterId}
+        adminId={userId} 
+        onAssigned={(m, t) => { fetchMySchoolGrievances() }} 
+      />
       <ExportPreviewModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} grievances={filteredGrievances} staffMap={staffMap} onExport={handleExportSelected} />
 
       {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
