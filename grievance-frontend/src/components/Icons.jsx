@@ -456,9 +456,10 @@ export const SpinnerIcon = ({ size = 20, ...props }) => (
         height={size}
         viewBox="0 0 24 24"
         fill="none"
-        style={{ animation: "spin 0.8s linear infinite" }}
-        {...props}
+        {...props} style={{ animation: "spin 0.75s linear infinite", transformOrigin: "center center", display: "inline-block", verticalAlign: "middle", ...props.style }}
+        /* props merged */
     >
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
         <path
             d="M12 2a10 10 0 0 1 10 10"
@@ -467,6 +468,26 @@ export const SpinnerIcon = ({ size = 20, ...props }) => (
             strokeLinecap="round"
         />
     </svg>
+);
+
+export const DynamicSpinner = ({ size = 15, color = "#38bdf8", style, ...props }) => (
+    <span
+        {...props}
+        style={{
+            width: `${size}px`,
+            height: `${size}px`,
+            borderRadius: "50%",
+            border: "2px solid rgba(255, 255, 255, 0.25)",
+            borderTopColor: color,
+            borderRightColor: color,
+            display: "inline-block",
+            verticalAlign: "middle",
+            animation: "spin 0.65s linear infinite",
+            boxSizing: "border-box",
+            flexShrink: 0,
+            ...style
+        }}
+    />
 );
 
 export const InboxIcon = (props) => (

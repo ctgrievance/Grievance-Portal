@@ -65,3 +65,22 @@ body:has([class*="popup-overlay"]) {
   overscroll-behavior: contain !important;
   -webkit-overflow-scrolling: touch !important;
 }
+
+/* =========================================================================
+   GLOBAL DYNAMIC SPINNER & KEYFRAMES
+   ========================================================================= */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-animated {
+  display: inline-block !important;
+  animation: spin 0.75s linear infinite !important;
+  transform-origin: center center !important;
+}
+

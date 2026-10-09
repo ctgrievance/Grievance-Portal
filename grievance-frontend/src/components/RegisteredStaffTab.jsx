@@ -11,7 +11,9 @@ import {
   PhoneIcon,
   MailIcon,
   UserIcon,
-  DownloadIcon
+  DownloadIcon,
+  SpinnerIcon,
+  DynamicSpinner
 } from "./Icons";
 import ExportPreviewModal from "./ExportPreviewModal";
 import {
@@ -597,7 +599,7 @@ function RegisteredStaffTab({ isReadOnly = false }) {
               }}
               title="Preview & Export Registered Staff"
             >
-              <DownloadIcon width="14" height="14" />
+              {exporting ? <DynamicSpinner size={14} color="#38bdf8" /> : <DownloadIcon width="14" height="14" />}
               <span>{exporting ? "Preparing..." : "Export"}</span>
             </button>
           </div>

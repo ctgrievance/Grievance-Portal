@@ -10,7 +10,9 @@ import {
   PhoneIcon,
   MailIcon,
   DownloadIcon,
-  GraduationCapIcon
+  GraduationCapIcon,
+  SpinnerIcon,
+  DynamicSpinner
 } from "./Icons";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import ExportPreviewModal from "./ExportPreviewModal";
@@ -397,7 +399,7 @@ function RegisteredStudentsTab({ isReadOnly = false }) {
               }}
               title="Preview & Export Registered Students"
             >
-              <DownloadIcon width="14" height="14" />
+              {exporting ? <DynamicSpinner size={14} color="#38bdf8" /> : <DownloadIcon width="14" height="14" />}
               <span>{exporting ? "Preparing..." : "Export"}</span>
             </button>
           </div>

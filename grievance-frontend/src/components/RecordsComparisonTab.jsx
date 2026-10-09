@@ -10,7 +10,8 @@ import {
   AlertCircleIcon,
   MailIcon,
   PhoneIcon,
-  SpinnerIcon
+  SpinnerIcon,
+  DynamicSpinner
 } from "./Icons";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import ExportPreviewModal from "./ExportPreviewModal";
@@ -760,7 +761,7 @@ export default function RecordsComparisonTab() {
             }}
             title="Preview and customize export to Excel spreadsheet"
           >
-            {exporting ? <SpinnerIcon size={14} /> : <DownloadIcon width="14" height="14" />}
+            {exporting ? <DynamicSpinner size={14} color="#38bdf8" /> : <DownloadIcon width="14" height="14" />}
             <span>{exporting ? "Preparing..." : "Export (.xlsx)"}</span>
           </button>
         </div>
