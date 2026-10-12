@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
     SearchIcon,
     DownloadIcon,
@@ -63,8 +63,54 @@ const ExportPreviewModal = ({
         .replace(/\s+/g, " ")
         .trim();
 
+    // Scoped storage key so column preferences are remembered per report/dataset type
+    const storageKey = useMemo(() => {
+        const colSignature = activeColumns.map((c) => c.key).sort().join("|");
+        let hash = 0;
+        for (let i = 0; i < colSignature.length; i++) {
+            hash = ((hash << 5) - hash) + colSignature.charCodeAt(i);
+            hash |= 0;
+        }
+        const safeTitle = String(title || "export").replace(/[^a-zA-Z0-9]/g, "_");
+        return `export_selected_columns_${safeTitle}_${Math.abs(hash)}`;
+    }, [title, activeColumns]);
+
+    const getSavedColumns = useCallback(() => {
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    const validKeys = new Set(activeColumns.map((c) => c.key));
+                    const filtered = parsed.filter((key) => validKeys.has(key));
+                    if (filtered.length > 0) {
+                        return filtered;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to load saved export columns:", e);
+        }
+        return activeColumns.map((c) => c.key);
+    }, [storageKey, activeColumns]);
+
+    const saveColumnsPreference = useCallback((cols) => {
+        try {
+            if (cols && cols.length > 0) {
+                localStorage.setItem(storageKey, JSON.stringify(cols));
+            } else {
+                localStorage.removeItem(storageKey);
+            }
+        } catch (e) {
+            console.warn("Failed to save export columns preference:", e);
+        }
+    }, [storageKey]);
+
+    const getRowIdRef = useRef(getRowId);
+    getRowIdRef.current = getRowId;
+
     const getItemId = useCallback((item, idx = 0) => {
-        if (getRowId) return getRowId(item, idx);
+        if (getRowIdRef.current) return getRowIdRef.current(item, idx);
         if (item._id) return item._id;
         if (item.id) return item.id;
         if (item["Student ID"]) return item["Student ID"];
@@ -73,11 +119,9 @@ const ExportPreviewModal = ({
         if (item["ID"]) return item["ID"];
         if (item["S.No"]) return `sno_${item["S.No"]}`;
         return `row_${idx}`;
-    }, [getRowId]);
+    }, []);
 
-    const [selectedColumns, setSelectedColumns] = useState(
-        activeColumns.map((col) => col.key)
-    );
+    const [selectedColumns, setSelectedColumns] = useState(() => getSavedColumns());
     // Use Set for O(1) row selection lookups to eliminate click lag on large cohorts
     const [selectedRowIds, setSelectedRowIds] = useState(() => new Set());
 
@@ -202,9 +246,22 @@ const ExportPreviewModal = ({
         return count;
     }, [filteredData, selectedRowIds, getItemId]);
 
-    // Reset and initialize when modal opens or dataset changes
+    // Track open state so full initialization only runs when modal first opens
+    const prevIsOpenRef = useRef(false);
+    const initialRowsLoadedRef = useRef(false);
+
+    // Reset and initialize ONLY when the modal transitions from closed to open
     useEffect(() => {
-        if (isOpen && itemList.length > 0) {
+        if (!isOpen) {
+            prevIsOpenRef.current = false;
+            initialRowsLoadedRef.current = false;
+            return;
+        }
+
+        // Only run when modal first transitions from closed to open!
+        if (isOpen && !prevIsOpenRef.current) {
+            prevIsOpenRef.current = true;
+
             const initStatus = initialStatus || "All";
             setFilterStatus(initStatus);
             setFilterDepartments([]);
@@ -212,13 +269,46 @@ const ExportPreviewModal = ({
             setSearchQuery("");
             setInternalExtraFilter("All");
             setPreviewPage(1);
-            setSelectedColumns(activeColumns.map((col) => col.key));
             setCustomSheetName(defaultSheetName);
 
-            // Select initial records matching the active status
-            const initialFiltered = itemList.filter(item => {
+            // Restore saved columns or fallback to all columns
+            const savedCols = getSavedColumns();
+            setSelectedColumns(savedCols);
+
+            if (itemList.length > 0) {
+                initialRowsLoadedRef.current = true;
+                const initialFiltered = itemList.filter((item) => {
+                    if (initStatus !== "All") {
+                        const s =
+                            item.status ||
+                            item.Status ||
+                            item["Portal Status"] ||
+                            item["Status"] ||
+                            (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+                        if (String(s).toLowerCase() !== String(initStatus).toLowerCase()) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+                setSelectedRowIds(new Set(initialFiltered.map((item, idx) => getItemId(item, idx))));
+            }
+        }
+    }, [isOpen, defaultSheetName, getSavedColumns, getItemId, initialStatus, itemList]);
+
+    // Handle lazy arrival of records if itemList was initially empty when modal opened
+    useEffect(() => {
+        if (isOpen && itemList.length > 0 && !initialRowsLoadedRef.current) {
+            initialRowsLoadedRef.current = true;
+            const initStatus = filterStatus || initialStatus || "All";
+            const initialFiltered = itemList.filter((item) => {
                 if (initStatus !== "All") {
-                    const s = item.status || item.Status || item["Portal Status"] || item["Status"] || (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
+                    const s =
+                        item.status ||
+                        item.Status ||
+                        item["Portal Status"] ||
+                        item["Status"] ||
+                        (item.isRegistered ? "REGISTERED" : "NOT REGISTERED");
                     if (String(s).toLowerCase() !== String(initStatus).toLowerCase()) {
                         return false;
                     }
@@ -227,7 +317,19 @@ const ExportPreviewModal = ({
             });
             setSelectedRowIds(new Set(initialFiltered.map((item, idx) => getItemId(item, idx))));
         }
-    }, [isOpen, itemList, activeColumns, initialStatus, getItemId, defaultSheetName]);
+    }, [isOpen, itemList, filterStatus, initialStatus, getItemId]);
+
+    // When activeColumns changes, ensure selectedColumns only contains keys valid in activeColumns
+    useEffect(() => {
+        const validKeys = new Set(activeColumns.map((c) => c.key));
+        setSelectedColumns((prev) => {
+            const valid = prev.filter((k) => validKeys.has(k));
+            if (valid.length === 0 && activeColumns.length > 0) {
+                return activeColumns.map((c) => c.key);
+            }
+            return valid;
+        });
+    }, [activeColumns]);
 
     // Calculate preview page slice
     const totalPreviewPages = Math.max(1, Math.ceil(filteredData.length / previewPageSize));
@@ -239,15 +341,28 @@ const ExportPreviewModal = ({
 
     if (!isOpen) return null;
 
-    // Fast column selection toggle
+    // Fast column selection toggle (persists selection so it is never lost)
     const toggleColumn = (key) => {
-        if (selectedColumns.includes(key)) {
-            if (selectedColumns.length > 1) {
-                setSelectedColumns(selectedColumns.filter((col) => col !== key));
-            }
-        } else {
-            setSelectedColumns([...selectedColumns, key]);
-        }
+        setSelectedColumns((prev) => {
+            const next = prev.includes(key)
+                ? prev.filter((col) => col !== key)
+                : [...prev, key];
+            saveColumnsPreference(next);
+            return next;
+        });
+    };
+
+    // Quick select all columns
+    const selectAllColumns = () => {
+        const allKeys = activeColumns.map((c) => c.key);
+        setSelectedColumns(allKeys);
+        saveColumnsPreference(allKeys);
+    };
+
+    // Quick deselect all columns
+    const deselectAllColumns = () => {
+        setSelectedColumns([]);
+        saveColumnsPreference([]);
     };
 
     // Instant O(1) single row selection toggle
@@ -495,6 +610,10 @@ const ExportPreviewModal = ({
     };
 
     const handleExport = () => {
+        if (selectedColumns.length === 0) {
+            alert("Please select at least one column to export.");
+            return;
+        }
         const selectedData = filteredData.filter((item, idx) => selectedRowIds.has(getItemId(item, idx)));
         if (selectedData.length === 0) {
             alert("Please select at least one record to export.");
@@ -825,6 +944,8 @@ const ExportPreviewModal = ({
                             alignItems: "center",
                             justifyContent: "space-between",
                             marginBottom: "8px",
+                            flexWrap: "wrap",
+                            gap: "8px",
                         }}
                     >
                         <p style={{
@@ -840,6 +961,47 @@ const ExportPreviewModal = ({
                         }}>
                             <GridIcon width="13" height="13" /> Select Columns ({selectedColumns.length}/{activeColumns.length})
                         </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <button
+                                type="button"
+                                onClick={selectAllColumns}
+                                style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: "#2563eb",
+                                    fontSize: "0.76rem",
+                                    fontWeight: "600",
+                                    cursor: "pointer",
+                                    padding: "2px 6px",
+                                    borderRadius: "4px",
+                                    transition: "background 0.15s ease",
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.background = "#eff6ff")}
+                                onMouseOut={(e) => (e.currentTarget.style.background = "none")}
+                            >
+                                Select All
+                            </button>
+                            <span style={{ color: "#cbd5e1", fontSize: "0.76rem" }}>|</span>
+                            <button
+                                type="button"
+                                onClick={deselectAllColumns}
+                                style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: "#64748b",
+                                    fontSize: "0.76rem",
+                                    fontWeight: "600",
+                                    cursor: "pointer",
+                                    padding: "2px 6px",
+                                    borderRadius: "4px",
+                                    transition: "background 0.15s ease",
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                                onMouseOut={(e) => (e.currentTarget.style.background = "none")}
+                            >
+                                Deselect All
+                            </button>
+                        </div>
                     </div>
                     <div
                         className="export-columns-chips-container"
@@ -1004,7 +1166,7 @@ const ExportPreviewModal = ({
                             {filteredData.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={selectedColumns.length + 1}
+                                        colSpan={Math.max(selectedColumns.length + 1, 1)}
                                         style={{
                                             textAlign: "center",
                                             padding: "48px 20px",
@@ -1014,6 +1176,21 @@ const ExportPreviewModal = ({
                                         <FileIcon width="40" height="40" style={{ opacity: 0.3, marginBottom: "8px" }} />
                                         <p style={{ fontSize: "1rem", fontWeight: "600", margin: "0 0 4px", color: "#0f172a" }}>No matching records</p>
                                         <p style={{ fontSize: "0.82rem", margin: 0, color: "#64748b" }}>Try adjusting your search or filters</p>
+                                    </td>
+                                </tr>
+                            ) : selectedColumns.length === 0 ? (
+                                <tr>
+                                    <td
+                                        colSpan={2}
+                                        style={{
+                                            textAlign: "center",
+                                            padding: "48px 20px",
+                                            color: "#64748b",
+                                        }}
+                                    >
+                                        <GridIcon width="36" height="36" style={{ opacity: 0.35, marginBottom: "8px" }} />
+                                        <p style={{ fontSize: "0.95rem", fontWeight: "600", margin: "0 0 4px", color: "#0f172a" }}>No columns selected</p>
+                                        <p style={{ fontSize: "0.82rem", margin: 0, color: "#64748b" }}>Select one or more columns above to preview and export</p>
                                     </td>
                                 </tr>
                             ) : (
@@ -1321,7 +1498,9 @@ const ExportPreviewModal = ({
                             }}
                         >
                             <DownloadIcon width="15" height="15" />
-                            Export {activeSelectedCount.toLocaleString()} Records
+                            {selectedColumns.length === 0
+                                ? "Select at least 1 column"
+                                : `Export ${activeSelectedCount.toLocaleString()} Records`}
                         </button>
                     </div>
                 </div>
