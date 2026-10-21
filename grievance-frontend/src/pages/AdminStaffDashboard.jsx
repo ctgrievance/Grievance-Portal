@@ -16,7 +16,7 @@ import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
 import RegisteredUsersView from "../components/RegisteredUsersView";
 import useDepartmentPermissions from "../hooks/useDepartmentPermissions";
-import { 
+import {
   ClipboardIcon, PaperclipIcon, TrashIcon, CheckCircleIcon, XIcon, UserIcon, AlertCircleIcon, ShieldIcon,
   StarIcon, EditIcon, BellIcon, DownloadIcon, EyeIcon, ClockIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, MessageCircleIcon,
   GraduationCapIcon, UsersIcon, DynamicSpinner, DynamicLoadingState
@@ -158,10 +158,10 @@ function AdminStaffDashboard() {
   // Dynamic context-aware label for the grouped tab
   const hasRecords = canStudentRecords || canStaffRecords;
   const hasUsers = canRegisteredUsers;
-  const recordsGroupLabel = (hasRecords && hasUsers) 
-    ? "Records & Users" 
-    : hasRecords 
-      ? "Records Directory" 
+  const recordsGroupLabel = (hasRecords && hasUsers)
+    ? "Records & Users"
+    : hasRecords
+      ? "Records Directory"
       : "Registered Users";
 
   // Safety fallback if activeTab is accidentally set to the parent group ID
@@ -990,7 +990,7 @@ function AdminStaffDashboard() {
       )}
 
       {/*  TABS NAVBAR (Pill Style) */}
-      <GenericAdminNavbar 
+      <GenericAdminNavbar
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
@@ -1001,10 +1001,10 @@ function AdminStaffDashboard() {
           { id: "assigned", label: "My Assigned Tasks", IconComponent: ClipboardIcon, isVisible: true },
           { id: "pool", label: poolGrievances.length > 0 ? `Pool Accept Queue (${poolGrievances.length})` : "Pool Accept Queue", IconComponent: ClipboardIcon, isVisible: true },
           { id: "ratings", label: `My Ratings (${ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : 0})`, IconComponent: StarIcon, isVisible: true },
-          { 
-            id: "records_users_group", 
-            label: recordsGroupLabel, 
-            IconComponent: hasUsers && !hasRecords ? UsersIcon : GraduationCapIcon, 
+          {
+            id: "records_users_group",
+            label: recordsGroupLabel,
+            IconComponent: hasUsers && !hasRecords ? UsersIcon : GraduationCapIcon,
             isVisible: hasAnyRecordsAccess,
             subItems: [
               { id: "student_records", label: "Student Records", description: "Search & view university student records", IconComponent: GraduationCapIcon, isVisible: canStudentRecords },
@@ -1076,1229 +1076,1229 @@ function AdminStaffDashboard() {
 
         {activeTab !== "student_records" && activeTab !== "staff_records" && activeTab !== "registered_users" && (
           <div className="card">
-          {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
+            {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
-          {/* TAB 1: ASSIGNED TASKS */}
-          {activeTab === "assigned" && (
-            <>
-              <h2>Assigned Grievances</h2>
-              <p style={{ marginBottom: "1rem", color: "#64748b" }}>These grievances have been specifically assigned to you.</p>
+            {/* TAB 1: ASSIGNED TASKS */}
+            {activeTab === "assigned" && (
+              <>
+                <h2>Assigned Grievances</h2>
+                <p style={{ marginBottom: "1rem", color: "#64748b" }}>These grievances have been specifically assigned to you.</p>
 
-              {/*  MODERN RESPONSIVE FILTER BAR */}
-              <DepartmentFilterBar
-                searchId={searchId}
-                setSearchId={setSearchId}
-                statusFilter={filterStatus}
-                setStatusFilter={setFilterStatus}
-                filterDepartment={filterDepartment}
-                setFilterDepartment={setFilterDepartment}
-                departments={uniqueDepartments}
-                filterMonth={filterMonth}
-                setFilterMonth={setFilterMonth}
-                onReset={() => {
-                  setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
-                }}
-                onExport={handleOpenExportModal}
-              />
+                {/*  MODERN RESPONSIVE FILTER BAR */}
+                <DepartmentFilterBar
+                  searchId={searchId}
+                  setSearchId={setSearchId}
+                  statusFilter={filterStatus}
+                  setStatusFilter={setFilterStatus}
+                  filterDepartment={filterDepartment}
+                  setFilterDepartment={setFilterDepartment}
+                  departments={uniqueDepartments}
+                  filterMonth={filterMonth}
+                  setFilterMonth={setFilterMonth}
+                  onReset={() => {
+                    setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
+                  }}
+                  onExport={handleOpenExportModal}
+                />
 
-              {loading ? (
-                <div className="table-container staff-desktop-only">
-                  <table className="grievance-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>ID</th>
-                        <th>Message</th>
-                        <th>Submitted At</th>
-                        <th className="deadline-col">Deadline</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[1, 2, 3, 4].map(i => (
-                        <tr key={i} className="skeleton-row">
-                          <td><div className="skeleton skeleton-text" style={{ width: 80 }} /></td>
-                          <td><div className="skeleton skeleton-text" style={{ width: 120 }} /></td>
-                          <td><div className="skeleton skeleton-text" style={{ width: 80 }} /></td>
-                          <td className="message-cell"><div className="skeleton skeleton-text" style={{ width: 180 }} /></td>
-                          <td><div className="skeleton skeleton-text" style={{ width: 90 }} /></td>
-                          <td className="deadline-col"><div className="skeleton skeleton-text" style={{ width: 90 }} /></td>
-                          <td><div className="skeleton skeleton-pill" /></td>
-                          <td><div className="skeleton skeleton-btn" /></td>
+                {loading ? (
+                  <div className="table-container staff-desktop-only">
+                    <table className="grievance-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>ID</th>
+                          <th>Message</th>
+                          <th>Submitted At</th>
+                          <th className="deadline-col">Deadline</th>
+                          <th>Status</th>
+                          <th>Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : getFilteredData(grievances, "assigned").length === 0 ? (
-                <div className="empty-state">
-                  <p>{grievances.length === 0 ? "No grievances found assigned to your ID." : "No grievances match your filters."}</p>
-                </div>
-              ) : (
-                <>
-                <div className="table-container staff-desktop-only">
-                  <table className="grievance-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>ID</th>
-                        <th>Message</th>
-                        <th>Submitted At</th>
-                        <th className="deadline-col">Deadline</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getFilteredData(grievances, "assigned").map((g) => (
-                        <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <span>{g.name}</span>
-                              <UserRoleBadge grievance={g} />
-                            </div>
-                          </td>
-                          <td>{g.email}</td>
-                          <td>{g.regid || "-"}</td>
-                          <td className="message-cell" style={{ maxWidth: '150px' }}>
-                            <div
-                              style={{
-                                padding: "4px",
-                                borderRadius: "4px",
-                                transition: "background 0.22s"
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                            >
-                              <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>{g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}</span>
-                            </div>
-                          </td>
-                          <td>{formatDate(g.createdAt)}</td>
-                          <td className="deadline-col">
-                            {(() => {
-                              const ds = getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status);
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
-                                  <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500' }}>{ds.label}</span>
-                                  {ds.badge && <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                      </thead>
+                      <tbody>
+                        {[1, 2, 3, 4].map(i => (
+                          <tr key={i} className="skeleton-row">
+                            <td><div className="skeleton skeleton-text" style={{ width: 80 }} /></td>
+                            <td><div className="skeleton skeleton-text" style={{ width: 120 }} /></td>
+                            <td><div className="skeleton skeleton-text" style={{ width: 80 }} /></td>
+                            <td className="message-cell"><div className="skeleton skeleton-text" style={{ width: 180 }} /></td>
+                            <td><div className="skeleton skeleton-text" style={{ width: 90 }} /></td>
+                            <td className="deadline-col"><div className="skeleton skeleton-text" style={{ width: 90 }} /></td>
+                            <td><div className="skeleton skeleton-pill" /></td>
+                            <td><div className="skeleton skeleton-btn" /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : getFilteredData(grievances, "assigned").length === 0 ? (
+                  <div className="empty-state">
+                    <p>{grievances.length === 0 ? "No grievances found assigned to your ID." : "No grievances match your filters."}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="table-container staff-desktop-only">
+                      <table className="grievance-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>ID</th>
+                            <th>Message</th>
+                            <th>Submitted At</th>
+                            <th className="deadline-col">Deadline</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getFilteredData(grievances, "assigned").map((g) => (
+                            <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <span>{g.name}</span>
+                                  <UserRoleBadge grievance={g} />
                                 </div>
-                              );
-                            })()}
-                          </td>
-                          <td>
-                            <span className={`status-badge status-${g.status.toLowerCase()}`}>{g.status}</span>
+                              </td>
+                              <td>{g.email}</td>
+                              <td>{g.regid || "-"}</td>
+                              <td className="message-cell" style={{ maxWidth: '150px' }}>
+                                <div
+                                  style={{
+                                    padding: "4px",
+                                    borderRadius: "4px",
+                                    transition: "background 0.22s"
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                >
+                                  <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>{g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}</span>
+                                </div>
+                              </td>
+                              <td>{formatDate(g.createdAt)}</td>
+                              <td className="deadline-col">
+                                {(() => {
+                                  const ds = getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status);
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                                      <span style={{ color: ds.color, fontWeight: ds.isOverdue ? '700' : '500' }}>{ds.label}</span>
+                                      {ds.badge && <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700', background: ds.isOverdue ? '#fef2f2' : '#fffbeb', color: ds.color, border: `1px solid ${ds.color}30` }}>{ds.badge}</span>}
+                                    </div>
+                                  );
+                                })()}
+                              </td>
+                              <td>
+                                <span className={`status-badge status-${g.status.toLowerCase()}`}>{g.status}</span>
+                                {g.status === "Resolved" && g.rating?.stars && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px", fontSize: "0.8rem", color: "#f59e0b" }}>
+                                    <span>{"★".repeat(g.rating.stars)}</span>
+                                    <span style={{ fontWeight: "700", color: "#b45309", fontSize: "0.75rem" }}>{g.rating.stars}.0</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                <ActionDropdown>
+                                  <button className="action-btn resolve-btn" onClick={(e) => { e.stopPropagation(); updateStatus(g._id, "Resolved"); }} disabled={g.status === "Resolved" || g.status === "Rejected"} style={{ opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1, cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer" }}>Resolve</button>
+                                  <button
+                                    className="action-btn reject-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRejectPopup(g);
+                                      setRejectionReason("");
+                                    }}
+                                    disabled={g.status === "Resolved" || g.status === "Rejected"}
+                                    style={{
+                                      background: "#ef4444",
+                                      color: "white",
+                                      opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1,
+                                      cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer",
+                                      marginLeft: "5px"
+                                    }}
+                                  >
+                                    Reject
+                                  </button>
+                                  {g.extensionRequest?.status === "Pending" && (
+                                    <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><ClockIcon width="12" height="12" /> Pending</span>
+                                  )}
+                                  <button
+                                    className="action-btn forward-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTransferModalGrievance(g);
+                                    }}
+                                    disabled={g.status === "Resolved" || g.status === "Rejected"}
+                                    style={{
+                                      background: "#eff6ff",
+                                      color: "#1d4ed8",
+                                      border: "1px solid #bfdbfe",
+                                      fontWeight: "600",
+                                      opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1,
+                                      cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer",
+                                      marginLeft: "5px"
+                                    }}
+                                    title="Forward to another department"
+                                  >
+                                    Forward
+                                  </button>
+                                  <button
+                                    className="action-btn chat-btn"
+                                    onClick={(e) => { e.stopPropagation(); setCurrentChatId(g._id); setShowChat(true); }}
+                                    style={{ background: "#3b82f6", color: "white", position: "relative" }}
+                                  >
+                                    Chat
+                                    {unreadMap[g._id] && <span className="notification-dot"></span>}
+                                  </button>
+                                </ActionDropdown>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="staff-mobile-cards-list staff-mobile-only">
+                      {getFilteredData(grievances, "assigned").map((g) => (
+                        <div
+                          key={g._id}
+                          className="staff-mobile-card staff-mcard"
+                          onClick={() => setSelectedGrievance(g)}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          {/* Header: User Info + Status Badge */}
+                          <div className="staff-mcard-header">
+                            <div className="staff-mcard-user">
+                              <span className="staff-mcard-name">{g.name}</span>
+                              <UserRoleBadge grievance={g} />
+                              <span className="staff-mcard-id">
+                                {g.regid ? `#${g.regid}` : (g._id ? `#${g._id.slice(-6)}` : "")}
+                              </span>
+                            </div>
+                            <div className="staff-mcard-status">
+                              <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
+                                {g.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Message Preview */}
+                          <div className="staff-mcard-msg">
+                            {g.message}
+                          </div>
+
+                          {/* Meta Grid */}
+                          <div className="staff-mcard-meta-grid">
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Email</span>
+                              <span className="staff-mcard-meta-value" title={g.email}>{g.email || "-"}</span>
+                            </div>
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Submitted On</span>
+                              <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                            </div>
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Department</span>
+                              <span className="staff-mcard-meta-value">{g.category || g.department || "General"}</span>
+                            </div>
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Deadline</span>
+                              <span className="staff-mcard-meta-value">
+                                {(() => {
+                                  const ds = getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status);
+                                  return (
+                                    <span style={{ color: ds.color, fontWeight: ds.isOverdue ? "700" : "600" }}>
+                                      {ds.label} {ds.badge ? `(${ds.badge})` : ""}
+                                    </span>
+                                  );
+                                })()}
+                              </span>
+                            </div>
                             {g.status === "Resolved" && g.rating?.stars && (
-                              <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px", fontSize: "0.8rem", color: "#f59e0b" }}>
-                                <span>{"★".repeat(g.rating.stars)}</span>
-                                <span style={{ fontWeight: "700", color: "#b45309", fontSize: "0.75rem" }}>{g.rating.stars}.0</span>
+                              <div className="staff-mcard-meta-item" style={{ gridColumn: "span 2" }}>
+                                <span className="staff-mcard-meta-label">Student Rating</span>
+                                <span className="staff-mcard-meta-value" style={{ color: "#f59e0b", fontWeight: "700" }}>
+                                  {"★".repeat(g.rating.stars)} ({g.rating.stars}.0)
+                                </span>
                               </div>
                             )}
-                          </td>
-                          <td>
-                            <ActionDropdown>
-                              <button className="action-btn resolve-btn" onClick={(e) => { e.stopPropagation(); updateStatus(g._id, "Resolved"); }} disabled={g.status === "Resolved" || g.status === "Rejected"} style={{ opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1, cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer" }}>Resolve</button>
+                            {g.extensionRequest?.status === "Pending" && (
+                              <div className="staff-mcard-meta-item" style={{ gridColumn: "span 2" }}>
+                                <span style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "4px", background: "#fffbeb", color: "#b45309", border: "1px solid #fcd34d", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                  <ClockIcon width="12" height="12" /> Extension Request Pending
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Footer: Tap hint & Actions */}
+                          <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
+                            <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>
+                              Tap for details ➔
+                            </span>
+
+                            <div className="staff-mcard-actions">
+                              {/* Chat */}
+                              <div className="chat-btn-wrapper">
+                                <button
+                                  type="button"
+                                  className="staff-mcard-btn chat"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentChatId(g._id);
+                                    setShowChat(true);
+                                  }}
+                                  title="Open Chat"
+                                >
+                                  <MessageCircleIcon width="13" height="13" />
+                                  <span>Chat</span>
+                                </button>
+                                {unreadMap[g._id] && <span className="notification-dot"></span>}
+                              </div>
+
+                              {/* Resolve */}
                               <button
-                                className="action-btn reject-btn"
+                                type="button"
+                                className="staff-mcard-btn resolve"
+                                disabled={g.status === "Resolved" || g.status === "Rejected"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(g._id, "Resolved");
+                                }}
+                              >
+                                Resolve
+                              </button>
+
+                              {/* Reject */}
+                              <button
+                                type="button"
+                                className="staff-mcard-btn reject"
+                                disabled={g.status === "Resolved" || g.status === "Rejected"}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setRejectPopup(g);
                                   setRejectionReason("");
                                 }}
-                                disabled={g.status === "Resolved" || g.status === "Rejected"}
-                                style={{
-                                  background: "#ef4444",
-                                  color: "white",
-                                  opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1,
-                                  cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer",
-                                  marginLeft: "5px"
-                                }}
                               >
                                 Reject
                               </button>
-                              {g.extensionRequest?.status === "Pending" && (
-                                <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><ClockIcon width="12" height="12" /> Pending</span>
-                              )}
+
+                              {/* Forward */}
                               <button
-                                className="action-btn forward-btn"
+                                type="button"
+                                className="staff-mcard-btn"
+                                disabled={g.status === "Resolved" || g.status === "Rejected"}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setTransferModalGrievance(g);
                                 }}
-                                disabled={g.status === "Resolved" || g.status === "Rejected"}
                                 style={{
                                   background: "#eff6ff",
                                   color: "#1d4ed8",
                                   border: "1px solid #bfdbfe",
                                   fontWeight: "600",
-                                  opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1,
-                                  cursor: (g.status === "Resolved" || g.status === "Rejected") ? "not-allowed" : "pointer",
-                                  marginLeft: "5px"
+                                  opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1
                                 }}
                                 title="Forward to another department"
                               >
                                 Forward
                               </button>
-                              <button
-                                className="action-btn chat-btn"
-                                onClick={(e) => { e.stopPropagation(); setCurrentChatId(g._id); setShowChat(true); }}
-                                style={{ background: "#3b82f6", color: "white", position: "relative" }}
-                              >
-                                Chat
-                                {unreadMap[g._id] && <span className="notification-dot"></span>}
-                              </button>
-                            </ActionDropdown>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Cards View */}
-                <div className="staff-mobile-cards-list staff-mobile-only">
-                  {getFilteredData(grievances, "assigned").map((g) => (
-                    <div
-                      key={g._id}
-                      className="staff-mobile-card staff-mcard"
-                      onClick={() => setSelectedGrievance(g)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {/* Header: User Info + Status Badge */}
-                      <div className="staff-mcard-header">
-                        <div className="staff-mcard-user">
-                          <span className="staff-mcard-name">{g.name}</span>
-                          <UserRoleBadge grievance={g} />
-                          <span className="staff-mcard-id">
-                            {g.regid ? `#${g.regid}` : (g._id ? `#${g._id.slice(-6)}` : "")}
-                          </span>
-                        </div>
-                        <div className="staff-mcard-status">
-                          <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
-                            {g.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Message Preview */}
-                      <div className="staff-mcard-msg">
-                        {g.message}
-                      </div>
-
-                      {/* Meta Grid */}
-                      <div className="staff-mcard-meta-grid">
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Email</span>
-                          <span className="staff-mcard-meta-value" title={g.email}>{g.email || "-"}</span>
-                        </div>
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Submitted On</span>
-                          <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
-                        </div>
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Department</span>
-                          <span className="staff-mcard-meta-value">{g.category || g.department || "General"}</span>
-                        </div>
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Deadline</span>
-                          <span className="staff-mcard-meta-value">
-                            {(() => {
-                              const ds = getDeadlineStatus(g.deadlineDate || g.deadline || g.deadline_date, g.status);
-                              return (
-                                <span style={{ color: ds.color, fontWeight: ds.isOverdue ? "700" : "600" }}>
-                                  {ds.label} {ds.badge ? `(${ds.badge})` : ""}
-                                </span>
-                              );
-                            })()}
-                          </span>
-                        </div>
-                        {g.status === "Resolved" && g.rating?.stars && (
-                          <div className="staff-mcard-meta-item" style={{ gridColumn: "span 2" }}>
-                            <span className="staff-mcard-meta-label">Student Rating</span>
-                            <span className="staff-mcard-meta-value" style={{ color: "#f59e0b", fontWeight: "700" }}>
-                              {"★".repeat(g.rating.stars)} ({g.rating.stars}.0)
-                            </span>
-                          </div>
-                        )}
-                        {g.extensionRequest?.status === "Pending" && (
-                          <div className="staff-mcard-meta-item" style={{ gridColumn: "span 2" }}>
-                            <span style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "4px", background: "#fffbeb", color: "#b45309", border: "1px solid #fcd34d", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                              <ClockIcon width="12" height="12" /> Extension Request Pending
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Footer: Tap hint & Actions */}
-                      <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
-                        <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>
-                          Tap for details ➔
-                        </span>
-
-                        <div className="staff-mcard-actions">
-                          {/* Chat */}
-                          <div className="chat-btn-wrapper">
-                            <button
-                              type="button"
-                              className="staff-mcard-btn chat"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentChatId(g._id);
-                                setShowChat(true);
-                              }}
-                              title="Open Chat"
-                            >
-                              <MessageCircleIcon width="13" height="13" />
-                              <span>Chat</span>
-                            </button>
-                            {unreadMap[g._id] && <span className="notification-dot"></span>}
-                          </div>
-
-                          {/* Resolve */}
-                          <button
-                            type="button"
-                            className="staff-mcard-btn resolve"
-                            disabled={g.status === "Resolved" || g.status === "Rejected"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateStatus(g._id, "Resolved");
-                            }}
-                          >
-                            Resolve
-                          </button>
-
-                          {/* Reject */}
-                          <button
-                            type="button"
-                            className="staff-mcard-btn reject"
-                            disabled={g.status === "Resolved" || g.status === "Rejected"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRejectPopup(g);
-                              setRejectionReason("");
-                            }}
-                          >
-                            Reject
-                          </button>
-
-                          {/* Forward */}
-                          <button
-                            type="button"
-                            className="staff-mcard-btn"
-                            disabled={g.status === "Resolved" || g.status === "Rejected"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setTransferModalGrievance(g);
-                            }}
-                            style={{
-                              background: "#eff6ff",
-                              color: "#1d4ed8",
-                              border: "1px solid #bfdbfe",
-                              fontWeight: "600",
-                              opacity: (g.status === "Resolved" || g.status === "Rejected") ? 0.5 : 1
-                            }}
-                            title="Forward to another department"
-                          >
-                            Forward
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                </>
-              )}
-            </>
-          )}
-
-          {/* TAB 2: POOL ACCEPT QUEUE */}
-          {activeTab === "pool" && (
-            <>
-              <h2>Pool Accept Queue</h2>
-              <p style={{ marginBottom: "1rem", color: "#64748b" }}>
-                Grievances available for you to accept (Pool Accept Mode). First to accept gets assigned!
-              </p>
-
-              {loadingPool ? (
-                <DynamicLoadingState text="Loading pool grievances..." minHeight="160px" />
-              ) : poolGrievances.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px", background: "white", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
-                  <p style={{ color: "#64748b", margin: 0 }}>No grievances available in the pool</p>
-                </div>
-              ) : (
-                <>
-                <div className="table-container staff-desktop-only">
-                  <table className="grievance-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>ID</th>
-                        <th>Message</th>
-                        <th>Submitted At</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {poolGrievances.map((g) => (
-                        <tr key={g._id}>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <span>{g.name}</span>
-                              <UserRoleBadge grievance={g} />
                             </div>
-                          </td>
-                          <td>{g.email}</td>
-                          <td>{g.regid || "-"}</td>
-                          <td className="message-cell" style={{ maxWidth: '150px' }}>
-                            <div
-                              style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                            >
-                              <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>
-                                {g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* TAB 2: POOL ACCEPT QUEUE */}
+            {activeTab === "pool" && (
+              <>
+                <h2>Pool Accept Queue</h2>
+                <p style={{ marginBottom: "1rem", color: "#64748b" }}>
+                  Grievances available for you to accept (Pool Accept Mode). First to accept gets assigned!
+                </p>
+
+                {loadingPool ? (
+                  <DynamicLoadingState text="Loading pool grievances..." minHeight="160px" />
+                ) : poolGrievances.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px", background: "white", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
+                    <p style={{ color: "#64748b", margin: 0 }}>No grievances available in the pool</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="table-container staff-desktop-only">
+                      <table className="grievance-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>ID</th>
+                            <th>Message</th>
+                            <th>Submitted At</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {poolGrievances.map((g) => (
+                            <tr key={g._id}>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <span>{g.name}</span>
+                                  <UserRoleBadge grievance={g} />
+                                </div>
+                              </td>
+                              <td>{g.email}</td>
+                              <td>{g.regid || "-"}</td>
+                              <td className="message-cell" style={{ maxWidth: '150px' }}>
+                                <div
+                                  style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                >
+                                  <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>
+                                    {g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>{formatDate(g.createdAt)}</td>
+                              <td>
+                                <span className={`status-badge status-${g.status.toLowerCase().replace(" ", "")}`}>
+                                  {g.status}
+                                </span>
+                              </td>
+                              <td className="action-cell">
+                                <button
+                                  onClick={() => handleAcceptGrievance(g._id)}
+                                  style={{
+                                    padding: "8px 16px",
+                                    background: "#16a34a",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    fontWeight: "600",
+                                    transition: "all 0.2s"
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+                                  onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                                >
+                                  Accept
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="staff-mobile-cards-list staff-mobile-only">
+                      {poolGrievances.map((g) => (
+                        <div
+                          key={g._id}
+                          className="staff-mobile-card staff-mcard"
+                        >
+                          <div className="staff-mcard-header">
+                            <div className="staff-mcard-user">
+                              <span className="staff-mcard-name">{g.name}</span>
+                              <UserRoleBadge grievance={g} />
+                              <span className="staff-mcard-id">
+                                {g.regid ? `#${g.regid}` : (g._id ? `#${g._id.slice(-6)}` : "")}
                               </span>
                             </div>
-                          </td>
-                          <td>{formatDate(g.createdAt)}</td>
-                          <td>
-                            <span className={`status-badge status-${g.status.toLowerCase().replace(" ", "")}`}>
-                              {g.status}
-                            </span>
-                          </td>
-                          <td className="action-cell">
-                            <button
-                              onClick={() => handleAcceptGrievance(g._id)}
-                              style={{
-                                padding: "8px 16px",
-                                background: "#16a34a",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontWeight: "600",
-                                transition: "all 0.2s"
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
-                              onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                            >
-                              Accept
-                            </button>
-                          </td>
-                        </tr>
+                            <div className="staff-mcard-status">
+                              <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
+                                {g.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="staff-mcard-msg">
+                            {g.message}
+                          </div>
+
+                          <div className="staff-mcard-meta-grid">
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Email</span>
+                              <span className="staff-mcard-meta-value" title={g.email}>{g.email || "-"}</span>
+                            </div>
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Submitted On</span>
+                              <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                            </div>
+                          </div>
+
+                          <div className="staff-mcard-footer">
+                            <span className="staff-mcard-hint"></span>
+                            <div className="staff-mcard-actions">
+                              <button
+                                type="button"
+                                className="staff-mcard-btn resolve"
+                                style={{ background: "#16a34a", color: "white", width: "100%" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAcceptGrievance(g._id);
+                                }}
+                              >
+                                Accept
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Cards View */}
-                <div className="staff-mobile-cards-list staff-mobile-only">
-                  {poolGrievances.map((g) => (
-                    <div
-                      key={g._id}
-                      className="staff-mobile-card staff-mcard"
-                    >
-                      <div className="staff-mcard-header">
-                        <div className="staff-mcard-user">
-                          <span className="staff-mcard-name">{g.name}</span>
-                          <UserRoleBadge grievance={g} />
-                          <span className="staff-mcard-id">
-                            {g.regid ? `#${g.regid}` : (g._id ? `#${g._id.slice(-6)}` : "")}
-                          </span>
-                        </div>
-                        <div className="staff-mcard-status">
-                          <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>
-                            {g.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="staff-mcard-msg">
-                        {g.message}
-                      </div>
-
-                      <div className="staff-mcard-meta-grid">
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Email</span>
-                          <span className="staff-mcard-meta-value" title={g.email}>{g.email || "-"}</span>
-                        </div>
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Submitted On</span>
-                          <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
-                        </div>
-                      </div>
-
-                      <div className="staff-mcard-footer">
-                        <span className="staff-mcard-hint"></span>
-                        <div className="staff-mcard-actions">
-                          <button
-                            type="button"
-                            className="staff-mcard-btn resolve"
-                            style={{ background: "#16a34a", color: "white", width: "100%" }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAcceptGrievance(g._id);
-                            }}
-                          >
-                            Accept
-                          </button>
-                        </div>
-                      </div>
                     </div>
-                  ))}
-                </div>
-                </>
-              )}
-            </>
-          )}
-
-          {/* TAB 3: SUBMIT GRIEVANCE */}
-          {activeTab === "submit" && (
-            <>
-              <h2>Submit Staff Grievance</h2>
-              <p>Select the relevant School/Department. It will be routed to the Head of Department.</p>
-
-              {/* 🛠️ Maintenance Notice */}
-              <MaintenanceNoticeBanner mode="form" />
-
-              <form onSubmit={handleSubmit}>
-                <div className="form-row">
-                  <div className="input-group">
-                    <label>Full Name</label>
-                    <input type="text" value={staffName} readOnly className="read-only-input" />
-                  </div>
-                  <div className="input-group">
-                    <label>Staff ID</label>
-                    <input type="text" value={staffId} readOnly className="read-only-input" />
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label>Email</label>
-                  <input type="email" value={staffEmail} readOnly className="read-only-input" />
-                </div>
-
-                <div className="input-group">
-                  <label>Select School / Department</label>
-                  <select name="department" value={formData.department} onChange={handleChange} required>
-                    <option value="">-- Select School --</option>
-                    {schools.map((school) => <option key={school} value={school}>{school}</option>)}
-                  </select>
-                </div>
-
-                {formData.department && (
-                  <div className="input-group">
-                    <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span>Grievance / Issue Type</span>
-                      <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: "600", background: "#eff6ff", padding: "2px 8px", borderRadius: "10px" }}>
-                        <ZapIcon width="12" height="12" style={{ verticalAlign: "middle", marginRight: "4px" }} />Linked to Smart Assignment
-                      </span>
-                    </label>
-                    <select
-                      value={selectedIssueType}
-                      onChange={(e) => setSelectedIssueType(e.target.value)}
-                      required
-                    >
-                      <option value="">-- Select Grievance / Issue Type --</option>
-                      {staffIssueTypes.map((it) => (
-                        <option key={it._id} value={it._id}>
-                          {it.issueName} {it.description ? `- ${it.description}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <small style={{ color: "#64748b", marginTop: "4px", display: "block" }}>
-                      Choose your specific grievance category for auto-routing. Select "Others" if your concern is unlisted.
-                    </small>
-                  </div>
+                  </>
                 )}
+              </>
+            )}
 
-                {(() => {
-                  const sel = staffIssueTypes.find(i => i._id === selectedIssueType);
-                  return sel && (sel.issueName === "Others" || sel.isSystemReserved) ? (
+            {/* TAB 3: SUBMIT GRIEVANCE */}
+            {activeTab === "submit" && (
+              <>
+                <h2>Submit Staff Grievance</h2>
+                <p>Select the relevant School/Department. It will be routed to the Head of Department.</p>
+
+                {/* 🛠️ Maintenance Notice */}
+                <MaintenanceNoticeBanner mode="form" />
+
+                <form onSubmit={handleSubmit}>
+                  <div className="form-row">
                     <div className="input-group">
-                      <label>Specify Custom Grievance Topic / Subject</label>
-                      <input
-                        type="text"
-                        value={customIssueTitle}
-                        onChange={(e) => setCustomIssueTitle(e.target.value)}
-                        placeholder="e.g., Salary discrepancy, Lab timings dispute, Course material..."
-                        required
-                      />
+                      <label>Full Name</label>
+                      <input type="text" value={staffName} readOnly className="read-only-input" />
                     </div>
-                  ) : null;
-                })()}
+                    <div className="input-group">
+                      <label>Staff ID</label>
+                      <input type="text" value={staffId} readOnly className="read-only-input" />
+                    </div>
+                  </div>
 
-                <div className="input-group">
-                  <label>Message</label>
-                  <textarea name="message" value={formData.message} onChange={handleChange} placeholder="Describe your issue..." rows="5" required></textarea>
-                </div>
+                  <div className="input-group">
+                    <label>Email</label>
+                    <input type="email" value={staffEmail} readOnly className="read-only-input" />
+                  </div>
 
-                <div className="input-group">
-                  <label>Attach Document (Optional)</label>
-                  <input id="adminStaffFile" type="file" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" className="file-input" />
-                </div>
+                  <div className="input-group">
+                    <label>Select School / Department</label>
+                    <select name="department" value={formData.department} onChange={handleChange} required>
+                      <option value="">-- Select School --</option>
+                      {schools.map((school) => <option key={school} value={school}>{school}</option>)}
+                    </select>
+                  </div>
 
-                <button
-                  type="submit"
-                  className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
-                  disabled={isSubmitting || isSubmitted || isMaintenanceActive}
-                  style={
-                    isMaintenanceActive
-                      ? {
+                  {formData.department && (
+                    <div className="input-group">
+                      <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Grievance / Issue Type</span>
+                        <span style={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: "600", background: "#eff6ff", padding: "2px 8px", borderRadius: "10px" }}>
+                          <ZapIcon width="12" height="12" style={{ verticalAlign: "middle", marginRight: "4px" }} />Linked to Smart Assignment
+                        </span>
+                      </label>
+                      <select
+                        value={selectedIssueType}
+                        onChange={(e) => setSelectedIssueType(e.target.value)}
+                        required
+                      >
+                        <option value="">-- Select Grievance / Issue Type --</option>
+                        {staffIssueTypes.map((it) => (
+                          <option key={it._id} value={it._id}>
+                            {it.issueName} {it.description ? `- ${it.description}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <small style={{ color: "#64748b", marginTop: "4px", display: "block" }}>
+                        Choose your specific grievance category for auto-routing. Select "Others" if your concern is unlisted.
+                      </small>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const sel = staffIssueTypes.find(i => i._id === selectedIssueType);
+                    return sel && (sel.issueName === "Others" || sel.isSystemReserved) ? (
+                      <div className="input-group">
+                        <label>Specify Custom Grievance Topic / Subject</label>
+                        <input
+                          type="text"
+                          value={customIssueTitle}
+                          onChange={(e) => setCustomIssueTitle(e.target.value)}
+                          placeholder="e.g., Salary discrepancy, Lab timings dispute, Course material..."
+                          required
+                        />
+                      </div>
+                    ) : null;
+                  })()}
+
+                  <div className="input-group">
+                    <label>Message</label>
+                    <textarea name="message" value={formData.message} onChange={handleChange} placeholder="Describe your issue..." rows="5" required></textarea>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Attach Document (Optional)</label>
+                    <input id="adminStaffFile" type="file" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" className="file-input" />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className={`submit-btn ${isSubmitted ? "submitted" : isSubmitting ? "submitting" : ""}`}
+                    disabled={isSubmitting || isSubmitted || isMaintenanceActive}
+                    style={
+                      isMaintenanceActive
+                        ? {
                           background: "#94a3b8",
                           color: "#ffffff",
                           cursor: "not-allowed",
                           opacity: 0.7,
                           boxShadow: "none"
                         }
-                      : isSubmitted
-                      ? {
-                          background: "linear-gradient(135deg, #16a34a, #15803d)",
-                          color: "#ffffff",
-                          opacity: 0.88,
-                          filter: "blur(0.2px)",
-                          cursor: "default",
-                          boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
-                        }
-                      : isSubmitting
-                      ? {
-                          opacity: 0.75,
-                          filter: "blur(0.4px)",
-                          cursor: "wait",
-                        }
-                      : {}
-                  }
-                >
-                  {isMaintenanceActive ? "🔒 Submissions Paused (Maintenance)" : isSubmitted ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircleIcon width="16" height="16" /> Submitted!</span> : isSubmitting ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><ClockIcon width="16" height="16" /> Submitting...</span> : "Submit Grievance"}
-                </button>
-
-                {msg && (
-                  <div
-                    className={`alert-box ${statusType}`}
-                    style={{ marginTop: "15px", textAlign: "center" }}
+                        : isSubmitted
+                          ? {
+                            background: "linear-gradient(135deg, #16a34a, #15803d)",
+                            color: "#ffffff",
+                            opacity: 0.88,
+                            filter: "blur(0.2px)",
+                            cursor: "default",
+                            boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
+                          }
+                          : isSubmitting
+                            ? {
+                              opacity: 0.75,
+                              filter: "blur(0.4px)",
+                              cursor: "wait",
+                            }
+                            : {}
+                    }
                   >
-                    {msg}
-                  </div>
-                )}
-              </form>
-            </>
-          )}
+                    {isMaintenanceActive ? "🔒 Submissions Paused (Maintenance)" : isSubmitted ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircleIcon width="16" height="16" /> Submitted!</span> : isSubmitting ? <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><ClockIcon width="16" height="16" /> Submitting...</span> : "Submit Grievance"}
+                  </button>
 
-          {/* TAB 3: MY SUBMISSIONS */}
-          {activeTab === "mine" && (
-            <>
-              <h2>My Submitted Grievances</h2>
+                  {msg && (
+                    <div
+                      className={`alert-box ${statusType}`}
+                      style={{ marginTop: "15px", textAlign: "center" }}
+                    >
+                      {msg}
+                    </div>
+                  )}
+                </form>
+              </>
+            )}
 
-              {/*  MODERN RESPONSIVE FILTER BAR */}
-              <DepartmentFilterBar
-                searchId={searchId}
-                setSearchId={setSearchId}
-                searchIdPlaceholder="Search Assigned Staff ID or Name..."
-                statusFilter={filterStatus}
-                setStatusFilter={setFilterStatus}
-                filterDepartment={filterDepartment}
-                setFilterDepartment={setFilterDepartment}
-                departments={uniqueDepartments}
-                filterMonth={filterMonth}
-                setFilterMonth={setFilterMonth}
-                onReset={() => {
-                  setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
-                }}
-              />
+            {/* TAB 3: MY SUBMISSIONS */}
+            {activeTab === "mine" && (
+              <>
+                <h2>My Submitted Grievances</h2>
 
-              {loadingMine ? (
-                <DynamicLoadingState text="Loading your grievances..." minHeight="160px" />
-              ) : getFilteredData(myGrievances, "mine").length === 0 ? <p>No submissions match your filters.</p> : (
-                <>
-                <div className="table-container staff-desktop-only">
-                  <table className="grievance-table">
-                    <thead>
-                      <tr>
-                        <th>Category</th>
-                        <th>Message</th>
-                        <th>Status</th>
-                        <th>Assigned To</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                {/*  MODERN RESPONSIVE FILTER BAR */}
+                <DepartmentFilterBar
+                  searchId={searchId}
+                  setSearchId={setSearchId}
+                  searchIdPlaceholder="Search Assigned Staff ID or Name..."
+                  statusFilter={filterStatus}
+                  setStatusFilter={setFilterStatus}
+                  filterDepartment={filterDepartment}
+                  setFilterDepartment={setFilterDepartment}
+                  departments={uniqueDepartments}
+                  filterMonth={filterMonth}
+                  setFilterMonth={setFilterMonth}
+                  onReset={() => {
+                    setSearchId(""); setFilterStatus("All"); setFilterDepartment("All"); setFilterMonth("");
+                  }}
+                />
+
+                {loadingMine ? (
+                  <DynamicLoadingState text="Loading your grievances..." minHeight="160px" />
+                ) : getFilteredData(myGrievances, "mine").length === 0 ? <p>No submissions match your filters.</p> : (
+                  <>
+                    <div className="table-container staff-desktop-only">
+                      <table className="grievance-table">
+                        <thead>
+                          <tr>
+                            <th>Category</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th>Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getFilteredData(myGrievances, "mine").map((g) => (
+                            <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
+                              <td>{g.category}</td>
+                              <td className="message-cell" style={{ maxWidth: '150px' }}>
+                                <div
+                                  style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                >
+                                  <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>
+                                    {g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <span className={`status-badge status-${g.status.toLowerCase()}`}>
+                                  {g.status}
+                                </span>
+                              </td>
+                              <td>
+                                {g.assignedTo ? (
+                                  <div>
+                                    <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                                      {staffMap[g.assignedTo] || "Staff Member"}
+                                    </span>
+                                    <span style={{ fontSize: "0.8rem", color: "#64748b" }}>({g.assignedTo})</span>
+                                  </div>
+                                ) : (
+                                  <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned</span>
+                                )}
+                              </td>
+                              <td>{formatDate(g.createdAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards for My Submissions */}
+                    <div className="staff-mobile-cards-list staff-mobile-only">
                       {getFilteredData(myGrievances, "mine").map((g) => (
-                        <tr key={g._id} onClick={() => setSelectedGrievance(g)} style={{ cursor: "pointer" }}>
-                          <td>{g.category}</td>
-                          <td className="message-cell" style={{ maxWidth: '150px' }}>
-                            <div
-                              style={{ padding: "4px", borderRadius: "4px", transition: "background 0.22s" }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                            >
-                              <span style={{ wordBreak: 'break-all', lineHeight: '1.2', color: "#334155", fontWeight: "500" }}>
-                                {g.message.substring(0, 30)}{g.message.length > 30 ? "..." : ""}
+                        <div
+                          key={g._id}
+                          className="staff-mobile-card staff-mcard"
+                          onClick={() => setSelectedGrievance(g)}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <div className="staff-mcard-header">
+                            <div className="staff-mcard-user">
+                              <span className="staff-mcard-name">{g.category || "General"}</span>
+                            </div>
+                            <div className="staff-mcard-status">
+                              <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>{g.status}</span>
+                            </div>
+                          </div>
+                          <div className="staff-mcard-msg">{g.message}</div>
+                          <div className="staff-mcard-meta-grid">
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Assigned To</span>
+                              <span className="staff-mcard-meta-value">
+                                {g.assignedTo ? (staffMap[g.assignedTo] ? `${staffMap[g.assignedTo]} (${g.assignedTo})` : g.assignedTo) : "Not Assigned"}
                               </span>
                             </div>
-                          </td>
-                          <td>
-                            <span className={`status-badge status-${g.status.toLowerCase()}`}>
-                              {g.status}
-                            </span>
-                          </td>
-                          <td>
-                            {g.assignedTo ? (
-                              <div>
-                                <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
-                                  {staffMap[g.assignedTo] || "Staff Member"}
-                                </span>
-                                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>({g.assignedTo})</span>
-                              </div>
-                            ) : (
-                              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned</span>
-                            )}
-                          </td>
-                          <td>{formatDate(g.createdAt)}</td>
-                        </tr>
+                            <div className="staff-mcard-meta-item">
+                              <span className="staff-mcard-meta-label">Date</span>
+                              <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                            </div>
+                          </div>
+                          <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
+                            <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>Tap for details ➔</span>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* TAB: MY RATINGS & STUDENT FEEDBACK */}
+            {activeTab === "ratings" && (
+              <div className="ratings-tab-content">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
+                  <div>
+                    <h2 style={{ margin: 0, color: "#0f172a" }}>My Performance & Student Ratings</h2>
+                    <p style={{ margin: "4px 0 0 0", color: "#64748b" }}>
+                      Feedback and star ratings submitted by students upon resolution of their grievances.
+                    </p>
+                  </div>
+                  <button
+                    onClick={fetchMyRatings}
+                    style={{
+                      padding: "8px 16px",
+                      background: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontWeight: "600",
+                      fontSize: "0.85rem",
+                      color: "#334155",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    <RefreshIcon width="14" height="14" style={{ marginRight: "4px" }} /> Refresh Ratings
+                  </button>
                 </div>
 
-                {/* Mobile Cards for My Submissions */}
-                <div className="staff-mobile-cards-list staff-mobile-only">
-                  {getFilteredData(myGrievances, "mine").map((g) => (
-                    <div
-                      key={g._id}
-                      className="staff-mobile-card staff-mcard"
-                      onClick={() => setSelectedGrievance(g)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="staff-mcard-header">
-                        <div className="staff-mcard-user">
-                          <span className="staff-mcard-name">{g.category || "General"}</span>
-                        </div>
-                        <div className="staff-mcard-status">
-                          <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>{g.status}</span>
-                        </div>
-                      </div>
-                      <div className="staff-mcard-msg">{g.message}</div>
-                      <div className="staff-mcard-meta-grid">
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Assigned To</span>
-                          <span className="staff-mcard-meta-value">
-                            {g.assignedTo ? (staffMap[g.assignedTo] ? `${staffMap[g.assignedTo]} (${g.assignedTo})` : g.assignedTo) : "Not Assigned"}
+                {/* Top Summary Cards Grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px", marginBottom: "25px" }}>
+                  {/* Card 1: Score & Stars */}
+                  <div style={{
+                    background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+                    border: "1px solid #fde68a",
+                    borderRadius: "16px",
+                    padding: "24px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    boxShadow: "0 4px 12px rgba(245, 158, 11, 0.08)"
+                  }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#92400e", textTransform: "uppercase", letterSpacing: "1px" }}>
+                      Average Rating
+                    </div>
+                    <div style={{ fontSize: "3.5rem", fontWeight: "900", color: "#78350f", lineHeight: 1.1, margin: "8px 0" }}>
+                      {ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : "—"}
+                      <span style={{ fontSize: "1.4rem", fontWeight: "600", color: "#b45309" }}> / 5.0</span>
+                    </div>
+                    <div style={{ fontSize: "1.6rem", color: "#f59e0b", letterSpacing: "3px" }}>
+                      {"★".repeat(Math.round(ratingData.averageRating || 0))}
+                      <span style={{ color: "#d1d5db" }}>{"★".repeat(5 - Math.round(ratingData.averageRating || 0))}</span>
+                    </div>
+                    <div style={{ marginTop: "8px", fontSize: "0.85rem", color: "#92400e", fontWeight: "600" }}>
+                      Based on {ratingData.totalRatings} {ratingData.totalRatings === 1 ? "student rating" : "student ratings"}
+                    </div>
+                  </div>
+
+                  {/* Card 2: Rating Breakdown */}
+                  <div style={{
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    padding: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+                  }}>
+                    <div style={{ fontSize: "0.9rem", fontWeight: "700", color: "#1e293b", marginBottom: "12px" }}>
+                      Rating Breakdown
+                    </div>
+                    {[5, 4, 3, 2, 1].map((stars) => {
+                      const count = ratingData.breakdown?.[stars] || 0;
+                      const pct = ratingData.totalRatings > 0 ? Math.round((count / ratingData.totalRatings) * 100) : 0;
+                      return (
+                        <div key={stars} style={{ display: "flex", alignItems: "center", gap: "10px", margin: "4px 0", fontSize: "0.85rem" }}>
+                          <span style={{ width: "30px", fontWeight: "600", color: "#475569" }}>{stars} ★</span>
+                          <div style={{ flex: 1, height: "10px", background: "#f1f5f9", borderRadius: "5px", overflow: "hidden" }}>
+                            <div style={{
+                              width: `${pct}%`,
+                              height: "100%",
+                              background: stars >= 4 ? "#16a34a" : stars === 3 ? "#f59e0b" : "#ef4444",
+                              borderRadius: "5px",
+                              transition: "width 0.5s ease"
+                            }} />
+                          </div>
+                          <span style={{ width: "45px", textAlign: "right", color: "#64748b", fontSize: "0.8rem" }}>
+                            {count} ({pct}%)
                           </span>
                         </div>
-                        <div className="staff-mcard-meta-item">
-                          <span className="staff-mcard-meta-label">Date</span>
-                          <span className="staff-mcard-meta-value">{formatDate(g.createdAt)}</span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Student Feedback Reviews List */}
+                <h3 style={{ margin: "25px 0 15px 0", color: "#0f172a", fontSize: "1.1rem" }}>
+                  Student Reviews & Comments ({ratingData.reviews?.length || 0})
+                </h3>
+
+                {ratingData.reviews && ratingData.reviews.length > 0 ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+                    {ratingData.reviews.map((rev, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          background: "#ffffff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "14px",
+                          padding: "18px",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                          transition: "all 0.2s ease"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                          e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.06)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.03)";
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                          <div>
+                            <div style={{ color: "#f59e0b", fontSize: "1.1rem" }}>
+                              {"★".repeat(rev.stars || 0)}
+                              <span style={{ color: "#cbd5e1" }}>{"★".repeat(5 - (rev.stars || 0))}</span>
+                            </div>
+                            <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#1e293b", marginTop: "4px" }}>
+                              {rev.studentName}
+                              {rev.studentRegId && <span style={{ color: "#64748b", fontWeight: "400", fontSize: "0.78rem" }}> ({rev.studentRegId})</span>}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: "0.75rem", color: "#94a3b8", background: "#f8fafc", padding: "3px 8px", borderRadius: "6px" }}>
+                            {rev.ratedAt ? new Date(rev.ratedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
+                          </span>
                         </div>
-                      </div>
-                      <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
-                        <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>Tap for details ➔</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                </>
-              )}
-            </>
-          )}
 
-          {/* TAB: MY RATINGS & STUDENT FEEDBACK */}
-          {activeTab === "ratings" && (
-            <div className="ratings-tab-content">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
-                <div>
-                  <h2 style={{ margin: 0, color: "#0f172a" }}>My Performance & Student Ratings</h2>
-                  <p style={{ margin: "4px 0 0 0", color: "#64748b" }}>
-                    Feedback and star ratings submitted by students upon resolution of their grievances.
-                  </p>
-                </div>
-                <button
-                  onClick={fetchMyRatings}
-                  style={{
-                    padding: "8px 16px",
-                    background: "#f8fafc",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontWeight: "600",
-                    fontSize: "0.85rem",
-                    color: "#334155",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <RefreshIcon width="14" height="14" style={{ marginRight: "4px" }} /> Refresh Ratings
-                </button>
-              </div>
-
-              {/* Top Summary Cards Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px", marginBottom: "25px" }}>
-                {/* Card 1: Score & Stars */}
-                <div style={{
-                  background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-                  border: "1px solid #fde68a",
-                  borderRadius: "16px",
-                  padding: "24px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  boxShadow: "0 4px 12px rgba(245, 158, 11, 0.08)"
-                }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#92400e", textTransform: "uppercase", letterSpacing: "1px" }}>
-                    Average Rating
-                  </div>
-                  <div style={{ fontSize: "3.5rem", fontWeight: "900", color: "#78350f", lineHeight: 1.1, margin: "8px 0" }}>
-                    {ratingData.totalRatings > 0 ? Number(ratingData.averageRating).toFixed(1) : "—"}
-                    <span style={{ fontSize: "1.4rem", fontWeight: "600", color: "#b45309" }}> / 5.0</span>
-                  </div>
-                  <div style={{ fontSize: "1.6rem", color: "#f59e0b", letterSpacing: "3px" }}>
-                    {"★".repeat(Math.round(ratingData.averageRating || 0))}
-                    <span style={{ color: "#d1d5db" }}>{"★".repeat(5 - Math.round(ratingData.averageRating || 0))}</span>
-                  </div>
-                  <div style={{ marginTop: "8px", fontSize: "0.85rem", color: "#92400e", fontWeight: "600" }}>
-                    Based on {ratingData.totalRatings} {ratingData.totalRatings === 1 ? "student rating" : "student ratings"}
-                  </div>
-                </div>
-
-                {/* Card 2: Rating Breakdown */}
-                <div style={{
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "16px",
-                  padding: "20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
-                }}>
-                  <div style={{ fontSize: "0.9rem", fontWeight: "700", color: "#1e293b", marginBottom: "12px" }}>
-                    Rating Breakdown
-                  </div>
-                  {[5, 4, 3, 2, 1].map((stars) => {
-                    const count = ratingData.breakdown?.[stars] || 0;
-                    const pct = ratingData.totalRatings > 0 ? Math.round((count / ratingData.totalRatings) * 100) : 0;
-                    return (
-                      <div key={stars} style={{ display: "flex", alignItems: "center", gap: "10px", margin: "4px 0", fontSize: "0.85rem" }}>
-                        <span style={{ width: "30px", fontWeight: "600", color: "#475569" }}>{stars} ★</span>
-                        <div style={{ flex: 1, height: "10px", background: "#f1f5f9", borderRadius: "5px", overflow: "hidden" }}>
+                        {rev.feedback ? (
                           <div style={{
-                            width: `${pct}%`,
-                            height: "100%",
-                            background: stars >= 4 ? "#16a34a" : stars === 3 ? "#f59e0b" : "#ef4444",
-                            borderRadius: "5px",
-                            transition: "width 0.5s ease"
-                          }} />
+                            background: "#f8fafc",
+                            borderLeft: "3px solid #f59e0b",
+                            padding: "10px 12px",
+                            borderRadius: "0 8px 8px 0",
+                            color: "#334155",
+                            fontSize: "0.9rem",
+                            fontStyle: "italic",
+                            margin: "10px 0"
+                          }}>
+                            “{rev.feedback}”
+                          </div>
+                        ) : (
+                          <div style={{ color: "#94a3b8", fontSize: "0.82rem", fontStyle: "italic", margin: "10px 0" }}>
+                            (Rating provided without written comment)
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "8px" }}>
+                          <strong>Category:</strong> {rev.category || "General"}
                         </div>
-                        <span style={{ width: "45px", textAlign: "right", color: "#64748b", fontSize: "0.8rem" }}>
-                          {count} ({pct}%)
-                        </span>
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    background: "#f8fafc",
+                    border: "1px dashed #cbd5e1",
+                    borderRadius: "14px",
+                    padding: "40px",
+                    textAlign: "center",
+                    color: "#64748b"
+                  }}>
+                    <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><StarIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
+                    <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Ratings Yet</h4>
+                    <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
+                      When students rate the grievances you resolve, their star ratings and feedback will appear right here.
+                    </p>
+                  </div>
+                )}
               </div>
+            )}
 
-              {/* Student Feedback Reviews List */}
-              <h3 style={{ margin: "25px 0 15px 0", color: "#0f172a", fontSize: "1.1rem" }}>
-                Student Reviews & Comments ({ratingData.reviews?.length || 0})
-              </h3>
+            {/* TAB 5:  TRANSFERRED OUT GRIEVANCES */}
+            {activeTab === "transferred" && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: "1.3rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <RerouteIcon width="20" height="20" style={{ color: "#6366f1" }} /> Transferred Out Grievances
+                    </h2>
+                    <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.9rem" }}>
+                      Grievances you have re-routed to other departments, with their live status and handling details.
+                    </p>
+                  </div>
+                  <button
+                    onClick={fetchTransferredGrievances}
+                    style={{
+                      padding: "8px 16px",
+                      background: "#f1f5f9",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      color: "#334155",
+                      fontWeight: "600",
+                      fontSize: "0.85rem",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <RefreshIcon width="14" height="14" style={{ marginRight: "4px", verticalAlign: "middle" }} /> Refresh
+                  </button>
+                </div>
 
-              {ratingData.reviews && ratingData.reviews.length > 0 ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
-                  {ratingData.reviews.map((rev, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        background: "#ffffff",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "14px",
-                        padding: "18px",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
-                        transition: "all 0.2s ease"
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                        e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.06)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.03)";
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                        <div>
-                          <div style={{ color: "#f59e0b", fontSize: "1.1rem" }}>
-                            {"★".repeat(rev.stars || 0)}
-                            <span style={{ color: "#cbd5e1" }}>{"★".repeat(5 - (rev.stars || 0))}</span>
-                          </div>
-                          <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#1e293b", marginTop: "4px" }}>
-                            {rev.studentName}
-                            {rev.studentRegId && <span style={{ color: "#64748b", fontWeight: "400", fontSize: "0.78rem" }}> ({rev.studentRegId})</span>}
-                          </div>
-                        </div>
-                        <span style={{ fontSize: "0.75rem", color: "#94a3b8", background: "#f8fafc", padding: "3px 8px", borderRadius: "6px" }}>
-                          {rev.ratedAt ? new Date(rev.ratedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
-                        </span>
-                      </div>
+                {loadingTransferred ? (
+                  <DynamicLoadingState text="Loading transferred grievances..." minHeight="160px" />
+                ) : transferredGrievances.length > 0 ? (
+                  <>
+                    <div className="table-container staff-desktop-only" style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "10px", background: "#ffffff", marginBottom: "16px" }}>
+                      <table className="grievance-table" style={{ width: "100%", minWidth: "1150px", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: "110px", minWidth: "110px", padding: "12px 14px", whiteSpace: "nowrap" }}>Grievance ID</th>
+                            <th style={{ minWidth: "180px", padding: "12px 14px" }}>Student</th>
+                            <th style={{ minWidth: "180px", padding: "12px 14px" }}>Forwarded To</th>
+                            <th style={{ minWidth: "160px", padding: "12px 14px", whiteSpace: "nowrap" }}>Forwarded Date</th>
+                            <th style={{ minWidth: "200px", maxWidth: "260px", padding: "12px 14px" }}>Transfer Reason</th>
+                            <th style={{ width: "130px", minWidth: "120px", textAlign: "center", padding: "12px 14px" }}>Current Status</th>
+                            <th style={{ minWidth: "170px", padding: "12px 16px", whiteSpace: "nowrap" }}>Current Staff</th>
+                            <th style={{ width: "120px", minWidth: "120px", textAlign: "center", padding: "12px 14px" }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transferredGrievances.map((g) => {
+                            const myTransfer = g.transferHistory?.filter(
+                              t => t.transferredBy?.toUpperCase() === staffId
+                            ).slice(-1)[0] || g.transferHistory?.slice(-1)[0];
 
-                      {rev.feedback ? (
-                        <div style={{
-                          background: "#f8fafc",
-                          borderLeft: "3px solid #f59e0b",
-                          padding: "10px 12px",
-                          borderRadius: "0 8px 8px 0",
-                          color: "#334155",
-                          fontSize: "0.9rem",
-                          fontStyle: "italic",
-                          margin: "10px 0"
-                        }}>
-                          “{rev.feedback}”
-                        </div>
-                      ) : (
-                        <div style={{ color: "#94a3b8", fontSize: "0.82rem", fontStyle: "italic", margin: "10px 0" }}>
-                          (Rating provided without written comment)
-                        </div>
-                      )}
-
-                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "8px" }}>
-                        <strong>Category:</strong> {rev.category || "General"}
-                      </div>
+                            return (
+                              <tr key={g._id} style={{ verticalAlign: "middle" }}>
+                                <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
+                                  <span style={{ fontWeight: "700", fontFamily: "monospace", color: "#2563eb", fontSize: "0.88rem" }}>
+                                    #{g._id.slice(-6)}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "12px 14px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
+                                    <strong style={{ color: "#0f172a" }}>{g.name}</strong>
+                                    <UserRoleBadge grievance={g} />
+                                  </div>
+                                  <span style={{ display: "block", fontSize: "0.78rem", color: "#64748b" }}>
+                                    {g.userId || g.regid} • {g.studentProgram}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "12px 14px" }}>
+                                  <span
+                                    style={{
+                                      background: "#eff6ff",
+                                      color: "#1d4ed8",
+                                      border: "1px solid #bfdbfe",
+                                      padding: "4px 9px",
+                                      borderRadius: "6px",
+                                      fontWeight: "700",
+                                      fontSize: "0.8rem",
+                                      display: "inline-block"
+                                    }}
+                                  >
+                                    {g.forwardedDepartments && g.forwardedDepartments.length > 1 ? (
+                                      <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                        <span style={{ fontWeight: "800", color: "#4338ca", background: "#e0e7ff", border: "1px solid #c7d2fe", padding: "1px 6px", borderRadius: "4px", fontSize: "0.72rem" }}>
+                                          🔀 Multi-Dept ({g.forwardedDepartments.length})
+                                        </span>
+                                        <span style={{ fontSize: "0.78rem", color: "#1e40af" }}>
+                                          {g.forwardedDepartments.join(", ")}
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      myTransfer?.toDepartment || g.category
+                                    )}
+                                  </span>
+                                </td>
+                                <td style={{ fontSize: "0.84rem", color: "#475569", padding: "12px 14px", whiteSpace: "nowrap" }}>
+                                  {myTransfer?.transferredAt
+                                    ? new Date(myTransfer.transferredAt).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit"
+                                    })
+                                    : "N/A"}
+                                </td>
+                                <td style={{ maxWidth: "260px", fontSize: "0.84rem", padding: "12px 14px" }}>
+                                  <div style={{
+                                    background: "#f8fafc",
+                                    padding: "6px 10px",
+                                    borderRadius: "6px",
+                                    border: "1px dashed #cbd5e1",
+                                    fontStyle: "italic",
+                                    color: "#334155",
+                                    lineHeight: "1.35",
+                                    whiteSpace: "normal",
+                                    wordBreak: "break-word"
+                                  }}>
+                                    “{myTransfer?.reason || "Re-routed to correct department"}”
+                                  </div>
+                                </td>
+                                <td style={{ textAlign: "center", padding: "12px 14px" }}>
+                                  <span className={`status-badge status-${g.status.toLowerCase()}`}>
+                                    {g.status}
+                                  </span>
+                                </td>
+                                <td style={{ fontSize: "0.84rem", color: "#334155", padding: "12px 16px", whiteSpace: "nowrap" }}>
+                                  {g.currentCustodian?.staffName ? (
+                                    <div>
+                                      <strong style={{ color: "#1e293b", display: "block" }}>{g.currentCustodian.staffName}</strong>
+                                      {g.currentCustodian.staffId && (
+                                        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>ID: {g.currentCustodian.staffId}</span>
+                                      )}
+                                    </div>
+                                  ) : g.assignedTo ? (
+                                    <div>
+                                      <strong style={{ color: "#1e293b", display: "block" }}>{staffMap[g.assignedTo] || g.assignedTo}</strong>
+                                      <span style={{ fontSize: "0.75rem", color: "#64748b" }}>ID: {g.assignedTo}</span>
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Unassigned</span>
+                                  )}
+                                </td>
+                                <td style={{ textAlign: "center", padding: "12px 14px", whiteSpace: "nowrap" }}>
+                                  <button
+                                    onClick={() => setSelectedGrievance(g)}
+                                    style={{
+                                      padding: "6px 14px",
+                                      backgroundColor: "#2563eb",
+                                      color: "white",
+                                      border: "none",
+                                      borderRadius: "6px",
+                                      fontWeight: "600",
+                                      fontSize: "0.8rem",
+                                      cursor: "pointer",
+                                      transition: "background 0.15s",
+                                      whiteSpace: "nowrap"
+                                    }}
+                                    onMouseEnter={(e) => (e.target.style.backgroundColor = "#1d4ed8")}
+                                    onMouseLeave={(e) => (e.target.style.backgroundColor = "#2563eb")}
+                                  >
+                                    View Details
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{
-                  background: "#f8fafc",
-                  border: "1px dashed #cbd5e1",
-                  borderRadius: "14px",
-                  padding: "40px",
-                  textAlign: "center",
-                  color: "#64748b"
-                }}>
-                  <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><StarIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
-                  <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Ratings Yet</h4>
-                  <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
-                    When students rate the grievances you resolve, their star ratings and feedback will appear right here.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* TAB 5:  TRANSFERRED OUT GRIEVANCES */}
-          {activeTab === "transferred" && (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "1.3rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <RerouteIcon width="20" height="20" style={{ color: "#6366f1" }} /> Transferred Out Grievances
-                  </h2>
-                  <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.9rem" }}>
-                    Grievances you have re-routed to other departments, with their live status and handling details.
-                  </p>
-                </div>
-                <button
-                  onClick={fetchTransferredGrievances}
-                  style={{
-                    padding: "8px 16px",
-                    background: "#f1f5f9",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    color: "#334155",
-                    fontWeight: "600",
-                    fontSize: "0.85rem",
-                    cursor: "pointer"
-                  }}
-                >
-                  <RefreshIcon width="14" height="14" style={{ marginRight: "4px", verticalAlign: "middle" }} /> Refresh
-                </button>
-              </div>
-
-              {loadingTransferred ? (
-                <DynamicLoadingState text="Loading transferred grievances..." minHeight="160px" />
-              ) : transferredGrievances.length > 0 ? (
-                <>
-                <div className="table-container staff-desktop-only" style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "10px", background: "#ffffff", marginBottom: "16px" }}>
-                  <table className="grievance-table" style={{ width: "100%", minWidth: "1150px", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: "110px", minWidth: "110px", padding: "12px 14px", whiteSpace: "nowrap" }}>Grievance ID</th>
-                        <th style={{ minWidth: "180px", padding: "12px 14px" }}>Student</th>
-                        <th style={{ minWidth: "180px", padding: "12px 14px" }}>Forwarded To</th>
-                        <th style={{ minWidth: "160px", padding: "12px 14px", whiteSpace: "nowrap" }}>Forwarded Date</th>
-                        <th style={{ minWidth: "200px", maxWidth: "260px", padding: "12px 14px" }}>Transfer Reason</th>
-                        <th style={{ width: "130px", minWidth: "120px", textAlign: "center", padding: "12px 14px" }}>Current Status</th>
-                        <th style={{ minWidth: "170px", padding: "12px 16px", whiteSpace: "nowrap" }}>Current Staff</th>
-                        <th style={{ width: "120px", minWidth: "120px", textAlign: "center", padding: "12px 14px" }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                    {/* Mobile Cards for Transferred Grievances */}
+                    <div className="staff-mobile-cards-list staff-mobile-only">
                       {transferredGrievances.map((g) => {
                         const myTransfer = g.transferHistory?.filter(
                           t => t.transferredBy?.toUpperCase() === staffId
                         ).slice(-1)[0] || g.transferHistory?.slice(-1)[0];
-
                         return (
-                          <tr key={g._id} style={{ verticalAlign: "middle" }}>
-                            <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
-                              <span style={{ fontWeight: "700", fontFamily: "monospace", color: "#2563eb", fontSize: "0.88rem" }}>
-                                #{g._id.slice(-6)}
-                              </span>
-                            </td>
-                            <td style={{ padding: "12px 14px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
-                                <strong style={{ color: "#0f172a" }}>{g.name}</strong>
+                          <div
+                            key={g._id}
+                            className="staff-mobile-card staff-mcard"
+                            onClick={() => setSelectedGrievance(g)}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <div className="staff-mcard-header">
+                              <div className="staff-mcard-user">
+                                <span className="staff-mcard-name">{g.name}</span>
                                 <UserRoleBadge grievance={g} />
+                                <span className="staff-mcard-id">#{g._id.slice(-6)}</span>
                               </div>
-                              <span style={{ display: "block", fontSize: "0.78rem", color: "#64748b" }}>
-                                {g.userId || g.regid} • {g.studentProgram}
-                              </span>
-                            </td>
-                            <td style={{ padding: "12px 14px" }}>
-                              <span
-                                style={{
-                                  background: "#eff6ff",
-                                  color: "#1d4ed8",
-                                  border: "1px solid #bfdbfe",
-                                  padding: "4px 9px",
-                                  borderRadius: "6px",
-                                  fontWeight: "700",
-                                  fontSize: "0.8rem",
-                                  display: "inline-block"
-                                }}
-                              >
-                                {g.forwardedDepartments && g.forwardedDepartments.length > 1 ? (
-                                  <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                                    <span style={{ fontWeight: "800", color: "#4338ca", background: "#e0e7ff", border: "1px solid #c7d2fe", padding: "1px 6px", borderRadius: "4px", fontSize: "0.72rem" }}>
-                                      🔀 Multi-Dept ({g.forwardedDepartments.length})
-                                    </span>
-                                    <span style={{ fontSize: "0.78rem", color: "#1e40af" }}>
-                                      {g.forwardedDepartments.join(", ")}
-                                    </span>
-                                  </span>
-                                ) : (
-                                  myTransfer?.toDepartment || g.category
-                                )}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: "0.84rem", color: "#475569", padding: "12px 14px", whiteSpace: "nowrap" }}>
-                              {myTransfer?.transferredAt
-                                ? new Date(myTransfer.transferredAt).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit"
-                                  })
-                                : "N/A"}
-                            </td>
-                            <td style={{ maxWidth: "260px", fontSize: "0.84rem", padding: "12px 14px" }}>
-                              <div style={{
-                                background: "#f8fafc",
-                                padding: "6px 10px",
-                                borderRadius: "6px",
-                                border: "1px dashed #cbd5e1",
-                                fontStyle: "italic",
-                                color: "#334155",
-                                lineHeight: "1.35",
-                                whiteSpace: "normal",
-                                wordBreak: "break-word"
-                              }}>
-                                “{myTransfer?.reason || "Re-routed to correct department"}”
+                              <div className="staff-mcard-status">
+                                <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>{g.status}</span>
                               </div>
-                            </td>
-                            <td style={{ textAlign: "center", padding: "12px 14px" }}>
-                              <span className={`status-badge status-${g.status.toLowerCase()}`}>
-                                {g.status}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: "0.84rem", color: "#334155", padding: "12px 16px", whiteSpace: "nowrap" }}>
-                              {g.currentCustodian?.staffName ? (
-                                <div>
-                                  <strong style={{ color: "#1e293b", display: "block" }}>{g.currentCustodian.staffName}</strong>
-                                  {g.currentCustodian.staffId && (
-                                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>ID: {g.currentCustodian.staffId}</span>
-                                  )}
-                                </div>
-                              ) : g.assignedTo ? (
-                                <div>
-                                  <strong style={{ color: "#1e293b", display: "block" }}>{staffMap[g.assignedTo] || g.assignedTo}</strong>
-                                  <span style={{ fontSize: "0.75rem", color: "#64748b" }}>ID: {g.assignedTo}</span>
-                                </div>
-                              ) : (
-                                <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Unassigned</span>
-                              )}
-                            </td>
-                            <td style={{ textAlign: "center", padding: "12px 14px", whiteSpace: "nowrap" }}>
-                              <button
-                                onClick={() => setSelectedGrievance(g)}
-                                style={{
-                                  padding: "6px 14px",
-                                  backgroundColor: "#2563eb",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: "6px",
-                                  fontWeight: "600",
-                                  fontSize: "0.8rem",
-                                  cursor: "pointer",
-                                  transition: "background 0.15s",
-                                  whiteSpace: "nowrap"
-                                }}
-                                onMouseEnter={(e) => (e.target.style.backgroundColor = "#1d4ed8")}
-                                onMouseLeave={(e) => (e.target.style.backgroundColor = "#2563eb")}
-                              >
-                                View Details
-                              </button>
-                            </td>
-                          </tr>
+                            </div>
+                            <div className="staff-mcard-meta-grid">
+                              <div className="staff-mcard-meta-item">
+                                <span className="staff-mcard-meta-label">Forwarded To</span>
+                                <span className="staff-mcard-meta-value" style={{ color: "#1d4ed8", fontWeight: "700" }}>
+                                  {g.forwardedDepartments && g.forwardedDepartments.length > 1
+                                    ? `🔀 Multi-Dept: ${g.forwardedDepartments.join(", ")}`
+                                    : myTransfer?.toDepartment || g.category}
+                                </span>
+                              </div>
+                              <div className="staff-mcard-meta-item">
+                                <span className="staff-mcard-meta-label">Forwarded Date</span>
+                                <span className="staff-mcard-meta-value">
+                                  {myTransfer?.transferredAt
+                                    ? new Date(myTransfer.transferredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                    : "N/A"}
+                                </span>
+                              </div>
+                              <div className="staff-mcard-meta-item">
+                                <span className="staff-mcard-meta-label">Current Staff</span>
+                                <span className="staff-mcard-meta-value">{g.assignedTo ? (staffMap[g.assignedTo] || g.assignedTo) : "Unassigned"}</span>
+                              </div>
+                              <div className="staff-mcard-meta-item">
+                                <span className="staff-mcard-meta-label">Student</span>
+                                <span className="staff-mcard-meta-value">{g.userId || g.regid || "-"}</span>
+                              </div>
+                            </div>
+                            {myTransfer?.reason && (
+                              <div className="staff-mcard-msg" style={{ fontStyle: "italic", borderLeft: "3px solid #6366f1" }}>
+                                “{myTransfer.reason}”
+                              </div>
+                            )}
+                            <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
+                              <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>Tap for details ➔</span>
+                              <div className="staff-mcard-actions">
+                                <button
+                                  type="button"
+                                  className="staff-mcard-btn chat"
+                                  onClick={() => setSelectedGrievance(g)}
+                                >
+                                  View
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{
+                    background: "#f8fafc",
+                    border: "1px dashed #cbd5e1",
+                    borderRadius: "14px",
+                    padding: "40px",
+                    textAlign: "center",
+                    color: "#64748b"
+                  }}>
+                    <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><RerouteIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
+                    <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Transferred Grievances</h4>
+                    <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
+                      If you re-route a grievance that belongs to another department, its transfer record and live resolution tracking will appear here.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
-                {/* Mobile Cards for Transferred Grievances */}
-                <div className="staff-mobile-cards-list staff-mobile-only">
-                  {transferredGrievances.map((g) => {
-                    const myTransfer = g.transferHistory?.filter(
-                      t => t.transferredBy?.toUpperCase() === staffId
-                    ).slice(-1)[0] || g.transferHistory?.slice(-1)[0];
-                    return (
-                      <div
-                        key={g._id}
-                        className="staff-mobile-card staff-mcard"
-                        onClick={() => setSelectedGrievance(g)}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className="staff-mcard-header">
-                          <div className="staff-mcard-user">
-                            <span className="staff-mcard-name">{g.name}</span>
-                            <UserRoleBadge grievance={g} />
-                            <span className="staff-mcard-id">#{g._id.slice(-6)}</span>
-                          </div>
-                          <div className="staff-mcard-status">
-                            <span className={`status-badge status-${(g.status || "").toLowerCase().replace(" ", "")}`}>{g.status}</span>
-                          </div>
-                        </div>
-                        <div className="staff-mcard-meta-grid">
-                          <div className="staff-mcard-meta-item">
-                            <span className="staff-mcard-meta-label">Forwarded To</span>
-                            <span className="staff-mcard-meta-value" style={{ color: "#1d4ed8", fontWeight: "700" }}>
-                              {g.forwardedDepartments && g.forwardedDepartments.length > 1
-                                ? `🔀 Multi-Dept: ${g.forwardedDepartments.join(", ")}`
-                                : myTransfer?.toDepartment || g.category}
-                            </span>
-                          </div>
-                          <div className="staff-mcard-meta-item">
-                            <span className="staff-mcard-meta-label">Forwarded Date</span>
-                            <span className="staff-mcard-meta-value">
-                              {myTransfer?.transferredAt
-                                ? new Date(myTransfer.transferredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                                : "N/A"}
-                            </span>
-                          </div>
-                          <div className="staff-mcard-meta-item">
-                            <span className="staff-mcard-meta-label">Current Staff</span>
-                            <span className="staff-mcard-meta-value">{g.assignedTo ? (staffMap[g.assignedTo] || g.assignedTo) : "Unassigned"}</span>
-                          </div>
-                          <div className="staff-mcard-meta-item">
-                            <span className="staff-mcard-meta-label">Student</span>
-                            <span className="staff-mcard-meta-value">{g.userId || g.regid || "-"}</span>
-                          </div>
-                        </div>
-                        {myTransfer?.reason && (
-                          <div className="staff-mcard-msg" style={{ fontStyle: "italic", borderLeft: "3px solid #6366f1" }}>
-                            “{myTransfer.reason}”
-                          </div>
-                        )}
-                        <div className="staff-mcard-footer" onClick={(e) => e.stopPropagation()}>
-                          <span className="staff-mcard-hint" onClick={() => setSelectedGrievance(g)}>Tap for details ➔</span>
-                          <div className="staff-mcard-actions">
-                            <button
-                              type="button"
-                              className="staff-mcard-btn chat"
-                              onClick={() => setSelectedGrievance(g)}
-                            >
-                              View
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                </>
-              ) : (
-                <div style={{
-                  background: "#f8fafc",
-                  border: "1px dashed #cbd5e1",
-                  borderRadius: "14px",
-                  padding: "40px",
-                  textAlign: "center",
-                  color: "#64748b"
-                }}>
-                  <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}><RerouteIcon width="44" height="44" style={{ color: "#cbd5e1" }} /></div>
-                  <h4 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No Transferred Grievances</h4>
-                  <p style={{ margin: 0, fontSize: "0.9rem", maxWidth: "450px", marginInline: "auto" }}>
-                    If you re-route a grievance that belongs to another department, its transfer record and live resolution tracking will appear here.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+            {/* --- DETAILS POPUP MODAL --- */}
+            {selectedGrievance && (
+              <GrievanceDetailsModal
+                grievance={selectedGrievance}
+                staffMap={staffMap}
+                canTransfer={activeTab !== "transferred" && activeTab !== "mine"}
+                onClose={() => setSelectedGrievance(null)}
+                onDelete={activeTab !== "mine" ? handleDeleteGrievance : null}
+                onReject={activeTab !== "mine" ? (g) => {
+                  setRejectPopup(g);
+                  setRejectionReason("");
+                } : null}
+                onTransferred={(message) => {
+                  setMsg(message);
+                  setStatusType("success");
+                  fetchAssignedGrievances();
+                  fetchTransferredGrievances();
+                  setSelectedGrievance(null);
+                  setTimeout(() => setMsg(""), 4000);
+                }}
+                onRequestExtension={activeTab !== "mine" ? (g) => {
+                  setExtensionPopup(g);
+                  setExtDate("");
+                  setExtReason("");
+                } : null}
+              />
+            )}
 
-          {/* --- DETAILS POPUP MODAL --- */}
-          {selectedGrievance && (
-            <GrievanceDetailsModal
-              grievance={selectedGrievance}
-              staffMap={staffMap}
-              canTransfer={activeTab !== "transferred" && activeTab !== "mine"}
-              onClose={() => setSelectedGrievance(null)}
-              onDelete={activeTab !== "mine" ? handleDeleteGrievance : null}
-              onReject={activeTab !== "mine" ? (g) => {
-                setRejectPopup(g);
-                setRejectionReason("");
-              } : null}
-              onTransferred={(message) => {
-                setMsg(message);
-                setStatusType("success");
-                fetchAssignedGrievances();
-                fetchTransferredGrievances();
-                setSelectedGrievance(null);
-                setTimeout(() => setMsg(""), 4000);
-              }}
-              onRequestExtension={activeTab !== "mine" ? (g) => {
-                setExtensionPopup(g);
-                setExtDate("");
-                setExtReason("");
-              } : null}
-            />
-          )}
-
-          {transferModalGrievance && (
-            <TransferDepartmentModal
-              grievance={transferModalGrievance}
-              onClose={() => setTransferModalGrievance(null)}
-              onTransferred={(message) => {
-                setMsg(message || "Grievance forwarded to department successfully!");
-                setStatusType("success");
-                fetchAssignedGrievances();
-                fetchTransferredGrievances();
-                setTransferModalGrievance(null);
-                setTimeout(() => setMsg(""), 4000);
-              }}
-            />
-          )}
-          {/* --------------------------------------- */}
-        </div>
+            {transferModalGrievance && (
+              <TransferDepartmentModal
+                grievance={transferModalGrievance}
+                onClose={() => setTransferModalGrievance(null)}
+                onTransferred={(message) => {
+                  setMsg(message || "Grievance forwarded to department successfully!");
+                  setStatusType("success");
+                  fetchAssignedGrievances();
+                  fetchTransferredGrievances();
+                  setTransferModalGrievance(null);
+                  setTimeout(() => setMsg(""), 4000);
+                }}
+              />
+            )}
+            {/* --------------------------------------- */}
+          </div>
         )}
       </main>
 

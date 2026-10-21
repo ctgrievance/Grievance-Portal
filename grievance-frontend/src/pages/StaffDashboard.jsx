@@ -522,7 +522,7 @@ function StaffDashboard() {
               <span className="admin-master-badge">
                 <ShieldIcon width="12" height="12" /> {staffDept}
               </span>
-              
+
               {/*  Staff Rating Element in Header */}
               <span
                 onClick={() => setActiveTab("ratings")}
@@ -595,7 +595,7 @@ function StaffDashboard() {
       )}
 
       {/*  FIXED NAVBAR TABS (Glass Pill Style) */}
-      <GenericAdminNavbar 
+      <GenericAdminNavbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         mobileTitle="Staff Dashboard"
@@ -717,14 +717,14 @@ function StaffDashboard() {
                     style={
                       isMaintenanceActive
                         ? {
-                            background: "#94a3b8",
-                            color: "#ffffff",
-                            cursor: "not-allowed",
-                            opacity: 0.7,
-                            boxShadow: "none"
-                          }
+                          background: "#94a3b8",
+                          color: "#ffffff",
+                          cursor: "not-allowed",
+                          opacity: 0.7,
+                          boxShadow: "none"
+                        }
                         : isSubmitted
-                        ? {
+                          ? {
                             background: "linear-gradient(135deg, #16a34a, #15803d)",
                             color: "#ffffff",
                             opacity: 0.88,
@@ -732,13 +732,13 @@ function StaffDashboard() {
                             cursor: "default",
                             boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
                           }
-                        : isSubmitting
-                        ? {
-                            opacity: 0.75,
-                            filter: "blur(0.4px)",
-                            cursor: "wait",
-                          }
-                        : {}
+                          : isSubmitting
+                            ? {
+                              opacity: 0.75,
+                              filter: "blur(0.4px)",
+                              cursor: "wait",
+                            }
+                            : {}
                     }
                   >
                     {isMaintenanceActive ? (

@@ -284,7 +284,7 @@ function StudentDashboard() {
     fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setActiveDepts(data.map(d => d.name)); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const uniqueDepartments = [...new Set([...activeDepts, ...history.map(g => g.category || g.school).filter(Boolean)])];
@@ -669,15 +669,15 @@ function StudentDashboard() {
                                     style={
                                       isChatEnabled
                                         ? (isClosed
-                                            ? { backgroundColor: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1" }
-                                            : { backgroundColor: "#0f172a", color: "white" })
+                                          ? { backgroundColor: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1" }
+                                          : { backgroundColor: "#0f172a", color: "white" })
                                         : {
-                                            backgroundColor: "#f1f5f9",
-                                            color: "#94a3b8",
-                                            border: "1px solid #e2e8f0",
-                                            cursor: "not-allowed",
-                                            opacity: 0.65
-                                          }
+                                          backgroundColor: "#f1f5f9",
+                                          color: "#94a3b8",
+                                          border: "1px solid #e2e8f0",
+                                          cursor: "not-allowed",
+                                          opacity: 0.65
+                                        }
                                     }
                                     title={
                                       !isChatEnabled

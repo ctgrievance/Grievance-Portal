@@ -171,9 +171,11 @@ body {
   0% {
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
   }
+
   70% {
     box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
   }
@@ -201,6 +203,7 @@ body {
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -269,6 +272,7 @@ body {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .warning-action-btn {
     width: 100%;
     justify-content: center;
@@ -688,13 +692,14 @@ textarea:focus {
   background: white;
   width: 100%;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .grievance-table {
   width: 100%;
   border-collapse: collapse;
-  white-space: nowrap; /* Forces exact alignment and enables scrolling */
+  white-space: nowrap;
+  /* Forces exact alignment and enables scrolling */
 }
 
 .grievance-table th {
@@ -2578,6 +2583,7 @@ textarea:focus {
     width: 98%;
     margin: 1rem auto;
   }
+
   .filter-bar {
     gap: 8px;
   }
@@ -2600,7 +2606,7 @@ textarea:focus {
   }
 
   .header-left,
-  .dashboard-header > div:first-child {
+  .dashboard-header>div:first-child {
     flex-direction: column !important;
     gap: 10px !important;
     align-items: center !important;
@@ -2772,7 +2778,7 @@ textarea:focus {
   .filter-bar select,
   .filter-bar button,
   .filter-bar .filter-btn,
-  .mobile-filter-bar > * {
+  .mobile-filter-bar>* {
     width: 100% !important;
     min-width: unset !important;
     flex: none !important;
@@ -2884,7 +2890,7 @@ textarea:focus {
     padding: 12px 8px !important;
   }
 
-  [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
+  [style*="position: fixed"][style*="display: flex"]>div:not(.chat-modal):not(.assign-modal),
   .reg-users-modal-box,
   .transfer-modal-card,
   .export-modal-container,
@@ -3436,7 +3442,7 @@ textarea:focus {
     padding: 8px 4px !important;
   }
 
-  [style*="position: fixed"][style*="display: flex"] > div:not(.chat-modal):not(.assign-modal),
+  [style*="position: fixed"][style*="display: flex"]>div:not(.chat-modal):not(.assign-modal),
   .reg-users-modal-box,
   .transfer-modal-card,
   .export-modal-container,
@@ -3779,8 +3785,15 @@ textarea:focus {
 }
 
 @keyframes dropdownFade {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .switcher-search-box {
@@ -4432,6 +4445,7 @@ textarea:focus {
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -4666,6 +4680,7 @@ textarea:focus {
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -5132,6 +5147,7 @@ textarea:focus {
    SUPER ADMIN MOBILE / APP RESPONSIVE RULES (<= 768px)
    ======================================================= */
 @media (max-width: 768px) {
+
   /* 1. Compact Single-Line Header (Zero Overflow) */
   .admin-dashboard-header {
     padding: 0.45rem 0.6rem !important;
@@ -5148,7 +5164,7 @@ textarea:focus {
   }
 
   .admin-header-brand-wrap,
-  .admin-dashboard-header > div:first-child {
+  .admin-dashboard-header>div:first-child {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -5212,10 +5228,10 @@ textarea:focus {
     height: 28px !important;
   }
 
-  .admin-header-actions .header-profile-btn > span {
+  .admin-header-actions .header-profile-btn>span {
     display: none !important;
   }
-  
+
   .department-switcher-wrapper button {
     padding: 2px 6px !important;
     min-height: 28px !important;
@@ -5869,29 +5885,35 @@ textarea:focus {
     align-items: stretch;
     gap: 12px;
   }
+
   .reg-users-search-box {
     width: 100%;
     max-width: none;
     flex: none;
   }
+
   .reg-users-filter-controls,
   .reg-users-filter-actions {
     width: 100%;
     margin-left: 0;
     justify-content: flex-start;
   }
+
   .reg-users-select-wrap.dept {
     flex: 1 1 180px;
     width: auto;
   }
+
   .reg-users-select-wrap.role {
     flex: 1 1 130px;
     width: auto;
   }
+
   .reg-users-select-wrap.status {
     flex: 1 1 130px;
     width: auto;
   }
+
   .reg-users-btn-group {
     margin-left: auto;
   }
@@ -5999,7 +6021,7 @@ textarea:focus {
   }
 
   .reg-users-btn-export,
-  .reg-users-btn-group > button:last-child {
+  .reg-users-btn-group>button:last-child {
     flex: 1.3 !important;
     height: 34px !important;
     padding: 0 6px !important;
@@ -6025,6 +6047,7 @@ textarea:focus {
     width: 100%;
     justify-content: stretch;
   }
+
   .reg-compare-category-filter-group button {
     flex: 1;
     justify-content: center;
@@ -6589,10 +6612,12 @@ textarea:focus {
     scrollbar-width: none !important;
     padding-bottom: 2px !important;
   }
+
   .staff-category-tabs::-webkit-scrollbar,
   .reg-users-category-pills-bar::-webkit-scrollbar {
     display: none !important;
   }
+
   .staff-category-tabs .records-tab-pill,
   .reg-users-category-pills-bar .records-tab-pill {
     flex-shrink: 0 !important;
@@ -6778,7 +6803,7 @@ textarea:focus {
     margin-bottom: 14px !important;
   }
 
-  .reg-compare-kpi-grid > div {
+  .reg-compare-kpi-grid>div {
     padding: 10px 12px !important;
   }
 
@@ -8372,6 +8397,7 @@ textarea:focus {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -8383,6 +8409,7 @@ textarea:focus {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -9176,6 +9203,7 @@ textarea:focus {
 
 /* 6. Mobile Responsiveness for Departments */
 @media (max-width: 768px) {
+
   .dept-kpi-ribbon,
   .dept-kpis-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -10336,10 +10364,12 @@ textarea:focus {
     flex-wrap: wrap;
     gap: 10px;
   }
+
   .dept-filter-searches {
     flex: 1 1 100%;
     min-width: 100%;
   }
+
   .dept-filter-controls {
     flex: 1 1 auto;
   }
@@ -11095,6 +11125,7 @@ textarea:focus {
     padding: 16px 12px;
     border-radius: 12px;
   }
+
   .records-header-bar {
     flex-direction: column;
     align-items: stretch;
@@ -11102,17 +11133,21 @@ textarea:focus {
     margin-bottom: 16px;
     padding-bottom: 14px;
   }
+
   .records-header-title-wrap {
     width: 100%;
   }
+
   .records-title {
     font-size: 1.15rem;
   }
+
   .records-add-btn {
     width: 100%;
     justify-content: center;
     padding: 10px 16px;
   }
+
   .records-filters-bar {
     display: flex;
     flex-direction: column;
@@ -11123,6 +11158,7 @@ textarea:focus {
     height: auto !important;
     min-height: unset !important;
   }
+
   .records-search-box {
     flex: 0 0 auto !important;
     width: 100% !important;
@@ -11130,11 +11166,13 @@ textarea:focus {
     min-width: 0 !important;
     height: auto !important;
   }
+
   .records-search-input {
     width: 100% !important;
     height: 40px !important;
     font-size: 0.85rem !important;
   }
+
   .records-filter-actions {
     margin-left: 0;
     width: 100%;
@@ -11143,12 +11181,14 @@ textarea:focus {
     justify-content: space-between;
     align-items: center;
   }
+
   .records-btn-reset {
     flex: 1;
     justify-content: center;
     height: 38px;
     font-size: 0.82rem;
   }
+
   .records-btn-clear-all {
     flex: 1.2;
     justify-content: center;
@@ -11157,70 +11197,85 @@ textarea:focus {
     padding: 0 8px;
     white-space: nowrap;
   }
+
   .records-upload-card {
     padding: 18px 12px;
     margin-bottom: 16px;
     border-radius: 12px;
   }
+
   .records-upload-icon-circle {
     width: 42px;
     height: 42px;
     margin-bottom: 8px;
   }
+
   .records-upload-title {
     font-size: 0.92rem;
   }
+
   .records-upload-sub {
     font-size: 0.78rem;
   }
+
   .records-columns-guide {
     padding: 8px 12px;
     font-size: 0.76rem;
     gap: 6px;
     margin-bottom: 16px;
   }
+
   .records-column-chips {
     gap: 4px;
   }
+
   .records-column-chip {
     font-size: 0.72rem;
     padding: 2px 6px;
   }
+
   .records-add-card {
     padding: 14px 12px;
     margin-bottom: 16px;
   }
+
   .records-form-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }
+
   .records-form-actions {
     flex-direction: column;
     gap: 8px;
   }
+
   .records-btn-save,
   .records-btn-cancel {
     width: 100%;
     justify-content: center;
     height: 38px;
   }
+
   .records-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 10px;
     margin-bottom: 14px;
   }
+
   .records-table th,
   .records-table td {
     padding: 10px 10px;
     font-size: 0.8rem;
   }
+
   .records-pagination {
     flex-direction: column;
     align-items: center;
     gap: 10px;
     text-align: center;
   }
+
   .records-pag-controls {
     width: 100%;
     justify-content: center;
@@ -11644,12 +11699,31 @@ textarea:focus {
   background: #e2e8f0;
 }
 
-.chat-pdf-mock-line.w-90 { width: 90%; }
-.chat-pdf-mock-line.w-80 { width: 80%; }
-.chat-pdf-mock-line.w-75 { width: 75%; }
-.chat-pdf-mock-line.w-60 { width: 60%; }
-.chat-pdf-mock-line.w-40 { width: 40%; background: #94a3b8; }
-.chat-pdf-mock-line.w-20 { width: 20%; background: #cbd5e1; }
+.chat-pdf-mock-line.w-90 {
+  width: 90%;
+}
+
+.chat-pdf-mock-line.w-80 {
+  width: 80%;
+}
+
+.chat-pdf-mock-line.w-75 {
+  width: 75%;
+}
+
+.chat-pdf-mock-line.w-60 {
+  width: 60%;
+}
+
+.chat-pdf-mock-line.w-40 {
+  width: 40%;
+  background: #94a3b8;
+}
+
+.chat-pdf-mock-line.w-20 {
+  width: 20%;
+  background: #cbd5e1;
+}
 
 .chat-pdf-preview-overlay {
   position: absolute;
@@ -11849,12 +11923,14 @@ textarea:focus {
 }
 
 /* Touch & Mobile device friendly */
-@media (max-width: 768px), (hover: none) {
+@media (max-width: 768px),
+(hover: none) {
   .chat-msg-reply-trigger {
     opacity: 0.72;
     transform: scale(0.95);
     pointer-events: auto;
   }
+
   .chat-msg-reply-trigger:active {
     opacity: 1;
     background: #6366f1;
@@ -11974,6 +12050,7 @@ textarea:focus {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -12047,14 +12124,17 @@ textarea:focus {
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.8);
   }
+
   25% {
     transform: scale(1.03);
     box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.5);
   }
+
   60% {
     transform: scale(1.02);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
   }
+
   100% {
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
@@ -12381,14 +12461,13 @@ textarea:focus {
   .dept-mobile-card {
     padding: 12px 14px;
   }
+
   .dept-mcard-name {
     font-size: 0.88rem;
   }
+
   .dept-mcard-meta {
     grid-template-columns: 1fr;
     gap: 8px;
   }
 }
-
-
-

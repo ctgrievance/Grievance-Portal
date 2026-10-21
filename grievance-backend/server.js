@@ -564,7 +564,7 @@ app.get("/api/admin/uploaded-files", verifyToken, async (req, res) => {
     if (!fs.existsSync(uploadsDir)) {
       try {
         fs.mkdirSync(uploadsDir, { recursive: true });
-      } catch (_) {}
+      } catch (_) { }
     }
 
     const files = fs.readdirSync(uploadsDir).map(filename => {
@@ -872,7 +872,7 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       // Sync to StaffUser
       await StaffUser.findOneAndUpdate(
         { id: safeTargetId },
-        { 
+        {
           adminDepartment: targetMember.adminDepartment,
           adminDepartments: targetMember.adminDepartments,
           isDeptAdmin: targetMember.isDeptAdmin,
@@ -1008,7 +1008,7 @@ app.post("/api/admin-staff/role", verifyToken, async (req, res) => {
       // Sync to StaffUser
       await StaffUser.findOneAndUpdate(
         { id: safeTargetId },
-        { 
+        {
           adminDepartment: targetMember.adminDepartment,
           adminDepartments: targetMember.adminDepartments,
           isDeptAdmin: targetMember.isDeptAdmin,
@@ -1366,7 +1366,7 @@ app.get("/api/admin/staff/:department", verifyToken, async (req, res) => {
       .replace(/\s*(?:&|and)\s*/gi, "\\s*(?:&|and)\\s*")
       .replace(/\s+/g, "\\s+");
     const deptRegex = new RegExp(`^${pattern}$`, "i");
-    
+
     // Fetch faculty & staff belonging to that department (exclude Master Admin)
     const staff = await User.find({
       role: "staff",
@@ -1522,7 +1522,7 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
   uploadStream.on("error", (err) => {
     console.error("❌ [UPLOAD] Stream Error:", err);
     // Clean up temp file on error
-    fs.unlink(req.file.path, () => {});
+    fs.unlink(req.file.path, () => { });
     res.status(500).json({ message: "Error uploading file" });
   });
 

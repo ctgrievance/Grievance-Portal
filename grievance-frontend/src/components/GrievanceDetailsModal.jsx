@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import TransferDepartmentModal from "./TransferDepartmentModal";
-import { ZapIcon, RerouteIcon, ClipboardIcon,
+import {
+  ZapIcon, RerouteIcon, ClipboardIcon,
   XIcon,
   TrashIcon,
   ClockIcon,
@@ -284,8 +285,8 @@ const GrievanceDetailsModal = ({
   const resolvedAt = grievance.resolutionProposedAt
     ? new Date(grievance.resolutionProposedAt)
     : isResolved && grievance.updatedAt
-    ? new Date(grievance.updatedAt)
-    : null;
+      ? new Date(grievance.updatedAt)
+      : null;
 
   let timeTakenText = null;
   let openDurationText = null;
@@ -1145,15 +1146,14 @@ const GrievanceDetailsModal = ({
                     grievance.extensionRequest.status === "Pending"
                       ? "#fffbeb"
                       : grievance.extensionRequest.status === "Approved"
-                      ? "#f0fdf4"
-                      : "#fef2f2",
-                  border: `1px solid ${
-                    grievance.extensionRequest.status === "Pending"
+                        ? "#f0fdf4"
+                        : "#fef2f2",
+                  border: `1px solid ${grievance.extensionRequest.status === "Pending"
                       ? "#fde68a"
                       : grievance.extensionRequest.status === "Approved"
-                      ? "#bbf7d0"
-                      : "#fecaca"
-                  }`,
+                        ? "#bbf7d0"
+                        : "#fecaca"
+                    }`,
                   borderRadius: "12px",
                   padding: "16px 18px",
                   boxSizing: "border-box",
@@ -1170,8 +1170,8 @@ const GrievanceDetailsModal = ({
                         grievance.extensionRequest.status === "Pending"
                           ? "#b45309"
                           : grievance.extensionRequest.status === "Approved"
-                          ? "#15803d"
-                          : "#dc2626",
+                            ? "#15803d"
+                            : "#dc2626",
                     }}
                   >
                     ⏳ Deadline Extension Request
@@ -1187,14 +1187,14 @@ const GrievanceDetailsModal = ({
                         grievance.extensionRequest.status === "Pending"
                           ? "#fef3c7"
                           : grievance.extensionRequest.status === "Approved"
-                          ? "#dcfce7"
-                          : "#fee2e2",
+                            ? "#dcfce7"
+                            : "#fee2e2",
                       color:
                         grievance.extensionRequest.status === "Pending"
                           ? "#92400e"
                           : grievance.extensionRequest.status === "Approved"
-                          ? "#166534"
-                          : "#991b1b",
+                            ? "#166534"
+                            : "#991b1b",
                     }}
                   >
                     {grievance.extensionRequest.status}

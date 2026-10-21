@@ -23,8 +23,8 @@ function DepartmentFilterBar({
   onExport,
 }) {
   const showSearch = setSearchId != null || setSearchStaffId != null || searchQuery != null;
-  const currentSearchValue = searchQuery !== undefined 
-    ? (searchQuery || "") 
+  const currentSearchValue = searchQuery !== undefined
+    ? (searchQuery || "")
     : (searchId || searchStaffId || "");
 
   const handleSearchChange = (val) => {
@@ -39,8 +39,8 @@ function DepartmentFilterBar({
     if (setSearchStaffId) setSearchStaffId("");
   };
 
-  const resolvedPlaceholder = 
-    searchPlaceholder || 
+  const resolvedPlaceholder =
+    searchPlaceholder ||
     (searchIdPlaceholder && searchIdPlaceholder !== "Search Student ID..." ? searchIdPlaceholder : "Search by Student ID, Staff ID, Name...");
 
   const showControls =

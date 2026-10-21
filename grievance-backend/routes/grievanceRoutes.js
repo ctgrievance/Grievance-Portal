@@ -143,3 +143,4 @@ router.post("/accept/:grievanceId", acceptGrievance);
 router.get("/detail/:grievanceId", getGrievanceDetail);
 
 export default router;
+export default router;

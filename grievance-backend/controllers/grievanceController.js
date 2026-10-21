@@ -68,7 +68,7 @@ export const submitGrievance = async (req, res) => {
     // 🔥 SMART AUTO-ASSIGNMENT CHECK
     let assignedStaff = null;
     let assignmentMode = "manual";
-    
+
     if (issueTypeId) {
       const autoAssignment = await autoAssignGrievance(issueTypeId, category);
       if (autoAssignment) {
@@ -171,7 +171,7 @@ export const submitGrievance = async (req, res) => {
     }
 
     res.status(201).json({
-      message: assignedStaff 
+      message: assignedStaff
         ? "✅ Grievance submitted and auto-assigned successfully"
         : "✅ Grievance submitted successfully",
       grievance,
@@ -267,16 +267,16 @@ function calculateDeadline() {
 // Helper: Send assignment notification email to staff
 async function sendAssignmentNotification(grievance, assignedStaff, isAuto = true) {
   try {
-    const staffId = (assignedStaff && typeof assignedStaff === "object") 
-      ? assignedStaff.staffId 
+    const staffId = (assignedStaff && typeof assignedStaff === "object")
+      ? assignedStaff.staffId
       : (grievance.assignedTo || assignedStaff);
-    
-    let staffName = (assignedStaff && typeof assignedStaff === "object" && assignedStaff.staffName) 
-      ? assignedStaff.staffName 
+
+    let staffName = (assignedStaff && typeof assignedStaff === "object" && assignedStaff.staffName)
+      ? assignedStaff.staffName
       : (typeof assignedStaff === "string" ? assignedStaff : "Staff Member");
-    
-    let staffEmail = (assignedStaff && typeof assignedStaff === "object") 
-      ? assignedStaff.staffEmail 
+
+    let staffEmail = (assignedStaff && typeof assignedStaff === "object")
+      ? assignedStaff.staffEmail
       : null;
 
     // Resolve staff email from database if not directly supplied
@@ -303,11 +303,11 @@ async function sendAssignmentNotification(grievance, assignedStaff, isAuto = tru
       },
     });
 
-    const subject = isAuto 
+    const subject = isAuto
       ? `🎯 New Grievance Auto-Assigned - ${grievance.category}`
       : `📋 New Grievance Assigned - ${grievance.category}`;
-    const heading = isAuto 
-      ? "🎯 New Grievance Auto-Assigned" 
+    const heading = isAuto
+      ? "🎯 New Grievance Auto-Assigned"
       : "📋 New Grievance Assigned";
     const introText = isAuto
       ? "A new grievance has been automatically assigned to you:"
@@ -457,7 +457,7 @@ export const acceptGrievance = async (req, res) => {
         { staffId },
         { $inc: { currentLoad: 1 } }
       );
-    } catch (_) {}
+    } catch (_) { }
 
     res.json({ message: "Grievance accepted successfully", grievance });
   } catch (err) {
@@ -494,10 +494,10 @@ export const getAllGrievances = async (req, res) => {
 export const getCategoryGrievances = async (req, res) => {
   try {
     // Check for category in params (for /category/:category) or query (for /department/:department?category=)
-    const category = req.params.category 
+    const category = req.params.category
       ? decodeURIComponent(req.params.category).trim()
       : (req.query.category ? decodeURIComponent(req.query.category).trim() : null);
-    
+
     const userId = req.user ? req.user.id : null;
 
     const grievances = await Grievance.find({
@@ -676,7 +676,7 @@ export const assignToStaff = async (req, res) => {
       const targetStaff = await StaffUser.findOne({ id: staffId })
         || await User.findOne({ id: staffId })
         || await StaffRecord.findOne({ id: staffId });
-      
+
       if (targetStaff) {
         const staffDepts = [
           targetStaff.staffDepartment,
@@ -725,7 +725,7 @@ export const assignToStaff = async (req, res) => {
         || await User.findOne({ id: staffId })
         || await StaffRecord.findOne({ id: staffId });
       if (staffUser && staffUser.fullName) staffFullName = staffUser.fullName;
-    } catch (_) {}
+    } catch (_) { }
 
     const isReassign = existingGrievance.assignedTo && existingGrievance.assignedTo !== staffId;
     const isAfterTransfer = existingGrievance.isRerouted && (!existingGrievance.assignedTo || isReassign);
@@ -1373,7 +1373,7 @@ export const transferGrievance = async (req, res) => {
     const isAssignee = Boolean(
       senderStaffId &&
       ((grievance.assignedTo && grievance.assignedTo.toString().trim().toUpperCase() === senderStaffId) ||
-       (grievance.currentCustodian?.staffId && grievance.currentCustodian.staffId.toString().trim().toUpperCase() === senderStaffId))
+        (grievance.currentCustodian?.staffId && grievance.currentCustodian.staffId.toString().trim().toUpperCase() === senderStaffId))
     );
     const currentHoldingDept = (grievance.currentCustodian?.department || grievance.category || "").trim().toLowerCase();
 
@@ -1984,5 +1984,10 @@ export const clearAllGrievances = async (req, res) => {
     res.status(500).json({ message: "Failed to clear grievances", error: err.message });
   }
 };
+
+
+  }
+};
+
 
 
