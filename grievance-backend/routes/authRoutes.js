@@ -13,6 +13,7 @@ import {
   forgotPassword,
   verifyResetOtp,
   resetPassword,
+  changePassword,
   getUserProfile,
   updateUserProfile,
   requestEmailOtp,
@@ -45,6 +46,7 @@ router.post("/reset-password", resetPassword);
 // User Profile & Contact Update with OTP
 router.get("/profile", verifyToken, getUserProfile);
 router.put("/profile", verifyToken, updateUserProfile);
+router.post("/change-password", verifyToken, changePassword);
 router.post("/profile/request-email-otp", verifyToken, requestEmailOtp);
 router.post("/profile/verify-email-otp", verifyToken, verifyEmailOtp);
 router.post("/profile/request-phone-otp", verifyToken, requestPhoneOtp);

@@ -1017,6 +1017,61 @@ export const updateUserProfile = async (req, res) => {
 };
 
 // =================================================
+// 8️⃣.1 CHANGE PASSWORD (Logged-in User / Super Admin)
+// =================================================
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user?.id?.toString().trim().toUpperCase();
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.trim().length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters long." });
+    }
+
+    let user = await StaffUser.findOne({ id: userId });
+    let isStudent = false;
+    if (!user) {
+      user = await StudentUser.findOne({ id: userId });
+      isStudent = true;
+    }
+    if (!user) {
+      user = await User.findOne({ id: userId });
+      isStudent = user?.role === "student";
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify current password if user already has one and provided it
+    if (user.password && currentPassword) {
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Current password is incorrect." });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
+    user.password = hashedPassword;
+    if (user.mustChangePassword !== undefined) {
+      user.mustChangePassword = false;
+    }
+    await user.save();
+
+    await Promise.all([
+      StaffUser.updateOne({ id: userId }, { $set: { password: hashedPassword, mustChangePassword: false } }),
+      User.updateOne({ id: userId }, { $set: { password: hashedPassword } }),
+      StudentUser.updateOne({ id: userId }, { $set: { password: hashedPassword } })
+    ]);
+
+    return res.json({ success: true, message: "Password updated successfully." });
+  } catch (err) {
+    console.error("Change Password Error:", err);
+    return res.status(500).json({ message: "Failed to update password" });
+  }
+};
+
+// =================================================
 // 9️⃣ REQUEST EMAIL UPDATE OTP
 // =================================================
 export const requestEmailOtp = async (req, res) => {
