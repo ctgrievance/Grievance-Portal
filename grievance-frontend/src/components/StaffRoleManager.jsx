@@ -46,9 +46,11 @@ function StaffRoleManager() {
   const [sortMode, setSortMode] = useState("admins-first"); // admins-first | alpha | rating-high | rating-low
 
   // Current logged-in user details
-  const requesterId = localStorage.getItem("grievance_id");
+  const requesterId = localStorage.getItem("grievance_id") ||
+    (localStorage.getItem("user") ? (() => { try { return JSON.parse(localStorage.getItem("user")).id; } catch (e) { return ""; } })() : "");
   const myDept = localStorage.getItem("admin_department"); // e.g. "Student Welfare"
   const isMasterAdmin = localStorage.getItem("is_master_admin") === "true";
+  const isRoot10001 = isMasterAdmin || String(requesterId || "").trim().toUpperCase() === "10001";
 
   // Dynamic Departments State
   const [departmentsList, setDepartmentsList] = useState([]);
@@ -700,8 +702,8 @@ function StaffRoleManager() {
             </span>
           )}
 
-          {/* 👑 Direct Provision Super Admin Button (Root 10001 only) */}
-          {String(requesterId || "").trim().toUpperCase() === "10001" && (
+          {/* 👑 Direct Provision Super Admin Button (Root 10001 / Master Admin) */}
+          {isRoot10001 && (
             <button
               type="button"
               className="staff-btn-create-superadmin"
