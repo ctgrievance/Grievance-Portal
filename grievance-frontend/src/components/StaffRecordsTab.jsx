@@ -14,8 +14,9 @@ import {
   SaveIcon,
   StaffIcon,
   CheckCircleIcon,
-  AlertCircleIcon,
-  FileIcon
+  FileIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 import ExcelUploadModeModal from "./ExcelUploadModeModal";
 import AuditLogsModal from "./AuditLogsModal";
@@ -809,8 +810,8 @@ function StaffRecordsTab({ isReadOnly = false }) {
               {/* Existing Records */}
               {loading ? (
                 <tr>
-                  <td colSpan={isReadOnly ? "6" : "7"} style={{ textAlign: "center", padding: "36px", color: "#64748b" }}>
-                    Loading staff records...
+                  <td colSpan={isReadOnly ? "6" : "7"} style={{ textAlign: "center", padding: "24px 20px" }}>
+                    <DynamicLoadingState text="Loading staff records..." minHeight="160px" />
                   </td>
                 </tr>
               ) : records.length === 0 ? (

@@ -5,10 +5,18 @@ import {
   getRoutingRulesByDepartment,
   getRoutingRuleByIssueType,
   updateRoutingRule,
-  deleteRoutingRule
+  deleteRoutingRule,
+  getRoutingHealthAudit,
+  sendDepartmentRoutingReminder,
+  broadcastRoutingReminders
 } from "../controllers/routingRuleController.js";
 
 const router = express.Router();
+
+// 📊 Audit & Health Endpoints (placed before parameter routes)
+router.get("/audit/health-matrix", getRoutingHealthAudit);
+router.post("/audit/send-reminder", sendDepartmentRoutingReminder);
+router.post("/audit/broadcast-reminders", broadcastRoutingReminders);
 
 router.post("/", createRoutingRule);
 router.get("/", getAllRoutingRules);

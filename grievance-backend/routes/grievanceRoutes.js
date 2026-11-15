@@ -131,41 +131,7 @@ router.post("/rate/:id", verifyToken, async (req, res) => {
 
 /* ================= ✅ VERIFICATION (FINAL & SAFE) ================= */
 
-router.post("/verify-resolution/:id", async (req, res) => {
-  try {
-    const { action } = req.body;
-    const grievanceId = req.params.id;
-
-    console.log("👉 VERIFY API HIT");
-    console.log("👉 ACTION:", action);
-    console.log("👉 ID:", grievanceId);
-
-    const grievance = await Grievance.findById(grievanceId);
-    if (!grievance) {
-      console.log("❌ Grievance not found");
-      return res.status(404).json({ message: "Grievance not found" });
-    }
-
-    console.log("👉 CURRENT STATUS IN DB:", grievance.status);
-
-    // FORCE UPDATE (no conditions yet)
-    grievance.status = "Resolved";
-    grievance.autoClosed = false;
-
-    await grievance.save();
-
-    console.log("✅ UPDATED STATUS IN DB:", grievance.status);
-
-    return res.json({
-      message: "Grievance force-closed for testing",
-      grievance
-    });
-
-  } catch (err) {
-    console.error("❌ Verify resolution error:", err);
-    res.status(500).json({ message: "Verification failed" });
-  }
-});
+router.post("/verify-resolution/:id", verifyResolution);
 
 /* ================= 🆕 POOL ACCEPT MODE ================= */
 

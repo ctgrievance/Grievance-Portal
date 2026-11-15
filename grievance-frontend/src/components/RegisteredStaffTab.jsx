@@ -11,7 +11,10 @@ import {
   PhoneIcon,
   MailIcon,
   UserIcon,
-  DownloadIcon
+  DownloadIcon,
+  SpinnerIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 import ExportPreviewModal from "./ExportPreviewModal";
 import {
@@ -597,7 +600,7 @@ function RegisteredStaffTab({ isReadOnly = false }) {
               }}
               title="Preview & Export Registered Staff"
             >
-              <DownloadIcon width="14" height="14" />
+              {exporting ? <DynamicSpinner size={14} color="#38bdf8" /> : <DownloadIcon width="14" height="14" />}
               <span>{exporting ? "Preparing..." : "Export"}</span>
             </button>
           </div>
@@ -625,8 +628,8 @@ function RegisteredStaffTab({ isReadOnly = false }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell">
-                      <div className="reg-users-loading-spinner">Loading registered staff members...</div>
+                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell" style={{ padding: "32px 20px" }}>
+                      <DynamicLoadingState text="Loading registered staff members..." minHeight="160px" />
                     </td>
                   </tr>
                 ) : staffList.length === 0 ? (
@@ -761,8 +764,8 @@ function RegisteredStaffTab({ isReadOnly = false }) {
       {/* VIEW 2: MOBILE COMPACT CARDS VIEW (SLEEK ZERO HORIZONTAL SCROLL) */}
       <div className="reg-users-mobile-cards">
         {loading ? (
-          <div className="reg-user-mobile-card empty-card">
-            <span>Loading registered staff members...</span>
+          <div className="reg-user-mobile-card empty-card" style={{ padding: "28px 16px" }}>
+            <DynamicLoadingState text="Loading registered staff members..." minHeight="120px" spinnerSize={30} />
           </div>
         ) : staffList.length === 0 ? (
           <div className="reg-user-mobile-card empty-card">

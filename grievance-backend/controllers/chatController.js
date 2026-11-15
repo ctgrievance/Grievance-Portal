@@ -12,6 +12,22 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    // Fetch grievance to validate status & participant permissions
+    const grievance = await Grievance.findById(grievanceId);
+    if (!grievance) {
+      return res.status(404).json({ message: "Grievance not found" });
+    }
+
+    // 🔒 RESTRICTION: When grievance is Resolved or Rejected, student can only view and cannot chat
+    const grievanceStatus = (grievance.status || "").toLowerCase();
+    const isClosed = grievanceStatus === "resolved" || grievanceStatus === "rejected";
+
+    if (isClosed && senderRole === "student") {
+      return res.status(403).json({
+        message: `This grievance has already been ${grievance.status.toLowerCase()}. Students can only view the conversation and cannot send new messages.`
+      });
+    }
+
     // Determine type
     const msgType = fileData ? "file" : "text";
     
@@ -30,14 +46,6 @@ export const sendMessage = async (req, res) => {
     });
 
     const savedMessage = await newMessage.save();
-
-    // Fetch grievance to notify student & assigned staff
-    let grievance = null;
-    try {
-      grievance = await Grievance.findById(grievanceId);
-    } catch (gErr) {
-      console.error("Error finding grievance for notifications:", gErr);
-    }
 
     // 🚀 1. Emit real-time message and socket notifications
     const io = req.app.get("io");

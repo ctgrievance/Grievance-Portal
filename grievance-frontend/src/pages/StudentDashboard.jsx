@@ -15,7 +15,7 @@ import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import ctLogo from "../assets/ct-logo.png";
 import {
   BellIcon, GraduationCapIcon, ChartBarIcon, ClockIcon, CheckCircleIcon,
-  PaperclipIcon, TrashIcon, MessageCircleIcon
+  PaperclipIcon, TrashIcon, MessageCircleIcon, DynamicSpinner, DynamicLoadingState
 } from "../components/Icons";
 
 
@@ -284,7 +284,7 @@ function StudentDashboard() {
     fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/departments`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setActiveDepts(data.map(d => d.name)); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const uniqueDepartments = [...new Set([...activeDepts, ...history.map(g => g.category || g.school).filter(Boolean)])];
@@ -589,7 +589,7 @@ function StudentDashboard() {
             </div>
 
             {loading ? (
-              <p style={{ color: "#64748b", padding: "20px 0" }}>Loading records...</p>
+              <DynamicLoadingState text="Loading records..." minHeight="160px" />
             ) : filteredHistory.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
                 <h3 style={{ color: "#0f172a" }}>No grievances found</h3>
@@ -661,32 +661,35 @@ function StudentDashboard() {
                             <div className="chat-btn-wrapper">
                               {(() => {
                                 const isChatEnabled = Boolean(g.assignedTo) && g.status !== "Pending";
+                                const isClosed = ["resolved", "rejected"].includes((g.status || "").toLowerCase());
                                 return (
                                   <button
                                     className={`action-btn ${!isChatEnabled ? "disabled" : ""}`}
                                     disabled={!isChatEnabled}
                                     style={
                                       isChatEnabled
-                                        ? { backgroundColor: "#0f172a", color: "white" }
+                                        ? (isClosed
+                                          ? { backgroundColor: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1" }
+                                          : { backgroundColor: "#0f172a", color: "white" })
                                         : {
-                                            backgroundColor: "#f1f5f9",
-                                            color: "#94a3b8",
-                                            border: "1px solid #e2e8f0",
-                                            cursor: "not-allowed",
-                                            opacity: 0.65
-                                          }
+                                          backgroundColor: "#f1f5f9",
+                                          color: "#94a3b8",
+                                          border: "1px solid #e2e8f0",
+                                          cursor: "not-allowed",
+                                          opacity: 0.65
+                                        }
                                     }
                                     title={
-                                      isChatEnabled
-                                        ? "Open chat with assigned staff"
-                                        : "Chat will be enabled once staff is assigned"
+                                      !isChatEnabled
+                                        ? "Chat will be enabled once staff is assigned"
+                                        : (isClosed ? "View conversation history (Read-only)" : "Open chat with assigned staff")
                                     }
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (isChatEnabled) openChat(g._id);
                                     }}
                                   >
-                                    Chat
+                                    {isClosed ? "View Chat" : "Chat"}
                                   </button>
                                 );
                               })()}
@@ -774,15 +777,21 @@ function StudentDashboard() {
                           <div className="chat-btn-wrapper">
                             {(() => {
                               const isChatEnabled = Boolean(g.assignedTo) && g.status !== "Pending";
+                              const isClosed = ["resolved", "rejected"].includes((g.status || "").toLowerCase());
                               return (
                                 <button
                                   type="button"
                                   className={`student-mcard-chat-btn ${!isChatEnabled ? "disabled" : ""}`}
                                   disabled={!isChatEnabled}
+                                  style={
+                                    isClosed && isChatEnabled
+                                      ? { backgroundColor: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1" }
+                                      : undefined
+                                  }
                                   title={
-                                    isChatEnabled
-                                      ? "Open chat with assigned staff"
-                                      : "Chat will be enabled once staff is assigned"
+                                    !isChatEnabled
+                                      ? "Chat will be enabled once staff is assigned"
+                                      : (isClosed ? "View conversation history (Read-only)" : "Open chat with assigned staff")
                                   }
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -790,7 +799,7 @@ function StudentDashboard() {
                                   }}
                                 >
                                   <MessageCircleIcon width="14" height="14" />
-                                  <span>Chat</span>
+                                  <span>{isClosed ? "View Chat" : "Chat"}</span>
                                 </button>
                               );
                             })()}
@@ -1027,7 +1036,7 @@ function StudentDashboard() {
         )}
 
         {/* --- DETAILS POPUP MODAL --- */}
-        {selectedGrievance && (
+        {selectedGrievance && !isVerificationPopupOpen && (
           <div
             className="student-modal-overlay"
             onClick={() => setSelectedGrievance(null)}
@@ -1056,7 +1065,7 @@ function StudentDashboard() {
                 <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Grievance ID:</strong> {selectedGrievance._id}</p>
                 <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Category:</strong> {selectedGrievance.category || selectedGrievance.school || "General"}</p>
                 <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Date:</strong> {formatDate(selectedGrievance.createdAt)}</p>
-                <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Status:</strong> <span className={`status-badge status-${selectedGrievance.status.toLowerCase()}`}>{selectedGrievance.status}</span></p>
+                <p style={{ marginBottom: '10px', color: '#475569' }}><strong>Status:</strong> <span className={`status-badge status-${(selectedGrievance.status || "").toLowerCase().replace(" ", "")}`}>{selectedGrievance.status}</span></p>
 
                 <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
                   <strong style={{ display: 'block', marginBottom: '8px', color: '#334155' }}>Full Message:</strong>
@@ -1064,6 +1073,24 @@ function StudentDashboard() {
                     {selectedGrievance.message}
                   </p>
                 </div>
+
+                {selectedGrievance.resolutionRemarks && (
+                  <div style={{ backgroundColor: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', marginTop: '10px' }}>
+                    <strong style={{ display: 'block', marginBottom: '4px', color: '#166534', fontSize: '0.85rem' }}>Resolution Remarks:</strong>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.5', color: '#14532d', wordBreak: 'break-word', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                      {selectedGrievance.resolutionRemarks}
+                    </p>
+                  </div>
+                )}
+
+                {selectedGrievance.rejectionReason && (
+                  <div style={{ backgroundColor: '#fef2f2', padding: '12px 14px', borderRadius: '8px', border: '1px solid #fecaca', marginTop: '10px' }}>
+                    <strong style={{ display: 'block', marginBottom: '4px', color: '#991b1b', fontSize: '0.85rem' }}>Reopen Reason:</strong>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.5', color: '#b91c1c', wordBreak: 'break-word', fontSize: '0.9rem' }}>
+                      {selectedGrievance.rejectionReason}
+                    </p>
+                  </div>
+                )}
 
                 {/* ✅ ATTACHMENT BUTTON */}
                 {selectedGrievance.attachment && (
@@ -1173,6 +1200,7 @@ function StudentDashboard() {
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         grievanceId={chatGrievanceId}
+        grievanceStatus={history.find((g) => String(g._id) === String(chatGrievanceId))?.status}
         currentUserId={userId}
         currentUserRole="student"
       />
@@ -1195,16 +1223,116 @@ function StudentDashboard() {
           onVerify={async (id, action, feedback) => {
             try {
               const token = localStorage.getItem("grievance_token");
+              const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
+              if (action === "reject") {
+                // 🔄 REOPEN FLOW
+                const currentAttempts = Math.max(
+                  selectedGrievance.verificationAttempts || 0,
+                  selectedGrievance.resolutionRemarks ? (selectedGrievance.resolutionRemarks.match(/\[Reopen/gi) || []).length : 0
+                );
+
+                if (currentAttempts >= 2) {
+                  alert("Maximum reopen limit reached (2). Further rejection is not allowed. Please accept the resolution.");
+                  return;
+                }
+
+                const nextAttempts = currentAttempts + 1;
+                const reopenStatus = selectedGrievance.assignedTo ? "Assigned" : "Pending";
+                const reopenRemarks = feedback?.trim()
+                  ? `[Reopened #${nextAttempts} by Student: ${feedback.trim()}]`
+                  : `[Reopened #${nextAttempts} by Student]`;
+
+                let updatedGrievance = null;
+
+                // 1. First call verify-resolution
+                try {
+                  const res = await fetch(
+                    `${apiUrl}/api/grievances/verify-resolution/${id}`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ action: "reject", feedback: feedback?.trim() || "" }),
+                    }
+                  );
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.grievance && data.grievance.status !== "Resolved") {
+                      updatedGrievance = data.grievance;
+                    }
+                  }
+                } catch (e) {
+                  console.warn("verify-resolution call warning:", e);
+                }
+
+                // 2. If verify-resolution returned 'Resolved' (legacy production stub) or did not update:
+                // Call update endpoint to guarantee the status is Assigned/Pending in DB
+                if (!updatedGrievance) {
+                  try {
+                    const updateRes = await fetch(
+                      `${apiUrl}/api/grievances/update/${id}`,
+                      {
+                        method: "PUT",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                          status: reopenStatus,
+                          resolutionRemarks: selectedGrievance.resolutionRemarks
+                            ? `${selectedGrievance.resolutionRemarks}\n${reopenRemarks}`
+                            : reopenRemarks,
+                          verificationAttempts: nextAttempts,
+                        }),
+                      }
+                    );
+                    if (updateRes.ok) {
+                      const updateData = await updateRes.json();
+                      if (updateData.grievance) {
+                        updatedGrievance = updateData.grievance;
+                      }
+                    }
+                  } catch (e) {
+                    console.error("Direct status update error:", e);
+                  }
+                }
+
+                // Build the final reopened grievance object
+                const finalGrievance = updatedGrievance || {
+                  ...selectedGrievance,
+                  status: reopenStatus,
+                  verificationAttempts: nextAttempts,
+                  rejectionReason: feedback?.trim() || "Resolution rejected by student",
+                  resolutionRemarks: selectedGrievance.resolutionRemarks
+                    ? `${selectedGrievance.resolutionRemarks}\n${reopenRemarks}`
+                    : reopenRemarks,
+                };
+
+                // Instant UI state update with reopened status (NEVER 'Resolved')
+                setHistory(prev =>
+                  prev.map(g => (g._id === id ? { ...g, ...finalGrievance, status: reopenStatus, verificationAttempts: nextAttempts } : g))
+                );
+
+                setIsVerificationPopupOpen(false);
+                setSelectedGrievance(null);
+
+                alert(`Grievance reopened successfully (Attempt ${nextAttempts} of 2)! The grievance is now active again and has been returned to the assigned department/staff.`);
+                return;
+              }
+
+              // ✅ ACCEPT / RESOLVE FLOW
               const res = await fetch(
-                `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/verify-resolution/${id}`,
+                `${apiUrl}/api/grievances/verify-resolution/${id}`,
                 {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                   },
-                  body: JSON.stringify({ action, feedback }),
+                  body: JSON.stringify({ action: "accept", feedback: "" }),
                 }
               );
 
@@ -1212,34 +1340,29 @@ function StudentDashboard() {
 
               if (!res.ok) {
                 alert(data.message || "Verification failed");
-                // ✅ FORCE STATE UPDATE USING BACKEND RESPONSE
-                setHistory(prev =>
-                  prev.map(g =>
-                    g._id === data.grievance._id ? data.grievance : g
-                  )
-                );
-
-                // ✅ Close modal
+                if (data.grievance) {
+                  setHistory(prev =>
+                    prev.map(g =>
+                      g._id === data.grievance._id ? data.grievance : g
+                    )
+                  );
+                }
                 setIsVerificationPopupOpen(false);
                 setSelectedGrievance(null);
-
                 return;
               }
 
-              // 🔥 THIS IS THE KEY LINE
-              // ✅ Update history instantly from backend response
+              // Update history instantly from backend response
               setHistory(prev =>
                 prev.map(g =>
                   g._id === data.grievance._id ? data.grievance : g
                 )
               );
 
-              // ✅ ALSO update selected grievance
-              setSelectedGrievance(data.grievance);
-
               setIsVerificationPopupOpen(false);
-
-              alert("Grievance Closed! Thank you.");
+              // Open selectedGrievance with resolved status to allow student to rate resolution
+              setSelectedGrievance(data.grievance);
+              alert("Grievance Closed! Thank you. You can now rate this resolution.");
             } catch (err) {
               console.error(err);
               alert("Server error while verifying grievance");
@@ -1292,7 +1415,13 @@ function StudentDashboard() {
 function VerificationModal({ grievance, onVerify, onClose }) {
   const [feedback, setFeedback] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
-  const isLastAttempt = (grievance.verificationAttempts || 0) >= 1;
+
+  const attemptCount = Math.max(
+    grievance.verificationAttempts || 0,
+    grievance.resolutionRemarks ? (grievance.resolutionRemarks.match(/\[Reopen/gi) || []).length : 0
+  );
+  const isLastAttempt = attemptCount >= 2;
+  const reopensRemaining = Math.max(0, 2 - attemptCount);
 
   return (
     <div style={{
@@ -1345,21 +1474,46 @@ function VerificationModal({ grievance, onVerify, onClose }) {
         {!showRejectInput ? (
           <div style={{ textAlign: "center" }}>
 
-            {/* Warning after first rejection */}
-            {isLastAttempt && (
-              <p style={{
-                color: "#b91c1c",
-                fontSize: "0.85rem",
-                marginBottom: "12px"
+            {/* Warning when 2 reopens have been reached */}
+            {isLastAttempt ? (
+              <div style={{
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: "12px",
+                padding: "12px 16px",
+                marginBottom: "16px",
+                textAlign: "center"
               }}>
-                You have already rejected once.
-                As per university policy, further rejection is not allowed.
+                <p style={{
+                  color: "#b91c1c",
+                  fontSize: "0.9rem",
+                  fontWeight: "700",
+                  margin: "0 0 4px 0"
+                }}>
+                  ⚠️ Reopen Limit Reached (2 of 2 used)
+                </p>
+                <p style={{
+                  color: "#7f1d1d",
+                  fontSize: "0.82rem",
+                  margin: 0,
+                  lineHeight: "1.4"
+                }}>
+                  You have already reopened this grievance 2 times. As per university policy, further rejection is not allowed. Please accept the resolution.
+                </p>
+              </div>
+            ) : (
+              <p style={{
+                color: "#64748b",
+                fontSize: "0.82rem",
+                marginBottom: "14px"
+              }}>
+                Reopen attempts remaining: <strong>{reopensRemaining} of 2</strong>
               </p>
             )}
 
             <div style={{ display: "flex", gap: "15px", justifyContent: "center" }}>
 
-              {/* ❌ Reject button ONLY on first attempt */}
+              {/* ❌ Reject button ONLY if under 2 reopens */}
               {!isLastAttempt && (
                 <button
                   onClick={() => setShowRejectInput(true)}
@@ -1391,7 +1545,6 @@ function VerificationModal({ grievance, onVerify, onClose }) {
                   fontWeight: "600",
                   cursor: "pointer"
                 }}
-
               >
                 Yes, Close It
               </button>

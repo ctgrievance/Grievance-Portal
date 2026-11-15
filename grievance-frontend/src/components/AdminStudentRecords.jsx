@@ -14,8 +14,9 @@ import {
   SaveIcon,
   GraduationCapIcon,
   CheckCircleIcon,
-  AlertCircleIcon,
-  FileIcon
+  FileIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 import ExcelUploadModeModal from "./ExcelUploadModeModal";
 import AuditLogsModal from "./AuditLogsModal";
@@ -673,8 +674,8 @@ const AdminStudentRecords = ({ isReadOnly = false }) => {
               {/* Existing Records */}
               {loading ? (
                 <tr>
-                  <td colSpan={isReadOnly ? "8" : "9"} style={{ textAlign: "center", padding: "36px", color: "#64748b" }}>
-                    Loading student records...
+                  <td colSpan={isReadOnly ? "8" : "9"} style={{ textAlign: "center", padding: "24px 20px" }}>
+                    <DynamicLoadingState text="Loading student records..." minHeight="160px" />
                   </td>
                 </tr>
               ) : records.length === 0 ? (

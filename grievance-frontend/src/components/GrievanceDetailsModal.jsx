@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import TransferDepartmentModal from "./TransferDepartmentModal";
-import { ZapIcon, RerouteIcon, ClipboardIcon,
+import {
+  ZapIcon, RerouteIcon, ClipboardIcon,
   XIcon,
   TrashIcon,
   ClockIcon,
@@ -152,14 +153,32 @@ const GrievanceDetailsModal = ({
 
   const userDept = (
     localStorage.getItem("admin_department") ||
+    localStorage.getItem("staff_department") ||
     storedUser.adminDepartment ||
+    storedUser.staffDepartment ||
+    storedUser.department ||
+    storedUser.school ||
     ""
   ).toString().trim().toLowerCase();
 
   const userDepts = (() => {
     try {
       const parsed = JSON.parse(localStorage.getItem("admin_departments") || "[]");
-      return Array.isArray(parsed) ? parsed.map((d) => (d || "").toString().trim().toLowerCase()) : [];
+      const list = Array.isArray(parsed) ? parsed.map((d) => (d || "").toString().trim().toLowerCase()) : [];
+      if (storedUser.adminDepartment) list.push(storedUser.adminDepartment.toString().trim().toLowerCase());
+      if (storedUser.staffDepartment) list.push(storedUser.staffDepartment.toString().trim().toLowerCase());
+      if (storedUser.department) list.push(storedUser.department.toString().trim().toLowerCase());
+      if (storedUser.school) list.push(storedUser.school.toString().trim().toLowerCase());
+      if (Array.isArray(storedUser.adminDepartments)) {
+        storedUser.adminDepartments.forEach((d) => d && list.push(d.toString().trim().toLowerCase()));
+      }
+      if (Array.isArray(storedUser.departments)) {
+        storedUser.departments.forEach((d) => d && list.push(d.toString().trim().toLowerCase()));
+      }
+      if (Array.isArray(storedUser.staffDepartments)) {
+        storedUser.staffDepartments.forEach((d) => d && list.push(d.toString().trim().toLowerCase()));
+      }
+      return Array.from(new Set(list.filter(Boolean)));
     } catch {
       return [];
     }
@@ -170,21 +189,47 @@ const GrievanceDetailsModal = ({
     storedUser.isDeptAdmin === true ||
     userRole === "admin";
 
-  const grievanceDept = (
+  const normDept = (d) =>
+    (d || "").toString().trim().toLowerCase().replace(/\s*(?:&|and)\s*/g, " and ").replace(/\s+/g, " ");
+
+  const grievanceDept = normDept(
     grievance?.currentCustodian?.department ||
     grievance?.category ||
     ""
-  ).toString().trim().toLowerCase();
+  );
 
   const isSameDept = Boolean(
     grievanceDept &&
     (
-      (userDept && userDept === grievanceDept) ||
-      (userDepts.length > 0 && userDepts.includes(grievanceDept))
+      (userDept && (normDept(userDept) === grievanceDept || grievanceDept.includes(normDept(userDept)) || normDept(userDept).includes(grievanceDept))) ||
+      (userDepts.length > 0 && userDepts.some((d) => {
+        const nd = normDept(d);
+        return nd === grievanceDept || grievanceDept.includes(nd) || nd.includes(grievanceDept);
+      }))
     )
   );
 
   const isDeptAdmin = isDeptAdminFlag && (isSameDept || !grievanceDept);
+
+  // Submitter identification: Current user submitted this grievance
+  const submitterId = (
+    grievance?.userId ||
+    grievance?.regid ||
+    ""
+  ).toString().trim().toUpperCase();
+
+  const userEmail = (
+    localStorage.getItem("grievance_email") ||
+    storedUser.email ||
+    ""
+  ).toString().trim().toLowerCase();
+
+  const grievanceEmail = (grievance?.email || "").toString().trim().toLowerCase();
+
+  const isSubmitter = Boolean(
+    (currentUserId && submitterId && currentUserId === submitterId) ||
+    (userEmail && grievanceEmail && userEmail === grievanceEmail)
+  );
 
   // Extract assigned staff ID safely whether string or object
   const assignedStaffId = (
@@ -197,13 +242,20 @@ const GrievanceDetailsModal = ({
     grievance?.currentCustodian?.staffId || ""
   ).toString().trim().toUpperCase();
 
-  // Current assignee check (matches faculty/staff ID)
+  // Current assignee check (matches faculty/staff ID assigned to work on the grievance)
   const isCurrentAssignee = Boolean(
     currentUserId &&
     (
       (assignedStaffId && assignedStaffId === currentUserId) ||
       (custodianStaffId && custodianStaffId === currentUserId)
     )
+  );
+
+  // Whether a faculty member is already assigned to this grievance
+  const isFacultyAssigned = Boolean(
+    assignedStaffId ||
+    grievance?.assignedTo ||
+    grievance?.status === "Assigned"
   );
 
   // Faculty or staff member of the department holding the grievance
@@ -233,8 +285,8 @@ const GrievanceDetailsModal = ({
   const resolvedAt = grievance.resolutionProposedAt
     ? new Date(grievance.resolutionProposedAt)
     : isResolved && grievance.updatedAt
-    ? new Date(grievance.updatedAt)
-    : null;
+      ? new Date(grievance.updatedAt)
+      : null;
 
   let timeTakenText = null;
   let openDurationText = null;
@@ -253,22 +305,26 @@ const GrievanceDetailsModal = ({
     grievance.status
   );
 
-  // 🔒 STRICT CUSTODY RULE:
-  // When a grievance is assigned/forwarded to another department, that department holds sole custody.
-  // The originating/previous department CANNOT assign to their own faculty nor forward to any other department.
-  // Only users who belong to the holding department (isSameDept) AND have authority can transfer or assign.
+  // 🔒 STRICT CUSTODY & ASSIGNMENT RULES:
+  // - Unassigned: Only the holding department admin/staff can forward it.
+  // - Assigned: ONLY the currently assigned faculty member (isCurrentAssignee) has the right to forward it. Dept admin cannot forward an assigned grievance.
+  // - Submitter: Can NEVER forward their own submitted grievance.
   const allowTransfer =
     canTransfer &&
+    !isSubmitter &&
     !isMasterAdmin &&
     !hasAlreadyForwarded &&
     isStaffOrAdmin &&
-    isSameDept &&
-    (isCurrentAssignee || isDeptAdmin || isDepartmentStaff);
+    (
+      (!isFacultyAssigned && isSameDept && (isDeptAdmin || isDepartmentStaff)) ||
+      isCurrentAssignee
+    );
 
   const canAssignFaculty = Boolean(
+    !isSubmitter &&
     !isResolved &&
     !isRejected &&
-    !grievance.assignedTo &&
+    !isFacultyAssigned &&
     onAssign &&
     isSameDept &&
     (isDeptAdmin || isDeptAdminFlag)
@@ -1090,15 +1146,14 @@ const GrievanceDetailsModal = ({
                     grievance.extensionRequest.status === "Pending"
                       ? "#fffbeb"
                       : grievance.extensionRequest.status === "Approved"
-                      ? "#f0fdf4"
-                      : "#fef2f2",
-                  border: `1px solid ${
-                    grievance.extensionRequest.status === "Pending"
+                        ? "#f0fdf4"
+                        : "#fef2f2",
+                  border: `1px solid ${grievance.extensionRequest.status === "Pending"
                       ? "#fde68a"
                       : grievance.extensionRequest.status === "Approved"
-                      ? "#bbf7d0"
-                      : "#fecaca"
-                  }`,
+                        ? "#bbf7d0"
+                        : "#fecaca"
+                    }`,
                   borderRadius: "12px",
                   padding: "16px 18px",
                   boxSizing: "border-box",
@@ -1115,8 +1170,8 @@ const GrievanceDetailsModal = ({
                         grievance.extensionRequest.status === "Pending"
                           ? "#b45309"
                           : grievance.extensionRequest.status === "Approved"
-                          ? "#15803d"
-                          : "#dc2626",
+                            ? "#15803d"
+                            : "#dc2626",
                     }}
                   >
                     ⏳ Deadline Extension Request
@@ -1132,14 +1187,14 @@ const GrievanceDetailsModal = ({
                         grievance.extensionRequest.status === "Pending"
                           ? "#fef3c7"
                           : grievance.extensionRequest.status === "Approved"
-                          ? "#dcfce7"
-                          : "#fee2e2",
+                            ? "#dcfce7"
+                            : "#fee2e2",
                       color:
                         grievance.extensionRequest.status === "Pending"
                           ? "#92400e"
                           : grievance.extensionRequest.status === "Approved"
-                          ? "#166534"
-                          : "#991b1b",
+                            ? "#166534"
+                            : "#991b1b",
                     }}
                   >
                     {grievance.extensionRequest.status}
@@ -1194,8 +1249,10 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-          {/* Staff Extension Request Action Trigger */}
+          {/* Staff Extension Request Action Trigger (Only assigned staff handling the task can request extension, not the submitter) */}
           {onRequestExtension &&
+            isCurrentAssignee &&
+            !isSubmitter &&
             grievance.deadlineDate &&
             !isResolved &&
             !isRejected &&
@@ -1337,6 +1394,45 @@ const GrievanceDetailsModal = ({
             </div>
           )}
 
+          {/* 🔄 STUDENT REOPEN / REJECTION FEEDBACK (IF REOPENED BY STUDENT) */}
+          {grievance.rejectionReason && grievance.status !== "Rejected" && (
+            <div
+              style={{
+                background: "#fff1f2",
+                border: "1px solid #fecdd3",
+                borderRadius: "12px",
+                padding: "16px 18px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                <AlertCircleIcon width="18" height="18" style={{ color: "#e11d48" }} />
+                <h4 style={{ margin: 0, fontSize: "0.95rem", color: "#9f1239", fontWeight: "700" }}>
+                  Student Reopen Feedback / Dissatisfaction Reason
+                </h4>
+              </div>
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #ffe4e6",
+                  fontSize: "0.9rem",
+                  color: "#881337",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  marginTop: "6px",
+                }}
+              >
+                {grievance.rejectionReason}
+              </div>
+              {grievance.rejectedAt && (
+                <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: "#9f1239" }}>
+                  Submitted on {formatDateTime(grievance.rejectedAt)}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* ⭐ SECTION 6: STUDENT FEEDBACK & STAR RATING */}
           {grievance.rating?.stars && (
             <div
@@ -1397,7 +1493,7 @@ const GrievanceDetailsModal = ({
           }}
         >
           <div className="g-details-footer-actions" style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-            {onDelete && (
+            {onDelete && !isSubmitter && (
               <button
                 className="g-details-btn g-details-btn-danger"
                 onClick={() => onDelete(grievance._id)}
@@ -1494,7 +1590,7 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-            {!isSameDept && !isMasterAdmin && !isResolved && !isRejected && (
+            {!isSameDept && !isCurrentAssignee && !isMasterAdmin && !isResolved && !isRejected && !isSubmitter && (
               <div
                 style={{
                   padding: "8px 14px",
@@ -1514,7 +1610,7 @@ const GrievanceDetailsModal = ({
               </div>
             )}
 
-            {!isResolved && !isRejected && onReject && isSameDept && (
+            {!isResolved && !isRejected && onReject && isSameDept && !isSubmitter && (
               <button
                 className="g-details-btn g-details-btn-reject"
                 onClick={() => onReject(grievance)}

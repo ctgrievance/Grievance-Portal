@@ -9,7 +9,9 @@ import {
   XIcon,
   CloseIcon,
   MessageCircleIcon,
-  DownloadIcon
+  DownloadIcon,
+  LockIcon,
+  AlertCircleIcon
 } from "./Icons";
 import { getSocket, joinChatRoom, leaveChatRoom } from "../services/socket";
 import { playNotificationSound } from "../utils/soundAlert";
@@ -34,6 +36,29 @@ const SafeDownloadIcon = (props) => (
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  )
+);
+
+const SafeLockIcon = (props) => (
+  typeof LockIcon === "function" ? (
+    <LockIcon {...props} />
+  ) : (
+    <svg width={props.width || "16"} height={props.height || "16"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+);
+
+const SafeAlertCircleIcon = (props) => (
+  typeof AlertCircleIcon === "function" ? (
+    <AlertCircleIcon {...props} />
+  ) : (
+    <svg width={props.width || "18"} height={props.height || "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   )
 );
@@ -89,12 +114,25 @@ const SafeReplyIcon = (props) => (
   </svg>
 );
 
-function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRole }) {
+function ChatPopup({ isOpen, onClose, grievanceId, grievanceStatus, currentUserId, currentUserRole }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null); // Track selected file
   const [isUploading, setIsUploading] = useState(false);  // Loading state for upload
   const [grievanceData, setGrievanceData] = useState(null); // Store grievance details
+  const [chatWarning, setChatWarning] = useState(""); // In-app notification / warning banner
+
+  const triggerWarning = (msg) => {
+    setChatWarning(msg);
+    setTimeout(() => {
+      setChatWarning((prev) => (prev === msg ? "" : prev));
+    }, 6000);
+  };
+
+  // 🔒 RESTRICTION: Closed grievances are view-only for students
+  const effectiveStatus = (grievanceData?.status || grievanceStatus || "").toLowerCase();
+  const isGrievanceClosed = effectiveStatus === "resolved" || effectiveStatus === "rejected";
+  const isReadOnlyForStudent = isGrievanceClosed && currentUserRole === "student";
 
   // 💬 Active Quoted Reply State
   const [replyingTo, setReplyingTo] = useState(null);
@@ -420,6 +458,10 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
   const handleSend = async (e) => {
     e.preventDefault();
+    if (isReadOnlyForStudent) {
+      triggerWarning("Chat cannot be done after the grievance is resolved or rejected.");
+      return;
+    }
     if (!newMessage.trim() && !selectedFile) return;
 
     setIsUploading(true);
@@ -482,10 +524,13 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
         setReplyingTo(null); // Clear reply preview on successful send
         setSelectedFile(null); // Reset file
         if (fileInputRef.current) fileInputRef.current.value = "";
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to send message");
       }
     } catch (err) {
       console.error("Error sending message:", err);
-      alert("Failed to send message. Please try again.");
+      triggerWarning(err.message || "Failed to send message. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -697,7 +742,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                   )}
 
                   {/* 💬 OUR MESSAGE (SENT): Reply button appears on the LEFT of the bubble */}
-                  {isMine && (
+                  {isMine && !isReadOnlyForStudent && (
                     <button
                       type="button"
                       className="chat-msg-reply-trigger sent-side"
@@ -710,8 +755,8 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
                   <div
                     className={`chat-bubble ${isMine ? 'sent' : 'received'}`}
-                    onDoubleClick={() => handleInitiateReply(msg)}
-                    title="Double-click or swipe to reply"
+                    onDoubleClick={() => !isReadOnlyForStudent && handleInitiateReply(msg)}
+                    title={isReadOnlyForStudent ? undefined : "Double-click or swipe to reply"}
                   >
                     {/* 💬 QUOTED REPLY BLOCK (If this message is a reply) */}
                     {msg.replyTo && (
@@ -818,7 +863,7 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
                   </div>
 
                   {/* 💬 OTHER'S MESSAGE (RECEIVED): Reply button appears on the RIGHT of the bubble */}
-                  {!isMine && (
+                  {!isMine && !isReadOnlyForStudent && (
                     <button
                       type="button"
                       className="chat-msg-reply-trigger received-side"
@@ -837,105 +882,177 @@ function ChatPopup({ isOpen, onClose, grievanceId, currentUserId, currentUserRol
 
         {/* ✅ FOOTER INPUT AREA */}
         <div className="chat-footer">
-          {/* 💬 WhatsApp-style Active Reply Preview Banner */}
-          {replyingTo && (
-            <div className="chat-reply-preview-bar">
-              <div className="chat-reply-preview-accent" />
-              <div className="chat-reply-preview-content">
-                <div className="chat-reply-to-header">
-                  <SafeReplyIcon width="12" height="12" style={{ color: "#6366f1", flexShrink: 0 }} />
-                  <span className="chat-reply-to-name">
-                    {replyingTo.senderId === currentUserId ? "Replying to yourself" : `Replying to ${replyingTo.sender}`}
-                  </span>
-                </div>
-                <div className="chat-reply-preview-snippet">
-                  {getQuotedSnippet(replyingTo)}
-                </div>
+          {chatWarning && (
+            <div
+              style={{
+                background: "#fef2f2",
+                border: "1px solid #fecdd3",
+                color: "#991b1b",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                margin: "0 14px 10px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "10px",
+                fontSize: "0.84rem",
+                fontWeight: 500,
+                boxShadow: "0 2px 6px rgba(225, 29, 72, 0.08)"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <SafeAlertCircleIcon width="16" height="16" style={{ color: "#dc2626", flexShrink: 0 }} />
+                <span>{chatWarning}</span>
               </div>
               <button
                 type="button"
-                className="chat-reply-preview-close"
-                onClick={() => setReplyingTo(null)}
-                title="Cancel reply"
+                onClick={() => setChatWarning("")}
+                style={{ background: "transparent", border: "none", color: "#991b1b", cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}
               >
                 ✕
               </button>
             </div>
           )}
 
-          {/* File Preview */}
-          {selectedFile && (
-            <div className="chat-selected-file-pill">
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                {selectedFile.type === "application/pdf" ? (
-                  <SafeFileIcon width="16" height="16" style={{ color: "#ef4444", flexShrink: 0 }} />
-                ) : (
-                  <SafePaperclipIcon width="16" height="16" style={{ color: "#3b82f6", flexShrink: 0 }} />
-                )}
-                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                  {selectedFile.name}
-                </span>
-                {selectedFile.type === "application/pdf" && (
-                  <span style={{ fontSize: '0.7rem', background: '#fee2e2', color: '#b91c1c', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                    PDF
-                  </span>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedFile(null);
-                  if (fileInputRef.current) fileInputRef.current.value = "";
+          {isReadOnlyForStudent ? (
+            <div
+              className="chat-closed-warning-box"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "16px 20px",
+                background: "#fef2f2",
+                borderTop: "1.5px solid #fecdd3",
+                color: "#991b1b"
+              }}
+            >
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  background: "#fee2e2",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
                 }}
-                className="chat-remove-file-btn"
-                title="Remove attachment"
               >
-                ✕
-              </button>
+                <SafeAlertCircleIcon width="20" height="20" style={{ color: "#dc2626" }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#991b1b", letterSpacing: "-0.01em" }}>
+                  Chat Closed ({grievanceData?.status || grievanceStatus || "Resolved"})
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "#b91c1c", marginTop: "3px", lineHeight: 1.4 }}>
+                  Chat cannot be done after the grievance is resolved or rejected. Students can only view the grievance details and conversation history.
+                </div>
+              </div>
             </div>
-          )}
-
-          <form onSubmit={handleSend}>
-            <div className="chat-input-wrapper">
-              {/* Attach File Button (Single unified button for Camera, Camcorder, Files) */}
-              <button
-                type="button"
-                className="chat-icon-btn"
-                onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                title="Attach File or Take Photo"
-              >
-                <SafePaperclipIcon width="20" height="20" />
-              </button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-              />
-
-              {/* Text Input (Middle) */}
-              <input
-                type="text"
-                ref={textInputRef}
-                className="chat-input-field"
-                placeholder={replyingTo ? "Type your reply..." : "Message..."}
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                disabled={isUploading}
-              />
-
-              {/* Send Button (Right) */}
-              {(newMessage.trim() || selectedFile) && (
-                <button
-                  type="submit"
-                  disabled={isUploading}
-                  className="chat-send-btn"
-                >
-                  {isUploading ? "..." : "Send"}
-                </button>
+          ) : (
+            <>
+              {/* 💬 WhatsApp-style Active Reply Preview Banner */}
+              {replyingTo && (
+                <div className="chat-reply-preview-bar">
+                  <div className="chat-reply-preview-accent" />
+                  <div className="chat-reply-preview-content">
+                    <div className="chat-reply-to-header">
+                      <SafeReplyIcon width="12" height="12" style={{ color: "#6366f1", flexShrink: 0 }} />
+                      <span className="chat-reply-to-name">
+                        {replyingTo.senderId === currentUserId ? "Replying to yourself" : `Replying to ${replyingTo.sender}`}
+                      </span>
+                    </div>
+                    <div className="chat-reply-preview-snippet">
+                      {getQuotedSnippet(replyingTo)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="chat-reply-preview-close"
+                    onClick={() => setReplyingTo(null)}
+                    title="Cancel reply"
+                  >
+                    ✕
+                  </button>
+                </div>
               )}
-            </div>
-          </form>
+
+              {/* File Preview */}
+              {selectedFile && (
+                <div className="chat-selected-file-pill">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    {selectedFile.type === "application/pdf" ? (
+                      <SafeFileIcon width="16" height="16" style={{ color: "#ef4444", flexShrink: 0 }} />
+                    ) : (
+                      <SafePaperclipIcon width="16" height="16" style={{ color: "#3b82f6", flexShrink: 0 }} />
+                    )}
+                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {selectedFile.name}
+                    </span>
+                    {selectedFile.type === "application/pdf" && (
+                      <span style={{ fontSize: '0.7rem', background: '#fee2e2', color: '#b91c1c', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                        PDF
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="chat-remove-file-btn"
+                    title="Remove attachment"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleSend}>
+                <div className="chat-input-wrapper">
+                  {/* Attach File Button (Single unified button for Camera, Camcorder, Files) */}
+                  <button
+                    type="button"
+                    className="chat-icon-btn"
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    title="Attach File or Take Photo"
+                  >
+                    <SafePaperclipIcon width="20" height="20" />
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    style={{ display: "none" }}
+                  />
+
+                  {/* Text Input (Middle) */}
+                  <input
+                    type="text"
+                    ref={textInputRef}
+                    className="chat-input-field"
+                    placeholder={replyingTo ? "Type your reply..." : "Message..."}
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    disabled={isUploading}
+                  />
+
+                  {/* Send Button (Right) */}
+                  {(newMessage.trim() || selectedFile) && (
+                    <button
+                      type="submit"
+                      disabled={isUploading}
+                      className="chat-send-btn"
+                    >
+                      {isUploading ? "..." : "Send"}
+                    </button>
+                  )}
+                </div>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>

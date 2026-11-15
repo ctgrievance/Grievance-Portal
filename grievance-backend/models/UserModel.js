@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema({
   // Basic Identity
   id: { type: String, required: true, unique: true }, // RegID / StaffID / AdminID
-  role: { type: String, enum: ["student", "staff", "admin"], required: true },
+  role: { type: String, enum: ["student", "staff", "admin"], required: true, index: true },
 
   // Personal Info
   fullName: { type: String },

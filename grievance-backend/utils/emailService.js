@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import User from "../models/UserModel.js";
 import StaffUser from "../models/StaffUser.js";
 import StaffRecord from "../models/StaffRecord.js";
+import Grievance from "../models/GrievanceModel.js";
 
 dotenv.config();
 
@@ -17,18 +18,18 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 10000,
 });
 
-// Cooldown map to prevent spamming recipient with multiple emails in active chat (60s throttle per ticket & recipient)
+// Cooldown map to prevent spamming recipient with multiple emails in active chat (24-hour throttle per ticket & recipient)
 const chatEmailCooldowns = new Map();
 
-// Periodic cleanup of stale cooldown entries (older than 5 minutes)
+// Periodic cleanup of stale cooldown entries (older than 24 hours)
 setInterval(() => {
   const now = Date.now();
   for (const [key, timestamp] of chatEmailCooldowns.entries()) {
-    if (now - timestamp > 300000) {
+    if (now - timestamp > 24 * 60 * 60 * 1000) {
       chatEmailCooldowns.delete(key);
     }
   }
-}, 300000);
+}, 3600000); // Hourly cleanup
 
 const escapeHtml = (unsafe) => {
   if (!unsafe) return "";
@@ -38,6 +39,11 @@ const escapeHtml = (unsafe) => {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+};
+
+const getClientBaseUrl = () => {
+  const url = process.env.CLIENT_URL || "https://rms.ctuniversity.in";
+  return url.replace(/\/+$/, "");
 };
 
 // Send Promotion Email
@@ -218,15 +224,28 @@ export const sendChatMessageEmail = async ({
       return { success: false, message: "No recipient email found" };
     }
 
-    // Anti-flood throttle (at most 1 email per recipient per grievance every 60 seconds)
+    // 24-HOUR CHAT EMAIL RATE LIMIT: At most 1 chat notification email per recipient per grievance every 24 hours.
+    // In-app notifications/sockets are delivered in real time for every message, while email is rate-limited to 24h.
+    const CHAT_EMAIL_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours = 86,400,000 ms
     const cooldownKey = `${grievance._id}:${recipientEmail.toLowerCase()}`;
-    const lastSent = chatEmailCooldowns.get(cooldownKey);
     const now = Date.now();
-    if (lastSent && now - lastSent < 60000) {
-      console.log(`⏳ Chat email to ${recipientEmail} throttled (cooldown active: ${Math.round((60000 - (now - lastSent)) / 1000)}s left)`);
-      return { success: false, message: "Throttled by cooldown" };
+
+    // 1. Check in-memory fast cache
+    const memLastSent = chatEmailCooldowns.get(cooldownKey);
+    if (memLastSent && (now - memLastSent) < CHAT_EMAIL_WINDOW_MS) {
+      const hoursRemaining = Math.ceil((CHAT_EMAIL_WINDOW_MS - (now - memLastSent)) / (1000 * 60 * 60));
+      console.log(`⏳ Chat email to ${recipientEmail} throttled by 24h limit (${hoursRemaining}h remaining). In-app notification active.`);
+      return { success: false, throttled: true, message: "Chat email throttled by 24-hour limit" };
     }
-    chatEmailCooldowns.set(cooldownKey, now);
+
+    // 2. Check persistent timestamp on Grievance document in database
+    const dbLastSent = isStaffSender ? grievance.lastChatEmailToStudent : grievance.lastChatEmailToStaff;
+    if (dbLastSent && (now - new Date(dbLastSent).getTime()) < CHAT_EMAIL_WINDOW_MS) {
+      const hoursRemaining = Math.ceil((CHAT_EMAIL_WINDOW_MS - (now - new Date(dbLastSent).getTime())) / (1000 * 60 * 60));
+      chatEmailCooldowns.set(cooldownKey, new Date(dbLastSent).getTime());
+      console.log(`⏳ Chat email to ${recipientEmail} throttled by persistent 24h limit (${hoursRemaining}h remaining). In-app notification active.`);
+      return { success: false, throttled: true, message: "Chat email throttled by persistent 24-hour limit" };
+    }
 
     // Prepare initials for LinkedIn-style avatar circle
     const initials =
@@ -238,7 +257,7 @@ export const sendChatMessageEmail = async ({
         .substring(0, 2)
         .toUpperCase() || "GP";
 
-    const portalUrl = process.env.CLIENT_URL || "http://localhost:3000";
+    const portalUrl = getClientBaseUrl();
     const previewMessage = escapeHtml(messageText || (hasAttachment ? "Shared an attachment" : "Sent a message"));
 
     const emailSubject = isStaffSender
@@ -371,7 +390,14 @@ export const sendChatMessageEmail = async ({
       html: emailHtml,
     });
 
-    console.log(`✅ LinkedIn-style chat notification email sent to ${recipientEmail} from ${senderDisplayName}`);
+    // Record timestamp in both memory and database
+    chatEmailCooldowns.set(cooldownKey, now);
+    const updateField = isStaffSender ? "lastChatEmailToStudent" : "lastChatEmailToStaff";
+    await Grievance.findByIdAndUpdate(grievance._id, { [updateField]: new Date(now) }).catch((dbErr) => {
+      console.error("⚠️ Failed to update chat email timestamp on grievance:", dbErr);
+    });
+
+    console.log(`✅ LinkedIn-style chat notification email sent to ${recipientEmail} from ${senderDisplayName} (24h rate limit recorded)`);
     return { success: true, message: "Email sent successfully" };
   } catch (error) {
     console.error("⚠️ Failed to send chat email notification:", error);
@@ -612,6 +638,157 @@ export const sendGrievanceRejectionToStudent = async ({ grievance, rejectionReas
     return { success: true };
   } catch (error) {
     console.error("⚠️ Failed to send rejection email to student:", error);
+    return { success: false, message: error.message };
+  }
+};
+
+/**
+ * Send Automated Routing Setup Reminder to Department Administrator
+ */
+export const sendRoutingReminderEmail = async ({
+  toEmail,
+  adminName,
+  department,
+  unroutedIssues = [],
+  customNote = "",
+  superAdminName = "Super Administrator"
+}) => {
+  try {
+    const portalUrl = `${getClientBaseUrl()}/admin/smart-assignment`;
+    const emailSubject = `⚠️ Action Required: Configure Smart Routing for ${department} Department`;
+
+    const unroutedListHtml = unroutedIssues.length > 0
+      ? unroutedIssues
+          .map(
+            (issue) => `
+              <li style="margin-bottom: 8px; color: #334155; font-size: 14px;">
+                <strong>${escapeHtml(issue.issueName)}</strong>
+                <span style="font-size: 11px; background: #e2e8f0; color: #475569; padding: 2px 7px; border-radius: 999px; margin-left: 6px; font-weight: 600;">
+                  ${issue.targetAudience === "staff" ? "👔 Staff" : "🎓 Student"}
+                </span>
+                ${issue.description ? `<br><span style="font-size: 12px; color: #64748b;">${escapeHtml(issue.description)}</span>` : ""}
+              </li>`
+          )
+          .join("")
+      : `<li style="color: #64748b; font-size: 13px;">Multiple categories currently lack routing rules.</li>`;
+
+    const customNoteHtml = customNote && customNote.trim()
+      ? `
+        <div style="background-color: #eff6ff; border: 1.5px solid #bfdbfe; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 14px 16px; margin: 20px 0; color: #1e3a8a; font-size: 13px; line-height: 1.5;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #2563eb; margin-bottom: 4px;">
+            💬 Note from ${escapeHtml(superAdminName)}:
+          </strong>
+          ${escapeHtml(customNote)}
+        </div>`
+      : "";
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Smart Routing Configuration Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 30px 15px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+          
+          <!-- HEADER -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 26px 30px; color: #ffffff;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">
+                CT University Grievance Portal &bull; System Audit
+              </div>
+              <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff;">
+                Action Required: Configure Smart Routing
+              </h2>
+              <div style="font-size: 13px; color: #38bdf8; margin-top: 4px; font-weight: 600;">
+                Department: ${escapeHtml(department)}
+              </div>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding: 28px 30px; color: #334155; font-size: 14px; line-height: 1.6;">
+              <p style="margin-top: 0;">Dear <strong>${escapeHtml(adminName || "Department Administrator")}</strong>,</p>
+              
+              <p>
+                Our portal automation audit detected that several complaint categories in the 
+                <strong>${escapeHtml(department)}</strong> department have been created, but 
+                <strong>do not have automated staff routing rules configured</strong>.
+              </p>
+
+              <p style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 14px; border-radius: 6px; color: #92400e; font-size: 13px; margin: 18px 0;">
+                ⚠️ <strong>Impact:</strong> Inquiries or complaints submitted by students or staff under unrouted categories cannot be auto-dispatched to officers and will remain stalled in your manual queue.
+              </p>
+
+              ${customNoteHtml}
+
+              <!-- UNROUTED CATEGORIES LIST -->
+              <div style="margin: 22px 0; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px;">
+                <div style="font-weight: 700; color: #0f172a; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+                  📋 Categories Requiring Staff Routing (${unroutedIssues.length}):
+                </div>
+                <ul style="margin: 0; padding-left: 20px;">
+                  ${unroutedListHtml}
+                </ul>
+              </div>
+
+              <!-- INSTRUCTIONS -->
+              <div style="margin: 22px 0;">
+                <div style="font-weight: 700; color: #0f172a; font-size: 13px; margin-bottom: 8px;">
+                  🛠️ How to complete setup (takes ~2 minutes):
+                </div>
+                <ol style="margin: 0; padding-left: 20px; color: #475569; font-size: 13px; line-height: 1.6;">
+                  <li>Log in to your <strong>Department Admin Dashboard</strong>.</li>
+                  <li>Click on <strong>✨ Smart Assignment</strong> in the top menu.</li>
+                  <li>Go to the <strong>Routing Rules</strong> tab and click <strong>+ Create Rule</strong>.</li>
+                  <li>Select the category, choose the assignment mode (Single, Round-Robin, or Pool), and select your staff officer(s).</li>
+                  <li>Click <strong>Save Routing Rule</strong>.</li>
+                </ol>
+              </div>
+
+              <!-- ACTION BUTTON -->
+              <div style="text-align: center; margin: 30px 0 10px 0;">
+                <a href="${portalUrl}" 
+                   style="display: inline-block; background: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);">
+                  Go to Smart Assignment Console &rarr;
+                </a>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 20px 30px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; line-height: 1.5;">
+              <p style="margin: 0 0 4px 0;">CT University Grievance & Student Welfare Administration Cell</p>
+              <p style="margin: 0; font-size: 11px; color: #cbd5e1;">This is an administrative audit notification sent via CT University Grievance Portal.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: toEmail,
+      subject: emailSubject,
+      html: emailHtml
+    });
+
+    console.log(`✅ Routing reminder email sent to ${toEmail} for department ${department}`);
+    return { success: true };
+  } catch (error) {
+    console.error("⚠️ Failed to send routing reminder email:", error);
     return { success: false, message: error.message };
   }
 };

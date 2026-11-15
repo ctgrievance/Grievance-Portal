@@ -31,7 +31,8 @@ const grievanceSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      index: true
     },
     issueTypeId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -171,7 +172,11 @@ const grievanceSchema = new mongoose.Schema(
         assignedToNameInNewDept: { type: String, default: null },
         statusAtTransfer: { type: String, default: "Pending" }
       }
-    ]
+    ],
+
+    // ================= 24-HOUR CHAT EMAIL RATE LIMITING =================
+    lastChatEmailToStudent: { type: Date, default: null },
+    lastChatEmailToStaff: { type: Date, default: null }
   },
   { timestamps: true }
 );

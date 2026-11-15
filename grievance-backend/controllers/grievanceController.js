@@ -13,6 +13,21 @@ import {
   sendGrievanceRejectionToStudent,
 } from "../utils/emailService.js";
 
+// 🔧 Helper to normalize department names for comparison (handles "&" vs "and", extra spaces, case)
+export const normalizeDept = (dept) =>
+  String(dept || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s*(?:&|and)\s*/g, " and ")
+    .replace(/\s+/g, " ");
+
+export const isDeptMatch = (deptA, deptB) => {
+  const normA = normalizeDept(deptA);
+  const normB = normalizeDept(deptB);
+  if (!normA || !normB) return false;
+  return normA === normB || normA.includes(normB) || normB.includes(normA);
+};
+
 /* =====================================================
    1️⃣ STUDENT → SUBMIT GRIEVANCE
    → Goes to CATEGORY inbox (UNASSIGNED)
@@ -53,7 +68,7 @@ export const submitGrievance = async (req, res) => {
     // 🔥 SMART AUTO-ASSIGNMENT CHECK
     let assignedStaff = null;
     let assignmentMode = "manual";
-    
+
     if (issueTypeId) {
       const autoAssignment = await autoAssignGrievance(issueTypeId, category);
       if (autoAssignment) {
@@ -156,7 +171,7 @@ export const submitGrievance = async (req, res) => {
     }
 
     res.status(201).json({
-      message: assignedStaff 
+      message: assignedStaff
         ? "✅ Grievance submitted and auto-assigned successfully"
         : "✅ Grievance submitted successfully",
       grievance,
@@ -252,16 +267,16 @@ function calculateDeadline() {
 // Helper: Send assignment notification email to staff
 async function sendAssignmentNotification(grievance, assignedStaff, isAuto = true) {
   try {
-    const staffId = (assignedStaff && typeof assignedStaff === "object") 
-      ? assignedStaff.staffId 
+    const staffId = (assignedStaff && typeof assignedStaff === "object")
+      ? assignedStaff.staffId
       : (grievance.assignedTo || assignedStaff);
-    
-    let staffName = (assignedStaff && typeof assignedStaff === "object" && assignedStaff.staffName) 
-      ? assignedStaff.staffName 
+
+    let staffName = (assignedStaff && typeof assignedStaff === "object" && assignedStaff.staffName)
+      ? assignedStaff.staffName
       : (typeof assignedStaff === "string" ? assignedStaff : "Staff Member");
-    
-    let staffEmail = (assignedStaff && typeof assignedStaff === "object") 
-      ? assignedStaff.staffEmail 
+
+    let staffEmail = (assignedStaff && typeof assignedStaff === "object")
+      ? assignedStaff.staffEmail
       : null;
 
     // Resolve staff email from database if not directly supplied
@@ -288,11 +303,11 @@ async function sendAssignmentNotification(grievance, assignedStaff, isAuto = tru
       },
     });
 
-    const subject = isAuto 
+    const subject = isAuto
       ? `🎯 New Grievance Auto-Assigned - ${grievance.category}`
       : `📋 New Grievance Assigned - ${grievance.category}`;
-    const heading = isAuto 
-      ? "🎯 New Grievance Auto-Assigned" 
+    const heading = isAuto
+      ? "🎯 New Grievance Auto-Assigned"
       : "📋 New Grievance Assigned";
     const introText = isAuto
       ? "A new grievance has been automatically assigned to you:"
@@ -442,7 +457,7 @@ export const acceptGrievance = async (req, res) => {
         { staffId },
         { $inc: { currentLoad: 1 } }
       );
-    } catch (_) {}
+    } catch (_) { }
 
     res.json({ message: "Grievance accepted successfully", grievance });
   } catch (err) {
@@ -479,10 +494,10 @@ export const getAllGrievances = async (req, res) => {
 export const getCategoryGrievances = async (req, res) => {
   try {
     // Check for category in params (for /category/:category) or query (for /department/:department?category=)
-    const category = req.params.category 
+    const category = req.params.category
       ? decodeURIComponent(req.params.category).trim()
       : (req.query.category ? decodeURIComponent(req.query.category).trim() : null);
-    
+
     const userId = req.user ? req.user.id : null;
 
     const grievances = await Grievance.find({
@@ -641,11 +656,10 @@ export const assignToStaff = async (req, res) => {
       const requesterUser = await StaffUser.findOne({ id: requesterId }) || await User.findOne({ id: requesterId });
       if (requesterUser) {
         const adminDepts = Array.isArray(requesterUser.adminDepartments) && requesterUser.adminDepartments.length > 0
-          ? requesterUser.adminDepartments.map(d => (d || "").trim().toLowerCase())
-          : (requesterUser.adminDepartment ? [requesterUser.adminDepartment.trim().toLowerCase()] : (requesterUser.department ? [requesterUser.department.trim().toLowerCase()] : []));
+          ? requesterUser.adminDepartments
+          : (requesterUser.adminDepartment ? [requesterUser.adminDepartment] : (requesterUser.department ? [requesterUser.department] : []));
 
-        const holdingDeptLower = currentHoldingDept.toLowerCase();
-        const isAuthorizedAdmin = adminDepts.some(d => d === holdingDeptLower || holdingDeptLower.includes(d) || d.includes(holdingDeptLower));
+        const isAuthorizedAdmin = adminDepts.some(d => isDeptMatch(d, currentHoldingDept));
 
         if (!isAuthorizedAdmin && adminDepts.length > 0) {
           return res.status(403).json({
@@ -657,23 +671,26 @@ export const assignToStaff = async (req, res) => {
 
     // 🔒 FACULTY BELONGING CHECK:
     // Ensure the faculty member being assigned belongs to currentHoldingDept!
+    // Normalizes "&" vs "and" and checks all department fields associated with the staff member.
     if (staffId && currentHoldingDept) {
       const targetStaff = await StaffUser.findOne({ id: staffId })
         || await User.findOne({ id: staffId })
         || await StaffRecord.findOne({ id: staffId });
-      
-      if (targetStaff) {
-        const staffDept = (
-          targetStaff.staffDepartment ||
-          targetStaff.department ||
-          targetStaff.adminDepartment ||
-          ""
-        ).trim().toLowerCase();
-        const holdingDeptLower = currentHoldingDept.toLowerCase();
 
-        if (staffDept && !staffDept.includes(holdingDeptLower) && !holdingDeptLower.includes(staffDept)) {
+      if (targetStaff) {
+        const staffDepts = [
+          targetStaff.staffDepartment,
+          targetStaff.department,
+          targetStaff.adminDepartment,
+          ...(Array.isArray(targetStaff.adminDepartments) ? targetStaff.adminDepartments : [])
+        ].filter(Boolean);
+
+        const isBelongsToHoldingDept = staffDepts.length === 0 || staffDepts.some(d => isDeptMatch(d, currentHoldingDept));
+
+        if (!isBelongsToHoldingDept) {
+          const displayDept = targetStaff.staffDepartment || targetStaff.department || targetStaff.adminDepartment || "Unknown";
           return res.status(400).json({
-            message: `❌ Cannot assign faculty member (${staffId}) of ${targetStaff.staffDepartment || targetStaff.department} to a grievance assigned to ${currentHoldingDept}. Please assign a faculty member of ${currentHoldingDept}.`
+            message: `❌ Cannot assign faculty member (${staffId}) of ${displayDept} to a grievance assigned to ${currentHoldingDept}. Please assign a faculty member of ${currentHoldingDept}.`
           });
         }
       }
@@ -708,7 +725,7 @@ export const assignToStaff = async (req, res) => {
         || await User.findOne({ id: staffId })
         || await StaffRecord.findOne({ id: staffId });
       if (staffUser && staffUser.fullName) staffFullName = staffUser.fullName;
-    } catch (_) {}
+    } catch (_) { }
 
     const isReassign = existingGrievance.assignedTo && existingGrievance.assignedTo !== staffId;
     const isAfterTransfer = existingGrievance.isRerouted && (!existingGrievance.assignedTo || isReassign);
@@ -906,7 +923,7 @@ export const getUserGrievances = async (req, res) => {
 export const updateGrievanceStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, resolutionRemarks, resolvedBy } = req.body;
+    const { status, resolutionRemarks, resolvedBy, verificationAttempts } = req.body;
 
     // 🔥 If status is "Resolved", switch to "Verification"
     let finalStatus = status;
@@ -923,6 +940,10 @@ export const updateGrievanceStatus = async (req, res) => {
       resolvedBy,
       updatedAt: Date.now(),
     };
+
+    if (typeof verificationAttempts === "number") {
+      updateData.verificationAttempts = verificationAttempts;
+    }
 
     if (finalStatus === "Rejected") {
       updateData.rejectionReason = resolutionRemarks || "Rejected by Administrator";
@@ -1017,21 +1038,45 @@ export const verifyResolution = async (req, res) => {
 
     if (action === "accept") {
       newStatus = "Resolved";
+      grievance.status = "Resolved";
+      grievance.resolutionProposedAt = null;
+      grievance.autoClosed = false;
+
       emailSubject = "Resolution Accepted ✅";
       emailBody = `The student has <strong>ACCEPTED</strong> the resolution for grievance #${id}. Great job!`;
       if (staffEmail) notifyEmails.push(staffEmail);
     } else {
-      newStatus = "Pending"; // Reopen
-      emailSubject = "Resolution Rejected ❌";
-      emailBody = `The student has <strong>REJECTED</strong> the resolution for grievance #${id}.<br><br><strong>Student Feedback:</strong> ${feedback}<br><br>Please review and take necessary action immediately.`;
+      // 🔒 Check 2-reopen limit
+      if ((grievance.verificationAttempts || 0) >= 2) {
+        return res.status(400).json({
+          message: "Maximum reopen limit (2) reached. Further rejection is not allowed. Please accept the resolution.",
+          grievance
+        });
+      }
+
+      // 🔄 Student Rejected / Reopened the grievance
+      newStatus = grievance.assignedTo ? "Assigned" : "Pending";
+      grievance.status = newStatus;
+      grievance.verificationAttempts = (grievance.verificationAttempts || 0) + 1;
+      grievance.resolutionProposedAt = null;
+      grievance.autoClosed = false;
+
+      const rejectionFeedback = (feedback || "").trim() || "Resolution rejected by student";
+      grievance.rejectionReason = rejectionFeedback;
+      grievance.rejectedAt = new Date();
+      grievance.rejectedBy = grievance.userId;
+      grievance.rejectedByName = grievance.name;
+
+      const reopenNote = `[Reopened #${grievance.verificationAttempts} by Student: ${rejectionFeedback}]`;
+      grievance.resolutionRemarks = grievance.resolutionRemarks
+        ? `${grievance.resolutionRemarks}\n${reopenNote}`
+        : reopenNote;
+
+      emailSubject = "Resolution Rejected ❌ - Grievance Reopened";
+      emailBody = `The student has <strong>REJECTED</strong> the proposed resolution for grievance #${id} and reopened it.<br><br><strong>Student Reason / Feedback:</strong> ${rejectionFeedback}<br><br>Please review and take necessary action immediately.`;
       if (staffEmail) notifyEmails.push(staffEmail);
       if (deptAdminEmail && deptAdminEmail !== staffEmail) notifyEmails.push(deptAdminEmail);
     }
-
-    // Update Status
-    grievance.status = newStatus;
-    // grievance.resolutionRemarks += `\n[Student Verified: ${action.toUpperCase()} - ${feedback || "No feedback"}]`; 
-    // Optional: Append feedback to internal remarks if desired, keeping simple for now.
 
     await grievance.save();
 
@@ -1055,7 +1100,10 @@ export const verifyResolution = async (req, res) => {
       }
     }
 
-    res.json({ message: `Grievance marked as ${newStatus}`, grievance });
+    res.json({
+      message: action === "accept" ? "Grievance resolved and closed successfully" : "Grievance reopened successfully",
+      grievance
+    });
 
   } catch (err) {
     console.error("Verification Error:", err);
@@ -1197,10 +1245,15 @@ export const getGrievanceDetail = async (req, res) => {
     }
 
     res.json({
+      _id: grievance._id,
       name: grievance.name,
+      userId: grievance.userId,
+      email: grievance.email,
+      userType: grievance.userType,
       message: grievance.message,
       regid: grievance.regid,
       category: grievance.category,
+      status: grievance.status,
       assignedStaff: staffInfo,
       createdAt: grievance.createdAt,
       deadlineDate: grievance.deadlineDate || null
@@ -1320,25 +1373,41 @@ export const transferGrievance = async (req, res) => {
     const isAssignee = Boolean(
       senderStaffId &&
       ((grievance.assignedTo && grievance.assignedTo.toString().trim().toUpperCase() === senderStaffId) ||
-       (grievance.currentCustodian?.staffId && grievance.currentCustodian.staffId.toString().trim().toUpperCase() === senderStaffId))
+        (grievance.currentCustodian?.staffId && grievance.currentCustodian.staffId.toString().trim().toUpperCase() === senderStaffId))
     );
     const currentHoldingDept = (grievance.currentCustodian?.department || grievance.category || "").trim().toLowerCase();
 
-    // Check if sender is admin of the current holding department
+    // Check if sender is admin or faculty/staff member of the current holding department
     let isCurrentDeptAdmin = false;
     let isDeptStaff = false;
 
     if (senderStaffId && senderStaffId !== "10001" && transferredByRole !== "master_admin") {
       try {
-        const staffUser = await StaffUser.findOne({ id: senderStaffId }) || await User.findOne({ id: senderStaffId });
+        const idRegex = new RegExp(`^${senderStaffId}$`, "i");
+        const staffUser =
+          (await User.findOne({ id: { $regex: idRegex } })) ||
+          (await StaffUser.findOne({ id: { $regex: idRegex } })) ||
+          (await User.findOne({ id: senderStaffId })) ||
+          (await StaffUser.findOne({ id: senderStaffId }));
+
         if (staffUser) {
-          const staffDepts = Array.isArray(staffUser.adminDepartments) && staffUser.adminDepartments.length > 0
-            ? staffUser.adminDepartments.map(d => (d || "").trim().toLowerCase())
-            : (staffUser.adminDepartment ? [staffUser.adminDepartment.trim().toLowerCase()] : (staffUser.department ? [staffUser.department.trim().toLowerCase()] : []));
-          
-          const hasDeptAuth = staffDepts.some(d => d === currentHoldingDept || currentHoldingDept.includes(d) || d.includes(currentHoldingDept));
+          const staffDepts = [];
+          if (Array.isArray(staffUser.adminDepartments)) {
+            staffUser.adminDepartments.forEach((d) => d && staffDepts.push(d));
+          }
+          if (staffUser.adminDepartment) staffDepts.push(staffUser.adminDepartment);
+          if (staffUser.staffDepartment) staffDepts.push(staffUser.staffDepartment);
+          if (staffUser.department) staffDepts.push(staffUser.department);
+          if (staffUser.school) staffDepts.push(staffUser.school);
+
+          const hasDeptAuth = staffDepts.some((d) => isDeptMatch(d, currentHoldingDept));
           if (hasDeptAuth) {
-            if (transferredByRole === "admin" || staffUser.isDeptAdmin || staffUser.role === "admin" || req.user?.isDeptAdmin) {
+            if (
+              transferredByRole === "admin" ||
+              staffUser.isDeptAdmin ||
+              staffUser.role === "admin" ||
+              req.user?.isDeptAdmin
+            ) {
               isCurrentDeptAdmin = true;
             }
             isDeptStaff = true;
@@ -1379,7 +1448,7 @@ export const transferGrievance = async (req, res) => {
         }
         if (!resolvedStaffId && !grievance.assignedTo) {
           return res.status(400).json({
-            message: "The grievance is already unassigned in this department. Please select a faculty member to assign."
+            message: "The grievance is already unassigned and under the custody of the Department Administrator."
           });
         }
       }
@@ -1508,8 +1577,8 @@ export const transferGrievance = async (req, res) => {
 
       return res.json({
         message: isSameDepartment
-          ? `✅ Grievance successfully reassigned within ${targetDept}${newAssignedName ? ` to ${newAssignedName}` : ' (unassigned)'}.`
-          : `✅ Grievance successfully forwarded to ${targetDept} (Department Pool). The ${targetDept} admin will assign faculty.`,
+          ? `✅ Grievance returned to ${targetDept} Department Administrator.`
+          : `✅ Grievance successfully forwarded to ${targetDept} Department Administrator (Pool).`,
         grievance
       });
     }
@@ -1915,5 +1984,6 @@ export const clearAllGrievances = async (req, res) => {
     res.status(500).json({ message: "Failed to clear grievances", error: err.message });
   }
 };
+
 
 

@@ -32,5 +32,7 @@ const studentUserSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+studentUserSchema.index({ createdAt: -1 });
+
 const StudentUser = mongoose.model("StudentUser", studentUserSchema);
 export default StudentUser;

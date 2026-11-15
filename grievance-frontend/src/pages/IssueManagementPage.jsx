@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import IssueManagementPanel from "../components/IssueManagementPanel";
 import RoutingRuleConfig from "../components/RoutingRuleConfig";
+import RoutingAuditPanel from "../components/RoutingAuditPanel";
 import ctLogo from "../assets/ct-logo.png";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import GenericAdminNavbar from "../components/GenericAdminNavbar";
-import { ShieldIcon, ArrowLeftIcon, RerouteIcon, ClipboardIcon } from "../components/Icons";
+import { ShieldIcon, ArrowLeftIcon, RerouteIcon, ClipboardIcon, SparklesIcon } from "../components/Icons";
 
 function IssueManagementPage() {
   const navigate = useNavigate();
@@ -65,20 +66,23 @@ function IssueManagementPage() {
           <div className="header-content">
             <h1>Smart Assignment Configuration</h1>
             <div className="admin-header-user-info" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
-              {isMasterAdmin ? (
+              {isMasterAdmin && activeTab !== "audit" ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: "600" }}>Department:</span>
                   <select
                     value={selectedDepartment}
                     onChange={(e) => setSelectedDepartment(e.target.value)}
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: "6px",
+                      padding: "5px 12px",
+                      borderRadius: "8px",
                       border: "1px solid #cbd5e1",
-                      fontSize: "0.9rem",
+                      fontSize: "0.85rem",
                       fontWeight: "600",
                       background: "#fff",
-                      color: "#1e293b"
+                      color: "#0f172a",
+                      cursor: "pointer",
+                      outline: "none",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
                     }}
                   >
                     {departments.map((d) => (
@@ -88,11 +92,11 @@ function IssueManagementPage() {
                     ))}
                   </select>
                 </div>
-              ) : (
+              ) : !isMasterAdmin ? (
                 <span>
                   Department: <strong>{adminDept}</strong>
                 </span>
-              )}
+              ) : null}
               <span className="admin-master-badge">
                 <ShieldIcon width="12" height="12" /> {isMasterAdmin ? "Master Admin" : "Department Admin"}
               </span>
@@ -111,6 +115,9 @@ function IssueManagementPage() {
         tabs={[
           { id: "issues", label: "Issue Types", IconComponent: ClipboardIcon },
           { id: "routing", label: "Routing Rules", IconComponent: RerouteIcon },
+          ...(isMasterAdmin
+            ? [{ id: "audit", label: "Department Audit & Reminders", IconComponent: SparklesIcon }]
+            : []),
           { id: "back", label: "Back", IconComponent: ArrowLeftIcon, onClick: () => navigate(-1) },
         ]}
         activeTab={activeTab}
@@ -124,6 +131,9 @@ function IssueManagementPage() {
         )}
         {activeTab === "routing" && (
           <RoutingRuleConfig department={activeDepartmentToUse} />
+        )}
+        {activeTab === "audit" && isMasterAdmin && (
+          <RoutingAuditPanel />
         )}
       </main>
     </div>

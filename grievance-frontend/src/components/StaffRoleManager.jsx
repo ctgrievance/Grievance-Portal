@@ -11,7 +11,9 @@ import {
   StarIcon,
   SaveIcon,
   EyeIcon,
-  EyeOffIcon
+  EyeOffIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 
 const DEFAULT_DEPARTMENTS = [
@@ -96,6 +98,18 @@ function StaffRoleManager() {
     }, 4000);
     return () => clearTimeout(timer);
   }, [msg]);
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (selectedStaffForManage) setSelectedStaffForManage(null);
+        if (selectedReviewsStaff) setSelectedReviewsStaff(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedStaffForManage, selectedReviewsStaff]);
 
   // Fetch all departments
   useEffect(() => {
@@ -826,9 +840,7 @@ function StaffRoleManager() {
 
       {/* MAIN CONTENT AREA */}
       {loading ? (
-        <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-          Loading staff directory...
-        </div>
+        <DynamicLoadingState text="Loading staff directory..." minHeight="240px" />
       ) : filteredStaffList.length === 0 ? (
         <div style={{ padding: "40px 20px", textAlign: "center", color: "#64748b", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
           <p style={{ margin: 0, fontWeight: "600", fontSize: "0.95rem" }}>No staff members match your criteria</p>
@@ -1047,6 +1059,7 @@ function StaffRoleManager() {
         return (
           <div
             className="staff-modal-overlay"
+            style={{ zIndex: 99999 }}
             onClick={() => setSelectedStaffForManage(null)}
           >
             <div
@@ -1059,7 +1072,7 @@ function StaffRoleManager() {
                   <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#0f172a" }}>
                     Manage Role
                   </h3>
-                  <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <span>{selectedStaffForManage.fullName}</span>
                     <span className="staff-id-pill">#{selectedStaffForManage.id}</span>
                     {selectedStaffForManage.isDeptAdmin ? (
@@ -1308,8 +1321,8 @@ function StaffRoleManager() {
                               {processingId === selectedStaffForManage.id
                                 ? "Assigning..."
                                 : selectedStaffForManage.adminDepartment
-                                ? "Transfer Team"
-                                : "Add to Team"}
+                                  ? "Transfer Team"
+                                  : "Add to Team"}
                             </button>
                           </div>
                         </div>
@@ -1339,8 +1352,8 @@ function StaffRoleManager() {
                         {processingId === selectedStaffForManage.id
                           ? "Updating..."
                           : selectedStaffForManage.adminDepartment
-                          ? `Transfer to ${effectiveDept} Team`
-                          : `+ Add to ${effectiveDept} Team`}
+                            ? `Transfer to ${effectiveDept} Team`
+                            : `+ Add to ${effectiveDept} Team`}
                       </button>
                     </div>
                   </>
@@ -1366,10 +1379,10 @@ function StaffRoleManager() {
                         </p>
 
                         {!deptPermissionsForStaff.loading &&
-                        !deptPermissionsForStaff.allowStudentRecords &&
-                        !deptPermissionsForStaff.allowStaffRecords &&
-                        !deptPermissionsForStaff.allowRegisteredStudents &&
-                        !deptPermissionsForStaff.allowRegisteredStaff ? (
+                          !deptPermissionsForStaff.allowStudentRecords &&
+                          !deptPermissionsForStaff.allowStaffRecords &&
+                          !deptPermissionsForStaff.allowRegisteredStudents &&
+                          !deptPermissionsForStaff.allowRegisteredStaff ? (
                           <div style={{ padding: "10px 12px", background: "#f1f5f9", borderRadius: "6px", fontSize: "0.78rem", color: "#64748b" }}>
                             <AlertCircleIcon width="13" height="13" style={{ verticalAlign: "middle", marginRight: "4px" }} />
                             This department has no Super Admin-delegated feature permissions to grant. Once Super Admin enables them for this department, they will appear here.
@@ -1490,17 +1503,17 @@ function StaffRoleManager() {
                           deptPermissionsForStaff.allowStaffRecords ||
                           deptPermissionsForStaff.allowRegisteredStudents ||
                           deptPermissionsForStaff.allowRegisteredStaff) && (
-                          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
-                            <button
-                              className="staff-btn-save-perms"
-                              disabled={savingPermissions || deptPermissionsForStaff.loading}
-                              onClick={handleSavePermissions}
-                            >
-                              <SaveIcon width="13" height="13" />
-                              {savingPermissions ? "Saving..." : "Save Feature Permissions"}
-                            </button>
-                          </div>
-                        )}
+                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
+                              <button
+                                className="staff-btn-save-perms"
+                                disabled={savingPermissions || deptPermissionsForStaff.loading}
+                                onClick={handleSavePermissions}
+                              >
+                                <SaveIcon width="13" height="13" />
+                                {savingPermissions ? "Saving..." : "Save Feature Permissions"}
+                              </button>
+                            </div>
+                          )}
                       </div>
                     </div>
                   </>
@@ -1569,6 +1582,7 @@ function StaffRoleManager() {
       {selectedReviewsStaff && (
         <div
           className="staff-modal-overlay"
+          style={{ zIndex: 99999 }}
           onClick={() => setSelectedReviewsStaff(null)}
         >
           <div
@@ -1695,10 +1709,10 @@ function StaffRoleManager() {
                           <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
                             {rev.ratedAt
                               ? new Date(rev.ratedAt).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric"
-                                })
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric"
+                              })
                               : "Recently"}
                           </span>
                         </div>

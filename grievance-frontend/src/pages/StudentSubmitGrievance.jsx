@@ -5,7 +5,7 @@ import StudentNavbar from "../components/StudentNavbar";
 import SubmissionLimitBanner from "../components/SubmissionLimitBanner";
 import MaintenanceNoticeBanner from "../components/MaintenanceNoticeBanner";
 import { useMaintenance } from "../context/MaintenanceContext";
-import { GraduationCapIcon, LockIcon, CheckCircleIcon, ClockIcon } from "../components/Icons";
+import { GraduationCapIcon, LockIcon, CheckCircleIcon, ClockIcon, DynamicSpinner, DynamicLoadingState } from "../components/Icons";
 import ctLogo from "../assets/ct-logo.png";
 
 function StudentSubmitGrievance() {
@@ -245,7 +245,7 @@ function StudentSubmitGrievance() {
           />
 
           {loading ? (
-            <p>Loading your details...</p>
+            <DynamicLoadingState text="Loading your details..." minHeight="160px" />
           ) : (
             <form onSubmit={handleSubmit}>
               <div className="form-row">

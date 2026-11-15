@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Dashboard.css";
-import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon, LockIcon } from "../components/Icons";
+import { ClipboardIcon, PaperclipIcon, TrashIcon, AlertCircleIcon, XIcon, UserIcon, StarIcon, EditIcon, CheckCircleIcon, ShieldIcon, ZapIcon, RepeatIcon, RefreshIcon, RerouteIcon, BuildingIcon, ClockIcon, LockIcon, DynamicSpinner, DynamicLoadingState } from "../components/Icons";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
 import GenericAdminNavbar from "../components/GenericAdminNavbar";
@@ -491,7 +491,7 @@ function StaffDashboard() {
 
   //  FILTER LOGIC
   const filteredMyGrievances = myGrievances.filter((g) => {
-    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase());
+    const matchStaff = (g.assignedTo || "").toLowerCase().includes(searchStaffId.toLowerCase()) || (staffMap[g.assignedTo] || "").toLowerCase().includes(searchStaffId.toLowerCase());
     const matchStatus = filterStatus === "All" || g.status === filterStatus;
     const matchDept = filterDepartment === "All" || (g.category || g.school || "") === filterDepartment;
 
@@ -522,7 +522,7 @@ function StaffDashboard() {
               <span className="admin-master-badge">
                 <ShieldIcon width="12" height="12" /> {staffDept}
               </span>
-              
+
               {/*  Staff Rating Element in Header */}
               <span
                 onClick={() => setActiveTab("ratings")}
@@ -595,7 +595,7 @@ function StaffDashboard() {
       )}
 
       {/*  FIXED NAVBAR TABS (Glass Pill Style) */}
-      <GenericAdminNavbar 
+      <GenericAdminNavbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         mobileTitle="Staff Dashboard"
@@ -717,14 +717,14 @@ function StaffDashboard() {
                     style={
                       isMaintenanceActive
                         ? {
-                            background: "#94a3b8",
-                            color: "#ffffff",
-                            cursor: "not-allowed",
-                            opacity: 0.7,
-                            boxShadow: "none"
-                          }
+                          background: "#94a3b8",
+                          color: "#ffffff",
+                          cursor: "not-allowed",
+                          opacity: 0.7,
+                          boxShadow: "none"
+                        }
                         : isSubmitted
-                        ? {
+                          ? {
                             background: "linear-gradient(135deg, #16a34a, #15803d)",
                             color: "#ffffff",
                             opacity: 0.88,
@@ -732,13 +732,13 @@ function StaffDashboard() {
                             cursor: "default",
                             boxShadow: "0 4px 14px rgba(22, 163, 74, 0.35)",
                           }
-                        : isSubmitting
-                        ? {
-                            opacity: 0.75,
-                            filter: "blur(0.4px)",
-                            cursor: "wait",
-                          }
-                        : {}
+                          : isSubmitting
+                            ? {
+                              opacity: 0.75,
+                              filter: "blur(0.4px)",
+                              cursor: "wait",
+                            }
+                            : {}
                     }
                   >
                     {isMaintenanceActive ? (
@@ -781,7 +781,7 @@ function StaffDashboard() {
               <DepartmentFilterBar
                 searchId={searchStaffId}
                 setSearchId={setSearchStaffId}
-                searchIdPlaceholder="Search Assigned Staff ID..."
+                searchIdPlaceholder="Search Assigned Staff ID or Name..."
                 statusFilter={filterStatus}
                 setStatusFilter={setFilterStatus}
                 filterDepartment={filterDepartment}
@@ -795,7 +795,7 @@ function StaffDashboard() {
               />
 
               {loadingMine ? (
-                <p>Loading your grievances...</p>
+                <DynamicLoadingState text="Loading your grievances..." minHeight="160px" />
               ) : filteredMyGrievances.length === 0 ? (
                 <div className="empty-state"><p>{myGrievances.length === 0 ? "You have not submitted any grievances yet." : "No grievances match your filters."}</p></div>
               ) : (
@@ -855,7 +855,18 @@ function StaffDashboard() {
                               )}
                             </div>
                           </td>
-                          <td>{g.assignedTo || "Not Assigned"}</td>
+                          <td>
+                            {g.assignedTo ? (
+                              <div>
+                                <span style={{ fontWeight: "600", display: "block", color: "#1e293b" }}>
+                                  {staffMap[g.assignedTo] || "Staff Member"}
+                                </span>
+                                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>({g.assignedTo})</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Assigned</span>
+                            )}
+                          </td>
                           <td>{formatDate(g.createdAt)}</td>
                         </tr>
                       ))}
@@ -1081,7 +1092,7 @@ function StaffDashboard() {
               </div>
 
               {loadingTransferred ? (
-                <p>Loading transferred grievances...</p>
+                <DynamicLoadingState text="Loading transferred grievances..." minHeight="160px" />
               ) : transferredGrievances.length === 0 ? (
                 <div style={{
                   background: "#f8fafc",
@@ -1184,13 +1195,13 @@ function StaffDashboard() {
         <GrievanceDetailsModal
           grievance={selectedGrievance}
           staffMap={staffMap}
-          canTransfer={false}
+          canTransfer={activeTab !== "transferred" && activeTab !== "mine"}
           onClose={() => setSelectedGrievance(null)}
-          onDelete={handleDeleteGrievance}
-          onReject={(g) => {
+          onDelete={activeTab !== "mine" ? handleDeleteGrievance : null}
+          onReject={activeTab !== "mine" ? (g) => {
             setRejectPopup(g);
             setRejectionReason("");
-          }}
+          } : null}
           onTransferred={() => {
             fetchMyGrievances();
             fetchTransferredGrievances();

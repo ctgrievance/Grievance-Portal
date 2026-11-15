@@ -10,7 +10,10 @@ import {
   PhoneIcon,
   MailIcon,
   DownloadIcon,
-  GraduationCapIcon
+  GraduationCapIcon,
+  SpinnerIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "./Icons";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import ExportPreviewModal from "./ExportPreviewModal";
@@ -397,7 +400,7 @@ function RegisteredStudentsTab({ isReadOnly = false }) {
               }}
               title="Preview & Export Registered Students"
             >
-              <DownloadIcon width="14" height="14" />
+              {exporting ? <DynamicSpinner size={14} color="#38bdf8" /> : <DownloadIcon width="14" height="14" />}
               <span>{exporting ? "Preparing..." : "Export"}</span>
             </button>
           </div>
@@ -425,8 +428,8 @@ function RegisteredStudentsTab({ isReadOnly = false }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell">
-                      <div className="reg-users-loading-spinner">Loading registered students...</div>
+                    <td colSpan={isReadOnly ? "8" : "9"} className="reg-users-empty-cell" style={{ padding: "32px 20px" }}>
+                      <DynamicLoadingState text="Loading registered students..." minHeight="160px" />
                     </td>
                   </tr>
                 ) : students.length === 0 ? (
@@ -550,8 +553,8 @@ function RegisteredStudentsTab({ isReadOnly = false }) {
       {/* VIEW 2: MOBILE COMPACT CARDS VIEW (SLEEK ZERO HORIZONTAL SCROLL) */}
       <div className="reg-users-mobile-cards">
         {loading ? (
-          <div className="reg-user-mobile-card empty-card">
-            <span>Loading registered students...</span>
+          <div className="reg-user-mobile-card empty-card" style={{ padding: "28px 16px" }}>
+            <DynamicLoadingState text="Loading registered students..." minHeight="120px" spinnerSize={30} />
           </div>
         ) : students.length === 0 ? (
           <div className="reg-user-mobile-card empty-card">

@@ -8,6 +8,7 @@ import AdminStudentRecords from "../components/AdminStudentRecords";
 import StaffRecordsTab from "../components/StaffRecordsTab";
 import ExportPreviewModal from "../components/ExportPreviewModal";
 import GrievanceDetailsModal from "../components/GrievanceDetailsModal";
+import RoutingAuditPanel from "../components/RoutingAuditPanel";
 import ctLogo from "../assets/ct-logo.png";
 import { getSocket } from "../services/socket";
 import {
@@ -21,7 +22,9 @@ import {
   UsersIcon,
   BuildingIcon,
   UserIcon,
-  GraduationCapIcon
+  GraduationCapIcon,
+  DynamicSpinner,
+  DynamicLoadingState
 } from "../components/Icons";
 import { UserRoleBadge, getSubmitterRole } from "../utils/userRoleHelper";
 import ProfileHeaderButton from "../components/ProfileHeaderButton";
@@ -68,7 +71,7 @@ function AdminDashboard() {
   // Determine initial tab from URL query (?tab=departments), then localStorage, fallback to "triage"
   const getInitialTab = () => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users"];
+    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users", "routing_audit"];
     if (urlTab && validTabs.includes(urlTab)) {
       return urlTab;
     }
@@ -94,7 +97,7 @@ function AdminDashboard() {
   // Keep URL search params and activeTab synced
   useEffect(() => {
     const urlTab = searchParams.get("tab")?.toLowerCase();
-    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users"];
+    const validTabs = ["triage", "staff", "student_records", "staff_records", "departments", "registered_users", "routing_audit"];
     if (urlTab && validTabs.includes(urlTab)) {
       if (urlTab !== activeTab) {
         setActiveTabState(urlTab);
@@ -109,6 +112,7 @@ function AdminDashboard() {
     }
   }, [searchParams, activeTab, setSearchParams]);
   const [grievances, setGrievances] = useState([]);
+  const [loadingGrievances, setLoadingGrievances] = useState(true);
   const [msg, setMsg] = useState("");
   const [statusType, setStatusType] = useState("");
   const [selectedGrievance, setSelectedGrievance] = useState(null);
@@ -170,6 +174,12 @@ function AdminDashboard() {
             label: "Registered Users",
             IconComponent: UserIcon,
             description: "Verified student and staff accounts"
+          },
+          {
+            id: "routing_audit",
+            label: "Routing Audit",
+            IconComponent: RerouteIcon,
+            description: "Coverage health & automated reminders"
           }
         ]
       : [])
@@ -188,6 +198,8 @@ function AdminDashboard() {
     } catch (err) {
       setMsg(err.message);
       setStatusType("error");
+    } finally {
+      setLoadingGrievances(false);
     }
   }, []);
 
@@ -516,6 +528,7 @@ function AdminDashboard() {
             isSuperAdmin={true}
           />
         )}
+        {activeTab === "routing_audit" && isMasterAdmin && <RoutingAuditPanel />}
 
         {activeTab === "triage" && (
           <div className="card admin-triage-card">
@@ -632,8 +645,10 @@ function AdminDashboard() {
 
             {msg && <div className={`alert-box ${statusType}`}>{msg}</div>}
 
-            {filteredGrievances.length === 0 ? (
-              <p>No grievances found matching criteria.</p>
+            {loadingGrievances ? (
+              <DynamicLoadingState text="Loading grievances..." minHeight="240px" />
+            ) : filteredGrievances.length === 0 ? (
+              <p style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>No grievances found matching criteria.</p>
             ) : (
               <>
                 {/* Desktop View: Full Table */}

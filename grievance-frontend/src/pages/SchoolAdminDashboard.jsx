@@ -50,8 +50,8 @@ const getDeadlineStatus = (deadlineDateStr, status) => {
 // Helper to check if a department name matches the admin's own school/department
 const isOwnSchool = (deptName, mySchool) => {
   if (!deptName || !mySchool) return false;
-  const d = deptName.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s+/g, " ");
-  const m = mySchool.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s+/g, " ");
+  const d = deptName.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s*(?:&|and)\s*/g, " and ").replace(/\s+/g, " ");
+  const m = mySchool.trim().toLowerCase().replace(/\s*-\s*\d+$/, "").replace(/\s*(?:&|and)\s*/g, " and ").replace(/\s+/g, " ");
   return d === m || d.includes(m) || m.includes(d);
 };
 
@@ -94,6 +94,7 @@ function SchoolAdminDashboard() {
   // Popup States
   const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
   const [assignGrievanceId, setAssignGrievanceId] = useState(null);
+  const [assignSubmitterId, setAssignSubmitterId] = useState("");
   const [selectedGrievance, setSelectedGrievance] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -194,6 +195,9 @@ function SchoolAdminDashboard() {
         alert(`❌ This grievance has been assigned to ${targetG.currentCustodian?.department || targetG.category}. You cannot assign faculty to it.`);
         return;
       }
+      setAssignSubmitterId((targetG.userId || targetG.regid || "").toString().trim().toUpperCase());
+    } else {
+      setAssignSubmitterId("");
     }
     setAssignGrievanceId(typeof id === "object" ? id._id : id);
     setIsAssignPopupOpen(true);
@@ -246,8 +250,8 @@ function SchoolAdminDashboard() {
     grievanceSection === "student_grievances"
       ? externalStudentGrievances
       : grievanceSection === "forwarded"
-      ? forwardedGrievances
-      : directGrievances;
+        ? forwardedGrievances
+        : directGrievances;
 
   // ✅ Departments where our students have grievances, excluding our own school/department
   const studentDepartments = useMemo(() => {
@@ -337,8 +341,8 @@ function SchoolAdminDashboard() {
       grievanceSection === "student_grievances"
         ? "student_grievances"
         : grievanceSection === "forwarded"
-        ? "forwarded_grievances"
-        : "direct_grievances";
+          ? "forwarded_grievances"
+          : "direct_grievances";
     const defaultPrefix = `${(mySchoolName || "school").toLowerCase().replace(/\s+/g, '_')}_${sectionSuffix}`;
     const rawName = (customName && customName.trim()) ? customName.trim() : defaultPrefix;
     const safeBase = rawName.replace(/[*?:/\\\[\]]/g, "").trim().replace(/\s+/g, "_") || defaultPrefix;
@@ -394,9 +398,9 @@ function SchoolAdminDashboard() {
         </div>
       </header>
 
-      <DepartmentAdminNavbar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+      <DepartmentAdminNavbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         allowStudentRecords={allowStudentRecords}
         allowStaffRecords={allowStaffRecords}
         allowRegisteredStudents={allowRegisteredStudents}
@@ -450,51 +454,51 @@ function SchoolAdminDashboard() {
             ) : (
               <>
                 {/* ✅ MODERN RESPONSIVE FILTER BAR */}
-            <DepartmentFilterBar
-              searchId={searchId}
-              setSearchId={setSearchId}
-              searchStaffId={searchStaffId}
-              setSearchStaffId={setSearchStaffId}
-              searchPlaceholder="Search by Student ID, Staff ID, Name..."
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              filterDepartment={filterDepartment}
-              setFilterDepartment={grievanceSection === "student_grievances" ? setFilterDepartment : undefined}
-              departments={studentDepartments}
-              filterMonth={filterMonth}
-              setFilterMonth={setFilterMonth}
-              onReset={resetFilters}
-              onExport={handleOpenExportModal}
-            />
+                <DepartmentFilterBar
+                  searchId={searchId}
+                  setSearchId={setSearchId}
+                  searchStaffId={searchStaffId}
+                  setSearchStaffId={setSearchStaffId}
+                  searchPlaceholder="Search by Student ID, Staff ID, Name..."
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  filterDepartment={filterDepartment}
+                  setFilterDepartment={grievanceSection === "student_grievances" ? setFilterDepartment : undefined}
+                  departments={studentDepartments}
+                  filterMonth={filterMonth}
+                  setFilterMonth={setFilterMonth}
+                  onReset={resetFilters}
+                  onExport={handleOpenExportModal}
+                />
 
-            {/* GRIEVANCES LIST (Desktop Table + Mobile Touch Cards) */}
-            {filteredGrievances.length === 0 ? (
-              <div className="empty-state">
-                <p>
-                  {currentSectionGrievances.length === 0
-                    ? (grievanceSection === "student_grievances"
-                        ? `No grievances submitted by ${mySchoolName} students to other departments yet.`
-                        : (grievanceSection === "forwarded" || grievanceSection === "transferred_in")
+                {/* GRIEVANCES LIST (Desktop Table + Mobile Touch Cards) */}
+                {filteredGrievances.length === 0 ? (
+                  <div className="empty-state">
+                    <p>
+                      {currentSectionGrievances.length === 0
+                        ? (grievanceSection === "student_grievances"
+                          ? `No grievances submitted by ${mySchoolName} students to other departments yet.`
+                          : (grievanceSection === "forwarded" || grievanceSection === "transferred_in")
                             ? "No transferred grievances received from other departments."
                             : "No direct grievances received from students yet.")
-                    : "No grievances found matching filters."}
-                </p>
-              </div>
-            ) : (
-              <DepartmentGrievanceList
-                grievances={filteredGrievances}
-                staffMap={staffMap}
-                setSelectedGrievance={setSelectedGrievance}
-                openAssignPopup={openAssignPopup}
-                onResolve={confirmResolve}
-                updateStatus={updateStatus}
-                getDeadlineStatus={getDeadlineStatus}
-                formatDate={formatDate}
-                isForwardedSection={grievanceSection === "forwarded" || grievanceSection === "transferred_in"}
-                isStudentSection={grievanceSection === "student_grievances"}
-                currentDepartment={mySchoolName}
-              />
-            )}
+                        : "No grievances found matching filters."}
+                    </p>
+                  </div>
+                ) : (
+                  <DepartmentGrievanceList
+                    grievances={filteredGrievances}
+                    staffMap={staffMap}
+                    setSelectedGrievance={setSelectedGrievance}
+                    openAssignPopup={openAssignPopup}
+                    onResolve={confirmResolve}
+                    updateStatus={updateStatus}
+                    getDeadlineStatus={getDeadlineStatus}
+                    formatDate={formatDate}
+                    isForwardedSection={grievanceSection === "forwarded" || grievanceSection === "transferred_in"}
+                    isStudentSection={grievanceSection === "student_grievances"}
+                    currentDepartment={mySchoolName}
+                  />
+                )}
               </>
             )}
           </div>
@@ -517,7 +521,15 @@ function SchoolAdminDashboard() {
         />
       )}
 
-      <AssignStaffPopup isOpen={isAssignPopupOpen} onClose={() => setIsAssignPopupOpen(false)} department={mySchoolName} grievanceId={assignGrievanceId} adminId={userId} onAssigned={(m, t) => { fetchMySchoolGrievances() }} />
+      <AssignStaffPopup
+        isOpen={isAssignPopupOpen}
+        onClose={() => setIsAssignPopupOpen(false)}
+        department={mySchoolName}
+        grievanceId={assignGrievanceId}
+        submitterId={assignSubmitterId}
+        adminId={userId}
+        onAssigned={(m, t) => { fetchMySchoolGrievances() }}
+      />
       <ExportPreviewModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} grievances={filteredGrievances} staffMap={staffMap} onExport={handleExportSelected} />
 
       {/* ✅ SUPER SMOOTH INTERACTIONS (Makhan UI) */}
