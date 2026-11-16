@@ -4,6 +4,7 @@ import StaffRecord from "../models/StaffRecord.js"; // NEW: Staff/Admin validati
 import StudentUser from "../models/StudentUser.js"; // NEW: Student users
 import StaffUser from "../models/StaffUser.js"; // NEW: Staff/Admin users
 import AdminStaffModel from "../models/AdminStaffModel.js";
+import PendingRegistration from "../models/PendingRegistration.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendEmailOtp } from "../utils/emailService.js";
@@ -175,95 +176,39 @@ export const registerRequest = async (req, res) => {
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Prepare user data based on role
-    const baseUserData = {
-      id: finalStudentId,
+    // Prepare pending registration data based on role
+    // NOTE: User is NOT added to StudentUser, StaffUser, or User until OTP is verified!
+    const targetId = userRole === "student" ? finalStudentId : safeId;
+    const studentSchool = req.body.department || req.body.school || validRecord.school || "";
+    const studentProgram = validRecord.program || req.body.program || studentSchool;
+    const staffDept = req.body.department || validRecord.department || "";
+    const staffCategory = validRecord?.staffType || "Non-Teaching";
+
+    const pendingData = {
+      id: targetId,
       email: cleanEmail,
       phone: cleanPhone || phone || "",
       password: hashedPassword,
       fullName: validRecord.fullName || req.body.fullName || "",
+      role: userRole,
       otp: emailOtp,
       otpExpires: Date.now() + 10 * 60 * 1000,
       phoneOtp: phoneOtp,
       phoneOtpExpires: Date.now() + 10 * 60 * 1000,
-      isVerified: false,
+      ctuId: userRole === "student" ? finalCtuId : "",
+      school: userRole === "student" ? studentSchool : "",
+      department: userRole === "student" ? studentSchool : staffDept,
+      program: userRole === "student" ? studentProgram : "",
+      studentType: userRole === "student" ? (validRecord.studentType || req.body.studentType || "") : "",
+      staffDepartment: userRole === "student" ? "" : staffDept,
+      staffType: userRole === "student" ? "Non-Teaching" : staffCategory,
+      createdAt: new Date(),
     };
 
-    // Create user in appropriate collection
-    if (userRole === "student") {
-      const studentSchool = req.body.department || req.body.school || validRecord.school || "";
-      const studentProgram = validRecord.program || req.body.program || studentSchool;
-      const studentData = {
-        ...baseUserData,
-        ctuId: finalCtuId,
-        role: "student",
-        school: studentSchool,
-        department: studentSchool,
-        program: studentProgram,
-        studentType: validRecord.studentType || req.body.studentType || "",
-      };
-      await StudentUser.findOneAndUpdate({ id: finalStudentId }, studentData, { upsert: true, new: true });
-
-      if (validRecord) {
-        let changed = false;
-        if (!validRecord.school && studentSchool) {
-          validRecord.school = studentSchool;
-          changed = true;
-        }
-        if (!validRecord.department && studentSchool) {
-          validRecord.department = studentSchool;
-          changed = true;
-        }
-        if (!validRecord.program && studentProgram) {
-          validRecord.program = studentProgram;
-          changed = true;
-        }
-        if (changed) await validRecord.save();
-      }
-    } else {
-      const staffDept = req.body.department || validRecord.department || "";
-      const staffCategory = validRecord?.staffType || "Non-Teaching";
-      const staffData = {
-        ...baseUserData,
-        role: "staff",
-        staffDepartment: staffDept,
-        department: staffDept,
-        staffType: staffCategory,
-        isDeptAdmin: false,
-        adminDepartment: "",
-        adminDepartments: [],
-        isMasterAdmin: false,
-      };
-      await StaffUser.findOneAndUpdate({ id: safeId }, staffData, { upsert: true, new: true });
-      await AdminStaffModel.deleteOne({ id: safeId });
-
-      if (validRecord && !validRecord.department && staffDept) {
-        validRecord.department = staffDept;
-        await validRecord.save();
-      }
-    }
-
-    // Also save to legacy User collection for backup
-    const staffDeptBackup = req.body.department || validRecord.department || "";
-    const staffCategoryBackup = validRecord?.staffType || "Non-Teaching";
-    const studentSchool = req.body.department || req.body.school || validRecord?.school || "";
-    const studentProgram = validRecord?.program || req.body.program || studentSchool;
-    await User.findOneAndUpdate(
-      { id: finalStudentId },
-      {
-        ...baseUserData,
-        ctuId: userRole === "student" ? finalCtuId : "",
-        role: userRole === "student" ? "student" : "staff",
-        school: userRole === "student" ? studentSchool : "",
-        department: userRole === "student" ? studentSchool : staffDeptBackup,
-        program: userRole === "student" ? studentProgram : "",
-        staffDepartment: userRole === "student" ? "" : staffDeptBackup,
-        staffType: userRole === "student" ? "Non-Teaching" : staffCategoryBackup,
-        isDeptAdmin: false,
-        adminDepartment: "",
-        adminDepartments: [],
-        isMasterAdmin: false,
-      },
+    // Save strictly to temporary PendingRegistration (auto-expires in 15 mins via TTL)
+    await PendingRegistration.findOneAndUpdate(
+      { id: targetId },
+      pendingData,
       { upsert: true, new: true }
     );
 
@@ -307,12 +252,134 @@ export const verifyRegistration = async (req, res) => {
       return res.status(400).json({ message: "Email or University ID is required" });
     }
 
-    // Build resilient query matching either normalized email or University ID / CTU ID
+    const submittedPhoneOtp = (otpPhone || "").toString().trim();
+    const submittedEmailOtp = (otpEmail || "").toString().trim();
+
+    // 1️⃣ First look for temporary record in PendingRegistration
+    const pendingQuery = safeId && cleanEmail
+      ? { $or: [{ email: cleanEmail }, { id: safeId }, { ctuId: safeId }] }
+      : (safeId ? { $or: [{ id: safeId }, { ctuId: safeId }] } : { email: cleanEmail });
+
+    const pending = await PendingRegistration.findOne(pendingQuery);
+
+    if (pending) {
+      // Validate Phone OTP
+      if (pending.phoneOtp !== submittedPhoneOtp || pending.phoneOtpExpires < Date.now()) {
+        return res.status(400).json({ message: "Invalid or expired Phone OTP" });
+      }
+
+      // Validate Email OTP
+      if (pending.otp !== submittedEmailOtp || pending.otpExpires < Date.now()) {
+        return res.status(400).json({ message: "Invalid or expired Email OTP" });
+      }
+
+      // ✅ Valid OTPs! NOW, and ONLY NOW, add user to active database collections
+      const isStudent = pending.role === "student";
+      let user;
+
+      if (isStudent) {
+        const studentData = {
+          id: pending.id,
+          ctuId: pending.ctuId,
+          fullName: pending.fullName,
+          email: pending.email,
+          phone: pending.phone,
+          password: pending.password,
+          role: "student",
+          isVerified: true,
+          school: pending.school,
+          department: pending.department,
+          program: pending.program,
+          studentType: pending.studentType,
+        };
+        user = await StudentUser.findOneAndUpdate({ id: pending.id }, studentData, { upsert: true, new: true });
+
+        // Update StudentRecord if any academic info was missing
+        const sRec = await StudentRecord.findOne({ id: pending.id });
+        if (sRec) {
+          let ch = false;
+          if (!sRec.school && pending.school) { sRec.school = pending.school; ch = true; }
+          if (!sRec.department && pending.department) { sRec.department = pending.department; ch = true; }
+          if (!sRec.program && pending.program) { sRec.program = pending.program; ch = true; }
+          if (ch) await sRec.save();
+        }
+      } else {
+        const staffData = {
+          id: pending.id,
+          fullName: pending.fullName,
+          email: pending.email,
+          phone: pending.phone,
+          password: pending.password,
+          role: "staff",
+          isVerified: true,
+          staffDepartment: pending.staffDepartment || pending.department,
+          department: pending.department || pending.staffDepartment,
+          staffType: pending.staffType || "Non-Teaching",
+          isDeptAdmin: false,
+          adminDepartment: "",
+          adminDepartments: [],
+          isMasterAdmin: false,
+        };
+        user = await StaffUser.findOneAndUpdate({ id: pending.id }, staffData, { upsert: true, new: true });
+        await AdminStaffModel.deleteOne({ id: pending.id });
+
+        const stRec = await StaffRecord.findOne({ id: pending.id });
+        if (stRec && !stRec.department && (pending.staffDepartment || pending.department)) {
+          stRec.department = pending.staffDepartment || pending.department;
+          await stRec.save();
+        }
+      }
+
+      // Also save to legacy User collection as verified backup
+      await User.findOneAndUpdate(
+        { id: pending.id },
+        {
+          id: pending.id,
+          ctuId: pending.ctuId,
+          fullName: pending.fullName,
+          email: pending.email,
+          phone: pending.phone,
+          password: pending.password,
+          role: pending.role,
+          isVerified: true,
+          school: pending.school,
+          department: pending.department,
+          program: pending.program,
+          staffDepartment: pending.staffDepartment,
+          staffType: pending.staffType,
+          isDeptAdmin: false,
+          adminDepartment: "",
+          adminDepartments: [],
+          isMasterAdmin: false,
+        },
+        { upsert: true, new: true }
+      );
+
+      // Clean up temporary pending registration document
+      await PendingRegistration.deleteMany({
+        $or: [{ id: pending.id }, { email: pending.email }]
+      });
+
+      // 🔥 Immediate sync to StudentRecord / StaffRecord for instant zero-lag comparison
+      try {
+        if (isStudent) {
+          await syncSingleStudentRegistration(user, true);
+        } else {
+          await syncSingleStaffRegistration(user, true);
+        }
+        invalidateComparisonCache();
+      } catch (syncErr) {
+        console.warn("Non-fatal registration sync error:", syncErr.message);
+      }
+
+      return res.status(200).json({ message: "Account verified successfully! You can now login." });
+    }
+
+    // 2️⃣ Fallback for any legacy/in-flight records in StudentUser or StaffUser
     const userQuery = safeId && cleanEmail
       ? { $or: [{ email: cleanEmail }, { id: safeId }, { ctuId: safeId }] }
       : (safeId ? { $or: [{ id: safeId }, { ctuId: safeId }] } : { email: cleanEmail });
 
-    // Find user in StudentUser or StaffUser
     let user = await StudentUser.findOne(userQuery);
     let isStudent = true;
 
@@ -327,12 +394,9 @@ export const verifyRegistration = async (req, res) => {
       isStudent = null; // Unknown, use legacy
     }
 
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user) return res.status(400).json({ message: "User not found or registration session expired. Please register again." });
 
     // Validate Phone OTP
-    const submittedPhoneOtp = (otpPhone || "").toString().trim();
-    const submittedEmailOtp = (otpEmail || "").toString().trim();
-
     if (user.phoneOtp !== submittedPhoneOtp || user.phoneOtpExpires < Date.now()) {
       return res.status(400).json({ message: "Invalid or expired Phone OTP" });
     }
