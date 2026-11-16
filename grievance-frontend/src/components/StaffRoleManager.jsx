@@ -10,6 +10,8 @@ import {
   EditIcon,
   StarIcon,
   SaveIcon,
+  EyeIcon,
+  EyeOffIcon,
   DynamicSpinner,
   DynamicLoadingState
 } from "./Icons";
@@ -44,9 +46,11 @@ function StaffRoleManager() {
   const [sortMode, setSortMode] = useState("admins-first"); // admins-first | alpha | rating-high | rating-low
 
   // Current logged-in user details
-  const requesterId = localStorage.getItem("grievance_id");
+  const requesterId = localStorage.getItem("grievance_id") ||
+    (localStorage.getItem("user") ? (() => { try { return JSON.parse(localStorage.getItem("user")).id; } catch (e) { return ""; } })() : "");
   const myDept = localStorage.getItem("admin_department"); // e.g. "Student Welfare"
   const isMasterAdmin = localStorage.getItem("is_master_admin") === "true";
+  const isRoot10001 = isMasterAdmin || String(requesterId || "").trim().toUpperCase() === "10001";
 
   // Dynamic Departments State
   const [departmentsList, setDepartmentsList] = useState([]);
@@ -57,6 +61,20 @@ function StaffRoleManager() {
   const [processingId, setProcessingId] = useState(null);
   const [selectedDeptToAssign, setSelectedDeptToAssign] = useState("");
   const [selectedTeamDeptToAssign, setSelectedTeamDeptToAssign] = useState("");
+
+  // Direct Super Admin Creation State (Root 10001 only)
+  const [showCreateSuperAdminModal, setShowCreateSuperAdminModal] = useState(false);
+  const [createAdminForm, setCreateAdminForm] = useState({
+    id: "",
+    password: "",
+    fullName: "",
+    email: ""
+  });
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
+  const [createAdminMsg, setCreateAdminMsg] = useState("");
+  const [createAdminMsgType, setCreateAdminMsgType] = useState("info");
+  const [showAdminPass, setShowAdminPass] = useState(false);
+  const [revokingSuperAdmin, setRevokingSuperAdmin] = useState(false);
 
   // Delegated permissions states (Ceiling Rule)
   const [deptPermissionsForStaff, setDeptPermissionsForStaff] = useState({
@@ -261,6 +279,111 @@ function StaffRoleManager() {
       }
     } catch (err) {
       alert("Server error occurred while transferring ownership.");
+    }
+  };
+
+  // Create Dedicated Super Admin (10001 Only)
+  const handleCreateSuperAdmin = async (e) => {
+    e?.preventDefault();
+    const cleanId = String(createAdminForm.id || "").trim().toUpperCase();
+    const cleanPass = String(createAdminForm.password || "").trim();
+
+    if (!cleanId) {
+      setCreateAdminMsg("Please enter an Admin ID.");
+      setCreateAdminMsgType("error");
+      return;
+    }
+    if (cleanId === "10001") {
+      setCreateAdminMsg("ID 10001 is already the Root Super Administrator.");
+      setCreateAdminMsgType("error");
+      return;
+    }
+    if (/^\d{8}$/.test(cleanId)) {
+      setCreateAdminMsg("8-digit numeric IDs are reserved for Students. Please use a 5-digit staff ID (e.g. 10002).");
+      setCreateAdminMsgType("error");
+      return;
+    }
+    if (!cleanPass || cleanPass.length < 6) {
+      setCreateAdminMsg("Password must be at least 6 characters long.");
+      setCreateAdminMsgType("error");
+      return;
+    }
+
+    setCreatingAdmin(true);
+    setCreateAdminMsg("Provisioning Super Admin credentials...");
+    setCreateAdminMsgType("info");
+
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/create-super-admin`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("grievance_token")}`
+          },
+          body: JSON.stringify({
+            id: cleanId,
+            password: cleanPass,
+            fullName: createAdminForm.fullName,
+            email: createAdminForm.email
+          })
+        }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        setMsg(`✅ Dedicated Super Admin created successfully for ID: ${cleanId}. They can now log in!`);
+        setMsgType("success");
+        setShowCreateSuperAdminModal(false);
+        setCreateAdminForm({ id: "", password: "", fullName: "", email: "" });
+        await fetchStaffList();
+      } else {
+        setCreateAdminMsg(data.message || "Failed to create Super Admin.");
+        setCreateAdminMsgType("error");
+      }
+    } catch (err) {
+      setCreateAdminMsg("Server connection error. Please try again.");
+      setCreateAdminMsgType("error");
+    } finally {
+      setCreatingAdmin(false);
+    }
+  };
+
+  // Revoke Super Admin Privileges (10001 Only)
+  const handleRevokeSuperAdmin = async (targetStaffId, staffName) => {
+    const isRoot10001 = String(requesterId || "").trim().toUpperCase() === "10001";
+    if (!isRoot10001) return;
+
+    const confirmRevoke = window.confirm(
+      `Revoke Super Admin privileges from ${staffName || targetStaffId} (${targetStaffId})?\n\nThis account will be reverted to regular staff.`
+    );
+    if (!confirmRevoke) return;
+
+    setRevokingSuperAdmin(true);
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/admin/revoke-super-admin`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("grievance_token")}`
+          },
+          body: JSON.stringify({ targetStaffId })
+        }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || "Super Admin privileges revoked successfully.");
+        setSelectedStaffForManage(null);
+        await fetchStaffList();
+      } else {
+        alert("Error: " + (data.message || "Failed to revoke Super Admin"));
+      }
+    } catch (err) {
+      alert("Server error occurred while revoking Super Admin privileges.");
+    } finally {
+      setRevokingSuperAdmin(false);
     }
   };
 
@@ -471,12 +594,14 @@ function StaffRoleManager() {
     let list = [...validStaffList];
 
     // Role filter
-    if (filterRole === "admins") {
+    if (filterRole === "super_admins") {
+      list = list.filter((s) => s.isMasterAdmin);
+    } else if (filterRole === "admins") {
       list = list.filter((s) => s.isDeptAdmin);
     } else if (filterRole === "team") {
       list = list.filter((s) => s.adminDepartment && !s.isDeptAdmin);
     } else if (filterRole === "general") {
-      list = list.filter((s) => !s.isDeptAdmin && !s.adminDepartment);
+      list = list.filter((s) => !s.isDeptAdmin && !s.adminDepartment && !s.isMasterAdmin);
     }
 
     // Department filter (only applicable when Master Admin selects a specific department)
@@ -499,6 +624,8 @@ function StaffRoleManager() {
     // Sorting
     if (sortMode === "admins-first") {
       list.sort((a, b) => {
+        if (a.isMasterAdmin && !b.isMasterAdmin) return -1;
+        if (!a.isMasterAdmin && b.isMasterAdmin) return 1;
         if (a.isDeptAdmin && !b.isDeptAdmin) return -1;
         if (!a.isDeptAdmin && b.isDeptAdmin) return 1;
         const aTeam = a.adminDepartment && !a.isDeptAdmin;
@@ -573,6 +700,23 @@ function StaffRoleManager() {
               <ShieldIcon width="14" height="14" />
               Department Admin • {myDept}
             </span>
+          )}
+
+          {/* 👑 Direct Provision Super Admin Button (Root 10001 / Master Admin) */}
+          {isRoot10001 && (
+            <button
+              type="button"
+              className="staff-btn-create-superadmin"
+              onClick={() => {
+                setCreateAdminForm({ id: "", password: "", fullName: "", email: "" });
+                setCreateAdminMsg("");
+                setShowCreateSuperAdminModal(true);
+              }}
+              title="Create Dedicated Super Admin Credentials"
+            >
+              <ShieldIcon width="14" height="14" />
+              <span>+ Create Super Admin</span>
+            </button>
           )}
         </div>
       </div>
@@ -670,6 +814,7 @@ function StaffRoleManager() {
             onChange={(e) => setFilterRole(e.target.value)}
           >
             <option value="all">All Roles</option>
+            {isMasterAdmin && <option value="super_admins">Super Administrators</option>}
             <option value="admins">Department Heads</option>
             <option value="team">Team Staff</option>
             <option value="general">General Staff</option>
@@ -847,7 +992,11 @@ function StaffRoleManager() {
 
                   {/* Roles */}
                   <div className="staff-roles-container">
-                    {isStaffAdmin ? (
+                    {staff.isMasterAdmin ? (
+                      <span className="staff-role-pill head" style={{ background: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe" }}>
+                        <ShieldIcon width="12" height="12" /> Super Administrator
+                      </span>
+                    ) : isStaffAdmin ? (
                       staffDepts.length > 0 ? (
                         staffDepts.map((dept) => (
                           <span key={dept} className="staff-role-pill head">
@@ -1372,26 +1521,44 @@ function StaffRoleManager() {
                   </>
                 )}
 
-                {/* SECTION 4: Danger Zone - Master Admin Transfer */}
+                {/* SECTION 4: Danger Zone - Master Admin Transfer / Revoke */}
                 {isMasterAdmin && selectedStaffForManage.id !== requesterId && (
                   <>
                     <div className="staff-modal-divider"></div>
                     <div className="staff-modal-danger-simple">
                       <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                        {String(requesterId || "").trim().toUpperCase() === "10001" ? "Super Admin Privileges" : "Master Admin Rights"}
+                        {selectedStaffForManage.isMasterAdmin
+                          ? "Super Administrator Rights Active"
+                          : (String(requesterId || "").trim().toUpperCase() === "10001" ? "Super Admin Privileges" : "Master Admin Rights")}
                       </span>
-                      <button
-                        className="staff-btn-transfer-simple"
-                        style={String(requesterId || "").trim().toUpperCase() === "10001" ? { background: "#4f46e5", borderColor: "#4338ca", color: "#ffffff" } : {}}
-                        onClick={() =>
-                          handleTransferOwnership(
-                            selectedStaffForManage.id,
-                            selectedStaffForManage.fullName
-                          )
-                        }
-                      >
-                        {String(requesterId || "").trim().toUpperCase() === "10001" ? "Make Super Admin" : "Transfer Ownership"}
-                      </button>
+                      {selectedStaffForManage.isMasterAdmin && String(requesterId || "").trim().toUpperCase() === "10001" ? (
+                        <button
+                          className="staff-btn-transfer-simple"
+                          style={{ background: "#ef4444", borderColor: "#dc2626", color: "#ffffff" }}
+                          disabled={revokingSuperAdmin}
+                          onClick={() =>
+                            handleRevokeSuperAdmin(
+                              selectedStaffForManage.id,
+                              selectedStaffForManage.fullName
+                            )
+                          }
+                        >
+                          {revokingSuperAdmin ? "Revoking..." : "Revoke Super Admin"}
+                        </button>
+                      ) : (
+                        <button
+                          className="staff-btn-transfer-simple"
+                          style={String(requesterId || "").trim().toUpperCase() === "10001" ? { background: "#4f46e5", borderColor: "#4338ca", color: "#ffffff" } : {}}
+                          onClick={() =>
+                            handleTransferOwnership(
+                              selectedStaffForManage.id,
+                              selectedStaffForManage.fullName
+                            )
+                          }
+                        >
+                          {String(requesterId || "").trim().toUpperCase() === "10001" ? "Make Super Admin" : "Transfer Ownership"}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -1583,6 +1750,200 @@ function StaffRoleManager() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================= */}
+      {/* 👑 CREATE DEDICATED SUPER ADMIN MODAL      */}
+      {/* ========================================= */}
+      {showCreateSuperAdminModal && (
+        <div
+          className="staff-modal-overlay"
+          onClick={() => !creatingAdmin && setShowCreateSuperAdminModal(false)}
+        >
+          <div
+            className="staff-modal-card simple"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "460px", padding: "24px", borderRadius: "16px" }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "14px", marginBottom: "16px" }}>
+              <div style={{
+                width: "42px",
+                height: "42px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                flexShrink: 0,
+                boxShadow: "0 4px 12px rgba(79, 70, 229, 0.3)"
+              }}>
+                <ShieldIcon width="22" height="22" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: "1.18rem", fontWeight: "700", color: "#0f172a" }}>
+                  Create Dedicated Super Admin
+                </h3>
+                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.82rem", lineHeight: "1.4" }}>
+                  Directly provision Super Administrator login credentials with custom ID & password.
+                </p>
+              </div>
+            </div>
+
+            {/* Error / Info Notice */}
+            {createAdminMsg && (
+              <div
+                className={`reg-users-alert ${createAdminMsgType === "error" ? "error" : "success"}`}
+                style={{ marginBottom: "16px", padding: "8px 12px", fontSize: "0.84rem" }}
+              >
+                {createAdminMsgType === "error" ? (
+                  <AlertCircleIcon width="15" height="15" />
+                ) : (
+                  <CheckCircleIcon width="15" height="15" />
+                )}
+                <span>{createAdminMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateSuperAdmin} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* Admin ID */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                  Admin ID <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 10002"
+                  value={createAdminForm.id}
+                  onChange={(e) => setCreateAdminForm({ ...createAdminForm, id: e.target.value.toUpperCase() })}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.9rem",
+                    fontWeight: "600",
+                    letterSpacing: "0.02em",
+                    boxSizing: "border-box"
+                  }}
+                />
+                <span style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "3px", display: "block" }}>
+                  Enter a 5-digit ID (8-digit IDs are reserved for students).
+                </span>
+              </div>
+
+              {/* Temporary Password */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                  Temporary Password <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showAdminPass ? "text" : "password"}
+                    required
+                    placeholder="Min. 6 characters"
+                    value={createAdminForm.password}
+                    onChange={(e) => setCreateAdminForm({ ...createAdminForm, password: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "9px 38px 9px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.9rem",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPass(!showAdminPass)}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      color: "#64748b"
+                    }}
+                  >
+                    {showAdminPass ? <EyeOffIcon width="16" height="16" /> : <EyeIcon width="16" height="16" />}
+                  </button>
+                </div>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "3px", display: "block" }}>
+                  The admin can update their password and profile after logging in.
+                </span>
+              </div>
+
+              {/* Full Name (Optional) */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                  Full Name <span style={{ color: "#64748b", fontWeight: "normal" }}>(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. IT Super Administrator"
+                  value={createAdminForm.fullName}
+                  onChange={(e) => setCreateAdminForm({ ...createAdminForm, fullName: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.9rem",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              {/* Email (Optional) */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                  Official Email <span style={{ color: "#64748b", fontWeight: "normal" }}>(Optional)</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. admin@ctuniversity.in"
+                  value={createAdminForm.email}
+                  onChange={(e) => setCreateAdminForm({ ...createAdminForm, email: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.9rem",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>
+                <button
+                  type="button"
+                  className="staff-modal-done-btn"
+                  style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" }}
+                  onClick={() => setShowCreateSuperAdminModal(false)}
+                  disabled={creatingAdmin}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="staff-btn-create-superadmin"
+                  style={{ padding: "9px 18px", borderRadius: "8px" }}
+                  disabled={creatingAdmin}
+                >
+                  <ShieldIcon width="14" height="14" />
+                  <span>{creatingAdmin ? "Creating..." : "Create Super Admin"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

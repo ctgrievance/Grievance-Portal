@@ -6931,6 +6931,34 @@ textarea:focus {
   border: 1px solid #bfdbfe;
 }
 
+.staff-btn-create-superadmin {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #ffffff !important;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+.staff-btn-create-superadmin:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35);
+}
+
+.staff-btn-create-superadmin:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* KPI Summary Ribbon */
 .staff-kpi-ribbon {
   display: grid;

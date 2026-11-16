@@ -1986,8 +1986,4 @@ export const clearAllGrievances = async (req, res) => {
 };
 
 
-  }
-};
-
-
 

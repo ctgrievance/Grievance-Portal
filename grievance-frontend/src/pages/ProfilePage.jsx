@@ -10,7 +10,10 @@ import {
   AlertCircleIcon,
   ChevronRightIcon,
   GraduationCapIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  LockIcon,
+  EyeIcon,
+  EyeOffIcon
 } from "../components/Icons";
 import "../styles/Dashboard.css";
 
@@ -56,6 +59,14 @@ function ProfilePage() {
   const [phoneStep, setPhoneStep] = useState(1); // 1: input, 2: otp
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneTimer, setPhoneTimer] = useState(0);
+
+  // Change Password state
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const isStudent = (profile.role || localStorage.getItem("grievance_role") || "").toLowerCase() === "student";
 
@@ -223,6 +234,50 @@ function ProfilePage() {
       showToast(err.message || "Failed to update profile", "error");
     } finally {
       setSavingBasic(false);
+    }
+  };
+
+  // 1.1 CHANGE PASSWORD
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.trim().length < 6) {
+      showToast("New password must be at least 6 characters long", "error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast("New password and confirm password do not match", "error");
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/auth/change-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword
+          })
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update password");
+
+      showToast("✅ Password updated successfully!", "success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswordSection(false);
+    } catch (err) {
+      showToast(err.message || "Failed to update password", "error");
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -940,6 +995,117 @@ function ProfilePage() {
                   )}
                 </div>
 
+              </div>
+
+              {/* CARD 3: SECURITY & PASSWORD CHANGE */}
+              <div className="profile-card">
+                <div className="profile-card-header">
+                  <div className="profile-card-icon-box" style={{ background: "#f8fafc", color: "#4f46e5" }}>
+                    <LockIcon width="18" height="18" />
+                  </div>
+                  <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>Account Security & Password</h3>
+                      <p style={{ margin: "2px 0 0 0" }}>Update your login password to keep your administrator account secure.</p>
+                    </div>
+                    {!showPasswordSection && (
+                      <button
+                        type="button"
+                        className="profile-contact-btn"
+                        onClick={() => setShowPasswordSection(true)}
+                      >
+                        Change Password
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {showPasswordSection && (
+                  <form onSubmit={handleChangePassword} style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+                    <div className="profile-form-grid">
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                          Current Password
+                        </label>
+                        <input
+                          type={showPass ? "text" : "password"}
+                          className="profile-input"
+                          placeholder="Enter current password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                          New Password (Min. 6 characters)
+                        </label>
+                        <input
+                          type={showPass ? "text" : "password"}
+                          className="profile-input"
+                          required
+                          placeholder="Enter new password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.82rem", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                          Confirm New Password
+                        </label>
+                        <input
+                          type={showPass ? "text" : "password"}
+                          className="profile-input"
+                          required
+                          placeholder="Re-enter new password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px", flexWrap: "wrap", gap: "8px" }}>
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", color: "#64748b", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={showPass}
+                          onChange={(e) => setShowPass(e.target.checked)}
+                        />
+                        Show passwords
+                      </label>
+
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPasswordSection(false);
+                            setCurrentPassword("");
+                            setNewPassword("");
+                            setConfirmPassword("");
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#64748b",
+                            fontSize: "0.84rem",
+                            cursor: "pointer",
+                            fontWeight: "500"
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="profile-btn-primary"
+                          disabled={savingPassword}
+                        >
+                          {savingPassword ? "Updating Password..." : "Update Password"}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
               </div>
 
             </main>

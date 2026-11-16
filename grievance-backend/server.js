@@ -1503,6 +1503,176 @@ app.post("/api/admin/transfer-ownership", verifyToken, async (req, res) => {
   }
 });
 
+// 👑 CREATE DEDICATED SUPER ADMIN (Only Root 10001)
+app.post("/api/admin/create-super-admin", verifyToken, async (req, res) => {
+  try {
+    const requesterId = String(req.user?.id || "").trim().toUpperCase();
+
+    // Strict Root Authorization: Only Root Super Admin (10001) can directly provision
+    if (requesterId !== "10001" && !req.user?.isMasterAdmin) {
+      return res.status(403).json({ message: "❌ Only Root Super Admin (10001) can create dedicated Super Admin credentials." });
+    }
+
+    const { id, password, fullName, email } = req.body;
+
+    if (!id || !password) {
+      return res.status(400).json({ message: "Admin ID and Password are required." });
+    }
+
+    const safeId = String(id).trim().toUpperCase();
+    const cleanPassword = String(password).trim();
+
+    if (safeId === "10001") {
+      return res.status(400).json({ message: "ID 10001 is reserved for the Root Super Administrator." });
+    }
+
+    if (cleanPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long." });
+    }
+
+    // Prevent conflict with 8-digit Student ID format
+    if (/^\d{8}$/.test(safeId)) {
+      return res.status(400).json({ message: "Invalid ID format: 8-digit numeric IDs are reserved for Students." });
+    }
+
+    // Check if ID is already registered as student
+    const existingStudent = await StudentUser.findOne({ $or: [{ id: safeId }, { ctuId: safeId }] });
+    if (existingStudent) {
+      return res.status(400).json({ message: `ID ${safeId} is already registered as a student account.` });
+    }
+
+    const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+    const adminFullName = (fullName && fullName.trim()) ? fullName.trim() : `Super Admin (${safeId})`;
+    const adminEmail = (email && email.trim()) ? email.trim().toLowerCase() : "";
+
+    // 1. Upsert StaffUser collection
+    await StaffUser.findOneAndUpdate(
+      { id: safeId },
+      {
+        $set: {
+          id: safeId,
+          fullName: adminFullName,
+          email: adminEmail,
+          password: hashedPassword,
+          role: "admin",
+          isMasterAdmin: true,
+          isDeptAdmin: false,
+          adminDepartment: "",
+          adminDepartments: [],
+          staffDepartment: "Central Administration",
+          isVerified: true,
+          isOtpVerified: true,
+          otpPending: false,
+          isDirectProvisioned: true,
+          mustChangePassword: true
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    // 2. Sync to User collection
+    await User.findOneAndUpdate(
+      { id: safeId },
+      {
+        $set: {
+          id: safeId,
+          fullName: adminFullName,
+          email: adminEmail,
+          password: hashedPassword,
+          role: "admin",
+          isMasterAdmin: true,
+          isDeptAdmin: false,
+          adminDepartment: "",
+          adminDepartments: [],
+          staffDepartment: "Central Administration",
+          isVerified: true
+        }
+      },
+      { upsert: true }
+    );
+
+    // 3. Sync to StaffRecord to keep university directory and comparison tables aligned
+    await StaffRecord.findOneAndUpdate(
+      { id: safeId },
+      {
+        $set: {
+          id: safeId,
+          fullName: adminFullName,
+          email: adminEmail,
+          department: "Central Administration",
+          staffType: "Non-Teaching",
+          designation: "Super Administrator"
+        }
+      },
+      { upsert: true }
+    );
+
+    console.log(`👑 Super Admin account created by ${requesterId} for ID: ${safeId} (${adminFullName})`);
+
+    return res.status(201).json({
+      success: true,
+      message: `✅ Dedicated Super Admin created successfully for ID: ${safeId}.`,
+      admin: {
+        id: safeId,
+        fullName: adminFullName,
+        email: adminEmail,
+        role: "admin",
+        isMasterAdmin: true
+      }
+    });
+  } catch (err) {
+    console.error("Create Super Admin Error:", err);
+    res.status(500).json({ message: "Failed to create Super Admin account", error: err.message });
+  }
+});
+
+// 👑 REVOKE SUPER ADMIN (Only Root 10001, target cannot be 10001)
+app.post("/api/admin/revoke-super-admin", verifyToken, async (req, res) => {
+  try {
+    const requesterId = String(req.user?.id || "").trim().toUpperCase();
+    if (requesterId !== "10001") {
+      return res.status(403).json({ message: "❌ Only Root Super Admin (10001) can revoke Super Admin privileges." });
+    }
+
+    const { targetStaffId } = req.body;
+    const safeTargetId = String(targetStaffId || "").trim().toUpperCase();
+
+    if (safeTargetId === "10001") {
+      return res.status(403).json({ message: "❌ Account 10001 is the permanent Root Super Admin and cannot be demoted." });
+    }
+
+    const [targetUser, targetStaff] = await Promise.all([
+      User.findOne({ id: safeTargetId }),
+      StaffUser.findOne({ id: safeTargetId })
+    ]);
+
+    if (!targetUser && !targetStaff) {
+      return res.status(404).json({ message: `Target account ${safeTargetId} not found.` });
+    }
+
+    if (targetUser) {
+      targetUser.isMasterAdmin = false;
+      targetUser.role = "staff";
+      await targetUser.save();
+    }
+    if (targetStaff) {
+      targetStaff.isMasterAdmin = false;
+      targetStaff.role = "staff";
+      await targetStaff.save();
+    }
+
+    console.log(`👑 User 10001 revoked Super Admin privileges from: ${safeTargetId}`);
+
+    return res.json({
+      success: true,
+      message: `✅ Super Admin privileges revoked from ${targetStaff?.fullName || targetUser?.fullName || safeTargetId}. Account is now regular staff.`
+    });
+  } catch (err) {
+    console.error("Revoke Super Admin Error:", err);
+    res.status(500).json({ message: "Failed to revoke Super Admin", error: err.message });
+  }
+});
+
 // ------------------ 8️⃣ FILE UPLOAD (Disk → GridFS Stream) ------------------
 
 app.post("/api/upload", upload.single("file"), (req, res) => {
