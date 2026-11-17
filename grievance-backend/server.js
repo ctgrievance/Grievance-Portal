@@ -45,6 +45,7 @@ import AdminStaffModel from "./models/AdminStaffModel.js"; // NEW: Admin Staff M
 import Grievance from "./models/GrievanceModel.js"; // Import Grievance Model
 import RoutingRule from "./models/RoutingRule.js"; // Import RoutingRule Model
 import { hideGrievance } from "./controllers/grievanceController.js";
+import { invalidateComparisonCache } from "./controllers/registeredUserController.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -1599,13 +1600,23 @@ app.post("/api/admin/create-super-admin", verifyToken, async (req, res) => {
           id: safeId,
           fullName: adminFullName,
           email: adminEmail,
+          role: "admin",
           department: "Central Administration",
           staffType: "Non-Teaching",
-          designation: "Super Administrator"
+          designation: "Super Administrator",
+          isRegistered: true,
+          registeredUserId: safeId,
+          registeredAt: new Date(),
+          registeredEmail: adminEmail,
+          registeredRole: "admin"
         }
       },
       { upsert: true }
     );
+
+    try {
+      invalidateComparisonCache();
+    } catch (_) {}
 
     console.log(`👑 Super Admin account created by ${requesterId} for ID: ${safeId} (${adminFullName})`);
 
