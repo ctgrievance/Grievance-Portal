@@ -60,6 +60,7 @@ function AdminDashboard() {
   const myDept = localStorage.getItem("admin_department");
 
   const isMasterAdmin = localStorage.getItem("is_master_admin") === "true"; // 🔥 Dynamic Check
+  const isRoot10001 = String(userId || "").trim().toUpperCase() === "10001";
   const canManageStaff = isMasterAdmin || isDeptAdmin;
 
   useEffect(() => {
@@ -268,26 +269,52 @@ function AdminDashboard() {
     navigate("/");
   };
 
-  const handleDeleteGrievance = async (id) => {
-    if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
-    try {
-      const token = localStorage.getItem("grievance_token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
-        method: "PUT",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setGrievances(prev => prev.filter(g => g._id !== id));
-        setSelectedGrievance(null);
-        setMsg("Grievance removed from view.");
-        setStatusType("success");
-        setTimeout(() => setMsg(""), 3000);
-      } else {
-        throw new Error("Failed to delete.");
+  const handleDeleteGrievance = async (id, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    if (isRoot10001) {
+      if (!window.confirm("⚠️ Are you sure you want to PERMANENTLY delete this grievance? This action cannot be undone.")) return;
+      try {
+        const token = localStorage.getItem("grievance_token");
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/${id}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setGrievances(prev => prev.filter(g => g._id !== id));
+          if (selectedGrievance?._id === id) setSelectedGrievance(null);
+          setMsg("✅ Grievance permanently deleted successfully.");
+          setStatusType("success");
+          setTimeout(() => setMsg(""), 3000);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to delete grievance.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Error permanently deleting grievance.");
       }
-    } catch (err) {
-      console.error(err);
-      alert("Error removing grievance.");
+    } else {
+      if (!window.confirm("Are you sure you want to remove this grievance from your list?")) return;
+      try {
+        const token = localStorage.getItem("grievance_token");
+        const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/grievances/hide/${id}`, {
+          method: "PUT",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setGrievances(prev => prev.filter(g => g._id !== id));
+          if (selectedGrievance?._id === id) setSelectedGrievance(null);
+          setMsg("Grievance removed from view.");
+          setStatusType("success");
+          setTimeout(() => setMsg(""), 3000);
+        } else {
+          throw new Error("Failed to delete.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error removing grievance.");
+      }
     }
   };
 
@@ -662,6 +689,7 @@ function AdminDashboard() {
                         <th>Status</th>
                         <th>Assigned Staff</th>
                         <th>Created</th>
+                        {isRoot10001 && <th style={{ textAlign: "center", width: "90px" }}>Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -756,6 +784,42 @@ function AdminDashboard() {
                           </td>
 
                           <td data-label="Created">{formatDate(g.createdAt)}</td>
+
+                          {/* 👑 ROOT 10001 EXCLUSIVE PERMANENT DELETE ACTION */}
+                          {isRoot10001 && (
+                            <td data-label="Actions" style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className="admin-delete-row-btn"
+                                title="Permanently Delete Grievance"
+                                onClick={(e) => handleDeleteGrievance(g._id, e)}
+                                style={{
+                                  background: "#fee2e2",
+                                  border: "1px solid #fca5a5",
+                                  color: "#dc2626",
+                                  padding: "5px 10px",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  fontSize: "0.78rem",
+                                  fontWeight: "600",
+                                  transition: "all 0.15s ease"
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "#dc2626";
+                                  e.currentTarget.style.color = "#ffffff";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "#fee2e2";
+                                  e.currentTarget.style.color = "#dc2626";
+                                }}
+                              >
+                                <TrashIcon width="13" height="13" /> Delete
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -785,7 +849,7 @@ function AdminDashboard() {
                           </span>
                           <UserRoleBadge grievance={g} />
                         </div>
-                        <div className="admin-mcard-status-info">
+                        <div className="admin-mcard-status-info" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                           <span
                             className={`status-badge status-${(g.status || "")
                               .toLowerCase()
@@ -804,6 +868,29 @@ function AdminDashboard() {
                             >
                               <RerouteIcon width="11" height="11" />
                             </span>
+                          )}
+                          {isRoot10001 && (
+                            <button
+                              type="button"
+                              className="admin-mobile-delete-btn"
+                              title="Permanently Delete Grievance"
+                              onClick={(e) => handleDeleteGrievance(g._id, e)}
+                              style={{
+                                background: "#fee2e2",
+                                border: "1px solid #fca5a5",
+                                color: "#dc2626",
+                                padding: "2px 7px",
+                                borderRadius: "5px",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "3px",
+                                fontSize: "0.72rem",
+                                fontWeight: "600"
+                              }}
+                            >
+                              <TrashIcon width="11" height="11" /> Del
+                            </button>
                           )}
                         </div>
                       </div>

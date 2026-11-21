@@ -1514,7 +1514,7 @@ const GrievanceDetailsModal = ({
                 onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#fecaca")}
                 onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#fee2e2")}
               >
-                <TrashIcon width="15" height="15" /> Remove from View
+                <TrashIcon width="15" height="15" /> {currentUserId === "10001" ? "Permanently Delete" : "Remove from View"}
               </button>
             )}
 

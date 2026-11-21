@@ -26,13 +26,15 @@ import {
   getStaffTransferHistory,
   getDepartmentTransferHistory,
   rejectGrievanceByStaff,
-  clearAllGrievances
+  clearAllGrievances,
+  deleteGrievance
 } from "../controllers/grievanceController.js";
 
 const router = express.Router();
 
-/* ================= CLEAR ALL (ADMIN / DEV) ================= */
+/* ================= CLEAR ALL & PERMANENT DELETE (ROOT 10001 ONLY) ================= */
 router.delete("/clear-all", clearAllGrievances);
+router.delete("/:id", verifyToken, deleteGrievance);
 
 /* ================= STUDENT ================= */
 

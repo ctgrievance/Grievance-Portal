@@ -1963,6 +1963,54 @@ export const rejectGrievanceByStaff = async (req, res) => {
 };
 
 /* =====================================================
+   🗑️ PERMANENTLY DELETE SINGLE GRIEVANCE (10001 ROOT SUPER ADMIN ONLY)
+===================================================== */
+export const deleteGrievance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requesterId = String(req.user?.id || req.user?._id || "").trim();
+
+    // Strict Security Gate: Only Root Super Admin 10001 can permanently delete grievances
+    if (requesterId !== "10001") {
+      return res.status(403).json({
+        message: "Forbidden: Only Root Super Admin (10001) has permission to permanently delete grievances."
+      });
+    }
+
+    const grievance = await Grievance.findById(id);
+    if (!grievance) {
+      return res.status(404).json({ message: "Grievance not found" });
+    }
+
+    // 1. Delete associated chat messages
+    const Message = (await import("../models/MessageModel.js")).default;
+    await Message.deleteMany({ grievanceId: id });
+
+    // 2. Unassign from StaffPool if present
+    const StaffPool = (await import("../models/StaffPool.js")).default;
+    await StaffPool.updateMany(
+      { assignedGrievanceIds: id },
+      {
+        $pull: { assignedGrievanceIds: id },
+        $inc: { currentLoad: -1 }
+      }
+    );
+
+    // 3. Permanently delete the grievance document
+    await Grievance.findByIdAndDelete(id);
+
+    console.log(`🗑️ Grievance ${id} permanently deleted by Root Super Admin 10001.`);
+    res.json({
+      message: "Grievance permanently deleted successfully",
+      deletedId: id
+    });
+  } catch (err) {
+    console.error("Delete Grievance Error:", err);
+    res.status(500).json({ message: "Failed to delete grievance", error: err.message });
+  }
+};
+
+/* =====================================================
    🗑️ CLEAR ALL GRIEVANCES (ADMIN / DEV)
 ===================================================== */
 export const clearAllGrievances = async (req, res) => {
