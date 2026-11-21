@@ -7,6 +7,14 @@ import Grievance from "../models/GrievanceModel.js";
 import Department from "../models/Department.js";
 import { sendRoutingReminderEmail } from "../utils/emailService.js";
 
+// Helper to normalize department names consistently across extra spaces and '&' vs 'and'
+const normDeptKey = (s) =>
+  String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s*(?:&|and)\s*/gi, " and ")
+    .replace(/\s+/g, " ");
+
 // Create Routing Rule
 export const createRoutingRule = async (req, res) => {
   try {
@@ -30,7 +38,8 @@ export const createRoutingRule = async (req, res) => {
       : assignedStaff;
 
     // Check if routing rule already exists for this issue type and department
-    const deptRegex = new RegExp(`^${(department || "").trim()}$`, "i");
+    const cleanDept = (department || "").trim().replace(/\s+/g, " ");
+    const deptRegex = new RegExp(`^${cleanDept.replace(/\s+/g, "\\s+")}$`, "i");
     const existingRule = await RoutingRule.findOne({ issueTypeId, department: { $regex: deptRegex }, isActive: true });
     if (existingRule) {
       return res.status(400).json({ message: "An active routing rule already exists for this issue type in this department" });
@@ -218,7 +227,8 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
     console.log(`🤖 Auto-assignment requested: issueTypeId=${issueTypeId}, department=${department}`);
     
     // Look up active routing rule with case-insensitive department matching
-    const deptRegex = new RegExp(`^${(department || "").trim()}$`, "i");
+    const cleanDept = (department || "").trim().replace(/\s+/g, " ");
+    const deptRegex = new RegExp(`^${cleanDept.replace(/\s+/g, "\\s+")}$`, "i");
     const routingRule = await RoutingRule.findOne({
       issueTypeId,
       department: { $regex: deptRegex },
@@ -264,8 +274,8 @@ export const autoAssignGrievance = async (issueTypeId, department) => {
       }
 
       // Department mismatch check
-      const userDept = (userRecord.adminDepartment || userRecord.staffDepartment || "").trim().toLowerCase();
-      const ruleDept = (department || "").trim().toLowerCase();
+      const userDept = normDeptKey(userRecord.adminDepartment || userRecord.staffDepartment || "");
+      const ruleDept = normDeptKey(department || "");
       if (userDept && userDept !== ruleDept) {
         console.log(`⚠️ Excluding ${candidate.staffName} (${candidate.staffId}) from auto-assignment because their department (${userDept}) does not match rule department (${ruleDept}).`);
         staleStaffIds.push(candidate.staffId);
@@ -379,9 +389,9 @@ export const getRoutingHealthAudit = async (req, res) => {
 
     officialDepts.forEach((d) => {
       if (d.name) {
-        const key = d.name.trim().toLowerCase();
+        const key = normDeptKey(d.name);
         deptMap.set(key, {
-          name: d.name.trim(),
+          name: d.name.trim().replace(/\s+/g, " "),
           code: d.code || "",
           description: d.description || "",
           targetAudience: d.targetAudience || "both",
@@ -393,10 +403,10 @@ export const getRoutingHealthAudit = async (req, res) => {
 
     issueTypeDepts.forEach((name) => {
       if (name && name.trim()) {
-        const key = name.trim().toLowerCase();
+        const key = normDeptKey(name);
         if (!deptMap.has(key)) {
           deptMap.set(key, {
-            name: name.trim(),
+            name: name.trim().replace(/\s+/g, " "),
             code: "",
             description: "",
             targetAudience: "both",
@@ -428,12 +438,12 @@ export const getRoutingHealthAudit = async (req, res) => {
 
       // Filter issues for this department
       const deptIssues = allIssues.filter(
-        (i) => (i.department || "").trim().toLowerCase() === deptKey
+        (i) => normDeptKey(i.department) === deptKey
       );
 
       // Filter rules for this department
       const deptRules = allRules.filter(
-        (r) => (r.department || "").trim().toLowerCase() === deptKey
+        (r) => normDeptKey(r.department) === deptKey
       );
 
       const routedIssues = [];
@@ -472,11 +482,11 @@ export const getRoutingHealthAudit = async (req, res) => {
       // Find department admins
       const admins = adminUsers
         .filter((u) => {
-          const primary = (u.adminDepartment || "").trim().toLowerCase();
+          const primary = normDeptKey(u.adminDepartment);
           if (primary === deptKey) return true;
           if (Array.isArray(u.adminDepartments)) {
             return u.adminDepartments.some(
-              (d) => (d || "").trim().toLowerCase() === deptKey
+              (d) => normDeptKey(d) === deptKey
             );
           }
           return false;
@@ -569,7 +579,8 @@ export const sendDepartmentRoutingReminder = async (req, res) => {
       });
     }
 
-    const deptRegex = new RegExp(`^${(department || "").trim()}$`, "i");
+    const cleanDept = (department || "").trim().replace(/\s+/g, " ");
+    const deptRegex = new RegExp(`^${cleanDept.replace(/\s+/g, "\\s+")}$`, "i");
 
     // Fetch unrouted issues for this department
     const deptIssues = await IssueType.find({
@@ -658,9 +669,9 @@ export const broadcastRoutingReminders = async (req, res) => {
     // Group issues by department
     const deptMap = new Map();
     allIssues.forEach((issue) => {
-      const deptName = (issue.department || "").trim();
+      const deptName = (issue.department || "").trim().replace(/\s+/g, " ");
       if (!deptName) return;
-      const deptKey = deptName.toLowerCase();
+      const deptKey = normDeptKey(deptName);
       if (!deptMap.has(deptKey)) {
         deptMap.set(deptKey, { name: deptName, issues: [] });
       }
@@ -672,7 +683,7 @@ export const broadcastRoutingReminders = async (req, res) => {
 
     for (const [deptKey, deptData] of deptMap.entries()) {
       const deptRules = allRules.filter(
-        (r) => (r.department || "").trim().toLowerCase() === deptKey
+        (r) => normDeptKey(r.department) === deptKey
       );
 
       const unrouted = deptData.issues.filter((issue) => {
@@ -691,11 +702,11 @@ export const broadcastRoutingReminders = async (req, res) => {
 
       // Find department admin
       const admins = adminUsers.filter((u) => {
-        const primary = (u.adminDepartment || "").trim().toLowerCase();
+        const primary = normDeptKey(u.adminDepartment);
         if (primary === deptKey) return true;
         if (Array.isArray(u.adminDepartments)) {
           return u.adminDepartments.some(
-            (d) => (d || "").trim().toLowerCase() === deptKey
+            (d) => normDeptKey(d) === deptKey
           );
         }
         return false;
